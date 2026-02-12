@@ -1295,36 +1295,7 @@ let lastChatTs=0;
 // delay handled above
 const DELAY_SEC=20;
 let holeBuffer=[];
-let lastHand=-1;
-
-function handle(d){
-if(isPlayer){handleNow(d);return}
-// 관전자: 이벤트 메시지는 즉시
-if(d.type&&d.type!=='state'){handleNow(d);return}
-// 새 핸드 시작되면 이전 딜레이 버퍼 클리어
-if(d.hand!==lastHand){lastHand=d.hand;holeBuffer=[]}
-// 관전자: state → 즉시 홀카드 숨겨서 렌더링
-const safe=JSON.parse(JSON.stringify(d));
-if(safe.players)safe.players.forEach(p=>{p.hole=null});
-handleNow(safe);
-// 홀카드 있으면 딜레이 버퍼에 추가
-const hasHole=d.players&&d.players.some(p=>p.hole);
-if(hasHole){
-holeBuffer.push({state:JSON.parse(JSON.stringify(d)),showAt:Date.now()+DELAY_SEC*1000});
-document.getElementById('si').textContent=`🔒 손패 ${DELAY_SEC}초 후 공개`}
-}
-
-// 홀카드 딜레이 flush + 카운트다운 (0.5초마다)
-setInterval(()=>{
-const now=Date.now();
-while(holeBuffer.length>0&&holeBuffer[0].showAt<=now){
-const item=holeBuffer.shift();render(item.state);
-document.getElementById('si').textContent='🔓 손패 공개!'}
-// 카운트다운 표시
-if(holeBuffer.length>0&&!isPlayer){
-const remain=Math.ceil((holeBuffer[0].showAt-now)/1000);
-document.getElementById('si').textContent=`🔒 손패 ${remain}초 후 공개`}
-},500);
+function handle(d){handleNow(d)}
 
 function handleNow(d){
 if(d.type==='state'||d.players){render(d);
