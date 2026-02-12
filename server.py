@@ -181,6 +181,8 @@ class Table:
     SB=5; BB=10; START_CHIPS=500
     AI_DELAY=1.5; TURN_TIMEOUT=60
     MIN_PLAYERS=2; MAX_PLAYERS=8
+    BLIND_SCHEDULE=[(5,10),(10,20),(25,50),(50,100),(100,200),(200,400)]
+    BLIND_INTERVAL=10  # 10핸드마다 블라인드 업
 
     def __init__(self, table_id):
         self.id=table_id; self.seats=[]; self.community=[]; self.deck=[]
@@ -239,7 +241,12 @@ class Table:
             'turn_options':turn_options,
             'log':self.log[-25:],'chat':self.chat_log[-10:],
             'running':self.running,
-            'seats_available':self.MAX_PLAYERS-len(self.seats)}
+            'seats_available':self.MAX_PLAYERS-len(self.seats),
+            'table_info':{'sb':self.SB,'bb':self.BB,'timeout':self.TURN_TIMEOUT,
+                'delay':self.SPECTATOR_DELAY,'max_players':self.MAX_PLAYERS,
+                'blind_interval':self.BLIND_INTERVAL,
+                'blind_level':min((self.hand_num)//self.BLIND_INTERVAL,len(self.BLIND_SCHEDULE)-1) if self.hand_num>0 else 0,
+                'next_blind_at':((min((self.hand_num)//self.BLIND_INTERVAL,len(self.BLIND_SCHEDULE)-2)+1)*self.BLIND_INTERVAL)+1 if self.hand_num>0 else self.BLIND_INTERVAL}}
 
     def get_turn_info(self, name):
         s=next((x for x in self.seats if x['name']==name),None)
@@ -357,7 +364,14 @@ class Table:
     async def play_hand(self):
         active=[s for s in self.seats if s['chips']>0 and not s.get('out')]
         if len(active)<2: return
-        self.hand_num+=1; self.deck=make_deck(); self.community=[]; self.pot=0; self.current_bet=0
+        self.hand_num+=1
+        # 블라인드 에스컬레이션
+        level=min((self.hand_num-1)//self.BLIND_INTERVAL, len(self.BLIND_SCHEDULE)-1)
+        new_sb,new_bb=self.BLIND_SCHEDULE[level]
+        if new_sb!=self.SB:
+            self.SB,self.BB=new_sb,new_bb
+            await self.add_log(f"📈 블라인드 업! SB:{self.SB} / BB:{self.BB}")
+        self.deck=make_deck(); self.community=[]; self.pot=0; self.current_bet=0
         self._hand_seats=list(active)
         hand_record = {'hand':self.hand_num,'players':[],'actions':[],'community':[],'winner':None,'pot':0}
 
@@ -677,6 +691,18 @@ async def handle_client(reader, writer):
         if not t: await send_json(writer,{'error':'no game'},404); return
         entry=t.add_chat(name,msg); await t.broadcast_chat(entry)
         await send_json(writer,{'ok':True})
+    elif method=='POST' and route=='/api/leave':
+        d=json.loads(body) if body else {}; name=d.get('name',''); tid=d.get('table_id','mersoom')
+        if not name: await send_json(writer,{'error':'name required'},400); return
+        t=find_table(tid)
+        if not t: await send_json(writer,{'error':'no game'},404); return
+        seat=next((s for s in t.seats if s['name']==name),None)
+        if not seat: await send_json(writer,{'error':'not in game'},400); return
+        seat['out']=True; seat['folded']=True
+        await t.add_log(f"🚪 {seat['emoji']} {name} 퇴장! (칩: {seat['chips']}pt)")
+        if name in t.player_ws: del t.player_ws[name]
+        await t.broadcast_state()
+        await send_json(writer,{'ok':True,'chips':seat['chips']})
     elif method=='GET' and route=='/api/leaderboard':
         lb=sorted(leaderboard.items(),key=lambda x:x[1]['wins'],reverse=True)[:20]
         await send_json(writer,{'leaderboard':[{'name':n,'wins':d['wins'],'losses':d['losses'],
@@ -779,7 +805,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#0a0e1a;color:#e0e0e0;font-family:'Noto Sans KR',system-ui,sans-serif;min-height:100vh}
-.wrap{max-width:900px;margin:0 auto;padding:10px}
+.wrap{max-width:1100px;margin:0 auto;padding:10px}
 h1{text-align:center;color:#ff4444;font-size:1.6em;margin:8px 0;text-shadow:0 0 20px #ff000055}
 h1 b{color:#ffaa00}
 #lobby{text-align:center;padding:50px 20px}
@@ -797,11 +823,14 @@ h1 b{color:#ffaa00}
 #game{display:none}
 .info-bar{display:flex;justify-content:space-between;padding:6px 12px;font-size:0.8em;color:#888;background:#0d1020;border-radius:8px;margin-bottom:8px}
 .felt{position:relative;background:radial-gradient(ellipse at center,#1a6030 0%,#0d3318 60%,#091a0e 100%);
-border:8px solid #2a1a0a;border-radius:50%;width:100%;padding-bottom:55%;box-shadow:inset 0 0 80px #00000088,0 8px 40px #000000aa;margin:0 auto}
+border:8px solid #2a1a0a;border-radius:50%;width:100%;padding-bottom:65%;box-shadow:inset 0 0 80px #00000088,0 8px 40px #000000aa;margin:0 auto}
+#table-info{display:flex;justify-content:center;gap:16px;margin:6px 0;flex-wrap:wrap}
+#table-info .ti{background:#111;border:1px solid #333;border-radius:8px;padding:4px 12px;font-size:0.75em;color:#aaa}
+#table-info .ti b{color:#ffaa00}
 .pot-badge{position:absolute;top:22%;left:50%;transform:translateX(-50%);background:#000000cc;padding:6px 20px;border-radius:25px;font-size:1.1em;color:#ffcc00;font-weight:bold;z-index:5;border:1px solid #ffcc0033}
 .board{position:absolute;top:45%;left:50%;transform:translate(-50%,-50%);display:flex;gap:6px;z-index:4}
 .turn-badge{position:absolute;bottom:22%;left:50%;transform:translateX(-50%);background:#ff444499;padding:4px 14px;border-radius:15px;font-size:0.85em;color:#fff;z-index:5;display:none}
-.card{width:52px;height:74px;border-radius:7px;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;
+.card{width:58px;height:82px;border-radius:8px;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;font-size:1.05em;
 font-weight:bold;font-size:0.95em;box-shadow:0 2px 10px #000000aa;transition:all .3s}
 .card-f{background:linear-gradient(145deg,#fff,#f4f4f4);border:1.5px solid #bbb}
 .card-b{background:linear-gradient(135deg,#2255bb,#1a3399);border:2px solid #5577cc;
@@ -809,7 +838,7 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 .card .r{line-height:1}.card .s{font-size:1.1em;line-height:1}
 .card.red .r,.card.red .s{color:#dd1111}
 .card.black .r,.card.black .s{color:#111}
-.card-sm{width:40px;height:58px;font-size:0.75em}.card-sm .s{font-size:0.95em}
+.card-sm{width:46px;height:66px;font-size:0.8em}.card-sm .s{font-size:0.95em}
 .seat{position:absolute;text-align:center;z-index:10;transition:all .3s}
 .seat-0{bottom:-8%;left:50%;transform:translateX(-50%)}
 .seat-1{top:55%;left:2%;transform:translateY(-50%)}
@@ -819,9 +848,9 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 .seat-5{top:15%;right:2%;transform:translateY(-50%)}
 .seat-6{top:55%;right:2%;transform:translateY(-50%)}
 .seat-7{bottom:-8%;left:25%;transform:translateX(-50%)}
-.seat .ava{font-size:2em;line-height:1.2}
-.seat .nm{font-size:0.85em;font-weight:bold;white-space:nowrap}
-.seat .ch{font-size:0.75em;color:#ffcc00}
+.seat .ava{font-size:2.4em;line-height:1.2}
+.seat .nm{font-size:0.95em;font-weight:bold;white-space:nowrap}
+.seat .ch{font-size:0.85em;color:#ffcc00}
 .seat .st{font-size:0.65em;color:#888;font-style:italic}
 .seat .bet-chip{font-size:0.7em;color:#88ff88;margin-top:2px}
 .seat .cards{display:flex;gap:3px;justify-content:center;margin:4px 0}
@@ -936,6 +965,7 @@ h1{font-size:1.1em;margin:4px 0}
 <div class="turn-badge" id="turnb"></div>
 <div id="turn-options" style="display:none;background:#111;border:1px solid #333;border-radius:8px;padding:8px 12px;margin:6px auto;max-width:600px;font-size:0.82em;text-align:center"></div>
 </div>
+<div id="table-info"></div>
 <div id="actions"><div id="timer"></div><div id="actbtns"></div></div>
 <button id="new-btn" onclick="newGame()">🔄 새 게임</button>
 <div class="tab-btns"><button class="active" onclick="showTab('log')">📜 로그</button><button onclick="showTab('replay')">📋 리플레이</button></div>
@@ -1037,6 +1067,9 @@ if(to.to_call>0)oh+=` <span style="color:#aaa">(콜비용: ${to.to_call}pt, 칩:
 op.innerHTML=oh;op.style.display='block'}
 else{op.style.display='none'}
 if(isPlayer){const me=s.players.find(p=>p.name===myName);if(me)document.getElementById('mi').textContent=`내 칩: ${me.chips}pt`}
+// 테이블 정보
+if(s.table_info){const ti=document.getElementById('table-info');
+ti.innerHTML=`<div class="ti">🪙 블라인드 <b>${s.table_info.sb}/${s.table_info.bb}</b></div><div class="ti">📈 다음 업 <b>#${s.table_info.next_blind_at}</b></div><div class="ti">⏱️ 타임아웃 <b>${s.table_info.timeout}초</b></div><div class="ti">📡 딜레이 <b>${s.table_info.delay}초</b></div><div class="ti">👥 <b>${s.players.length}/${s.table_info.max_players}</b></div>`}
 // 관전자 베팅 패널
 if(!isPlayer&&s.running&&s.round==='preflop'){
 const bp=document.getElementById('bet-panel');bp.style.display='block';
