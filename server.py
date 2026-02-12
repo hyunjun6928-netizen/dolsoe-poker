@@ -352,11 +352,19 @@ class Table:
             await self.broadcast_state()
             await asyncio.sleep(3)
 
-            # 탈락 체크
+            # 탈락 체크 + 킬캠
+            hand_winner=None
+            for r in self.history[-1:]:
+                if r.get('winner'): hand_winner=r['winner']
             for s in self.seats:
                 if s['chips']<=0 and not s.get('out'):
                     s['out']=True
+                    killer=hand_winner or '?'
+                    killer_seat=next((x for x in self.seats if x['name']==killer),None)
+                    killer_emoji=killer_seat['emoji'] if killer_seat else '💀'
                     await self.add_log(f"☠️ {s['emoji']} {s['name']} 파산!")
+                    await self.broadcast({'type':'killcam','victim':s['name'],'victim_emoji':s['emoji'],
+                        'killer':killer,'killer_emoji':killer_emoji})
                     update_leaderboard(s['name'], False, 0)
 
             alive=[s for s in self.seats if s['chips']>0 and not s.get('out')]
@@ -371,6 +379,23 @@ class Table:
         ranking=sorted(self.seats,key=lambda x:x['chips'],reverse=True)
         await self.broadcast({'type':'game_over',
             'ranking':[{'name':s['name'],'emoji':s['emoji'],'chips':s['chips']} for s in ranking]})
+        # 자동 리셋: 파산 봇 제거 후 NPC 리필, 재시작
+        await asyncio.sleep(5)
+        self.seats=[s for s in self.seats if s['chips']>0 and not s.get('out')]
+        # 파산한 NPC 재충전
+        for name,emoji,style in NPC_BOTS:
+            if not any(s['name']==name for s in self.seats):
+                if len(self.seats)<self.MAX_PLAYERS:
+                    self.add_player(name,emoji,is_bot=True,style=style)
+        # 남은 NPC 칩 리셋
+        for s in self.seats:
+            if s['is_bot'] and s['chips']<self.START_CHIPS//2:
+                s['chips']=self.START_CHIPS
+        self.hand_num=0; self.SB=5; self.BB=10; self.highlights=[]
+        active=[s for s in self.seats if s['chips']>0]
+        if len(active)>=self.MIN_PLAYERS:
+            await self.add_log("🔄 새 게임 자동 시작!")
+            asyncio.create_task(self.run())
 
     async def play_hand(self):
         active=[s for s in self.seats if s['chips']>0 and not s.get('out')]
@@ -573,6 +598,22 @@ class Table:
                     if r['win']: await self.add_log(f"🎰 관전자 {r['name']}: {r['pick']}에 {r['bet']}코인 → +{r['payout']}코인!")
                     else: await self.add_log(f"💸 관전자 {r['name']}: {r['pick']}에 {r['bet']}코인 → 꽝")
             save_leaderboard()
+        # 다크호스 체크: 칩 꼴찌가 이겼을 때
+        if record.get('winner'):
+            alive=[s for s in self._hand_seats if not s['folded'] or s['name']==record['winner']]
+            if len(alive)>=2:
+                chip_sorted=sorted(self._hand_seats,key=lambda x:x['chips'])
+                if chip_sorted and chip_sorted[0]['name']==record['winner']:
+                    await self.broadcast({'type':'darkhorse','name':record['winner'],
+                        'emoji':chip_sorted[0]['emoji'],'pot':record['pot']})
+                    await self.add_log(f"🐴 다크호스! {chip_sorted[0]['emoji']} {record['winner']} 역전승!")
+        # MVP 체크: 10핸드마다
+        if self.hand_num>0 and self.hand_num%10==0:
+            active=[s for s in self.seats if not s.get('out')]
+            if active:
+                mvp=max(active,key=lambda x:x['chips'])
+                await self.broadcast({'type':'mvp','name':mvp['name'],'emoji':mvp['emoji'],'chips':mvp['chips'],'hand':self.hand_num})
+                await self.add_log(f"👑 MVP! {mvp['emoji']} {mvp['name']} ({mvp['chips']}pt) — {self.hand_num}핸드 최다칩!")
         self.history.append(record)
         if len(self.history)>50: self.history=self.history[-50:]
         await self.broadcast_state()
@@ -583,10 +624,41 @@ def get_or_create_table(tid=None):
     if tid and tid in tables: return tables[tid]
     tid=tid or f"table_{int(time.time())}"; t=Table(tid); tables[tid]=t; return t
 
-# 서버 시작 시 mersoom 테이블 자동 생성
+# ══ NPC 봇 ══
+NPC_BOTS = [
+    ('딜러봇', '🎰', 'tight'),
+    ('도박꾼', '🎲', 'maniac'),
+    ('고수', '🧠', 'aggressive'),
+    ('초보', '🐣', 'loose'),
+    ('상어', '🦈', 'aggressive'),
+    ('여우', '🦊', 'tight'),
+]
+
+def fill_npc_bots(t, count=2):
+    """테이블에 NPC 봇 자동 추가"""
+    current=[s['name'] for s in t.seats]
+    added=0
+    for name,emoji,style in NPC_BOTS:
+        if added>=count: break
+        if name in current: continue
+        if len(t.seats)>=t.MAX_PLAYERS: break
+        t.add_player(name,emoji,is_bot=True,style=style)
+        added+=1
+    return added
+
+# 서버 시작 시 mersoom 테이블 자동 생성 + NPC 봇 배치
 def init_mersoom_table():
     t = get_or_create_table('mersoom')
+    fill_npc_bots(t, 3)  # NPC 3마리 기본 배치
+    asyncio.get_event_loop().call_soon(lambda: asyncio.create_task(auto_start_mersoom(t)))
     return t
+
+async def auto_start_mersoom(t):
+    """NPC 봇들로 자동 게임 시작"""
+    await asyncio.sleep(1)
+    active=[s for s in t.seats if s['chips']>0 and not s.get('out')]
+    if len(active)>=t.MIN_PLAYERS and not t.running:
+        asyncio.create_task(t.run())
 
 # ══ WebSocket ══
 async def ws_send(writer, data):
@@ -977,6 +1049,28 @@ h1{font-size:1.1em;margin:4px 0}
 #bet-panel button:hover{transform:scale(1.05)}
 #bet-panel .bp-coins{color:#88ff88;font-size:0.8em;margin-top:4px}
 .result-box h2{color:#ffaa00;margin-bottom:15px}
+#hand-timeline{display:flex;justify-content:center;gap:4px;margin:6px 0;font-size:0.75em}
+#hand-timeline .tl-step{padding:3px 10px;border-radius:12px;background:#1a1e2e;color:#555;border:1px solid #333}
+#hand-timeline .tl-step.active{background:#ff4444;color:#fff;border-color:#ff4444;font-weight:bold}
+#hand-timeline .tl-step.done{background:#333;color:#aaa;border-color:#555}
+#quick-chat{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;margin:4px 0}
+#quick-chat button{background:#1a1e2e;border:1px solid #333;color:#ccc;padding:4px 10px;border-radius:12px;font-size:0.75em;cursor:pointer}
+#quick-chat button:hover{background:#333;color:#fff}
+#killcam-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:#000000ee;display:none;align-items:center;justify-content:center;z-index:101;animation:allinFlash 2.5s ease-out forwards}
+#killcam-overlay .kc-text{text-align:center}
+#killcam-overlay .kc-vs{font-size:3em;margin:10px 0}
+#killcam-overlay .kc-msg{font-size:1.5em;color:#ff4444;font-weight:bold}
+#darkhorse-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:radial-gradient(circle,#00ff8833,#000000dd);display:none;align-items:center;justify-content:center;z-index:100}
+#darkhorse-overlay .dh-text{font-size:2.5em;font-weight:900;color:#00ff88;text-shadow:0 0 30px #00ff88;animation:allinPulse .4s ease-in-out 3}
+#mvp-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:radial-gradient(circle,#ffaa0044,#000000dd);display:none;align-items:center;justify-content:center;z-index:100}
+#mvp-overlay .mvp-text{font-size:2.5em;font-weight:900;color:#ffaa00;text-shadow:0 0 40px #ffaa00;animation:allinPulse .4s ease-in-out 3}
+#vote-panel{background:#0d1120;border:1px solid #333;border-radius:10px;padding:8px;margin-top:4px;text-align:center;display:none}
+#vote-panel .vp-title{color:#88ccff;font-size:0.85em;margin-bottom:4px}
+#vote-panel .vp-btns{display:flex;gap:4px;flex-wrap:wrap;justify-content:center}
+#vote-panel .vp-btn{background:#1a1e2e;border:1px solid #444;color:#fff;padding:4px 12px;border-radius:8px;cursor:pointer;font-size:0.8em}
+#vote-panel .vp-btn:hover{border-color:#88ccff}
+#vote-panel .vp-btn.voted{background:#88ccff33;border-color:#88ccff}
+#vote-results{font-size:0.75em;color:#aaa;margin-top:4px}
 .result-box .rank{margin:8px 0;font-size:1.1em}
 </style>
 </head>
@@ -1000,6 +1094,7 @@ h1{font-size:1.1em;margin:4px 0}
 </div>
 <div id="game">
 <div class="info-bar"><span id="hi">핸드 #0</span><span id="ri">대기중</span><span id="si" style="color:#88ff88"></span><span id="mi"></span></div>
+<div id="hand-timeline"><span class="tl-step" data-r="preflop">프리플랍</span><span class="tl-step" data-r="flop">플랍</span><span class="tl-step" data-r="turn">턴</span><span class="tl-step" data-r="river">리버</span><span class="tl-step" data-r="showdown">쇼다운</span></div>
 <div class="felt" id="felt">
 <div class="pot-badge" id="pot">POT: 0</div>
 <div class="board" id="board"></div>
@@ -1015,6 +1110,9 @@ h1{font-size:1.1em;margin:4px 0}
 <div id="replay-panel"></div>
 <div id="chatbox">
 <div id="chatmsgs"></div>
+<div id="quick-chat">
+<button onclick="qChat('ㅋㅋㅋ')">ㅋㅋㅋ</button><button onclick="qChat('사기아님?')">사기?</button><button onclick="qChat('올인가자!')">올인!</button><button onclick="qChat('GG')">GG</button><button onclick="qChat('ㄹㅇ?')">ㄹㅇ?</button><button onclick="qChat('낄낄')">낄낄</button>
+</div>
 <div id="chatinput"><input id="chat-inp" placeholder="쓰레기톡..." maxlength="100"><button onclick="sendChat()">💬</button></div>
 </div>
 </div>
@@ -1026,11 +1124,15 @@ h1{font-size:1.1em;margin:4px 0}
 <button onclick="placeBet()">베팅!</button>
 <div class="bp-coins" id="bet-coins">💰 1000 코인</div>
 </div>
+<div id="vote-panel"><div class="vp-title">🗳️ 이번 핸드 승자 예측!</div><div class="vp-btns" id="vote-btns"></div><div id="vote-results"></div></div>
 <div class="result-overlay" id="result"><div class="result-box" id="rbox"></div></div>
 <div id="reactions" style="display:none">
 <button onclick="react('👏')">👏</button><button onclick="react('🔥')">🔥</button><button onclick="react('😱')">😱</button><button onclick="react('💀')">💀</button><button onclick="react('😂')">😂</button><button onclick="react('🤡')">🤡</button>
 </div>
 <div id="allin-overlay"><div class="allin-text">🔥 ALL IN 🔥</div></div>
+<div id="killcam-overlay"><div class="kc-text"><div class="kc-vs"></div><div class="kc-msg"></div></div></div>
+<div id="darkhorse-overlay"><div class="dh-text"></div></div>
+<div id="mvp-overlay"><div class="mvp-text"></div></div>
 <div id="highlight-overlay"><div class="hl-text" id="hl-text"></div></div>
 <div id="profile-backdrop" onclick="closeProfile()"></div>
 <div id="profile-popup"><span class="pp-close" onclick="closeProfile()">✕</span><div id="pp-content"></div></div>
@@ -1105,6 +1207,9 @@ else if(d.type==='your_turn'){showAct(d)}
 else if(d.type==='showdown'){showShowdown(d)}
 else if(d.type==='game_over'){showEnd(d)}
 else if(d.type==='reaction'){showRemoteReaction(d)}
+else if(d.type==='killcam'){showKillcam(d)}
+else if(d.type==='darkhorse'){showDarkhorse(d)}
+else if(d.type==='mvp'){showMVP(d)}
 else if(d.type==='chat'){addChat(d.name,d.msg)}
 else if(d.type==='allin'){showAllin(d)}
 else if(d.type==='highlight'){showHighlight(d)}}
@@ -1113,6 +1218,16 @@ function render(s){
 document.getElementById('hi').textContent=`핸드 #${s.hand}${!isPlayer?' (📡 TV중계)':''}`;
 document.getElementById('ri').textContent=s.round||'대기중';
 if(s.spectator_count!==undefined&&delayDone)document.getElementById('si').textContent=`👀 ${s.spectator_count}명 관전중`;
+// 타임라인 업데이트
+const rounds=['preflop','flop','turn','river','showdown'];
+const ri=rounds.indexOf(s.round);
+document.querySelectorAll('#hand-timeline .tl-step').forEach((el,i)=>{el.className='tl-step'+(i===ri?' active':i<ri?' done':'')});
+// 관전자 투표 패널
+if(!isPlayer&&s.running&&s.round==='preflop'&&!currentVote){
+const vp=document.getElementById('vote-panel');vp.style.display='block';
+const vb=document.getElementById('vote-btns');vb.innerHTML='';
+s.players.filter(p=>!p.out&&!p.folded).forEach(p=>{const b=document.createElement('button');b.className='vp-btn';b.textContent=`${p.emoji} ${p.name}`;b.onclick=()=>castVote(p.name,b);vb.appendChild(b)})}
+if(s.round==='between'||s.round==='finished'||s.round==='waiting'){document.getElementById('vote-panel').style.display='none';currentVote=null}
 document.getElementById('pot').textContent=`POT: ${s.pot}pt`;
 const b=document.getElementById('board');b.innerHTML='';
 for(const c of s.community)b.innerHTML+=mkCard(c);
@@ -1280,7 +1395,61 @@ const w=p.winner?'style="color:#ffaa00;font-weight:bold"':'style="color:#888"';
 h+=`<div ${w}>${p.emoji} ${p.name}: ${cards} → ${p.hand}${p.winner?' 👑':''}</div>`});
 h+=`<div style="color:#44ff44;margin-top:8px;font-size:1.2em">💰 POT: ${d.pot}pt</div>`;
 h+=`<br><button onclick="document.getElementById('result').style.display='none'" style="padding:8px 24px;border:none;border-radius:8px;background:#ffaa00;color:#000;font-weight:bold;cursor:pointer">닫기</button>`;
-b.innerHTML=h;setTimeout(()=>{o.style.display='none'},5000)}
+b.innerHTML=h;sfx('showdown');setTimeout(()=>{o.style.display='none'},5000)}
+
+// 킬캠
+function showKillcam(d){
+const o=document.getElementById('killcam-overlay');
+o.querySelector('.kc-vs').textContent=`${d.killer_emoji} ${d.killer}`;
+o.querySelector('.kc-msg').textContent=`☠️ ${d.victim_emoji} ${d.victim} ELIMINATED`;
+o.style.display='flex';o.style.animation='none';o.offsetHeight;o.style.animation='allinFlash 2.5s ease-out forwards';
+sfx('killcam');setTimeout(()=>{o.style.display='none'},2500)}
+
+// 다크호스
+function showDarkhorse(d){
+const o=document.getElementById('darkhorse-overlay');
+o.querySelector('.dh-text').textContent=`🐴 다크호스! ${d.emoji} ${d.name} 역전승! +${d.pot}pt`;
+o.style.display='flex';o.style.animation='none';o.offsetHeight;o.style.animation='allinFlash 3s ease-out forwards';
+sfx('darkhorse');setTimeout(()=>{o.style.display='none'},3000)}
+
+// MVP
+function showMVP(d){
+const o=document.getElementById('mvp-overlay');
+o.querySelector('.mvp-text').textContent=`👑 MVP ${d.emoji} ${d.name} — ${d.chips}pt (${d.hand}핸드)`;
+o.style.display='flex';o.style.animation='none';o.offsetHeight;o.style.animation='allinFlash 3.5s ease-out forwards';
+sfx('mvp');setTimeout(()=>{o.style.display='none'},3500)}
+
+// 빠른 채팅
+function qChat(msg){
+const name=specName||myName||'관객';
+if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'chat',name:name,msg:msg}));
+else fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name,msg:msg,table_id:tableId})}).catch(()=>{});
+addChat(name,msg)}
+
+// 투표
+let currentVote=null;
+function castVote(name,btn){
+currentVote=name;document.querySelectorAll('.vp-btn').forEach(b=>b.classList.remove('voted'));
+btn.classList.add('voted');
+document.getElementById('vote-results').textContent=`${name}에게 투표 완료!`}
+
+// 사운드 이펙트 (Web Audio)
+const audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+function sfx(type){
+try{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+g.gain.value=0.15;
+if(type==='chip'){o.frequency.value=800;o.type='sine';g.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+0.15);o.start();o.stop(audioCtx.currentTime+0.15)}
+else if(type==='allin'){o.frequency.value=200;o.type='sawtooth';g.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+0.5);o.start();o.stop(audioCtx.currentTime+0.5)}
+else if(type==='showdown'){o.frequency.value=523;o.type='triangle';g.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+0.8);o.start();
+setTimeout(()=>{const o2=audioCtx.createOscillator();const g2=audioCtx.createGain();o2.connect(g2);g2.connect(audioCtx.destination);o2.frequency.value=659;o2.type='triangle';g2.gain.value=0.15;g2.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+0.4);o2.start();o2.stop(audioCtx.currentTime+0.4)},200);o.stop(audioCtx.currentTime+0.3)}
+else if(type==='killcam'){o.frequency.value=100;o.type='square';g.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+0.8);o.start();o.stop(audioCtx.currentTime+0.8)}
+else if(type==='darkhorse'){o.frequency.value=440;o.type='triangle';g.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+0.6);o.start();o.stop(audioCtx.currentTime+0.6)}
+else if(type==='mvp'){o.frequency.value=660;o.type='sine';g.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+1);o.start();o.stop(audioCtx.currentTime+1)}
+}catch(e){}}
+
+// 기존 이벤트에 사운드 추가
+const _origShowAllin=showAllin;
+showAllin=function(d){_origShowAllin(d);sfx('allin')};
 
 var _ni=document.getElementById('inp-name');if(_ni)_ni.addEventListener('keydown',e=>{if(e.key==='Enter')join()});
 document.getElementById('chat-inp').addEventListener('keydown',e=>{if(e.key==='Enter')sendChat()});
