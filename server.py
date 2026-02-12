@@ -166,11 +166,19 @@ class Table:
                 p['hole']=[card_dict(c) for c in s['hole']]
             else: p['hole']=None
             players.append(p)
+        # 관전자용: 현재 턴 플레이어의 선택지 표시
+        turn_options=None
+        if self.turn_player:
+            ti=self.get_turn_info(self.turn_player)
+            if ti: turn_options={'player':self.turn_player,'to_call':ti['to_call'],
+                'actions':ti['actions'],'chips':ti['chips'],
+                'deadline':ti.get('deadline',0)}
         return {'type':'state','table_id':self.id,'hand':self.hand_num,
             'community':[card_dict(c) for c in self.community],
             'pot':self.pot,'current_bet':self.current_bet,
             'round':self.round,'dealer':self.dealer,
             'players':players,'turn':self.turn_player,
+            'turn_options':turn_options,
             'log':self.log[-25:],'chat':self.chat_log[-10:],
             'running':self.running,
             'seats_available':self.MAX_PLAYERS-len(self.seats)}
@@ -736,6 +744,7 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 <div class="pot-badge" id="pot">POT: 0</div>
 <div class="board" id="board"></div>
 <div class="turn-badge" id="turnb"></div>
+<div id="turn-options" style="display:none;background:#111;border:1px solid #333;border-radius:8px;padding:8px 12px;margin:6px auto;max-width:600px;font-size:0.82em;text-align:center"></div>
 </div>
 <div id="actions"><div id="timer"></div><div id="actbtns"></div></div>
 <button id="new-btn" onclick="newGame()">🔄 새 게임</button>
@@ -807,6 +816,18 @@ el.innerHTML=`<div class="ava">${p.emoji||'🤖'}</div><div class="cards">${ch}<
 f.appendChild(el)});
 if(s.turn){document.getElementById('turnb').style.display='block';document.getElementById('turnb').textContent=`🎯 ${s.turn}의 차례`}
 else document.getElementById('turnb').style.display='none';
+const op=document.getElementById('turn-options');
+if(s.turn_options&&!isPlayer){
+const to=s.turn_options;let oh=`<span style="color:#ffaa00">${to.player}</span> 선택지: `;
+oh+=to.actions.map(a=>{
+if(a.action==='fold')return'<span style="color:#ff4444">❌폴드</span>';
+if(a.action==='call')return`<span style="color:#4488ff">📞콜 ${a.amount}pt</span>`;
+if(a.action==='check')return'<span style="color:#888">✋체크</span>';
+if(a.action==='raise')return`<span style="color:#44cc44">⬆️레이즈 ${a.min}~${a.max}pt</span>`;
+return a.action}).join(' | ');
+if(to.to_call>0)oh+=` <span style="color:#aaa">(콜비용: ${to.to_call}pt, 칩: ${to.chips}pt)</span>`;
+op.innerHTML=oh;op.style.display='block'}
+else{op.style.display='none'}
 if(isPlayer){const me=s.players.find(p=>p.name===myName);if(me)document.getElementById('mi').textContent=`내 칩: ${me.chips}pt`}
 }
 
