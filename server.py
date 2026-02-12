@@ -116,15 +116,26 @@ leaderboard = {}  # name -> {wins, losses, total_chips_won, hands_played, bigges
 
 def update_leaderboard(name, won, chips_delta, pot=0):
     if name not in leaderboard:
-        leaderboard[name] = {'wins':0,'losses':0,'chips_won':0,'hands':0,'biggest_pot':0}
+        leaderboard[name] = {'wins':0,'losses':0,'chips_won':0,'hands':0,'biggest_pot':0,'streak':0}
     lb = leaderboard[name]
+    if 'streak' not in lb: lb['streak']=0
     lb['hands'] += 1
     if won:
         lb['wins'] += 1
         lb['chips_won'] += chips_delta
         lb['biggest_pot'] = max(lb['biggest_pot'], pot)
+        lb['streak'] = max(lb['streak']+1, 1)
     else:
         lb['losses'] += 1
+        lb['streak'] = min(lb['streak']-1, -1) if lb['streak']<=0 else 0
+
+def get_streak_badge(name):
+    if name not in leaderboard: return ''
+    s=leaderboard[name].get('streak',0)
+    if s>=5: return '🔥🔥'
+    if s>=3: return '🔥'
+    if s<=(-3): return '💀'
+    return ''
 
 # ══ 관전자 베팅 ══
 spectator_bets = {}  # table_id -> {hand_num -> {spectator_name -> {'pick':player_name,'amount':int}}}
@@ -221,7 +232,8 @@ class Table:
             p={'name':s['name'],'emoji':s['emoji'],'chips':s['chips'],
                'folded':s['folded'],'bet':s['bet'],'style':s['style'],
                'has_cards':len(s['hole'])>0,'out':s.get('out',False),
-               'last_action':s.get('last_action')}
+               'last_action':s.get('last_action'),
+               'streak_badge':get_streak_badge(s['name'])}
             # 플레이어: 본인 카드만 / 관전자(viewer=None): 전체 공개 (딜레이로 치팅 방지)
             if s['hole'] and (viewer is None or viewer==s['name']):
                 p['hole']=[card_dict(c) for c in s['hole']]
@@ -242,6 +254,7 @@ class Table:
             'turn_options':turn_options,
             'log':self.log[-25:],'chat':self.chat_log[-10:],
             'running':self.running,
+            'spectator_count':len(self.spectator_ws),
             'seats_available':self.MAX_PLAYERS-len(self.seats),
             'table_info':{'sb':self.SB,'bb':self.BB,'timeout':self.TURN_TIMEOUT,
                 'delay':self.SPECTATOR_DELAY,'max_players':self.MAX_PLAYERS,
@@ -792,6 +805,17 @@ async def handle_ws(reader, writer, path):
             elif data.get('type')=='chat':
                 entry=t.add_chat(data.get('name',name),data.get('msg',''))
                 await t.broadcast_chat(entry)
+            elif data.get('type')=='reaction':
+                emoji=data.get('emoji','')[:2]; rname=data.get('name',name or '관객')[:10]
+                if emoji:
+                    rmsg=json.dumps({'type':'reaction','emoji':emoji,'name':rname},ensure_ascii=False)
+                    for ws in list(t.spectator_ws):
+                        if ws!=writer:
+                            try: await ws_send(ws,rmsg)
+                            except: t.spectator_ws.discard(ws)
+                    for ws in set(t.player_ws.values()):
+                        try: await ws_send(ws,rmsg)
+                        except: pass
             elif data.get('type')=='get_state':
                 await ws_send(writer,json.dumps(t.get_public_state(viewer=name if mode=='play' else None),ensure_ascii=False))
     except: pass
@@ -899,7 +923,7 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 #chatinput button{background:#333;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:0.8em}
 @keyframes fadeIn{to{opacity:1}}
 @keyframes floatUp{0%{opacity:1;transform:translateY(0) scale(1)}50%{opacity:0.8;transform:translateY(-60px) scale(1.3)}100%{opacity:0;transform:translateY(-120px) scale(0.8)}}
-.float-emoji{position:fixed;font-size:2em;pointer-events:none;animation:floatUp 1.5s ease-out forwards;z-index:200}
+.float-emoji{position:fixed;font-size:1.6em;pointer-events:none;animation:floatUp 1.5s ease-out forwards;z-index:200;text-align:center}
 #reactions{position:fixed;bottom:20px;right:20px;display:flex;gap:6px;z-index:50}
 #reactions button{font-size:1.5em;background:#1a1e2e;border:1px solid #333;border-radius:50%;width:44px;height:44px;cursor:pointer;transition:transform .1s}
 #reactions button:active{transform:scale(1.3)}
@@ -975,7 +999,7 @@ h1{font-size:1.1em;margin:4px 0}
 </div>
 </div>
 <div id="game">
-<div class="info-bar"><span id="hi">핸드 #0</span><span id="ri">대기중</span><span id="mi"></span></div>
+<div class="info-bar"><span id="hi">핸드 #0</span><span id="ri">대기중</span><span id="si" style="color:#88ff88"></span><span id="mi"></span></div>
 <div class="felt" id="felt">
 <div class="pot-badge" id="pot">POT: 0</div>
 <div class="board" id="board"></div>
@@ -1035,7 +1059,17 @@ document.getElementById('lobby').style.display='none';
 document.getElementById('game').style.display='block';
 document.getElementById('reactions').style.display='flex';
 tryWS();fetchCoins();
+startDelayTimer();
 }catch(e){alert('에러: '+e.message)}}
+
+let delayTimer=null,delayDone=false;
+function startDelayTimer(){
+if(isPlayer){delayDone=true;return}
+let sec=30;delayDone=false;
+const el=document.getElementById('si');
+delayTimer=setInterval(()=>{
+sec--;if(sec<=0){clearInterval(delayTimer);delayDone=true;el.textContent='📡 LIVE';return}
+el.textContent=`📡 ${sec}초 후 카드 공개`},1000)}
 
 // URL ?watch=1 자동 관전
 if(new URLSearchParams(location.search).has('watch')){setTimeout(watch,500)}
@@ -1068,15 +1102,17 @@ function handle(d){
 if(d.type==='state'||d.players){render(d);if(d.chat){d.chat.forEach(c=>{if((c.ts||0)>lastChatTs){addChat(c.name,c.msg,false);lastChatTs=c.ts||0}});}}
 else if(d.type==='log'){addLog(d.msg)}
 else if(d.type==='your_turn'){showAct(d)}
-else if(d.type==='showdown'){}
+else if(d.type==='showdown'){showShowdown(d)}
 else if(d.type==='game_over'){showEnd(d)}
+else if(d.type==='reaction'){showRemoteReaction(d)}
 else if(d.type==='chat'){addChat(d.name,d.msg)}
 else if(d.type==='allin'){showAllin(d)}
 else if(d.type==='highlight'){showHighlight(d)}}
 
 function render(s){
-document.getElementById('hi').textContent=`핸드 #${s.hand}${!isPlayer?' (📡 30초 딜레이 TV중계)':''}`;
+document.getElementById('hi').textContent=`핸드 #${s.hand}${!isPlayer?' (📡 TV중계)':''}`;
 document.getElementById('ri').textContent=s.round||'대기중';
+if(s.spectator_count!==undefined&&delayDone)document.getElementById('si').textContent=`👀 ${s.spectator_count}명 관전중`;
 document.getElementById('pot').textContent=`POT: ${s.pot}pt`;
 const b=document.getElementById('board');b.innerHTML='';
 for(const c of s.community)b.innerHTML+=mkCard(c);
@@ -1090,7 +1126,8 @@ else if(p.has_cards)ch+=`<div class="card card-b card-sm"><span style="color:#ff
 const db=i===s.dealer?'<span class="dbtn">D</span>':'';
 const bt=p.bet>0?`<div class="bet-chip">▲${p.bet}pt</div>`:'';
 const la=p.last_action?`<div class="act-label">${p.last_action}</div>`:'';
-el.innerHTML=`${la}<div class="ava">${p.emoji||'🤖'}</div><div class="cards">${ch}</div><div class="nm">${p.name}${db}</div><div class="ch">💰${p.chips}pt</div>${bt}<div class="st">${p.style}</div>`;
+const sb=p.streak_badge||'';
+el.innerHTML=`${la}<div class="ava">${p.emoji||'🤖'}</div><div class="cards">${ch}</div><div class="nm">${sb}${p.name}${db}</div><div class="ch">💰${p.chips}pt</div>${bt}<div class="st">${p.style}</div>`;
 el.style.cursor='pointer';el.onclick=(e)=>{e.stopPropagation();showProfile(p.name)};
 f.appendChild(el)});
 if(s.turn){document.getElementById('turnb').style.display='block';document.getElementById('turnb').textContent=`🎯 ${s.turn}의 차례`}
@@ -1218,14 +1255,32 @@ document.getElementById('profile-backdrop').style.display='block';
 document.getElementById('profile-popup').style.display='block'}catch(e){}}
 function closeProfile(){document.getElementById('profile-backdrop').style.display='none';document.getElementById('profile-popup').style.display='none'}
 
+let reactionCount=0;const MAX_REACTIONS=5;
 function react(emoji){
-const el=document.createElement('div');el.className='float-emoji';el.textContent=emoji;
-el.style.left=(Math.random()*60+20)+'%';el.style.bottom='80px';
-document.body.appendChild(el);setTimeout(()=>el.remove(),1600);
-// 채팅으로도 전송
+if(reactionCount>=MAX_REACTIONS)return;
+reactionCount++;setTimeout(()=>reactionCount--,2000);
+spawnEmoji(emoji);
 const name=specName||myName||'관객';
-fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
-body:JSON.stringify({name:name,msg:emoji,table_id:tableId})}).catch(()=>{})}
+if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'reaction',emoji:emoji,name:name}));
+}
+function spawnEmoji(emoji,fromName){
+const el=document.createElement('div');el.className='float-emoji';
+el.textContent=emoji;
+if(fromName){const tag=document.createElement('span');tag.style.cssText='font-size:0.3em;display:block;color:#aaa';tag.textContent=fromName;el.appendChild(tag)}
+el.style.right='10px';el.style.bottom=(60+Math.random()*30)+'px';
+document.body.appendChild(el);setTimeout(()=>el.remove(),1600)}
+function showRemoteReaction(d){spawnEmoji(d.emoji,d.name)}
+
+function showShowdown(d){
+const o=document.getElementById('result');o.style.display='flex';const b=document.getElementById('rbox');
+let h='<h2>🃏 쇼다운!</h2>';
+d.players.forEach(p=>{
+const cards=p.hole.map(c=>`${c.rank}${c.suit}`).join(' ');
+const w=p.winner?'style="color:#ffaa00;font-weight:bold"':'style="color:#888"';
+h+=`<div ${w}>${p.emoji} ${p.name}: ${cards} → ${p.hand}${p.winner?' 👑':''}</div>`});
+h+=`<div style="color:#44ff44;margin-top:8px;font-size:1.2em">💰 POT: ${d.pot}pt</div>`;
+h+=`<br><button onclick="document.getElementById('result').style.display='none'" style="padding:8px 24px;border:none;border-radius:8px;background:#ffaa00;color:#000;font-weight:bold;cursor:pointer">닫기</button>`;
+b.innerHTML=h;setTimeout(()=>{o.style.display='none'},5000)}
 
 var _ni=document.getElementById('inp-name');if(_ni)_ni.addEventListener('keydown',e=>{if(e.key==='Enter')join()});
 document.getElementById('chat-inp').addEventListener('keydown',e=>{if(e.key==='Enter')sendChat()});
