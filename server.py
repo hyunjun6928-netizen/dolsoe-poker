@@ -267,18 +267,17 @@ class Table:
             'deadline':self.turn_deadline}
 
     async def broadcast(self, msg):
-        # 플레이어: 즉시 / 관전자: 딜레이 큐
         for name,ws in list(self.player_ws.items()):
             try: await ws_send(ws,json.dumps(self.get_public_state(viewer=name),ensure_ascii=False))
             except: del self.player_ws[name]
+        # 관전자: 딜레이 큐 (카드 포함 전체 공개, 30초 후 전송)
         self.spectator_queue.append((time.time()+self.SPECTATOR_DELAY, json.dumps(msg,ensure_ascii=False)))
 
     async def broadcast_state(self):
-        # 플레이어: 즉시
         for name,ws in list(self.player_ws.items()):
             try: await ws_send(ws,json.dumps(self.get_public_state(viewer=name),ensure_ascii=False))
             except: pass
-        # 관전자: 딜레이 큐에 현재 상태 스냅샷 저장 (카드 포함)
+        # 관전자: 딜레이 큐
         self.spectator_queue.append((time.time()+self.SPECTATOR_DELAY, json.dumps(self.get_public_state(),ensure_ascii=False)))
 
     async def flush_spectator_queue(self):
@@ -299,11 +298,10 @@ class Table:
     async def broadcast_chat(self, entry):
         msg = {'type':'chat','name':entry['name'],'msg':entry['msg']}
         data = json.dumps(msg, ensure_ascii=False)
-        # 플레이어: 즉시
         for ws in set(self.player_ws.values()):
             try: await ws_send(ws, data)
             except: pass
-        # 관전자: 딜레이
+        # 관전자: 딜레이 큐
         self.spectator_queue.append((time.time()+self.SPECTATOR_DELAY, data))
 
     async def add_log(self, msg):
@@ -775,7 +773,7 @@ async def handle_ws(reader, writer, path):
         await ws_send(writer,json.dumps(t.get_public_state(viewer=name),ensure_ascii=False))
     else:
         t.spectator_ws.add(writer)
-        # 관전자: 카드 전체 공개 (딜레이로 치팅 방지)
+        # 관전자: 접속 즉시 현재 상태 전송 (카드 포함), 이후 업데이트는 딜레이 큐
         await ws_send(writer,json.dumps(t.get_public_state(),ensure_ascii=False))
     try:
         while True:
