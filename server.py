@@ -1473,8 +1473,7 @@ else if(m.includes('──')){d.style.cssText='color:#88ccff;font-weight:bold;ba
 else if(m.includes('🏆')){d.style.cssText='color:#44ff44;font-weight:bold'}
 else if(m.includes('☠️')||m.includes('ELIMINATED')){d.style.cssText='color:#ff4444;font-weight:bold'}
 else if(m.includes('🔥')){d.style.cssText='color:#ff8844'}
-d.textContent=m;l.appendChild(d);l.scrollTop=l.scrollHeight;if(l.children.length>100)l.removeChild(l.firstChild);
-if(m.includes('━━━')||m.includes('──')||m.includes('🏆')||m.includes('❌')||m.includes('📞')||m.includes('⬆️')||m.includes('🔥')||m.includes('✋')||m.includes('☠️'))addActionFeed(m)}
+d.textContent=m;l.appendChild(d);l.scrollTop=l.scrollHeight;if(l.children.length>100)l.removeChild(l.firstChild)}
 function addChat(name,msg,scroll=true){const c=document.getElementById('chatmsgs');
 const d=document.createElement('div');d.innerHTML=`<span class="cn">${name}:</span> <span class="cm">${msg}</span>`;
 c.appendChild(d);if(scroll)c.scrollTop=c.scrollHeight;if(c.children.length>50)c.removeChild(c.firstChild)}
