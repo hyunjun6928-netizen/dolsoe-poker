@@ -291,13 +291,11 @@ class Table:
         for name,ws in list(self.player_ws.items()):
             try: await ws_send(ws,json.dumps(self.get_public_state(viewer=name),ensure_ascii=False))
             except: del self.player_ws[name]
-        # 관전자: 즉시 홀카드 없는 state + 딜레이 큐에 홀카드 포함 state
-        spec_now=json.dumps(self.get_spectator_state(),ensure_ascii=False)
-        spec_delayed=json.dumps(self.get_public_state(),ensure_ascii=False)
+        # 관전자: 홀카드 포함 전체 state (클라이언트에서 딜레이 처리)
+        spec_data=json.dumps(self.get_public_state(),ensure_ascii=False)
         for ws in list(self.spectator_ws):
-            try: await ws_send(ws,spec_now)
+            try: await ws_send(ws,spec_data)
             except: self.spectator_ws.discard(ws)
-        self.spectator_queue.append((time.time()+self.SPECTATOR_DELAY, spec_delayed))
 
     async def broadcast_commentary(self, text):
         msg=json.dumps({'type':'commentary','text':text},ensure_ascii=False)
@@ -312,12 +310,10 @@ class Table:
         for name,ws in list(self.player_ws.items()):
             try: await ws_send(ws,json.dumps(self.get_public_state(viewer=name),ensure_ascii=False))
             except: pass
-        spec_now=json.dumps(self.get_spectator_state(),ensure_ascii=False)
-        spec_delayed=json.dumps(self.get_public_state(),ensure_ascii=False)
+        spec_data=json.dumps(self.get_public_state(),ensure_ascii=False)
         for ws in list(self.spectator_ws):
-            try: await ws_send(ws,spec_now)
+            try: await ws_send(ws,spec_data)
             except: self.spectator_ws.discard(ws)
-        self.spectator_queue.append((time.time()+self.SPECTATOR_DELAY, spec_delayed))
 
     async def flush_spectator_queue(self):
         """딜레이 큐에서 시간 된 데이터를 관전자에게 전송"""
@@ -831,8 +827,8 @@ async def handle_client(reader, writer):
             state=t.get_public_state(viewer=player)
             if t.turn_player==player: state['turn_info']=t.get_turn_info(player)
         else:
-            # 관전자: 홀카드 숨김 (서버 사이드 딜레이)
-            state=t.get_spectator_state()
+            # 관전자: 홀카드 포함 (클라이언트 딜레이)
+            state=t.get_public_state()
         await send_json(writer,state)
     elif method=='POST' and route=='/api/action':
         d=json.loads(body) if body else {}; name=d.get('name',''); tid=d.get('table_id','')
@@ -938,8 +934,8 @@ async def handle_ws(reader, writer, path):
         await ws_send(writer,json.dumps(t.get_public_state(viewer=name),ensure_ascii=False))
     else:
         t.spectator_ws.add(writer)
-        # 관전자: 접속 시 홀카드 없는 state 즉시 전송
-        await ws_send(writer,json.dumps(t.get_spectator_state(),ensure_ascii=False))
+        # 관전자: 홀카드 포함 전체 state (클라이언트 딜레이)
+        await ws_send(writer,json.dumps(t.get_public_state(),ensure_ascii=False))
     try:
         while True:
             msg=await ws_recv(reader)
@@ -1297,10 +1293,33 @@ if(d.turn_info)showAct(d.turn_info)}catch(e){}}
 
 let lastChatTs=0;
 // delay handled above
+const DELAY_SEC=20;
+let holeBuffer=[];  // 홀카드 딜레이 버퍼
+
 function handle(d){
-// 서버 사이드 딜레이: 모든 메시지 즉시 처리 (서버가 홀카드 타이밍 제어)
-handleNow(d);
+if(isPlayer){handleNow(d);return}
+// 관전자: 이벤트 메시지는 즉시
+if(d.type&&d.type!=='state'){handleNow(d);return}
+// 관전자: state → 즉시 홀카드 숨겨서 렌더링
+const now=JSON.parse(JSON.stringify(d));
+const holes=[];  // 홀카드 저장
+if(now.players)now.players.forEach((p,i)=>{
+if(p.hole){holes.push({idx:i,hole:p.hole,hand:now.hand,round:now.round});p.hole=null}});
+handleNow(now);
+// 20초 후 홀카드 공개 렌더링
+if(holes.length>0){
+const fullState=JSON.parse(JSON.stringify(d));
+holeBuffer.push({state:fullState,showAt:Date.now()+DELAY_SEC*1000})}
 }
+
+// 홀카드 딜레이 flush (0.5초마다)
+setInterval(()=>{
+const now=Date.now();
+while(holeBuffer.length>0&&holeBuffer[0].showAt<=now){
+const item=holeBuffer.shift();
+// 현재 핸드가 이미 넘어갔으면 스킵
+render(item.state)}
+},500);
 
 function handleNow(d){
 if(d.type==='state'||d.players){render(d);
