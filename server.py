@@ -211,6 +211,7 @@ class Table:
         self.SPECTATOR_DELAY=20  # 20초 딜레이
         self._delay_task=None
         self.last_commentary=''  # 최신 해설 (폴링용)
+        self.last_showdown=None  # 마지막 쇼다운 결과
 
     def add_player(self, name, emoji='🤖', is_bot=False, style='aggressive'):
         if len(self.seats)>=self.MAX_PLAYERS: return False
@@ -256,6 +257,7 @@ class Table:
             'log':self.log[-25:],'chat':self.chat_log[-10:],
             'running':self.running,
             'commentary':self.last_commentary,
+            'showdown_result':self.last_showdown,
             'spectator_count':len(self.spectator_ws),
             'seats_available':self.MAX_PLAYERS-len(self.seats),
             'table_info':{'sb':self.SB,'bb':self.BB,'timeout':self.TURN_TIMEOUT,
@@ -282,11 +284,13 @@ class Table:
             'deadline':self.turn_deadline}
 
     def get_spectator_state(self):
-        """관전자용 state: TV중계 스타일 — 쇼다운/between 때만 홀카드 공개"""
+        """관전자용 state: TV중계 스타일 — 쇼다운/between 때만 홀카드 공개 (폴드/파산은 숨김)"""
         s=self.get_public_state()
         s=json.loads(json.dumps(s,ensure_ascii=False))  # deep copy
-        if s.get('round') not in ('showdown','between','finished'):
-            for p in s.get('players',[]):
+        for p in s.get('players',[]):
+            if s.get('round') not in ('showdown','between','finished'):
+                p['hole']=None
+            elif p.get('folded') or p.get('out'):
                 p['hole']=None
         return s
 
@@ -438,7 +442,7 @@ class Table:
     async def play_hand(self):
         active=[s for s in self.seats if s['chips']>0 and not s.get('out')]
         if len(active)<2: return
-        self.hand_num+=1
+        self.hand_num+=1; self.last_showdown=None
         # 블라인드 에스컬레이션
         level=min((self.hand_num-1)//self.BLIND_INTERVAL, len(self.BLIND_SCHEDULE)-1)
         new_sb,new_bb=self.BLIND_SCHEDULE[level]
@@ -628,6 +632,7 @@ class Table:
             scores.sort(key=lambda x:x[1],reverse=True)
             w=scores[0][0]; w['chips']+=self.pot
             sd=[{'name':s['name'],'emoji':s['emoji'],'hole':[card_dict(c) for c in s['hole']],'hand':hn,'winner':s==w} for s,_,hn in scores]
+            self.last_showdown=sd
             await self.broadcast({'type':'showdown','players':sd,'community':[card_dict(c) for c in self.community],'pot':self.pot})
             for s,_,hn in scores:
                 mark=" 👑" if s==w else ""
@@ -1339,12 +1344,17 @@ const b=document.getElementById('board');b.innerHTML='';
 s.community.forEach((c,i)=>{const card=mkCard(c);b.innerHTML+=card});
 if(s.community.length>0&&s.community.length!==(window._lastComm||0)){window._lastComm=s.community.length;sfx('chip');b.style.animation='none';b.offsetHeight;b.style.animation='boardFlash .3s ease-out'}
 for(let i=s.community.length;i<5;i++)b.innerHTML+=`<div class="card card-b"><span style="color:#fff3">?</span></div>`;
+// 쇼다운 결과 배너
+let sdEl=document.getElementById('sd-result');if(!sdEl){sdEl=document.createElement('div');sdEl.id='sd-result';sdEl.style.cssText='position:absolute;top:48%;left:50%;transform:translateX(-50%);z-index:10;text-align:center;font-size:0.85em';document.getElementById('felt').appendChild(sdEl)}
+if(s.showdown_result&&(s.round==='between'||s.round==='showdown')){
+sdEl.innerHTML=s.showdown_result.map(p=>`<div style="padding:2px 8px;${p.winner?'color:#ffd700;font-weight:bold':'color:#aaa'}">${p.winner?'👑':'  '} ${p.emoji}${p.name}: ${p.hand}</div>`).join('')}
+else{sdEl.innerHTML=''}
 const f=document.getElementById('felt');f.querySelectorAll('.seat').forEach(e=>e.remove());
 s.players.forEach((p,i)=>{const el=document.createElement('div');
 let cls=`seat seat-${i}`;if(p.folded)cls+=' fold';if(p.out)cls+=' out';if(s.turn===p.name)cls+=' is-turn';
 el.className=cls;let ch='';
 if(p.hole)for(const c of p.hole)ch+=mkCard(c,true);
-else if(p.has_cards)ch+=`<div class="card card-b card-sm"><span style="color:#fff3">?</span></div>`.repeat(2);
+else if(p.has_cards&&!p.out)ch+=`<div class="card card-b card-sm"><span style="color:#fff3">?</span></div>`.repeat(2);
 const db=i===s.dealer?'<span class="dbtn">D</span>':'';
 const bt=p.bet>0?`<div class="bet-chip">🪙${p.bet}pt</div>`:'';
 let la='';
