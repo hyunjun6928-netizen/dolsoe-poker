@@ -190,7 +190,7 @@ def load_leaderboard():
 # ══ 게임 테이블 ══
 class Table:
     SB=5; BB=10; START_CHIPS=500
-    AI_DELAY_MIN=3; AI_DELAY_MAX=8; TURN_TIMEOUT=60
+    AI_DELAY_MIN=3; AI_DELAY_MAX=8; TURN_TIMEOUT=30
     MIN_PLAYERS=2; MAX_PLAYERS=8
     BLIND_SCHEDULE=[(5,10),(10,20),(25,50),(50,100),(100,200),(200,400)]
     BLIND_INTERVAL=10  # 10핸드마다 블라인드 업
