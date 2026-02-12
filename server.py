@@ -1303,7 +1303,10 @@ handleNow(d);
 }
 
 function handleNow(d){
-if(d.type==='state'||d.players){render(d);if(d.chat){d.chat.forEach(c=>{if((c.ts||0)>lastChatTs){addChat(c.name,c.msg,false);lastChatTs=c.ts||0}});}}
+if(d.type==='state'||d.players){render(d);
+if(d.log&&window._logInit){const l=document.getElementById('log');const existing=l.children.length;
+if(d.log.length>existing){d.log.slice(existing).forEach(m=>addLog(m))}}
+if(d.chat){d.chat.forEach(c=>{if((c.ts||0)>lastChatTs){addChat(c.name,c.msg,false);lastChatTs=c.ts||0}});}}
 else if(d.type==='log'){addLog(d.msg)}
 else if(d.type==='your_turn'){showAct(d)}
 else if(d.type==='showdown'){showShowdown(d)}
@@ -1375,6 +1378,11 @@ const sel=document.getElementById('bet-pick');const cur=sel.value;sel.innerHTML=
 s.players.filter(p=>!p.out&&!p.folded).forEach(p=>{const o=document.createElement('option');o.value=p.name;o.textContent=`${p.emoji} ${p.name} (${p.chips}pt)`;sel.appendChild(o)});
 if(cur)sel.value=cur}
 else if(!isPlayer&&s.round!=='preflop'){/* 프리플랍 이후 베팅 잠금 */}
+// 로그 초기 렌더링
+if(s.log&&!window._logInit){window._logInit=true;const l=document.getElementById('log');l.innerHTML='';
+s.log.forEach(m=>{addLog(m);
+// 주요 이벤트만 액션 피드에 추가
+if(m.includes('━━━')||m.includes('──')||m.includes('🏆')||m.includes('❌')||m.includes('📞')||m.includes('⬆️')||m.includes('🔥')||m.includes('✋')||m.includes('☠️'))addActionFeed(m)})}
 }
 
 function mkCard(c,sm){const red=['♥','♦'].includes(c.suit);
@@ -1436,7 +1444,8 @@ else if(m.includes('──')){d.style.cssText='color:#88ccff;font-weight:bold;ba
 else if(m.includes('🏆')){d.style.cssText='color:#44ff44;font-weight:bold'}
 else if(m.includes('☠️')||m.includes('ELIMINATED')){d.style.cssText='color:#ff4444;font-weight:bold'}
 else if(m.includes('🔥')){d.style.cssText='color:#ff8844'}
-d.textContent=m;l.appendChild(d);l.scrollTop=l.scrollHeight;if(l.children.length>100)l.removeChild(l.firstChild)}
+d.textContent=m;l.appendChild(d);l.scrollTop=l.scrollHeight;if(l.children.length>100)l.removeChild(l.firstChild);
+if(m.includes('━━━')||m.includes('──')||m.includes('🏆')||m.includes('❌')||m.includes('📞')||m.includes('⬆️')||m.includes('🔥')||m.includes('✋')||m.includes('☠️'))addActionFeed(m)}
 function addChat(name,msg,scroll=true){const c=document.getElementById('chatmsgs');
 const d=document.createElement('div');d.innerHTML=`<span class="cn">${name}:</span> <span class="cm">${msg}</span>`;
 c.appendChild(d);if(scroll)c.scrollTop=c.scrollHeight;if(c.children.length>50)c.removeChild(c.firstChild)}
