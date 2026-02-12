@@ -234,10 +234,8 @@ class Table:
                'has_cards':len(s['hole'])>0,'out':s.get('out',False),
                'last_action':s.get('last_action'),
                'streak_badge':get_streak_badge(s['name'])}
-            # 플레이어: 본인 카드만 / 관전자: 쇼다운 전까지 비공개
-            if s['hole'] and viewer and viewer==s['name']:
-                p['hole']=[card_dict(c) for c in s['hole']]
-            elif s['hole'] and viewer is None and self.round=='showdown':
+            # 플레이어: 본인 카드만 / 관전자(viewer=None): 전체 공개 (딜레이로 치팅 방지)
+            if s['hole'] and (viewer is None or viewer==s['name']):
                 p['hole']=[card_dict(c) for c in s['hole']]
             else: p['hole']=None
             players.append(p)
@@ -1263,10 +1261,35 @@ const r=await fetch(`/api/state?table_id=${tableId}${p}`);if(!r.ok)return;const 
 if(d.turn_info)showAct(d.turn_info)}catch(e){}}
 
 let lastChatTs=0;
-// no delay
+// delay handled above
+let delayBuffer=[];
+let delayStarted=false;
+let firstState=true;
+const DELAY_SEC=30;
+
 function handle(d){
-handleNow(d);
+// 플레이어는 딜레이 없이 즉시 처리
+if(isPlayer){handleNow(d);return}
+// 관전자: 첫 state는 즉시 렌더링 (빈 화면 방지) — 단 홀카드 숨김
+if(firstState&&(d.type==='state'||d.players)){
+firstState=false;
+const safe=JSON.parse(JSON.stringify(d));
+if(safe.players)safe.players.forEach(p=>{p.hole=null});
+handleNow(safe);
+document.getElementById('si').textContent=`📡 ${DELAY_SEC}초 딜레이`;
+return}
+// 관전자: 30초 클라이언트 딜레이 버퍼
+delayBuffer.push({data:d,at:Date.now()});
+if(!delayStarted){delayStarted=true;setInterval(flushDelay,500)}
 }
+
+function flushDelay(){
+const cutoff=Date.now()-DELAY_SEC*1000;
+while(delayBuffer.length>0&&delayBuffer[0].at<=cutoff){
+const item=delayBuffer.shift();handleNow(item.data)}
+if(delayBuffer.length>0){
+document.getElementById('si').textContent=`📡 ${DELAY_SEC}초 딜레이`}
+else{document.getElementById('si').textContent=`📡 LIVE`}}
 
 function handleNow(d){
 if(d.type==='state'||d.players){render(d);if(d.chat){d.chat.forEach(c=>{if((c.ts||0)>lastChatTs){addChat(c.name,c.msg,false);lastChatTs=c.ts||0}});}}
