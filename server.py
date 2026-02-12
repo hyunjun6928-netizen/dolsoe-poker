@@ -220,7 +220,8 @@ class Table:
         for s in self.seats:
             p={'name':s['name'],'emoji':s['emoji'],'chips':s['chips'],
                'folded':s['folded'],'bet':s['bet'],'style':s['style'],
-               'has_cards':len(s['hole'])>0,'out':s.get('out',False)}
+               'has_cards':len(s['hole'])>0,'out':s.get('out',False),
+               'last_action':s.get('last_action')}
             # 구경꾼(viewer=None): TV중계 전체공개 (딜레이로 치팅 방지) / 플레이어: 본인만
             if s['hole'] and (viewer is None or viewer==s['name']):
                 p['hole']=[card_dict(c) for c in s['hole']]
@@ -376,7 +377,7 @@ class Table:
         hand_record = {'hand':self.hand_num,'players':[],'actions':[],'community':[],'winner':None,'pot':0}
 
         for s in self._hand_seats:
-            s['hole']=[self.deck.pop(),self.deck.pop()]; s['folded']=False; s['bet']=0
+            s['hole']=[self.deck.pop(),self.deck.pop()]; s['folded']=False; s['bet']=0; s['last_action']=None
             hand_record['players'].append({'name':s['name'],'emoji':s['emoji'],'hole':[card_str(c) for c in s['hole']]})
         self.dealer=self.dealer%len(self._hand_seats)
         await self.add_log(f"━━━ 핸드 #{self.hand_num} ({len(self._hand_seats)}명) ━━━")
@@ -454,6 +455,9 @@ class Table:
 
                 # 액션 기록
                 record['actions'].append({'round':self.round,'player':s['name'],'action':act,'amount':amt})
+                # last_action 저장 (UI 표시용)
+                action_labels={'fold':'❌ 폴드','check':'✋ 체크','call':'📞 콜','raise':'⬆️ 레이즈'}
+                s['last_action']=action_labels.get(act,act)
 
                 if act=='fold':
                     s['folded']=True; await self.add_log(f"❌ {s['emoji']} {s['name']} 폴드")
@@ -490,6 +494,7 @@ class Table:
                 if all(s['bet']>=self.current_bet for s in self._hand_seats if not s['folded']): break
 
     async def _wait_external(self, seat, to_call, raise_capped):
+        seat['last_action']=None  # 턴 시작 시 이전 액션 표시 제거
         self.turn_player=seat['name']; self.pending_action=asyncio.Event()
         self.pending_data=None; self.turn_deadline=time.time()+self.TURN_TIMEOUT
         ti=self.get_turn_info(seat['name'])
@@ -670,11 +675,8 @@ async def handle_client(reader, writer):
             state=t.get_public_state(viewer=player)
             if t.turn_player==player: state['turn_info']=t.get_turn_info(player)
         else:
-            # 관전자: 카드 가림 (딜레이는 WS에서만, 폴링은 카드 가림으로 대체)
+            # 관전자: 카드 전체 공개 (딜레이로 치팅 방지)
             state=t.get_public_state()
-            if t.running and t.round not in ('showdown','between','finished','waiting'):
-                for p in state['players']:
-                    p['hole']=None
             state['delay_notice']=f'{t.SPECTATOR_DELAY}초 딜레이 중계'
         await send_json(writer,state)
     elif method=='POST' and route=='/api/action':
@@ -773,12 +775,8 @@ async def handle_ws(reader, writer, path):
         await ws_send(writer,json.dumps(t.get_public_state(viewer=name),ensure_ascii=False))
     else:
         t.spectator_ws.add(writer)
-        # 접속 시 카드 가린 상태 먼저 보내고, 딜레이 큐가 도착하면 카드 포함 상태로 갱신
-        delayed_state=t.get_public_state()
-        if t.running and t.round not in ('showdown','between','finished','waiting'):
-            for p in delayed_state['players']:
-                p['hole']=None  # 접속 직후엔 카드 가림
-        await ws_send(writer,json.dumps(delayed_state,ensure_ascii=False))
+        # 관전자: 카드 전체 공개 (딜레이로 치팅 방지)
+        await ws_send(writer,json.dumps(t.get_public_state(),ensure_ascii=False))
     try:
         while True:
             msg=await ws_recv(reader)
@@ -860,6 +858,8 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 .seat-6{top:55%;right:2%;transform:translateY(-50%)}
 .seat-7{bottom:-8%;left:25%;transform:translateX(-50%)}
 .seat .ava{font-size:2.4em;line-height:1.2}
+.seat .act-label{position:absolute;top:-28px;left:50%;transform:translateX(-50%);background:#000000cc;color:#fff;padding:4px 10px;border-radius:8px;font-size:0.9em;font-weight:bold;white-space:nowrap;z-index:10;animation:actPop .3s ease-out;border:1px solid #ffaa00}
+@keyframes actPop{0%{transform:translateX(-50%) scale(0.5);opacity:0}100%{transform:translateX(-50%) scale(1);opacity:1}}
 .seat .nm{font-size:0.95em;font-weight:bold;white-space:nowrap}
 .seat .ch{font-size:0.85em;color:#ffcc00}
 .seat .st{font-size:0.65em;color:#888;font-style:italic}
@@ -930,6 +930,8 @@ h1{font-size:1.1em;margin:4px 0}
 #highlight-overlay .hl-text{font-size:1.5em}
 .tab-btns button{padding:3px 8px;font-size:0.7em}
 .dbtn{font-size:0.5em}
+.act-label{font-size:0.5em}
+
 }
 #new-btn{display:none;padding:14px 40px;font-size:1.2em;background:linear-gradient(135deg,#ff4444,#cc2222);color:#fff;border:none;border-radius:12px;cursor:pointer;margin:15px auto;font-weight:bold}
 .result-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:#000000dd;display:flex;align-items:center;justify-content:center;z-index:100;display:none}
@@ -1017,7 +1019,7 @@ d.games.forEach(g=>{const el=document.createElement('div');
 el.className='tbl-card'+(g.id===tableId?' active':'');
 const status=g.running?`<span class="tbl-live">🟢 진행중 (핸드 #${g.hand})</span>`:`<span class="tbl-wait">⏸ 대기중</span>`;
 el.innerHTML=`<div><div class="tbl-name">🎰 ${g.id}</div><div class="tbl-info">👥 ${g.players}/${8-g.seats_available+g.players}명</div></div><div class="tbl-status">${status}</div>`;
-el.onclick=()=>{tableId=g.id;document.querySelectorAll('.tbl-card').forEach(c=>c.classList.remove('active'));el.classList.add('active')};
+el.onclick=()=>{tableId=g.id;watch()};
 tl.appendChild(el)})}catch(e){tl.innerHTML='<div style="color:#f44">로딩 실패</div>'}}
 loadTables();setInterval(loadTables,5000);
 
@@ -1069,7 +1071,7 @@ else if(d.type==='allin'){showAllin(d)}
 else if(d.type==='highlight'){showHighlight(d)}}
 
 function render(s){
-document.getElementById('hi').textContent=`핸드 #${s.hand}${!isPlayer?' (📡 30초 딜레이 중계)':''}`;
+document.getElementById('hi').textContent=`핸드 #${s.hand}${!isPlayer?' (📡 관전중)':''}`;
 document.getElementById('ri').textContent=s.round||'대기중';
 document.getElementById('pot').textContent=`POT: ${s.pot}pt`;
 const b=document.getElementById('board');b.innerHTML='';
@@ -1083,7 +1085,8 @@ if(p.hole)for(const c of p.hole)ch+=mkCard(c,true);
 else if(p.has_cards)ch+=`<div class="card card-b card-sm"><span style="color:#fff3">?</span></div>`.repeat(2);
 const db=i===s.dealer?'<span class="dbtn">D</span>':'';
 const bt=p.bet>0?`<div class="bet-chip">▲${p.bet}pt</div>`:'';
-el.innerHTML=`<div class="ava">${p.emoji||'🤖'}</div><div class="cards">${ch}</div><div class="nm">${p.name}${db}</div><div class="ch">💰${p.chips}pt</div>${bt}<div class="st">${p.style}</div>`;
+const la=p.last_action?`<div class="act-label">${p.last_action}</div>`:'';
+el.innerHTML=`${la}<div class="ava">${p.emoji||'🤖'}</div><div class="cards">${ch}</div><div class="nm">${p.name}${db}</div><div class="ch">💰${p.chips}pt</div>${bt}<div class="st">${p.style}</div>`;
 el.style.cursor='pointer';el.onclick=(e)=>{e.stopPropagation();showProfile(p.name)};
 f.appendChild(el)});
 if(s.turn){document.getElementById('turnb').style.display='block';document.getElementById('turnb').textContent=`🎯 ${s.turn}의 차례`}
