@@ -283,15 +283,20 @@ class Table:
         for name,ws in list(self.player_ws.items()):
             try: await ws_send(ws,json.dumps(self.get_public_state(viewer=name),ensure_ascii=False))
             except: del self.player_ws[name]
-        # 관전자: 30초 딜레이 큐 (카드 전체 공개)
-        self.spectator_queue.append((time.time()+self.SPECTATOR_DELAY, json.dumps(msg,ensure_ascii=False)))
+        # 관전자: 실시간 전송
+        spec_data=json.dumps(self.get_public_state(),ensure_ascii=False)
+        for ws in list(self.spectator_ws):
+            try: await ws_send(ws,spec_data)
+            except: self.spectator_ws.discard(ws)
 
     async def broadcast_state(self):
         for name,ws in list(self.player_ws.items()):
             try: await ws_send(ws,json.dumps(self.get_public_state(viewer=name),ensure_ascii=False))
             except: pass
-        # 관전자: 30초 딜레이 큐
-        self.spectator_queue.append((time.time()+self.SPECTATOR_DELAY, json.dumps(self.get_public_state(),ensure_ascii=False)))
+        spec_data=json.dumps(self.get_public_state(),ensure_ascii=False)
+        for ws in list(self.spectator_ws):
+            try: await ws_send(ws,spec_data)
+            except: self.spectator_ws.discard(ws)
 
     async def flush_spectator_queue(self):
         """딜레이 큐에서 시간 된 데이터를 관전자에게 전송"""
@@ -314,7 +319,9 @@ class Table:
         for ws in set(self.player_ws.values()):
             try: await ws_send(ws, data)
             except: pass
-        self.spectator_queue.append((time.time()+self.SPECTATOR_DELAY, data))
+        for ws in list(self.spectator_ws):
+            try: await ws_send(ws, data)
+            except: self.spectator_ws.discard(ws)
 
     async def add_log(self, msg):
         self.log.append(msg)
@@ -327,9 +334,7 @@ class Table:
     # ── 게임 루프 (연속 핸드) ──
     async def run(self):
         self.running=True
-        if not self._delay_task:
-            self._delay_task=asyncio.create_task(self.run_delay_loop())
-        await self.add_log(f"🎰 게임 시작! (관전 {self.SPECTATOR_DELAY}초 딜레이 TV중계)")
+        await self.add_log(f"🎰 게임 시작! (실시간 TV중계)")
         await self.broadcast_state()
 
         while True:
@@ -757,12 +762,8 @@ async def handle_client(reader, writer):
             state=t.get_public_state(viewer=player)
             if t.turn_player==player: state['turn_info']=t.get_turn_info(player)
         else:
-            # 관전자: 폴링은 홀카드 가림 (딜레이 큐=WS에서만 카드 공개)
+            # 관전자: 실시간 카드 전체 공개
             state=t.get_public_state()
-            if t.running and t.round not in ('showdown','between','finished','waiting'):
-                for p in state['players']:
-                    p['hole']=None
-            state['delay_notice']=f'{t.SPECTATOR_DELAY}초 딜레이 TV중계'
         await send_json(writer,state)
     elif method=='POST' and route=='/api/action':
         d=json.loads(body) if body else {}; name=d.get('name',''); tid=d.get('table_id','')
@@ -860,12 +861,8 @@ async def handle_ws(reader, writer, path):
         await ws_send(writer,json.dumps(t.get_public_state(viewer=name),ensure_ascii=False))
     else:
         t.spectator_ws.add(writer)
-        # 관전자: 접속 직후 상태 (홀카드 가림), 이후 딜레이 큐에서 카드 포함 상태 수신
-        init_state=t.get_public_state()
-        for p in init_state['players']:
-            if t.running and t.round not in ('showdown','between','finished','waiting'):
-                p['hole']=None
-        await ws_send(writer,json.dumps(init_state,ensure_ascii=False))
+        # 관전자: 실시간 (카드 전체 공개)
+        await ws_send(writer,json.dumps(t.get_public_state(),ensure_ascii=False))
     try:
         while True:
             msg=await ws_recv(reader)
@@ -965,7 +962,9 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 .seat .st{font-size:0.65em;color:#888;font-style:italic}
 .seat .bet-chip{font-size:0.7em;color:#88ff88;margin-top:2px}
 .seat .cards{display:flex;gap:3px;justify-content:center;margin:4px 0}
-.seat.fold{opacity:0.25}.seat.out{opacity:0.15}
+.seat.fold{opacity:0.35}.seat.out{opacity:0.25;filter:grayscale(1)}
+.seat.out .nm{text-decoration:line-through;color:#ff4444}
+.seat.out::after{content:'💀 탈락';position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:0.6em;color:#ff4444;background:#000000cc;padding:1px 6px;border-radius:4px;white-space:nowrap}
 .seat.is-turn .nm{color:#00ff88;text-shadow:0 0 12px #00ff8866;animation:pulse 1s infinite}
 .dbtn{background:#ffcc00;color:#000;font-size:0.55em;padding:1px 5px;border-radius:8px;font-weight:bold;margin-left:3px}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.6}}
@@ -994,6 +993,7 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 #chatinput input{flex:1;background:#1a1e2e;border:1px solid #333;color:#fff;padding:5px 8px;border-radius:6px;font-size:0.8em}
 #chatinput button{background:#333;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:0.8em}
 @keyframes fadeIn{to{opacity:1}}
+@keyframes boardFlash{0%{filter:brightness(1.8)}100%{filter:brightness(1)}}
 @keyframes floatUp{0%{opacity:1;transform:translateY(0) scale(1)}50%{opacity:0.8;transform:translateY(-60px) scale(1.3)}100%{opacity:0;transform:translateY(-120px) scale(0.8)}}
 .float-emoji{position:fixed;font-size:1.6em;pointer-events:none;animation:floatUp 1.5s ease-out forwards;z-index:200;text-align:center}
 #reactions{position:fixed;bottom:20px;right:20px;display:flex;gap:6px;z-index:50}
@@ -1118,13 +1118,13 @@ h1{font-size:1.1em;margin:4px 0}
 </div>
 </div>
 <div id="bet-panel" style="display:none">
-<div class="bp-title">🎰 관전자 베팅 — 누가 이길까?</div>
+<div class="bp-title">🎰 베팅</div>
 <select id="bet-pick"></select>
-<input type="number" id="bet-amount" value="50" min="10" max="500" step="10" style="width:70px">
-<button onclick="placeBet()">베팅!</button>
-<div class="bp-coins" id="bet-coins">💰 1000 코인</div>
+<input type="number" id="bet-amount" value="50" min="10" max="500" step="10" style="width:60px">
+<button onclick="placeBet()">베팅</button>
+<span class="bp-coins" id="bet-coins">💰 1000</span>
 </div>
-<div id="vote-panel"><div class="vp-title">🗳️ 이번 핸드 승자 예측!</div><div class="vp-btns" id="vote-btns"></div><div id="vote-results"></div></div>
+<div id="vote-panel"><div class="vp-btns" id="vote-btns"></div><div id="vote-results"></div></div>
 <div class="result-overlay" id="result"><div class="result-box" id="rbox"></div></div>
 <div id="reactions" style="display:none">
 <button onclick="react('👏')">👏</button><button onclick="react('🔥')">🔥</button><button onclick="react('😱')">😱</button><button onclick="react('💀')">💀</button><button onclick="react('😂')">😂</button><button onclick="react('🤡')">🤡</button>
@@ -1161,17 +1161,9 @@ document.getElementById('lobby').style.display='none';
 document.getElementById('game').style.display='block';
 document.getElementById('reactions').style.display='flex';
 tryWS();fetchCoins();
-startDelayTimer();
 }catch(e){alert('에러: '+e.message)}}
 
-let delayTimer=null,delayDone=false;
-function startDelayTimer(){
-if(isPlayer){delayDone=true;return}
-let sec=30;delayDone=false;
-const el=document.getElementById('si');
-delayTimer=setInterval(()=>{
-sec--;if(sec<=0){clearInterval(delayTimer);delayDone=true;el.textContent='📡 LIVE';return}
-el.textContent=`📡 ${sec}초 후 카드 공개`},1000)}
+let delayDone=true;
 
 // URL ?watch=1 자동 관전
 if(new URLSearchParams(location.search).has('watch')){setTimeout(watch,500)}
@@ -1215,9 +1207,10 @@ else if(d.type==='allin'){showAllin(d)}
 else if(d.type==='highlight'){showHighlight(d)}}
 
 function render(s){
-document.getElementById('hi').textContent=`핸드 #${s.hand}${!isPlayer?' (📡 TV중계)':''}`;
-document.getElementById('ri').textContent=s.round||'대기중';
-if(s.spectator_count!==undefined&&delayDone)document.getElementById('si').textContent=`👀 ${s.spectator_count}명 관전중`;
+document.getElementById('hi').textContent=`핸드 #${s.hand}`;
+const roundNames={preflop:'프리플랍',flop:'플랍',turn:'턴',river:'리버',showdown:'쇼다운',between:'다음 핸드 준비중',finished:'게임 종료',waiting:'대기중'};
+document.getElementById('ri').textContent=roundNames[s.round]||s.round||'대기중';
+if(s.spectator_count!==undefined)document.getElementById('si').textContent=`👀 ${s.spectator_count}`;
 // 타임라인 업데이트
 const rounds=['preflop','flop','turn','river','showdown'];
 const ri=rounds.indexOf(s.round);
@@ -1230,7 +1223,8 @@ s.players.filter(p=>!p.out&&!p.folded).forEach(p=>{const b=document.createElemen
 if(s.round==='between'||s.round==='finished'||s.round==='waiting'){document.getElementById('vote-panel').style.display='none';currentVote=null}
 document.getElementById('pot').textContent=`POT: ${s.pot}pt`;
 const b=document.getElementById('board');b.innerHTML='';
-for(const c of s.community)b.innerHTML+=mkCard(c);
+s.community.forEach((c,i)=>{const card=mkCard(c);b.innerHTML+=card});
+if(s.community.length>0&&s.community.length!==(window._lastComm||0)){window._lastComm=s.community.length;sfx('chip');b.style.animation='none';b.offsetHeight;b.style.animation='boardFlash .3s ease-out'}
 for(let i=s.community.length;i<5;i++)b.innerHTML+=`<div class="card card-b"><span style="color:#fff3">?</span></div>`;
 const f=document.getElementById('felt');f.querySelectorAll('.seat').forEach(e=>e.remove());
 s.players.forEach((p,i)=>{const el=document.createElement('div');
@@ -1262,7 +1256,7 @@ else{op.style.display='none'}
 if(isPlayer){const me=s.players.find(p=>p.name===myName);if(me)document.getElementById('mi').textContent=`내 칩: ${me.chips}pt`}
 // 테이블 정보
 if(s.table_info){const ti=document.getElementById('table-info');
-ti.innerHTML=`<div class="ti">🪙 블라인드 <b>${s.table_info.sb}/${s.table_info.bb}</b></div><div class="ti">📈 다음 업 <b>#${s.table_info.next_blind_at}</b></div><div class="ti">⏱️ 타임아웃 <b>${s.table_info.timeout}초</b></div><div class="ti">📡 딜레이 <b>${s.table_info.delay}초</b></div><div class="ti">👥 <b>${s.players.length}/${s.table_info.max_players}</b></div>`}
+ti.innerHTML=`<div class="ti">🪙 <b>${s.table_info.sb}/${s.table_info.bb}</b></div><div class="ti">👥 <b>${s.players.filter(p=>!p.out).length}/${s.players.length}</b> 생존</div>`}
 // 관전자 베팅 패널
 if(!isPlayer&&s.running&&s.round==='preflop'){
 const bp=document.getElementById('bet-panel');bp.style.display='block';
@@ -1325,7 +1319,13 @@ const icon={fold:'❌',call:'📞',raise:'⬆️',check:'✋'}[a.action]||'•';
 html+=`<div>${icon} ${a.player} ${a.action}${a.amount?' '+a.amount+'pt':''}</div>`});
 html+='</div>';rp.innerHTML=html}catch(e){rp.innerHTML='<div style="color:#f44">로딩 실패</div>'}}
 
-function addLog(m){const l=document.getElementById('log');const d=document.createElement('div');d.textContent=m;l.appendChild(d);l.scrollTop=l.scrollHeight;if(l.children.length>100)l.removeChild(l.firstChild)}
+function addLog(m){const l=document.getElementById('log');const d=document.createElement('div');
+if(m.includes('━━━')){d.style.cssText='color:#ffaa00;font-weight:bold;border-top:2px solid #ffaa0044;padding-top:6px;margin-top:6px'}
+else if(m.includes('──')){d.style.cssText='color:#88ccff;font-weight:bold;background:#88ccff11;padding:2px 4px;border-radius:4px;margin:4px 0'}
+else if(m.includes('🏆')){d.style.cssText='color:#44ff44;font-weight:bold'}
+else if(m.includes('☠️')||m.includes('ELIMINATED')){d.style.cssText='color:#ff4444;font-weight:bold'}
+else if(m.includes('🔥')){d.style.cssText='color:#ff8844'}
+d.textContent=m;l.appendChild(d);l.scrollTop=l.scrollHeight;if(l.children.length>100)l.removeChild(l.firstChild)}
 function addChat(name,msg,scroll=true){const c=document.getElementById('chatmsgs');
 const d=document.createElement('div');d.innerHTML=`<span class="cn">${name}:</span> <span class="cm">${msg}</span>`;
 c.appendChild(d);if(scroll)c.scrollTop=c.scrollHeight;if(c.children.length>50)c.removeChild(c.firstChild)}
@@ -1433,9 +1433,12 @@ currentVote=name;document.querySelectorAll('.vp-btn').forEach(b=>b.classList.rem
 btn.classList.add('voted');
 document.getElementById('vote-results').textContent=`${name}에게 투표 완료!`}
 
-// 사운드 이펙트 (Web Audio)
-const audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+// 사운드 이펙트 (Web Audio) - 사용자 인터랙션 후 활성화
+let audioCtx=null;
+function initAudio(){if(!audioCtx){audioCtx=new(window.AudioContext||window.webkitAudioContext)()}if(audioCtx.state==='suspended')audioCtx.resume()}
+document.addEventListener('click',initAudio,{once:false});
 function sfx(type){
+if(!audioCtx)initAudio();if(!audioCtx)return;
 try{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
 g.gain.value=0.15;
 if(type==='chip'){o.frequency.value=800;o.type='sine';g.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+0.15);o.start();o.stop(audioCtx.currentTime+0.15)}
