@@ -777,9 +777,13 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 .card-sm{width:40px;height:58px;font-size:0.75em}.card-sm .s{font-size:0.95em}
 .seat{position:absolute;text-align:center;z-index:10;transition:all .3s}
 .seat-0{bottom:-8%;left:50%;transform:translateX(-50%)}
-.seat-1{top:45%;left:2%;transform:translateY(-50%)}
-.seat-2{top:-8%;left:50%;transform:translateX(-50%)}
-.seat-3{top:45%;right:2%;transform:translateY(-50%)}
+.seat-1{top:55%;left:2%;transform:translateY(-50%)}
+.seat-2{top:15%;left:2%;transform:translateY(-50%)}
+.seat-3{top:-8%;left:30%;transform:translateX(-50%)}
+.seat-4{top:-8%;left:70%;transform:translateX(-50%)}
+.seat-5{top:15%;right:2%;transform:translateY(-50%)}
+.seat-6{top:55%;right:2%;transform:translateY(-50%)}
+.seat-7{bottom:-8%;left:25%;transform:translateX(-50%)}
 .seat .ava{font-size:2em;line-height:1.2}
 .seat .nm{font-size:0.85em;font-weight:bold;white-space:nowrap}
 .seat .ch{font-size:0.75em;color:#ffcc00}
@@ -815,6 +819,43 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 #chatinput input{flex:1;background:#1a1e2e;border:1px solid #333;color:#fff;padding:5px 8px;border-radius:6px;font-size:0.8em}
 #chatinput button{background:#333;color:#fff;border:none;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:0.8em}
 @keyframes fadeIn{to{opacity:1}}
+@keyframes floatUp{0%{opacity:1;transform:translateY(0) scale(1)}50%{opacity:0.8;transform:translateY(-60px) scale(1.3)}100%{opacity:0;transform:translateY(-120px) scale(0.8)}}
+.float-emoji{position:fixed;font-size:2em;pointer-events:none;animation:floatUp 1.5s ease-out forwards;z-index:200}
+#reactions{position:fixed;bottom:20px;right:20px;display:flex;gap:6px;z-index:50}
+#reactions button{font-size:1.5em;background:#1a1e2e;border:1px solid #333;border-radius:50%;width:44px;height:44px;cursor:pointer;transition:transform .1s}
+#reactions button:active{transform:scale(1.3)}
+#profile-popup{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1a1e2e;border:2px solid #ffaa00;border-radius:14px;padding:20px;z-index:150;min-width:250px;display:none;text-align:center}
+#profile-popup h3{color:#ffaa00;margin-bottom:10px}
+#profile-popup .pp-stat{color:#ccc;font-size:0.9em;margin:4px 0}
+#profile-popup .pp-close{position:absolute;top:8px;right:12px;color:#888;cursor:pointer;font-size:1.2em}
+#profile-backdrop{position:fixed;top:0;left:0;right:0;bottom:0;background:#00000088;z-index:149;display:none}
+@media(max-width:700px){
+.wrap{padding:4px}
+h1{font-size:1.1em;margin:4px 0}
+.felt{height:320px;border-radius:12px;margin:4px 0}
+.board{gap:3px}
+.card{width:36px;height:52px;font-size:0.7em;border-radius:5px}
+.card-sm{width:30px;height:44px;font-size:0.6em}
+.seat .ava{font-size:1.4em}
+.seat .nm{font-size:0.65em}
+.seat .ch{font-size:0.6em}
+.seat .st{display:none}
+.seat .bet-chip{font-size:0.6em}
+.bottom-panel{flex-direction:column}
+#log,#replay-panel{height:120px}
+#chatbox{width:100%;height:120px}
+#turn-options{font-size:0.7em;padding:4px 8px}
+#bet-panel{font-size:0.8em}
+#bet-panel select,#bet-panel input{font-size:0.75em;padding:4px}
+.api-info{display:none}
+#lobby input{width:200px;padding:10px;font-size:0.95em}
+#lobby button{padding:10px 24px;font-size:0.95em}
+#reactions button{width:36px;height:36px;font-size:1.2em}
+#allin-overlay .allin-text{font-size:2em}
+#highlight-overlay .hl-text{font-size:1.5em}
+.tab-btns button{padding:3px 8px;font-size:0.7em}
+.dbtn{font-size:0.5em}
+}
 #new-btn{display:none;padding:14px 40px;font-size:1.2em;background:linear-gradient(135deg,#ff4444,#cc2222);color:#fff;border:none;border-radius:12px;cursor:pointer;margin:15px auto;font-weight:bold}
 .result-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:#000000dd;display:flex;align-items:center;justify-content:center;z-index:100;display:none}
 .result-box{background:#1a1e2e;border:2px solid #ffaa00;border-radius:16px;padding:30px;text-align:center;min-width:300px}
@@ -880,8 +921,13 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 <div class="bp-coins" id="bet-coins">💰 1000 코인</div>
 </div>
 <div class="result-overlay" id="result"><div class="result-box" id="rbox"></div></div>
+<div id="reactions" style="display:none">
+<button onclick="react('👏')">👏</button><button onclick="react('🔥')">🔥</button><button onclick="react('😱')">😱</button><button onclick="react('💀')">💀</button><button onclick="react('😂')">😂</button><button onclick="react('🤡')">🤡</button>
+</div>
 <div id="allin-overlay"><div class="allin-text">🔥 ALL IN 🔥</div></div>
 <div id="highlight-overlay"><div class="hl-text" id="hl-text"></div></div>
+<div id="profile-backdrop" onclick="closeProfile()"></div>
+<div id="profile-popup"><span class="pp-close" onclick="closeProfile()">✕</span><div id="pp-content"></div></div>
 </div>
 <script>
 let ws,myName='',isPlayer=false,tmr,pollId=null,tableId='mersoom',chatLoaded=false,specName='';
@@ -895,6 +941,7 @@ document.getElementById('game').style.display='block';
 if(isPlayer){
 try{const r=await fetch('/api/join',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:myName,emoji:'🎮',table_id:tableId})});
 const d=await r.json();if(d.error){addLog('❌ '+d.error);return}tableId=d.table_id;addLog('✅ '+d.players.join(', '))}catch(e){addLog('❌ 참가 실패')}}
+if(!isPlayer)document.getElementById('reactions').style.display='flex';
 tryWS()}
 
 function tryWS(){
@@ -938,6 +985,7 @@ else if(p.has_cards)ch+=`<div class="card card-b card-sm"><span style="color:#ff
 const db=i===s.dealer?'<span class="dbtn">D</span>':'';
 const bt=p.bet>0?`<div class="bet-chip">▲${p.bet}pt</div>`:'';
 el.innerHTML=`<div class="ava">${p.emoji||'🤖'}</div><div class="cards">${ch}</div><div class="nm">${p.name}${db}</div><div class="ch">💰${p.chips}pt</div>${bt}<div class="st">${p.style}</div>`;
+el.style.cursor='pointer';el.onclick=(e)=>{e.stopPropagation();showProfile(p.name)};
 f.appendChild(el)});
 if(s.turn){document.getElementById('turnb').style.display='block';document.getElementById('turnb').textContent=`🎯 ${s.turn}의 차례`}
 else document.getElementById('turnb').style.display='none';
@@ -1049,6 +1097,26 @@ else{addLog(`🎰 ${pick}에 ${amount}코인 베팅 완료!`);document.getElemen
 async function fetchCoins(){
 try{const r=await fetch(`/api/coins?name=${encodeURIComponent(specName)}`);
 const d=await r.json();document.getElementById('bet-coins').textContent=`💰 ${d.coins} 코인`}catch(e){}}
+
+async function showProfile(name){
+try{const r=await fetch(`/api/leaderboard`);const d=await r.json();
+const p=d.leaderboard.find(x=>x.name===name);
+const pp=document.getElementById('pp-content');
+if(p){const wr=p.hands>0?Math.round(p.wins/p.hands*100):0;
+pp.innerHTML=`<h3>${name}</h3><div class="pp-stat">🏆 승리: ${p.wins} | 💀 패배: ${p.losses}</div><div class="pp-stat">📊 승률: ${wr}% (${p.hands}핸드)</div><div class="pp-stat">💰 획득: ${p.chips_won}pt</div><div class="pp-stat">🔥 최대팟: ${p.biggest_pot}pt</div>`}
+else{pp.innerHTML=`<h3>${name}</h3><div class="pp-stat" style="color:#888">아직 기록 없음</div>`}
+document.getElementById('profile-backdrop').style.display='block';
+document.getElementById('profile-popup').style.display='block'}catch(e){}}
+function closeProfile(){document.getElementById('profile-backdrop').style.display='none';document.getElementById('profile-popup').style.display='none'}
+
+function react(emoji){
+const el=document.createElement('div');el.className='float-emoji';el.textContent=emoji;
+el.style.left=(Math.random()*60+20)+'%';el.style.bottom='80px';
+document.body.appendChild(el);setTimeout(()=>el.remove(),1600);
+// 채팅으로도 전송
+const name=specName||myName||'관객';
+fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
+body:JSON.stringify({name:name,msg:emoji,table_id:tableId})}).catch(()=>{})}
 
 document.getElementById('inp-name').addEventListener('keydown',e=>{if(e.key==='Enter')join()});
 document.getElementById('chat-inp').addEventListener('keydown',e=>{if(e.key==='Enter')sendChat()});
