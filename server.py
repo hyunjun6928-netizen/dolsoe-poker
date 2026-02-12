@@ -1018,7 +1018,11 @@ tl.appendChild(el)})}catch(e){tl.innerHTML='<div style="color:#f44">로딩 실�
 loadTables();setInterval(loadTables,5000);
 
 function join(){myName=document.getElementById('inp-name').value.trim();if(!myName){alert('닉네임!');return}isPlayer=true;startGame()}
-function watch(){isPlayer=false;specName=document.getElementById('inp-name').value.trim()||'관전자'+Math.floor(Math.random()*999);startGame();fetchCoins()}
+function watch(){isPlayer=false;specName=document.getElementById('inp-name').value.trim()||'관전자'+Math.floor(Math.random()*999);
+document.getElementById('lobby').style.display='none';
+document.getElementById('game').style.display='block';
+document.getElementById('reactions').style.display='flex';
+tryWS();fetchCoins()}
 
 async function startGame(){
 document.getElementById('lobby').style.display='none';
