@@ -384,23 +384,33 @@ class Table:
         ranking=sorted(self.seats,key=lambda x:x['chips'],reverse=True)
         await self.broadcast({'type':'game_over',
             'ranking':[{'name':s['name'],'emoji':s['emoji'],'chips':s['chips']} for s in ranking]})
-        # 자동 리셋: 파산 봇 제거 후 NPC 리필, 재시작
+        # 자동 리셋
         await asyncio.sleep(5)
         self.seats=[s for s in self.seats if s['chips']>0 and not s.get('out')]
-        # 파산한 NPC 재충전
-        for name,emoji,style in NPC_BOTS:
-            if not any(s['name']==name for s in self.seats):
-                if len(self.seats)<self.MAX_PLAYERS:
-                    self.add_player(name,emoji,is_bot=True,style=style)
-        # 남은 NPC 칩 리셋
-        for s in self.seats:
-            if s['is_bot'] and s['chips']<self.START_CHIPS//2:
-                s['chips']=self.START_CHIPS
+        real_players=[s for s in self.seats if not s['is_bot']]
+        if len(real_players)>=2:
+            # 실제 에이전트 2명 이상 → NPC 불필요, 제거
+            self.seats=[s for s in self.seats if not s['is_bot']]
+            # 실제 에이전트 칩 리셋
+            for s in self.seats:
+                if s['chips']<self.START_CHIPS//2: s['chips']=self.START_CHIPS
+        else:
+            # 실제 에이전트 부족 → NPC 리필
+            for name,emoji,style in NPC_BOTS:
+                if not any(s['name']==name for s in self.seats):
+                    if len(self.seats)<self.MAX_PLAYERS:
+                        self.add_player(name,emoji,is_bot=True,style=style)
+            for s in self.seats:
+                if s['is_bot'] and s['chips']<self.START_CHIPS//2:
+                    s['chips']=self.START_CHIPS
         self.hand_num=0; self.SB=5; self.BB=10; self.highlights=[]
         active=[s for s in self.seats if s['chips']>0]
         if len(active)>=self.MIN_PLAYERS:
             await self.add_log("🔄 새 게임 자동 시작!")
             asyncio.create_task(self.run())
+        else:
+            await self.add_log("⏳ 에이전트 대기중... /api/join으로 참가하세요!")
+            await self.broadcast_state()
 
     async def play_hand(self):
         active=[s for s in self.seats if s['chips']>0 and not s.get('out')]
@@ -744,6 +754,22 @@ async def handle_client(reader, writer):
         if not name: await send_json(writer,{'error':'name required'},400); return
         t=find_table(tid)
         if not t: t=get_or_create_table(tid)
+        # 실제 에이전트 입장 시: 자리 부족하면 NPC 1마리 퇴장
+        if len(t.seats)>=t.MAX_PLAYERS:
+            npc_seat=next((s for s in t.seats if s['is_bot'] and not s.get('_protected')),None)
+            if npc_seat and not t.running:
+                t.seats.remove(npc_seat)
+                await t.add_log(f"🤖 {npc_seat['emoji']} {npc_seat['name']} NPC 퇴장 (에이전트 양보)")
+            elif npc_seat and t.running:
+                npc_seat['out']=True; npc_seat['folded']=True
+                await t.add_log(f"🤖 {npc_seat['emoji']} {npc_seat['name']} NPC 퇴장 (에이전트 양보)")
+        # 실제 에이전트 2명 이상이면 나머지 NPC도 퇴장
+        real_count=sum(1 for s in t.seats if not s['is_bot'])+1  # +1 for incoming
+        if real_count>=2 and not t.running:
+            npcs=[s for s in t.seats if s['is_bot']]
+            for npc in npcs:
+                t.seats.remove(npc)
+                await t.add_log(f"🤖 {npc['emoji']} {npc['name']} NPC 퇴장 (에이전트끼리 대결!)")
         if not t.add_player(name,emoji):
             await send_json(writer,{'error':'테이블 꽉참 or 중복 닉네임'},400); return
         await t.add_log(f"🚪 {emoji} {name} 입장! ({len(t.seats)}/{t.MAX_PLAYERS})")
@@ -793,6 +819,14 @@ async def handle_client(reader, writer):
             seat['out']=True; seat['folded']=True
         await t.add_log(f"🚪 {seat['emoji']} {name} 퇴장! (칩: {chips}pt)")
         if name in t.player_ws: del t.player_ws[name]
+        # 실제 에이전트가 부족해지면 NPC 리필
+        real_left=[s for s in t.seats if not s['is_bot'] and not s.get('out')]
+        if len(real_left)<2 and not t.running:
+            fill_npc_bots(t, max(0, 3-len(t.seats)))
+            npc_active=[s for s in t.seats if s['chips']>0 and not s.get('out')]
+            if len(npc_active)>=t.MIN_PLAYERS and not t.running:
+                await t.add_log("🤖 NPC 봇 복귀! 자동 게임 시작")
+                asyncio.create_task(t.run())
         await t.broadcast_state()
         await send_json(writer,{'ok':True,'chips':chips})
     elif method=='GET' and route=='/api/leaderboard':
