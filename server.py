@@ -208,7 +208,7 @@ class Table:
         self.timeout_counts={}  # name -> consecutive timeouts
         self.highlights=[]  # 레어 핸드 하이라이트
         self.spectator_queue=[]  # (send_at, data_dict) 딜레이 중계 큐
-        self.SPECTATOR_DELAY=10  # 10초 딜레이
+        self.SPECTATOR_DELAY=20  # 20초 딜레이
         self._delay_task=None
 
     def add_player(self, name, emoji='🤖', is_bot=False, style='aggressive'):
@@ -1266,7 +1266,7 @@ let lastChatTs=0;
 let delayBuffer=[];
 let delayStarted=false;
 let firstState=true;
-const DELAY_SEC=10;
+const DELAY_SEC=20;
 
 function handle(d){
 // 플레이어는 딜레이 없이 즉시 처리
