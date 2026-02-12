@@ -291,6 +291,15 @@ class Table:
             try: await ws_send(ws,spec_data)
             except: self.spectator_ws.discard(ws)
 
+    async def broadcast_commentary(self, text):
+        msg=json.dumps({'type':'commentary','text':text},ensure_ascii=False)
+        for ws in list(self.player_ws.values()):
+            try: await ws_send(ws,msg)
+            except: pass
+        for ws in list(self.spectator_ws):
+            try: await ws_send(ws,msg)
+            except: self.spectator_ws.discard(ws)
+
     async def broadcast_state(self):
         for name,ws in list(self.player_ws.items()):
             try: await ws_send(ws,json.dumps(self.get_public_state(viewer=name),ensure_ascii=False))
@@ -433,6 +442,8 @@ class Table:
             hand_record['players'].append({'name':s['name'],'emoji':s['emoji'],'hole':[card_str(c) for c in s['hole']]})
         self.dealer=self.dealer%len(self._hand_seats)
         await self.add_log(f"━━━ 핸드 #{self.hand_num} ({len(self._hand_seats)}명) ━━━")
+        names=', '.join(s['emoji']+s['name'] for s in self._hand_seats)
+        await self.broadcast_commentary(f"🃏 핸드 #{self.hand_num} 시작! 참가: {names}")
         await self.broadcast_state(); await asyncio.sleep(1.5)
 
         # 블라인드
@@ -458,6 +469,7 @@ class Table:
         self.round='flop'; self.deck.pop(); self.community+=[self.deck.pop() for _ in range(3)]
         hand_record['community']=[card_str(c) for c in self.community]
         await self.add_log(f"── 플랍: {' '.join(card_str(c) for c in self.community)} ──")
+        await self.broadcast_commentary(f"🎴 플랍 오픈! {' '.join(card_str(c) for c in self.community)} — 팟 {self.pot}pt")
         await self.broadcast_state(); await asyncio.sleep(2)
         await self.betting_round((self.dealer+1)%n, hand_record)
         if self._count_alive()<=1: await self.resolve(hand_record); self._advance_dealer(); return
@@ -466,6 +478,8 @@ class Table:
         self.round='turn'; self.deck.pop(); self.community.append(self.deck.pop())
         hand_record['community']=[card_str(c) for c in self.community]
         await self.add_log(f"── 턴: {' '.join(card_str(c) for c in self.community)} ──")
+        alive=self._count_alive()
+        await self.broadcast_commentary(f"🔥 턴 카드 오픈! {alive}명 생존 — 팟 {self.pot}pt")
         await self.broadcast_state(); await asyncio.sleep(2)
         await self.betting_round((self.dealer+1)%n, hand_record)
         if self._count_alive()<=1: await self.resolve(hand_record); self._advance_dealer(); return
@@ -474,6 +488,8 @@ class Table:
         self.round='river'; self.deck.pop(); self.community.append(self.deck.pop())
         hand_record['community']=[card_str(c) for c in self.community]
         await self.add_log(f"── 리버: {' '.join(card_str(c) for c in self.community)} ──")
+        alive=self._count_alive()
+        await self.broadcast_commentary(f"💀 리버! 마지막 카드 오픈 — {alive}명이 {self.pot}pt를 놓고 승부!")
         await self.broadcast_state(); await asyncio.sleep(2)
         await self.betting_round((self.dealer+1)%n, hand_record)
         await self.resolve(hand_record); self._advance_dealer()
@@ -518,6 +534,7 @@ class Table:
 
                 if act=='fold':
                     s['folded']=True; await self.add_log(f"❌ {s['emoji']} {s['name']} 폴드")
+                    await self.broadcast_commentary(f"❌ {s['name']} 폴드! {self._count_alive()}명 남음")
                 elif act=='raise':
                     total=min(amt+min(to_call,s['chips']),s['chips'])
                     s['chips']-=total; s['bet']+=total; self.pot+=total
@@ -525,8 +542,10 @@ class Table:
                     if s['chips']==0:
                         await self.add_log(f"🔥🔥🔥 {s['emoji']} {s['name']} ALL IN {total}pt!! 🔥🔥🔥")
                         await self.broadcast({'type':'allin','name':s['name'],'emoji':s['emoji'],'amount':total,'pot':self.pot})
+                        await self.broadcast_commentary(f"🔥 {s['name']} ALL IN {total}pt!! 팟 {self.pot}pt 폭발!")
                     else:
                         await self.add_log(f"⬆️ {s['emoji']} {s['name']} 레이즈 {total}pt (팟:{self.pot})")
+                        await self.broadcast_commentary(f"⬆️ {s['name']}이 {total}pt 레이즈! 팟 {self.pot}pt")
                 elif act=='check':
                     await self.add_log(f"✋ {s['emoji']} {s['name']} 체크")
                 else:
@@ -534,7 +553,10 @@ class Table:
                     if s['chips']==0 and ca>0:
                         await self.add_log(f"🔥🔥🔥 {s['emoji']} {s['name']} ALL IN 콜 {ca}pt!! 🔥🔥🔥")
                         await self.broadcast({'type':'allin','name':s['name'],'emoji':s['emoji'],'amount':ca,'pot':self.pot})
-                    elif ca>0: await self.add_log(f"📞 {s['emoji']} {s['name']} 콜 {ca}pt")
+                        await self.broadcast_commentary(f"🔥 {s['name']} ALL IN 콜 {ca}pt!! 승부수!")
+                    elif ca>0:
+                        await self.add_log(f"📞 {s['emoji']} {s['name']} 콜 {ca}pt")
+                        await self.broadcast_commentary(f"📞 {s['name']} 콜 {ca}pt — 팟 {self.pot}pt")
                     else: await self.add_log(f"✋ {s['emoji']} {s['name']} 체크")
 
                 # 봇 쓰레기톡
@@ -582,6 +604,7 @@ class Table:
         if len(alive)==1:
             w=alive[0]; w['chips']+=self.pot
             await self.add_log(f"🏆 {w['emoji']} {w['name']} +{self.pot}pt (상대 폴드)")
+            await self.broadcast_commentary(f"🏆 {w['name']} 승리! +{self.pot}pt 획득 (상대 전원 폴드)")
             record['winner']=w['name']; record['pot']=self.pot
             update_leaderboard(w['name'], True, self.pot, self.pot)
             for s in self._hand_seats:
@@ -598,6 +621,7 @@ class Table:
                 mark=" 👑" if s==w else ""
                 await self.add_log(f"🃏 {s['emoji']}{s['name']}: {card_str(s['hole'][0])} {card_str(s['hole'][1])} → {hn}{mark}")
             await self.add_log(f"🏆 {w['emoji']} {w['name']} +{self.pot}pt ({scores[0][2]})")
+            await self.broadcast_commentary(f"🏆 {w['name']} 승리! {scores[0][2]}로 +{self.pot}pt 획득!")
             # 레어 핸드 하이라이트
             best_rank=scores[0][1][0]
             if best_rank>=7:  # 풀하우스 이상
@@ -1016,6 +1040,8 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 #raise-sl{width:200px;vertical-align:middle;margin:0 8px}
 #raise-val{background:#1a1e2e;border:1px solid #555;color:#fff;padding:6px 10px;width:80px;border-radius:6px;font-size:0.95em;text-align:center}
 #timer{height:4px;background:#00ff88;transition:width .1s linear;margin:6px auto 0;max-width:300px;border-radius:2px}
+#commentary{background:linear-gradient(135deg,#1a1e2e,#0d1020);border:1px solid #ffaa0044;border-radius:10px;padding:10px 16px;margin:0 0 8px;text-align:center;font-size:1em;color:#ffcc00;font-weight:bold;animation:comFade .5s ease-out;min-height:24px}
+@keyframes comFade{0%{opacity:0;transform:translateY(-8px)}100%{opacity:1;transform:translateY(0)}}
 .bottom-panel{display:flex;gap:8px;margin-top:8px}
 #replay-panel{display:none;background:#080b15;border:1px solid #1a1e2e;border-radius:10px;padding:10px;height:170px;overflow-y:auto;font-size:0.78em;flex:1}
 #replay-panel .rp-hand{cursor:pointer;padding:6px 8px;border-bottom:1px solid #1a1e2e;transition:background .15s}
@@ -1139,6 +1165,7 @@ h1{font-size:1.1em;margin:4px 0}
 <div id="game">
 <div class="info-bar"><span id="hi">핸드 #0</span><span id="ri">대기중</span><span id="si" style="color:#88ff88"></span><span id="mi"></span></div>
 <div id="hand-timeline"><span class="tl-step" data-r="preflop">프리플랍</span><span class="tl-step" data-r="flop">플랍</span><span class="tl-step" data-r="turn">턴</span><span class="tl-step" data-r="river">리버</span><span class="tl-step" data-r="showdown">쇼다운</span></div>
+<div id="commentary" style="display:none"></div>
 <div class="felt" id="felt">
 <div class="pot-badge" id="pot">POT: 0</div>
 <div class="board" id="board"></div>
@@ -1273,7 +1300,8 @@ else if(d.type==='darkhorse'){showDarkhorse(d)}
 else if(d.type==='mvp'){showMVP(d)}
 else if(d.type==='chat'){addChat(d.name,d.msg)}
 else if(d.type==='allin'){showAllin(d)}
-else if(d.type==='highlight'){showHighlight(d)}}
+else if(d.type==='highlight'){showHighlight(d)}
+else if(d.type==='commentary'){showCommentary(d.text)}}
 
 function render(s){
 document.getElementById('hi').textContent=`핸드 #${s.hand}`;
@@ -1401,6 +1429,12 @@ c.appendChild(d);if(scroll)c.scrollTop=c.scrollHeight;if(c.children.length>50)c.
 function sendChat(){const inp=document.getElementById('chat-inp');const msg=inp.value.trim();if(!msg)return;inp.value='';
 if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'chat',name:myName||'관객',msg:msg}));
 else fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:myName||'관객',msg:msg,table_id:tableId})}).catch(()=>{})}
+
+function showCommentary(text){
+const el=document.getElementById('commentary');
+el.style.display='block';el.textContent=text;
+el.style.animation='none';el.offsetHeight;el.style.animation='comFade .5s ease-out';
+}
 
 function showAllin(d){
 const o=document.getElementById('allin-overlay');
