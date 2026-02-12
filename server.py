@@ -980,7 +980,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#0a0e1a;color:#e0e0e0;font-family:'Noto Sans KR',system-ui,sans-serif;min-height:100vh}
-.wrap{max-width:1100px;margin:0 auto;padding:10px}
+.wrap{max-width:1400px;margin:0 auto;padding:10px}
 h1{text-align:center;color:#ff4444;font-size:1.6em;margin:8px 0;text-shadow:0 0 20px #ff000055}
 h1 b{color:#ffaa00}
 #lobby{text-align:center;padding:50px 20px}
@@ -1058,13 +1058,10 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 #action-feed .af-round{color:#ffaa00;font-weight:bold;padding:6px 0 2px;font-size:0.9em}
 #action-feed .af-action{color:#ccc}
 #action-feed .af-win{color:#44ff44;font-weight:bold}
-.game-layout{display:flex;gap:10px;align-items:flex-start}
-.game-main{flex:1;min-width:0}
-.game-sidebar{width:260px;flex-shrink:0}
-@media(max-width:700px){
-.game-layout{flex-direction:column}
-.game-sidebar{width:100%;max-height:200px}
-}
+.game-layout{display:block}
+.game-main{width:100%}
+.game-sidebar{margin-top:8px}
+#action-feed{max-height:150px}
 .bottom-panel{display:flex;gap:8px;margin-top:8px}
 #replay-panel{display:none;background:#080b15;border:1px solid #1a1e2e;border-radius:10px;padding:10px;height:170px;overflow-y:auto;font-size:0.78em;flex:1}
 #replay-panel .rp-hand{cursor:pointer;padding:6px 8px;border-bottom:1px solid #1a1e2e;transition:background .15s}
@@ -1297,37 +1294,41 @@ if(d.turn_info)showAct(d.turn_info)}catch(e){}}
 let lastChatTs=0;
 // delay handled above
 const DELAY_SEC=20;
-let holeBuffer=[];  // 홀카드 딜레이 버퍼
+let holeBuffer=[];
+let lastHand=-1;
 
 function handle(d){
 if(isPlayer){handleNow(d);return}
 // 관전자: 이벤트 메시지는 즉시
 if(d.type&&d.type!=='state'){handleNow(d);return}
+// 새 핸드 시작되면 이전 딜레이 버퍼 클리어
+if(d.hand!==lastHand){lastHand=d.hand;holeBuffer=[]}
 // 관전자: state → 즉시 홀카드 숨겨서 렌더링
-const now=JSON.parse(JSON.stringify(d));
-const holes=[];  // 홀카드 저장
-if(now.players)now.players.forEach((p,i)=>{
-if(p.hole){holes.push({idx:i,hole:p.hole,hand:now.hand,round:now.round});p.hole=null}});
-handleNow(now);
-// 20초 후 홀카드 공개 렌더링
-if(holes.length>0){
-const fullState=JSON.parse(JSON.stringify(d));
-holeBuffer.push({state:fullState,showAt:Date.now()+DELAY_SEC*1000})}
+const safe=JSON.parse(JSON.stringify(d));
+if(safe.players)safe.players.forEach(p=>{p.hole=null});
+handleNow(safe);
+// 홀카드 있으면 딜레이 버퍼에 추가
+const hasHole=d.players&&d.players.some(p=>p.hole);
+if(hasHole){
+holeBuffer.push({state:JSON.parse(JSON.stringify(d)),showAt:Date.now()+DELAY_SEC*1000});
+document.getElementById('si').textContent=`🔒 손패 ${DELAY_SEC}초 후 공개`}
 }
 
-// 홀카드 딜레이 flush (0.5초마다)
+// 홀카드 딜레이 flush + 카운트다운 (0.5초마다)
 setInterval(()=>{
 const now=Date.now();
 while(holeBuffer.length>0&&holeBuffer[0].showAt<=now){
-const item=holeBuffer.shift();
-// 현재 핸드가 이미 넘어갔으면 스킵
-render(item.state)}
+const item=holeBuffer.shift();render(item.state);
+document.getElementById('si').textContent='🔓 손패 공개!'}
+// 카운트다운 표시
+if(holeBuffer.length>0&&!isPlayer){
+const remain=Math.ceil((holeBuffer[0].showAt-now)/1000);
+document.getElementById('si').textContent=`🔒 손패 ${remain}초 후 공개`}
 },500);
 
 function handleNow(d){
 if(d.type==='state'||d.players){render(d);
-if(d.log&&window._logInit){const l=document.getElementById('log');const existing=l.children.length;
-if(d.log.length>existing){d.log.slice(existing).forEach(m=>addLog(m))}}
+// 로그 동기화는 render에서 처리
 if(d.chat){d.chat.forEach(c=>{if((c.ts||0)>lastChatTs){addChat(c.name,c.msg,false);lastChatTs=c.ts||0}});}}
 else if(d.type==='log'){addLog(d.msg)}
 else if(d.type==='your_turn'){showAct(d)}
@@ -1402,11 +1403,13 @@ const sel=document.getElementById('bet-pick');const cur=sel.value;sel.innerHTML=
 s.players.filter(p=>!p.out&&!p.folded).forEach(p=>{const o=document.createElement('option');o.value=p.name;o.textContent=`${p.emoji} ${p.name} (${p.chips}pt)`;sel.appendChild(o)});
 if(cur)sel.value=cur}
 else if(!isPlayer&&s.round!=='preflop'){/* 프리플랍 이후 베팅 잠금 */}
-// 로그 초기 렌더링
-if(s.log&&!window._logInit){window._logInit=true;const l=document.getElementById('log');l.innerHTML='';
-s.log.forEach(m=>{addLog(m);
-// 주요 이벤트만 액션 피드에 추가
+// 로그 동기화: 새 로그만 추가
+if(s.log){
+const logCount=window._logCount||0;
+if(s.log.length>logCount){
+s.log.slice(logCount).forEach(m=>{addLog(m);
 if(m.includes('━━━')||m.includes('──')||m.includes('🏆')||m.includes('❌')||m.includes('📞')||m.includes('⬆️')||m.includes('🔥')||m.includes('✋')||m.includes('☠️'))addActionFeed(m)})}
+window._logCount=s.log.length}
 }
 
 function mkCard(c,sm){const red=['♥','♦'].includes(c.suit);
