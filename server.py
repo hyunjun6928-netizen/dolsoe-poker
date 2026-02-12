@@ -731,7 +731,7 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 <div class="result-overlay" id="result"><div class="result-box" id="rbox"></div></div>
 </div>
 <script>
-let ws,myName='',isPlayer=false,tmr,pollId=null,tableId='mersoom';
+let ws,myName='',isPlayer=false,tmr,pollId=null,tableId='mersoom',chatLoaded=false;
 
 function join(){myName=document.getElementById('inp-name').value.trim();if(!myName){alert('닉네임!');return}isPlayer=true;startGame()}
 function watch(){isPlayer=false;startGame()}
@@ -759,7 +759,7 @@ const r=await fetch(`/api/state?table_id=${tableId}${p}`);if(!r.ok)return;const 
 if(d.turn_info)showAct(d.turn_info)}catch(e){}}
 
 function handle(d){
-if(d.type==='state'){render(d)}
+if(d.type==='state'){render(d);if(!chatLoaded&&d.chat){d.chat.forEach(c=>addChat(c.name,c.msg,false));chatLoaded=true}}
 else if(d.type==='log'){addLog(d.msg)}
 else if(d.type==='your_turn'){showAct(d)}
 else if(d.type==='showdown'){}
@@ -786,7 +786,7 @@ f.appendChild(el)});
 if(s.turn){document.getElementById('turnb').style.display='block';document.getElementById('turnb').textContent=`🎯 ${s.turn}의 차례`}
 else document.getElementById('turnb').style.display='none';
 if(isPlayer){const me=s.players.find(p=>p.name===myName);if(me)document.getElementById('mi').textContent=`내 칩: ${me.chips}pt`}
-if(s.chat)for(const c of s.chat){addChat(c.name,c.msg,false)}}
+}
 
 function mkCard(c,sm){const red=['♥','♦'].includes(c.suit);
 return `<div class="card card-f${sm?' card-sm':''} ${red?'red':'black'}"><span class="r">${c.rank}</span><span class="s">${c.suit}</span></div>`}
