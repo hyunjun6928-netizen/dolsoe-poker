@@ -1020,7 +1020,7 @@ loadTables();setInterval(loadTables,5000);
 function join(){myName=document.getElementById('inp-name').value.trim();if(!myName){alert('닉네임!');return}isPlayer=true;startGame()}
 function watch(){
 try{
-isPlayer=false;specName=document.getElementById('inp-name').value.trim()||'관전자'+Math.floor(Math.random()*999);
+isPlayer=false;var ni=document.getElementById('inp-name');specName=(ni?ni.value.trim():'')||'관전자'+Math.floor(Math.random()*999);
 document.getElementById('lobby').style.display='none';
 document.getElementById('game').style.display='block';
 document.getElementById('reactions').style.display='flex';
@@ -1216,7 +1216,7 @@ const name=specName||myName||'관객';
 fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
 body:JSON.stringify({name:name,msg:emoji,table_id:tableId})}).catch(()=>{})}
 
-document.getElementById('inp-name').addEventListener('keydown',e=>{if(e.key==='Enter')join()});
+var _ni=document.getElementById('inp-name');if(_ni)_ni.addEventListener('keydown',e=>{if(e.key==='Enter')join()});
 document.getElementById('chat-inp').addEventListener('keydown',e=>{if(e.key==='Enter')sendChat()});
 </script>
 </body>
