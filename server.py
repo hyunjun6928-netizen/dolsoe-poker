@@ -210,6 +210,7 @@ class Table:
         self.spectator_queue=[]  # (send_at, data_dict) 딜레이 중계 큐
         self.SPECTATOR_DELAY=20  # 20초 딜레이
         self._delay_task=None
+        self.last_commentary=''  # 최신 해설 (폴링용)
 
     def add_player(self, name, emoji='🤖', is_bot=False, style='aggressive'):
         if len(self.seats)>=self.MAX_PLAYERS: return False
@@ -254,6 +255,7 @@ class Table:
             'turn_options':turn_options,
             'log':self.log[-25:],'chat':self.chat_log[-10:],
             'running':self.running,
+            'commentary':self.last_commentary,
             'spectator_count':len(self.spectator_ws),
             'seats_available':self.MAX_PLAYERS-len(self.seats),
             'table_info':{'sb':self.SB,'bb':self.BB,'timeout':self.TURN_TIMEOUT,
@@ -298,6 +300,7 @@ class Table:
             except: self.spectator_ws.discard(ws)
 
     async def broadcast_commentary(self, text):
+        self.last_commentary=text
         msg=json.dumps({'type':'commentary','text':text},ensure_ascii=False)
         for ws in list(self.player_ws.values()):
             try: await ws_send(ws,msg)
@@ -1343,6 +1346,8 @@ function render(s){
 document.getElementById('hi').textContent=`핸드 #${s.hand}`;
 const roundNames={preflop:'프리플랍',flop:'플랍',turn:'턴',river:'리버',showdown:'쇼다운',between:'다음 핸드 준비중',finished:'게임 종료',waiting:'대기중'};
 document.getElementById('ri').textContent=roundNames[s.round]||s.round||'대기중';
+// 해설 업데이트 (폴링 모드 대응)
+if(s.commentary&&s.commentary!==window._lastCommentary){window._lastCommentary=s.commentary;showCommentary(s.commentary)}
 if(isPlayer&&s.spectator_count!==undefined)document.getElementById('si').textContent=`👀 ${s.spectator_count}`;
 // 타임라인 업데이트
 const rounds=['preflop','flop','turn','river','showdown'];
