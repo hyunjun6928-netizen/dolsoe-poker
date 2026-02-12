@@ -194,6 +194,9 @@ class Table:
         self.accepting_players=True  # 중간참가 허용
         self.timeout_counts={}  # name -> consecutive timeouts
         self.highlights=[]  # 레어 핸드 하이라이트
+        self.spectator_queue=[]  # (send_at, data_dict) 딜레이 중계 큐
+        self.SPECTATOR_DELAY=30  # 30초 딜레이
+        self._delay_task=None
 
     def add_player(self, name, emoji='🤖', is_bot=False, style='aggressive'):
         if len(self.seats)>=self.MAX_PLAYERS: return False
@@ -216,9 +219,8 @@ class Table:
             p={'name':s['name'],'emoji':s['emoji'],'chips':s['chips'],
                'folded':s['folded'],'bet':s['bet'],'style':s['style'],
                'has_cards':len(s['hole'])>0,'out':s.get('out',False)}
-            # 구경꾼(viewer=None): 진행중 카드 가림, 쇼다운/종료 시 공개 / 플레이어: 본인만
-            show_cards = (viewer==s['name']) or (viewer is None and self.round in ('showdown','between','finished') and not s['folded'])
-            if s['hole'] and show_cards:
+            # 구경꾼(viewer=None): TV중계 전체공개 (딜레이로 치팅 방지) / 플레이어: 본인만
+            if s['hole'] and (viewer is None or viewer==s['name']):
                 p['hole']=[card_dict(c) for c in s['hole']]
             else: p['hole']=None
             players.append(p)
@@ -257,28 +259,44 @@ class Table:
             'deadline':self.turn_deadline}
 
     async def broadcast(self, msg):
-        data=json.dumps(msg,ensure_ascii=False)
-        for ws in list(self.spectator_ws):
-            try: await ws_send(ws,data)
-            except: self.spectator_ws.discard(ws)
+        # 플레이어: 즉시 / 관전자: 딜레이 큐
         for name,ws in list(self.player_ws.items()):
             try: await ws_send(ws,json.dumps(self.get_public_state(viewer=name),ensure_ascii=False))
             except: del self.player_ws[name]
+        self.spectator_queue.append((time.time()+self.SPECTATOR_DELAY, json.dumps(msg,ensure_ascii=False)))
 
     async def broadcast_state(self):
-        for ws in list(self.spectator_ws):
-            try: await ws_send(ws,json.dumps(self.get_public_state(),ensure_ascii=False))
-            except: self.spectator_ws.discard(ws)
+        # 플레이어: 즉시
         for name,ws in list(self.player_ws.items()):
             try: await ws_send(ws,json.dumps(self.get_public_state(viewer=name),ensure_ascii=False))
             except: pass
+        # 관전자: 딜레이 큐에 현재 상태 스냅샷 저장 (카드 포함)
+        self.spectator_queue.append((time.time()+self.SPECTATOR_DELAY, json.dumps(self.get_public_state(),ensure_ascii=False)))
+
+    async def flush_spectator_queue(self):
+        """딜레이 큐에서 시간 된 데이터를 관전자에게 전송"""
+        now=time.time()
+        while self.spectator_queue and self.spectator_queue[0][0]<=now:
+            _,data=self.spectator_queue.pop(0)
+            for ws in list(self.spectator_ws):
+                try: await ws_send(ws,data)
+                except: self.spectator_ws.discard(ws)
+
+    async def run_delay_loop(self):
+        """딜레이 큐 처리 루프 (0.5초마다)"""
+        while True:
+            await self.flush_spectator_queue()
+            await asyncio.sleep(0.5)
 
     async def broadcast_chat(self, entry):
         msg = {'type':'chat','name':entry['name'],'msg':entry['msg']}
         data = json.dumps(msg, ensure_ascii=False)
-        for ws in list(self.spectator_ws) | set(self.player_ws.values()):
+        # 플레이어: 즉시
+        for ws in set(self.player_ws.values()):
             try: await ws_send(ws, data)
             except: pass
+        # 관전자: 딜레이
+        self.spectator_queue.append((time.time()+self.SPECTATOR_DELAY, data))
 
     async def add_log(self, msg):
         self.log.append(msg)
@@ -291,7 +309,9 @@ class Table:
     # ── 게임 루프 (연속 핸드) ──
     async def run(self):
         self.running=True
-        await self.add_log("🎰 게임 시작!")
+        if not self._delay_task:
+            self._delay_task=asyncio.create_task(self.run_delay_loop())
+        await self.add_log(f"🎰 게임 시작! (관전 {self.SPECTATOR_DELAY}초 딜레이)")
         await self.broadcast_state()
 
         while True:
@@ -631,8 +651,17 @@ async def handle_client(reader, writer):
         tid=qs.get('table_id',[''])[0]; player=qs.get('player',[''])[0]
         t=find_table(tid)
         if not t: await send_json(writer,{'error':'no game'},404); return
-        state=t.get_public_state(viewer=player if player else None)
-        if player and t.turn_player==player: state['turn_info']=t.get_turn_info(player)
+        if player:
+            # 플레이어: 즉시 (자기 카드만)
+            state=t.get_public_state(viewer=player)
+            if t.turn_player==player: state['turn_info']=t.get_turn_info(player)
+        else:
+            # 관전자: 카드 가림 (딜레이는 WS에서만, 폴링은 카드 가림으로 대체)
+            state=t.get_public_state()
+            if t.running and t.round not in ('showdown','between','finished','waiting'):
+                for p in state['players']:
+                    p['hole']=None
+            state['delay_notice']=f'{t.SPECTATOR_DELAY}초 딜레이 중계'
         await send_json(writer,state)
     elif method=='POST' and route=='/api/action':
         d=json.loads(body) if body else {}; name=d.get('name',''); tid=d.get('table_id','')
@@ -714,7 +743,12 @@ async def handle_ws(reader, writer, path):
         await ws_send(writer,json.dumps(t.get_public_state(viewer=name),ensure_ascii=False))
     else:
         t.spectator_ws.add(writer)
-        await ws_send(writer,json.dumps(t.get_public_state(),ensure_ascii=False))
+        # 접속 시 카드 가린 상태 먼저 보내고, 딜레이 큐가 도착하면 카드 포함 상태로 갱신
+        delayed_state=t.get_public_state()
+        if t.running and t.round not in ('showdown','between','finished','waiting'):
+            for p in delayed_state['players']:
+                p['hole']=None  # 접속 직후엔 카드 가림
+        await ws_send(writer,json.dumps(delayed_state,ensure_ascii=False))
     try:
         while True:
             msg=await ws_recv(reader)
@@ -971,7 +1005,7 @@ else if(d.type==='allin'){showAllin(d)}
 else if(d.type==='highlight'){showHighlight(d)}}
 
 function render(s){
-document.getElementById('hi').textContent=`핸드 #${s.hand}`;
+document.getElementById('hi').textContent=`핸드 #${s.hand}${!isPlayer?' (📡 30초 딜레이 중계)':''}`;
 document.getElementById('ri').textContent=s.round||'대기중';
 document.getElementById('pot').textContent=`POT: ${s.pot}pt`;
 const b=document.getElementById('board');b.innerHTML='';
