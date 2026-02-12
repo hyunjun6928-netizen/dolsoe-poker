@@ -1232,10 +1232,13 @@ let lastChatTs=0;
 const DELAY_SEC=30;
 let delayBuffer=[];
 let delayStarted=false;
+let firstState=true;
 
 function handle(d){
 // 플레이어는 딜레이 없이 즉시 처리
 if(isPlayer){handleNow(d);return}
+// 관전자: 첫 state는 즉시 렌더링 (접속 시 빈 화면 방지)
+if(firstState&&(d.type==='state'||d.players)){firstState=false;handleNow(d);return}
 // 관전자: 30초 클라이언트 딜레이 버퍼
 delayBuffer.push({data:d,at:Date.now()});
 if(!delayStarted){delayStarted=true;setInterval(flushDelay,200)}
