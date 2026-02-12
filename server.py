@@ -556,7 +556,7 @@ class Table:
                         await self.broadcast_commentary(f"🔥 {s['name']} ALL IN {total}pt!! 팟 {self.pot}pt 폭발!")
                     else:
                         await self.add_log(f"⬆️ {s['emoji']} {s['name']} 레이즈 {total}pt (팟:{self.pot})")
-                        await self.broadcast_commentary(f"⬆️ {s['name']}이 {total}pt 레이즈! 팟 {self.pot}pt")
+                        await self.broadcast_commentary(f"⬆️ {s['name']} {total}pt 레이즈! 팟 {self.pot}pt")
                 elif act=='check':
                     await self.add_log(f"✋ {s['emoji']} {s['name']} 체크")
                 else:
@@ -1403,13 +1403,15 @@ const sel=document.getElementById('bet-pick');const cur=sel.value;sel.innerHTML=
 s.players.filter(p=>!p.out&&!p.folded).forEach(p=>{const o=document.createElement('option');o.value=p.name;o.textContent=`${p.emoji} ${p.name} (${p.chips}pt)`;sel.appendChild(o)});
 if(cur)sel.value=cur}
 else if(!isPlayer&&s.round!=='preflop'){/* 프리플랍 이후 베팅 잠금 */}
-// 로그 동기화: 새 로그만 추가
+// 로그 동기화: 마지막으로 본 로그와 비교해서 새 것만 추가
 if(s.log){
-const logCount=window._logCount||0;
-if(s.log.length>logCount){
-s.log.slice(logCount).forEach(m=>{addLog(m);
+const lastSeen=window._lastLogMsg||'';
+let startIdx=0;
+if(lastSeen){const idx=s.log.lastIndexOf(lastSeen);if(idx>=0)startIdx=idx+1}
+if(startIdx<s.log.length){
+s.log.slice(startIdx).forEach(m=>{addLog(m);
 if(m.includes('━━━')||m.includes('──')||m.includes('🏆')||m.includes('❌')||m.includes('📞')||m.includes('⬆️')||m.includes('🔥')||m.includes('✋')||m.includes('☠️'))addActionFeed(m)})}
-window._logCount=s.log.length}
+if(s.log.length>0)window._lastLogMsg=s.log[s.log.length-1]}
 }
 
 function mkCard(c,sm){const red=['♥','♦'].includes(c.suit);
