@@ -578,24 +578,30 @@ async def handle_client(reader, writer):
             await send_json(writer, {'error':'not your turn','current_turn':t.turn_player}, 400); return
         t.handle_api_action(name, d)
         await send_json(writer, {'ok':True})
+    elif method == 'OPTIONS':
+        # CORS preflight
+        await send_http(writer, 200, '')
     else:
         await send_http(writer, 404, '404 Not Found')
 
-    writer.close()
+    try:
+        writer.close()
+        await writer.wait_closed()
+    except:
+        pass
 
 async def send_http(writer, status, body, ct='text/plain; charset=utf-8'):
-    status_text = {200:'OK',400:'Bad Request',404:'Not Found'}.get(status,'OK')
+    status_text = {200:'OK',400:'Bad Request',404:'Not Found',405:'Method Not Allowed'}.get(status,'OK')
     if isinstance(body, str): body = body.encode('utf-8')
-    resp = f"HTTP/1.1 {status} {status_text}\r\nContent-Type: {ct}\r\nContent-Length: {len(body)}\r\nAccess-Control-Allow-Origin: *\r\nConnection: close\r\n\r\n"
-    writer.write(resp.encode() + body)
-    await writer.drain()
+    headers = f"HTTP/1.1 {status} {status_text}\r\nContent-Type: {ct}\r\nContent-Length: {len(body)}\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type\r\nConnection: close\r\n\r\n"
+    try:
+        writer.write(headers.encode() + body)
+        await writer.drain()
+    except: pass
 
 async def send_json(writer, data, status=200):
     body = json.dumps(data, ensure_ascii=False).encode('utf-8')
-    status_text = {200:'OK',400:'Bad Request',404:'Not Found'}.get(status,'OK')
-    resp = f"HTTP/1.1 {status} {status_text}\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: {len(body)}\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type\r\nConnection: close\r\n\r\n"
-    writer.write(resp.encode() + body)
-    await writer.drain()
+    await send_http(writer, status, body, 'application/json; charset=utf-8')
 
 async def handle_ws(reader, writer, path):
     qs = parse_qs(urlparse(path).query)
