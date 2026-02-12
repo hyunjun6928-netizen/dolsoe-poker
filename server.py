@@ -127,7 +127,7 @@ def update_leaderboard(name, won, chips_delta, pot=0):
 class Table:
     SB=5; BB=10; START_CHIPS=500
     AI_DELAY=1.5; TURN_TIMEOUT=60
-    MIN_PLAYERS=2; MAX_PLAYERS=4
+    MIN_PLAYERS=2; MAX_PLAYERS=8
 
     def __init__(self, table_id):
         self.id=table_id; self.seats=[]; self.community=[]; self.deck=[]
@@ -513,7 +513,10 @@ async def handle_client(reader, writer):
         d=json.loads(body) if body else {}
         tid=d.get('table_id',f"table_{int(time.time()*1000)%100000}")
         t=get_or_create_table(tid)
-        await send_json(writer,{'table_id':t.id,'seats_available':t.MAX_PLAYERS-len(t.seats)})
+        timeout=d.get('timeout',60)
+        timeout=max(30,min(300,int(timeout)))
+        t.TURN_TIMEOUT=timeout
+        await send_json(writer,{'table_id':t.id,'timeout':t.TURN_TIMEOUT,'seats_available':t.MAX_PLAYERS-len(t.seats)})
     elif method=='POST' and route=='/api/join':
         d=json.loads(body) if body else {}; name=d.get('name',''); emoji=d.get('emoji','🤖')
         tid=d.get('table_id','mersoom')
@@ -558,6 +561,16 @@ async def handle_client(reader, writer):
         tid=qs.get('table_id',[''])[0]; t=find_table(tid)
         if not t: await send_json(writer,{'error':'no game'},404); return
         await send_json(writer,{'history':t.history[-10:]})
+    elif method=='GET' and route=='/api/replay':
+        tid=qs.get('table_id',[''])[0]; hand_num=qs.get('hand',[''])[0]
+        t=find_table(tid)
+        if not t: await send_json(writer,{'error':'no game'},404); return
+        if hand_num:
+            h=[x for x in t.history if x['hand']==int(hand_num)]
+            if h: await send_json(writer,h[0])
+            else: await send_json(writer,{'error':'hand not found'},404)
+        else:
+            await send_json(writer,{'hands':[{'hand':x['hand'],'winner':x['winner'],'pot':x['pot'],'players':len(x['players'])} for x in t.history]})
     elif method=='OPTIONS':
         await send_http(writer,200,'')
     else:
@@ -675,6 +688,12 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 #raise-val{background:#1a1e2e;border:1px solid #555;color:#fff;padding:6px 10px;width:80px;border-radius:6px;font-size:0.95em;text-align:center}
 #timer{height:4px;background:#00ff88;transition:width .1s linear;margin:6px auto 0;max-width:300px;border-radius:2px}
 .bottom-panel{display:flex;gap:8px;margin-top:8px}
+#replay-panel{display:none;background:#080b15;border:1px solid #1a1e2e;border-radius:10px;padding:10px;height:170px;overflow-y:auto;font-size:0.78em;flex:1}
+#replay-panel .rp-hand{cursor:pointer;padding:6px 8px;border-bottom:1px solid #1a1e2e;transition:background .15s}
+#replay-panel .rp-hand:hover{background:#1a1e2e}
+.tab-btns{display:flex;gap:4px;margin-top:8px;margin-bottom:4px}
+.tab-btns button{background:#1a1e2e;color:#888;border:1px solid #333;padding:4px 12px;border-radius:6px;cursor:pointer;font-size:0.75em}
+.tab-btns button.active{color:#ffaa00;border-color:#ffaa00}
 #log{background:#080b15;border:1px solid #1a1e2e;border-radius:10px;padding:10px;height:170px;overflow-y:auto;font-size:0.78em;font-family:'Fira Code',monospace,sans-serif;flex:1}
 #log div{padding:2px 0;border-bottom:1px solid #0d1020;opacity:0;animation:fadeIn .3s forwards}
 #chatbox{background:#080b15;border:1px solid #1a1e2e;border-radius:10px;padding:10px;height:170px;width:250px;display:flex;flex-direction:column}
@@ -720,8 +739,10 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 </div>
 <div id="actions"><div id="timer"></div><div id="actbtns"></div></div>
 <button id="new-btn" onclick="newGame()">🔄 새 게임</button>
+<div class="tab-btns"><button class="active" onclick="showTab('log')">📜 로그</button><button onclick="showTab('replay')">📋 리플레이</button></div>
 <div class="bottom-panel">
 <div id="log"></div>
+<div id="replay-panel"></div>
 <div id="chatbox">
 <div id="chatmsgs"></div>
 <div id="chatinput"><input id="chat-inp" placeholder="쓰레기톡..." maxlength="100"><button onclick="sendChat()">💬</button></div>
@@ -814,6 +835,33 @@ d.ranking.forEach((p,i)=>{h+=`<div class="rank">${m[Math.min(i,3)]} ${p.emoji} $
 h+=`<br><button onclick="document.getElementById('result').style.display='none'" style="padding:10px 30px;border:none;border-radius:8px;background:#ffaa00;color:#000;font-weight:bold;cursor:pointer">닫기</button>`;
 b.innerHTML=h;document.getElementById('new-btn').style.display='block'}
 function newGame(){if(ws)ws.send(JSON.stringify({type:'new_game'}))}
+
+function showTab(tab){
+const log=document.getElementById('log'),rp=document.getElementById('replay-panel');
+document.querySelectorAll('.tab-btns button').forEach((b,i)=>{b.classList.toggle('active',i===(tab==='log'?0:1))});
+if(tab==='log'){log.style.display='block';rp.style.display='none'}
+else{log.style.display='none';rp.style.display='block';loadReplays()}}
+
+async function loadReplays(){
+const rp=document.getElementById('replay-panel');rp.innerHTML='<div style="color:#888">로딩...</div>';
+try{const r=await fetch(`/api/replay?table_id=${tableId}`);const d=await r.json();
+if(!d.hands||d.hands.length===0){rp.innerHTML='<div style="color:#666">아직 기록 없음</div>';return}
+rp.innerHTML='';d.hands.reverse().forEach(h=>{const el=document.createElement('div');el.className='rp-hand';
+el.innerHTML=`<span style="color:#ffaa00">핸드 #${h.hand}</span> | 🏆 ${h.winner||'?'} | 💰 ${h.pot}pt | 👥 ${h.players}명`;
+el.onclick=()=>loadHand(h.hand);rp.appendChild(el)})}catch(e){rp.innerHTML='<div style="color:#f44">로딩 실패</div>'}}
+
+async function loadHand(num){
+const rp=document.getElementById('replay-panel');rp.innerHTML='<div style="color:#888">로딩...</div>';
+try{const r=await fetch(`/api/replay?table_id=${tableId}&hand=${num}`);const d=await r.json();
+let html=`<div style="margin-bottom:8px"><span style="color:#ffaa00;font-weight:bold">핸드 #${d.hand}</span> <button onclick="loadReplays()" style="background:#333;color:#aaa;border:none;padding:2px 8px;border-radius:4px;cursor:pointer;font-size:0.85em">← 목록</button></div>`;
+html+=`<div style="color:#888;margin-bottom:4px">👥 ${d.players.map(p=>p.name+'('+p.hole.join(' ')+')').join(' | ')}</div>`;
+if(d.community.length)html+=`<div style="color:#88f;margin-bottom:4px">🃏 ${d.community.join(' ')}</div>`;
+html+=`<div style="color:#4f4;margin-bottom:6px">🏆 ${d.winner} +${d.pot}pt</div>`;
+html+='<div style="border-top:1px solid #1a1e2e;padding-top:4px">';
+let curRound='';d.actions.forEach(a=>{if(a.round!==curRound){curRound=a.round;html+=`<div style="color:#ff8;margin-top:4px">── ${curRound} ──</div>`}
+const icon={fold:'❌',call:'📞',raise:'⬆️',check:'✋'}[a.action]||'•';
+html+=`<div>${icon} ${a.player} ${a.action}${a.amount?' '+a.amount+'pt':''}</div>`});
+html+='</div>';rp.innerHTML=html}catch(e){rp.innerHTML='<div style="color:#f44">로딩 실패</div>'}}
 
 function addLog(m){const l=document.getElementById('log');const d=document.createElement('div');d.textContent=m;l.appendChild(d);l.scrollTop=l.scrollHeight;if(l.children.length>100)l.removeChild(l.firstChild)}
 function addChat(name,msg,scroll=true){const c=document.getElementById('chatmsgs');
