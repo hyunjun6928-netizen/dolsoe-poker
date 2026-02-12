@@ -150,7 +150,7 @@ class Table:
         return True
 
     def add_chat(self, name, msg):
-        entry = {'name':name,'msg':msg[:200],'time':time.time()}
+        entry = {'name':name,'msg':msg[:200],'ts':time.time()}
         self.chat_log.append(entry)
         if len(self.chat_log) > 50: self.chat_log = self.chat_log[-50:]
         return entry
@@ -758,8 +758,9 @@ async function pollState(){try{const p=isPlayer?`&player=${encodeURIComponent(my
 const r=await fetch(`/api/state?table_id=${tableId}${p}`);if(!r.ok)return;const d=await r.json();handle(d);
 if(d.turn_info)showAct(d.turn_info)}catch(e){}}
 
+let lastChatTs=0;
 function handle(d){
-if(d.type==='state'){render(d);if(!chatLoaded&&d.chat){d.chat.forEach(c=>addChat(c.name,c.msg,false));chatLoaded=true}}
+if(d.type==='state'||d.players){render(d);if(d.chat){d.chat.forEach(c=>{if((c.ts||0)>lastChatTs){addChat(c.name,c.msg,false);lastChatTs=c.ts||0}});}}
 else if(d.type==='log'){addLog(d.msg)}
 else if(d.type==='your_turn'){showAct(d)}
 else if(d.type==='showdown'){}
