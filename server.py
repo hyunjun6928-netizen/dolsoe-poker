@@ -222,8 +222,10 @@ class Table:
                'folded':s['folded'],'bet':s['bet'],'style':s['style'],
                'has_cards':len(s['hole'])>0,'out':s.get('out',False),
                'last_action':s.get('last_action')}
-            # 구경꾼(viewer=None): TV중계 전체공개 (딜레이로 치팅 방지) / 플레이어: 본인만
-            if s['hole'] and (viewer is None or viewer==s['name']):
+            # 플레이어: 본인 카드만 / 관전자(viewer=None): 핸드 종료 시에만 공개
+            if s['hole'] and viewer==s['name']:
+                p['hole']=[card_dict(c) for c in s['hole']]
+            elif s['hole'] and viewer is None and self.round in ('showdown','between','finished'):
                 p['hole']=[card_dict(c) for c in s['hole']]
             else: p['hole']=None
             players.append(p)
@@ -270,15 +272,20 @@ class Table:
         for name,ws in list(self.player_ws.items()):
             try: await ws_send(ws,json.dumps(self.get_public_state(viewer=name),ensure_ascii=False))
             except: del self.player_ws[name]
-        # 관전자: 딜레이 큐 (카드 포함 전체 공개, 30초 후 전송)
-        self.spectator_queue.append((time.time()+self.SPECTATOR_DELAY, json.dumps(msg,ensure_ascii=False)))
+        # 관전자: 실시간 (홀카드는 핸드 종료 시에만 공개)
+        spec_data=json.dumps(self.get_public_state(),ensure_ascii=False)
+        for ws in list(self.spectator_ws):
+            try: await ws_send(ws,spec_data)
+            except: self.spectator_ws.discard(ws)
 
     async def broadcast_state(self):
         for name,ws in list(self.player_ws.items()):
             try: await ws_send(ws,json.dumps(self.get_public_state(viewer=name),ensure_ascii=False))
             except: pass
-        # 관전자: 딜레이 큐
-        self.spectator_queue.append((time.time()+self.SPECTATOR_DELAY, json.dumps(self.get_public_state(),ensure_ascii=False)))
+        spec_data=json.dumps(self.get_public_state(),ensure_ascii=False)
+        for ws in list(self.spectator_ws):
+            try: await ws_send(ws,spec_data)
+            except: self.spectator_ws.discard(ws)
 
     async def flush_spectator_queue(self):
         """딜레이 큐에서 시간 된 데이터를 관전자에게 전송"""
@@ -301,8 +308,9 @@ class Table:
         for ws in set(self.player_ws.values()):
             try: await ws_send(ws, data)
             except: pass
-        # 관전자: 딜레이 큐
-        self.spectator_queue.append((time.time()+self.SPECTATOR_DELAY, data))
+        for ws in list(self.spectator_ws):
+            try: await ws_send(ws, data)
+            except: self.spectator_ws.discard(ws)
 
     async def add_log(self, msg):
         self.log.append(msg)
@@ -315,9 +323,7 @@ class Table:
     # ── 게임 루프 (연속 핸드) ──
     async def run(self):
         self.running=True
-        if not self._delay_task:
-            self._delay_task=asyncio.create_task(self.run_delay_loop())
-        await self.add_log(f"🎰 게임 시작! (관전 {self.SPECTATOR_DELAY}초 딜레이)")
+        await self.add_log(f"🎰 게임 시작! (실시간 중계)")
         await self.broadcast_state()
 
         while True:
@@ -673,9 +679,9 @@ async def handle_client(reader, writer):
             state=t.get_public_state(viewer=player)
             if t.turn_player==player: state['turn_info']=t.get_turn_info(player)
         else:
-            # 관전자: 카드 전체 공개 (딜레이로 치팅 방지)
+            # 관전자: 실시간 (홀카드는 핸드 종료 시 공개)
             state=t.get_public_state()
-            state['delay_notice']=f'{t.SPECTATOR_DELAY}초 딜레이 중계'
+            state['delay_notice']='실시간 TV중계'
         await send_json(writer,state)
     elif method=='POST' and route=='/api/action':
         d=json.loads(body) if body else {}; name=d.get('name',''); tid=d.get('table_id','')
@@ -773,7 +779,7 @@ async def handle_ws(reader, writer, path):
         await ws_send(writer,json.dumps(t.get_public_state(viewer=name),ensure_ascii=False))
     else:
         t.spectator_ws.add(writer)
-        # 관전자: 접속 즉시 현재 상태 전송 (카드 포함), 이후 업데이트는 딜레이 큐
+        # 관전자: 실시간 (홀카드는 핸드 종료 시 공개)
         await ws_send(writer,json.dumps(t.get_public_state(),ensure_ascii=False))
     try:
         while True:
@@ -1069,7 +1075,7 @@ else if(d.type==='allin'){showAllin(d)}
 else if(d.type==='highlight'){showHighlight(d)}}
 
 function render(s){
-document.getElementById('hi').textContent=`핸드 #${s.hand}${!isPlayer?' (📡 관전중)':''}`;
+document.getElementById('hi').textContent=`핸드 #${s.hand}${!isPlayer?' (📡 실시간 TV중계)':''}`;
 document.getElementById('ri').textContent=s.round||'대기중';
 document.getElementById('pot').textContent=`POT: ${s.pot}pt`;
 const b=document.getElementById('board');b.innerHTML='';
