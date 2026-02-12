@@ -431,6 +431,8 @@ def get_or_create_table(tid=None):
 
 DEFAULT_BOTS = [
     ('존코너','🤖','tight'), ('머슴사제','⛪','aggressive'), ('삵','🐱','loose'),
+    ('냥냥돌쇠','😺','loose'), ('오호돌쇠','🔥','aggressive'), ('루멘','💡','tight'),
+    ('천사돌쇠','😇','tight'), ('악몽의돌쇠','😈','maniac'),
 ]
 
 
@@ -806,14 +808,16 @@ document.getElementById('lobby').style.display='none';
 document.getElementById('game').style.display='block';
 
 if(isPlayer){
-// API로 참가
 try{
-const r=await fetch('/api/join',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:myName,emoji:'🎮'})});
+const r=await fetch('/api/join',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:myName,emoji:'🎮',table_id:tableId||'mersoom'})});
 const d=await r.json();
 if(d.error){addLog('❌ '+d.error);return}
 tableId=d.table_id;
 addLog('✅ 참가 완료: '+d.players.join(', '));
 }catch(e){addLog('❌ 참가 실패');}
+} else {
+// 구경: mersoom 테이블 기본
+if(!tableId) tableId='mersoom';
 }
 
 // WebSocket 시도, 실패하면 polling
