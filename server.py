@@ -222,10 +222,8 @@ class Table:
                'folded':s['folded'],'bet':s['bet'],'style':s['style'],
                'has_cards':len(s['hole'])>0,'out':s.get('out',False),
                'last_action':s.get('last_action')}
-            # 플레이어: 본인 카드만 / 관전자(viewer=None): 핸드 종료 시에만 공개
-            if s['hole'] and viewer==s['name']:
-                p['hole']=[card_dict(c) for c in s['hole']]
-            elif s['hole'] and viewer is None and self.round in ('showdown','between','finished'):
+            # 플레이어: 본인 카드만 / 관전자(viewer=None): 전체 공개 (딜레이로 치팅 방지)
+            if s['hole'] and (viewer is None or viewer==s['name']):
                 p['hole']=[card_dict(c) for c in s['hole']]
             else: p['hole']=None
             players.append(p)
@@ -272,20 +270,15 @@ class Table:
         for name,ws in list(self.player_ws.items()):
             try: await ws_send(ws,json.dumps(self.get_public_state(viewer=name),ensure_ascii=False))
             except: del self.player_ws[name]
-        # 관전자: 실시간 (홀카드는 핸드 종료 시에만 공개)
-        spec_data=json.dumps(self.get_public_state(),ensure_ascii=False)
-        for ws in list(self.spectator_ws):
-            try: await ws_send(ws,spec_data)
-            except: self.spectator_ws.discard(ws)
+        # 관전자: 30초 딜레이 큐 (카드 전체 공개)
+        self.spectator_queue.append((time.time()+self.SPECTATOR_DELAY, json.dumps(msg,ensure_ascii=False)))
 
     async def broadcast_state(self):
         for name,ws in list(self.player_ws.items()):
             try: await ws_send(ws,json.dumps(self.get_public_state(viewer=name),ensure_ascii=False))
             except: pass
-        spec_data=json.dumps(self.get_public_state(),ensure_ascii=False)
-        for ws in list(self.spectator_ws):
-            try: await ws_send(ws,spec_data)
-            except: self.spectator_ws.discard(ws)
+        # 관전자: 30초 딜레이 큐
+        self.spectator_queue.append((time.time()+self.SPECTATOR_DELAY, json.dumps(self.get_public_state(),ensure_ascii=False)))
 
     async def flush_spectator_queue(self):
         """딜레이 큐에서 시간 된 데이터를 관전자에게 전송"""
@@ -308,9 +301,7 @@ class Table:
         for ws in set(self.player_ws.values()):
             try: await ws_send(ws, data)
             except: pass
-        for ws in list(self.spectator_ws):
-            try: await ws_send(ws, data)
-            except: self.spectator_ws.discard(ws)
+        self.spectator_queue.append((time.time()+self.SPECTATOR_DELAY, data))
 
     async def add_log(self, msg):
         self.log.append(msg)
@@ -323,7 +314,9 @@ class Table:
     # ── 게임 루프 (연속 핸드) ──
     async def run(self):
         self.running=True
-        await self.add_log(f"🎰 게임 시작! (실시간 중계)")
+        if not self._delay_task:
+            self._delay_task=asyncio.create_task(self.run_delay_loop())
+        await self.add_log(f"🎰 게임 시작! (관전 {self.SPECTATOR_DELAY}초 딜레이 TV중계)")
         await self.broadcast_state()
 
         while True:
@@ -679,9 +672,12 @@ async def handle_client(reader, writer):
             state=t.get_public_state(viewer=player)
             if t.turn_player==player: state['turn_info']=t.get_turn_info(player)
         else:
-            # 관전자: 실시간 (홀카드는 핸드 종료 시 공개)
+            # 관전자: 폴링은 홀카드 가림 (딜레이 큐=WS에서만 카드 공개)
             state=t.get_public_state()
-            state['delay_notice']='실시간 TV중계'
+            if t.running and t.round not in ('showdown','between','finished','waiting'):
+                for p in state['players']:
+                    p['hole']=None
+            state['delay_notice']=f'{t.SPECTATOR_DELAY}초 딜레이 TV중계'
         await send_json(writer,state)
     elif method=='POST' and route=='/api/action':
         d=json.loads(body) if body else {}; name=d.get('name',''); tid=d.get('table_id','')
@@ -779,8 +775,12 @@ async def handle_ws(reader, writer, path):
         await ws_send(writer,json.dumps(t.get_public_state(viewer=name),ensure_ascii=False))
     else:
         t.spectator_ws.add(writer)
-        # 관전자: 실시간 (홀카드는 핸드 종료 시 공개)
-        await ws_send(writer,json.dumps(t.get_public_state(),ensure_ascii=False))
+        # 관전자: 접속 직후 상태 (홀카드 가림), 이후 딜레이 큐에서 카드 포함 상태 수신
+        init_state=t.get_public_state()
+        for p in init_state['players']:
+            if t.running and t.round not in ('showdown','between','finished','waiting'):
+                p['hole']=None
+        await ws_send(writer,json.dumps(init_state,ensure_ascii=False))
     try:
         while True:
             msg=await ws_recv(reader)
@@ -1075,7 +1075,7 @@ else if(d.type==='allin'){showAllin(d)}
 else if(d.type==='highlight'){showHighlight(d)}}
 
 function render(s){
-document.getElementById('hi').textContent=`핸드 #${s.hand}${!isPlayer?' (📡 실시간 TV중계)':''}`;
+document.getElementById('hi').textContent=`핸드 #${s.hand}${!isPlayer?' (📡 30초 딜레이 TV중계)':''}`;
 document.getElementById('ri').textContent=s.round||'대기중';
 document.getElementById('pot').textContent=`POT: ${s.pot}pt`;
 const b=document.getElementById('board');b.innerHTML='';
