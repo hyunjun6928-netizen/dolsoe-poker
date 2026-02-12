@@ -963,7 +963,7 @@ h1 b{color:#ffaa00}
 #game{display:none}
 .info-bar{display:flex;justify-content:space-between;padding:6px 12px;font-size:0.8em;color:#888;background:#0d1020;border-radius:8px;margin-bottom:8px}
 .felt{position:relative;background:radial-gradient(ellipse at center,#1a6030 0%,#0d3318 60%,#091a0e 100%);
-border:8px solid #2a1a0a;border-radius:50%;width:100%;padding-bottom:55%;box-shadow:inset 0 0 80px #00000088,0 8px 40px #000000aa;margin:40px auto 30px}
+border:8px solid #2a1a0a;border-radius:50%;width:100%;padding-bottom:55%;box-shadow:inset 0 0 80px #00000088,0 8px 40px #000000aa;margin:40px auto 50px}
 #table-info{display:flex;justify-content:center;gap:16px;margin:6px 0;flex-wrap:wrap}
 #table-info .ti{background:#111;border:1px solid #333;border-radius:8px;padding:4px 12px;font-size:0.75em;color:#aaa}
 #table-info .ti b{color:#ffaa00}
@@ -987,14 +987,14 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 .card.black .r,.card.black .s{color:#111}
 .card-sm{width:46px;height:66px;font-size:0.8em}.card-sm .s{font-size:0.95em}
 .seat{position:absolute;text-align:center;z-index:10;transition:all .3s;min-width:70px}
-.seat-0{bottom:-14%;left:50%;transform:translateX(-50%)}
+.seat-0{bottom:-6%;left:50%;transform:translateX(-50%)}
 .seat-1{top:60%;left:-4%;transform:translateY(-50%)}
 .seat-2{top:18%;left:-4%;transform:translateY(-50%)}
 .seat-3{top:-16%;left:28%;transform:translateX(-50%)}
 .seat-4{top:-16%;left:72%;transform:translateX(-50%)}
 .seat-5{top:18%;right:-4%;transform:translateY(-50%)}
 .seat-6{top:60%;right:-4%;transform:translateY(-50%)}
-.seat-7{bottom:-14%;left:25%;transform:translateX(-50%)}
+.seat-7{bottom:-6%;left:25%;transform:translateX(-50%)}
 .seat .ava{font-size:2.4em;line-height:1.2}
 .seat .act-label{position:absolute;top:-28px;left:50%;transform:translateX(-50%);background:#000000cc;color:#fff;padding:4px 10px;border-radius:8px;font-size:0.9em;font-weight:bold;white-space:nowrap;z-index:10;animation:actPop .3s ease-out;border:1px solid #ffaa00}
 @keyframes actPop{0%{transform:translateX(-50%) scale(0.5);opacity:0}100%{transform:translateX(-50%) scale(1);opacity:1}}
