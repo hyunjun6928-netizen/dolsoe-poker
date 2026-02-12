@@ -386,7 +386,7 @@ class Table:
                 if r.get('winner'): hand_winner=r['winner']
             for s in self.seats:
                 if s['chips']<=0 and not s.get('out'):
-                    s['out']=True
+                    s['out']=True; s['last_action']='💀 파산'
                     killer=hand_winner or '?'
                     killer_seat=next((x for x in self.seats if x['name']==killer),None)
                     killer_emoji=killer_seat['emoji'] if killer_seat else '💀'
@@ -1054,6 +1054,18 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 #timer{height:4px;background:#00ff88;transition:width .1s linear;margin:6px auto 0;max-width:300px;border-radius:2px}
 #commentary{background:linear-gradient(135deg,#1a1e2e,#0d1020);border:1px solid #ffaa0044;border-radius:10px;padding:10px 16px;margin:0 0 8px;text-align:center;font-size:1em;color:#ffcc00;font-weight:bold;animation:comFade .5s ease-out;min-height:24px}
 @keyframes comFade{0%{opacity:0;transform:translateY(-8px)}100%{opacity:1;transform:translateY(0)}}
+#action-feed{background:#080b15;border:1px solid #1a1e2e;border-radius:10px;padding:10px;max-height:300px;overflow-y:auto;font-size:0.82em;font-family:'Fira Code',monospace,sans-serif}
+#action-feed .af-item{padding:4px 6px;border-bottom:1px solid #0d1020;opacity:0;animation:fadeIn .3s forwards}
+#action-feed .af-round{color:#ffaa00;font-weight:bold;padding:6px 0 2px;font-size:0.9em}
+#action-feed .af-action{color:#ccc}
+#action-feed .af-win{color:#44ff44;font-weight:bold}
+.game-layout{display:flex;gap:10px;align-items:flex-start}
+.game-main{flex:1;min-width:0}
+.game-sidebar{width:260px;flex-shrink:0}
+@media(max-width:700px){
+.game-layout{flex-direction:column}
+.game-sidebar{width:100%;max-height:200px}
+}
 .bottom-panel{display:flex;gap:8px;margin-top:8px}
 #replay-panel{display:none;background:#080b15;border:1px solid #1a1e2e;border-radius:10px;padding:10px;height:170px;overflow-y:auto;font-size:0.78em;flex:1}
 #replay-panel .rp-hand{cursor:pointer;padding:6px 8px;border-bottom:1px solid #1a1e2e;transition:background .15s}
@@ -1178,11 +1190,19 @@ h1{font-size:1.1em;margin:4px 0}
 <div class="info-bar"><span id="hi">핸드 #0</span><span id="ri">대기중</span><span id="si" style="color:#88ff88"></span><span id="mi"></span></div>
 <div id="hand-timeline"><span class="tl-step" data-r="preflop">프리플랍</span><span class="tl-step" data-r="flop">플랍</span><span class="tl-step" data-r="turn">턴</span><span class="tl-step" data-r="river">리버</span><span class="tl-step" data-r="showdown">쇼다운</span></div>
 <div id="commentary" style="display:none"></div>
+<div class="game-layout">
+<div class="game-main">
 <div class="felt" id="felt">
 <div class="pot-badge" id="pot">POT: 0</div>
 <div class="board" id="board"></div>
 <div class="turn-badge" id="turnb"></div>
 <div id="turn-options" style="display:none;background:#111;border:1px solid #333;border-radius:8px;padding:8px 12px;margin:6px auto;max-width:600px;font-size:0.82em;text-align:center"></div>
+</div>
+</div>
+<div class="game-sidebar">
+<div style="color:#ffaa00;font-weight:bold;font-size:0.9em;margin-bottom:6px">📋 실시간 액션</div>
+<div id="action-feed"></div>
+</div>
 </div>
 <div id="table-info"></div>
 <div id="actions"><div id="timer"></div><div id="actbtns"></div></div>
@@ -1428,6 +1448,21 @@ function showCommentary(text){
 const el=document.getElementById('commentary');
 el.style.display='block';el.textContent=text;
 el.style.animation='none';el.offsetHeight;el.style.animation='comFade .5s ease-out';
+addActionFeed(text);
+}
+
+let lastFeedRound='';
+function addActionFeed(text,isRound){
+const feed=document.getElementById('action-feed');
+if(!feed)return;
+const div=document.createElement('div');
+div.className='af-item';
+if(text.includes('🏆'))div.className='af-item af-win';
+div.textContent=text;
+feed.appendChild(div);
+feed.scrollTop=feed.scrollHeight;
+// 최대 50개 유지
+while(feed.children.length>50)feed.removeChild(feed.firstChild);
 }
 
 function showAllin(d){
