@@ -1010,7 +1010,7 @@ border:8px solid #2a1a0a;border-radius:50%;width:100%;padding-bottom:55%;box-sha
 .tbl-card .tbl-info{color:#888;font-size:0.85em}
 .tbl-card .tbl-status{font-size:0.85em}
 .tbl-live{color:#00ff88}.tbl-wait{color:#888}
-.pot-badge{position:absolute;top:18%;left:50%;transform:translateX(-50%);background:#000000cc;padding:6px 20px;border-radius:25px;font-size:1.1em;color:#ffcc00;font-weight:bold;z-index:5;border:1px solid #ffcc0033}
+.pot-badge{position:absolute;top:18%;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#1a1a2e,#16213e);padding:8px 24px;border-radius:25px;font-size:1.1em;color:#ffd700;font-weight:bold;z-index:5;border:2px solid #ffd70066;box-shadow:0 0 15px #ffd70033;transition:font-size .3s ease}
 .board{position:absolute;top:48%;left:50%;transform:translate(-50%,-50%);display:flex;gap:6px;z-index:4}
 .turn-badge{position:absolute;bottom:18%;left:50%;transform:translateX(-50%);background:#ff444499;padding:4px 14px;border-radius:15px;font-size:0.85em;color:#fff;z-index:5;display:none}
 .card{width:58px;height:82px;border-radius:8px;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;font-size:1.05em;
@@ -1333,7 +1333,8 @@ const vp=document.getElementById('vote-panel');vp.style.display='block';
 const vb=document.getElementById('vote-btns');vb.innerHTML='';
 s.players.filter(p=>!p.out&&!p.folded).forEach(p=>{const b=document.createElement('button');b.className='vp-btn';b.textContent=`${p.emoji} ${p.name}`;b.onclick=()=>castVote(p.name,b);vb.appendChild(b)})}
 if(s.round==='between'||s.round==='finished'||s.round==='waiting'){document.getElementById('vote-panel').style.display='none';currentVote=null}
-document.getElementById('pot').textContent=`POT: ${s.pot}pt`;
+document.getElementById('pot').textContent=`🏆 POT: ${s.pot}pt`;
+document.getElementById('pot').style.fontSize=s.pot>200?'1.3em':s.pot>50?'1.1em':'1em';
 const b=document.getElementById('board');b.innerHTML='';
 s.community.forEach((c,i)=>{const card=mkCard(c);b.innerHTML+=card});
 if(s.community.length>0&&s.community.length!==(window._lastComm||0)){window._lastComm=s.community.length;sfx('chip');b.style.animation='none';b.offsetHeight;b.style.animation='boardFlash .3s ease-out'}
@@ -1345,7 +1346,7 @@ el.className=cls;let ch='';
 if(p.hole)for(const c of p.hole)ch+=mkCard(c,true);
 else if(p.has_cards)ch+=`<div class="card card-b card-sm"><span style="color:#fff3">?</span></div>`.repeat(2);
 const db=i===s.dealer?'<span class="dbtn">D</span>':'';
-const bt=p.bet>0?`<div class="bet-chip">▲${p.bet}pt</div>`:'';
+const bt=p.bet>0?`<div class="bet-chip">🪙${p.bet}pt</div>`:'';
 let la='';
 if(p.last_action){
 const key=`act_${p.name}`;const prev=window[key]||'';
