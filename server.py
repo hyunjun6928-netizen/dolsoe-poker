@@ -190,7 +190,7 @@ def load_leaderboard():
 # ══ 게임 테이블 ══
 class Table:
     SB=5; BB=10; START_CHIPS=500
-    AI_DELAY=1.5; TURN_TIMEOUT=60
+    AI_DELAY=3.5; TURN_TIMEOUT=60
     MIN_PLAYERS=2; MAX_PLAYERS=8
     BLIND_SCHEDULE=[(5,10),(10,20),(25,50),(50,100),(100,200),(200,400)]
     BLIND_INTERVAL=10  # 10핸드마다 블라인드 업
@@ -431,7 +431,7 @@ class Table:
             hand_record['players'].append({'name':s['name'],'emoji':s['emoji'],'hole':[card_str(c) for c in s['hole']]})
         self.dealer=self.dealer%len(self._hand_seats)
         await self.add_log(f"━━━ 핸드 #{self.hand_num} ({len(self._hand_seats)}명) ━━━")
-        await self.broadcast_state(); await asyncio.sleep(0.5)
+        await self.broadcast_state(); await asyncio.sleep(1.5)
 
         # 블라인드
         n=len(self._hand_seats)
@@ -456,7 +456,7 @@ class Table:
         self.round='flop'; self.deck.pop(); self.community+=[self.deck.pop() for _ in range(3)]
         hand_record['community']=[card_str(c) for c in self.community]
         await self.add_log(f"── 플랍: {' '.join(card_str(c) for c in self.community)} ──")
-        await self.broadcast_state(); await asyncio.sleep(0.8)
+        await self.broadcast_state(); await asyncio.sleep(2)
         await self.betting_round((self.dealer+1)%n, hand_record)
         if self._count_alive()<=1: await self.resolve(hand_record); self._advance_dealer(); return
 
@@ -464,7 +464,7 @@ class Table:
         self.round='turn'; self.deck.pop(); self.community.append(self.deck.pop())
         hand_record['community']=[card_str(c) for c in self.community]
         await self.add_log(f"── 턴: {' '.join(card_str(c) for c in self.community)} ──")
-        await self.broadcast_state(); await asyncio.sleep(0.8)
+        await self.broadcast_state(); await asyncio.sleep(2)
         await self.betting_round((self.dealer+1)%n, hand_record)
         if self._count_alive()<=1: await self.resolve(hand_record); self._advance_dealer(); return
 
@@ -472,7 +472,7 @@ class Table:
         self.round='river'; self.deck.pop(); self.community.append(self.deck.pop())
         hand_record['community']=[card_str(c) for c in self.community]
         await self.add_log(f"── 리버: {' '.join(card_str(c) for c in self.community)} ──")
-        await self.broadcast_state(); await asyncio.sleep(0.8)
+        await self.broadcast_state(); await asyncio.sleep(2)
         await self.betting_round((self.dealer+1)%n, hand_record)
         await self.resolve(hand_record); self._advance_dealer()
 
@@ -506,8 +506,13 @@ class Table:
                 # 액션 기록
                 record['actions'].append({'round':self.round,'player':s['name'],'action':act,'amount':amt})
                 # last_action 저장 (UI 표시용)
-                action_labels={'fold':'❌ 폴드','check':'✋ 체크','call':'📞 콜','raise':'⬆️ 레이즈'}
-                s['last_action']=action_labels.get(act,act)
+                if act=='fold': s['last_action']='❌ 폴드'
+                elif act=='check': s['last_action']='✋ 체크'
+                elif act=='call':
+                    ca=min(to_call,s['chips']); s['last_action']=f'📞 콜 {ca}pt'
+                elif act=='raise':
+                    total=min(amt+min(to_call,s['chips']),s['chips']); s['last_action']=f'⬆️ 레이즈 {total}pt' if s['chips']>total else f'🔥 ALL IN {total}pt'
+                else: s['last_action']=act
 
                 if act=='fold':
                     s['folded']=True; await self.add_log(f"❌ {s['emoji']} {s['name']} 폴드")
