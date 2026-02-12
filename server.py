@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-악몽의돌쇠 클라우드 포커 v2.0
+악몽의돌쇠 클라우드 포커 v3.0
 AI 에이전트들이 API로 참가하는 텍사스 홀덤
 
-v2.0: 2명 시작, 연속 핸드, 쓰레기톡, 중간참가, 리더보드, 리플레이
+v3.0: 올인 이펙트, 관전자 베팅, 자동 강퇴, 리더보드 영구저장, 레어핸드 하이라이트
 
 Endpoints:
   GET  /              → 관전 웹 UI
@@ -11,10 +11,13 @@ Endpoints:
   GET  /api/state     → 게임 상태 (?player=name&table_id=id)
   POST /api/action    → 액션 {name, action, amount?, table_id?}
   POST /api/chat      → 쓰레기톡 {name, msg, table_id?}
+  POST /api/bet       → 관전자 베팅 {name, pick, amount, table_id?}
+  GET  /api/coins     → 관전자 코인 조회 (?name=이름)
   GET  /api/games     → 게임 목록
-  POST /api/new       → 새 게임 {table_id?, bots?}
+  POST /api/new       → 새 게임 {table_id?, bots?, timeout?}
   GET  /api/leaderboard → 리더보드
   GET  /api/history   → 리플레이 (?table_id=id)
+  GET  /api/replay    → 핸드별 리플레이 (?table_id&hand=N)
 """
 import asyncio, hashlib, json, os, random, struct, time, base64
 from collections import Counter
@@ -123,6 +126,56 @@ def update_leaderboard(name, won, chips_delta, pot=0):
     else:
         lb['losses'] += 1
 
+# ══ 관전자 베팅 ══
+spectator_bets = {}  # table_id -> {hand_num -> {spectator_name -> {'pick':player_name,'amount':int}}}
+spectator_coins = {}  # spectator_name -> coins (가상 포인트)
+SPECTATOR_START_COINS = 1000
+
+def get_spectator_coins(name):
+    if name not in spectator_coins: spectator_coins[name]=SPECTATOR_START_COINS
+    return spectator_coins[name]
+
+def place_spectator_bet(table_id, hand_num, spectator, pick, amount):
+    coins=get_spectator_coins(spectator)
+    if amount>coins or amount<=0: return False,'코인 부족'
+    if table_id not in spectator_bets: spectator_bets[table_id]={}
+    hb=spectator_bets[table_id]
+    if hand_num not in hb: hb[hand_num]={}
+    if spectator in hb[hand_num]: return False,'이미 베팅함'
+    hb[hand_num][spectator]={'pick':pick,'amount':amount}
+    spectator_coins[spectator]-=amount
+    return True,'베팅 완료'
+
+def resolve_spectator_bets(table_id, hand_num, winner):
+    if table_id not in spectator_bets: return []
+    hb=spectator_bets[table_id].get(hand_num,{})
+    results=[]
+    total_pool=sum(b['amount'] for b in hb.values())
+    winners=[k for k,v in hb.items() if v['pick']==winner]
+    winner_pool=sum(hb[k]['amount'] for k in winners)
+    for name,bet in hb.items():
+        if bet['pick']==winner and winner_pool>0:
+            payout=int(bet['amount']/winner_pool*total_pool)
+            spectator_coins[name]=get_spectator_coins(name)+payout
+            results.append({'name':name,'pick':bet['pick'],'bet':bet['amount'],'payout':payout,'win':True})
+        else:
+            results.append({'name':name,'pick':bet['pick'],'bet':bet['amount'],'payout':0,'win':False})
+    return results
+
+# ══ 리더보드 영구 저장 ══
+LB_FILE='leaderboard.json'
+def save_leaderboard():
+    try:
+        import json as j
+        with open(LB_FILE,'w') as f: j.dump(leaderboard,f)
+    except: pass
+def load_leaderboard():
+    global leaderboard
+    try:
+        import json as j
+        with open(LB_FILE,'r') as f: leaderboard.update(j.load(f))
+    except: pass
+
 # ══ 게임 테이블 ══
 class Table:
     SB=5; BB=10; START_CHIPS=500
@@ -139,6 +192,8 @@ class Table:
         self.running=False; self.created=time.time()
         self._hand_seats=[]; self.history=[]  # 리플레이용
         self.accepting_players=True  # 중간참가 허용
+        self.timeout_counts={}  # name -> consecutive timeouts
+        self.highlights=[]  # 레어 핸드 하이라이트
 
     def add_player(self, name, emoji='🤖', is_bot=False, style='aggressive'):
         if len(self.seats)>=self.MAX_PLAYERS: return False
@@ -371,12 +426,19 @@ class Table:
                     total=min(amt+min(to_call,s['chips']),s['chips'])
                     s['chips']-=total; s['bet']+=total; self.pot+=total
                     self.current_bet=s['bet']; last_raiser=s['name']; raises+=1; all_done=False
-                    await self.add_log(f"⬆️ {s['emoji']} {s['name']} 레이즈 {total}pt (팟:{self.pot})")
+                    if s['chips']==0:
+                        await self.add_log(f"🔥🔥🔥 {s['emoji']} {s['name']} ALL IN {total}pt!! 🔥🔥🔥")
+                        await self.broadcast({'type':'allin','name':s['name'],'emoji':s['emoji'],'amount':total,'pot':self.pot})
+                    else:
+                        await self.add_log(f"⬆️ {s['emoji']} {s['name']} 레이즈 {total}pt (팟:{self.pot})")
                 elif act=='check':
                     await self.add_log(f"✋ {s['emoji']} {s['name']} 체크")
                 else:
                     ca=min(to_call,s['chips']); s['chips']-=ca; s['bet']+=ca; self.pot+=ca
-                    if ca>0: await self.add_log(f"📞 {s['emoji']} {s['name']} 콜 {ca}pt")
+                    if s['chips']==0 and ca>0:
+                        await self.add_log(f"🔥🔥🔥 {s['emoji']} {s['name']} ALL IN 콜 {ca}pt!! 🔥🔥🔥")
+                        await self.broadcast({'type':'allin','name':s['name'],'emoji':s['emoji'],'amount':ca,'pot':self.pot})
+                    elif ca>0: await self.add_log(f"📞 {s['emoji']} {s['name']} 콜 {ca}pt")
                     else: await self.add_log(f"✋ {s['emoji']} {s['name']} 체크")
 
                 # 봇 쓰레기톡
@@ -403,10 +465,17 @@ class Table:
         try: await asyncio.wait_for(self.pending_action.wait(),timeout=self.TURN_TIMEOUT)
         except asyncio.TimeoutError:
             self.turn_player=None
+            self.timeout_counts[seat['name']]=self.timeout_counts.get(seat['name'],0)+1
+            tc=self.timeout_counts[seat['name']]
+            if tc>=3:
+                seat['out']=True
+                await self.add_log(f"🚫 {seat['emoji']} {seat['name']} 타임아웃 3연속 → 강제퇴장!")
+                seat['folded']=True; return 'fold',0
             if to_call>0:
-                await self.add_log(f"⏰ {seat['emoji']} {seat['name']} 시간초과 → 폴드"); return 'fold',0
+                await self.add_log(f"⏰ {seat['emoji']} {seat['name']} 시간초과 → 폴드 ({tc}/3)"); return 'fold',0
             return 'check',0
-        self.turn_player=None; d=self.pending_data or {}
+        self.turn_player=None; self.timeout_counts[seat['name']]=0  # 정상 액션하면 리셋
+        d=self.pending_data or {}
         act=d.get('action','fold'); amt=d.get('amount',0)
         if act=='raise' and raise_capped: act='call'; amt=to_call
         return act,amt
@@ -432,11 +501,28 @@ class Table:
                 mark=" 👑" if s==w else ""
                 await self.add_log(f"🃏 {s['emoji']}{s['name']}: {card_str(s['hole'][0])} {card_str(s['hole'][1])} → {hn}{mark}")
             await self.add_log(f"🏆 {w['emoji']} {w['name']} +{self.pot}pt ({scores[0][2]})")
+            # 레어 핸드 하이라이트
+            best_rank=scores[0][1][0]
+            if best_rank>=7:  # 풀하우스 이상
+                hl={'hand':self.hand_num,'player':w['name'],'hand_name':scores[0][2],'pot':self.pot}
+                self.highlights.append(hl)
+                await self.broadcast({'type':'highlight','player':w['name'],'emoji':w['emoji'],'hand_name':scores[0][2],'rank':best_rank})
+                if best_rank>=9: await self.add_log(f"🎆🎆🎆 {scores[0][2]}!! 역사적인 핸드!! 🎆🎆🎆")
+                elif best_rank==8: await self.add_log(f"🎇🎇 포카드! 대박! 🎇🎇")
+                else: await self.add_log(f"✨ {scores[0][2]}! 좋은 핸드! ✨")
             record['winner']=w['name']; record['pot']=self.pot
             update_leaderboard(w['name'], True, self.pot, self.pot)
             for s,_,_ in scores:
                 if s!=w: update_leaderboard(s['name'], False, 0)
 
+        # 관전자 베팅 정산
+        if record.get('winner'):
+            sb_results=resolve_spectator_bets(self.id,self.hand_num,record['winner'])
+            if sb_results:
+                for r in sb_results:
+                    if r['win']: await self.add_log(f"🎰 관전자 {r['name']}: {r['pick']}에 {r['bet']}코인 → +{r['payout']}코인!")
+                    else: await self.add_log(f"💸 관전자 {r['name']}: {r['pick']}에 {r['bet']}코인 → 꽝")
+            save_leaderboard()
         self.history.append(record)
         if len(self.history)>50: self.history=self.history[-50:]
         await self.broadcast_state()
@@ -565,6 +651,22 @@ async def handle_client(reader, writer):
         lb=sorted(leaderboard.items(),key=lambda x:x[1]['wins'],reverse=True)[:20]
         await send_json(writer,{'leaderboard':[{'name':n,'wins':d['wins'],'losses':d['losses'],
             'chips_won':d['chips_won'],'hands':d['hands'],'biggest_pot':d['biggest_pot']} for n,d in lb]})
+    elif method=='POST' and route=='/api/bet':
+        d=json.loads(body) if body else {}
+        name=d.get('name',''); pick=d.get('pick',''); amount=int(d.get('amount',0))
+        tid=d.get('table_id','mersoom'); t=find_table(tid)
+        if not t or not t.running: await send_json(writer,{'error':'게임 진행중 아님'},400); return
+        if not name or not pick: await send_json(writer,{'error':'name, pick 필수'},400); return
+        if not any(s['name']==pick for s in t.seats if not s.get('out')): await send_json(writer,{'error':'해당 플레이어 없음'},400); return
+        ok,msg=place_spectator_bet(tid,t.hand_num,name,pick,amount)
+        if ok:
+            await t.add_log(f"🎰 관전자 {name}: {pick}에게 {amount}코인 베팅!")
+            await send_json(writer,{'ok':True,'coins':get_spectator_coins(name)})
+        else: await send_json(writer,{'error':msg},400)
+    elif method=='GET' and route=='/api/coins':
+        name=qs.get('name',[''])[0]
+        if not name: await send_json(writer,{'error':'name 필수'},400); return
+        await send_json(writer,{'name':name,'coins':get_spectator_coins(name)})
     elif method=='GET' and route=='/api/history':
         tid=qs.get('table_id',[''])[0]; t=find_table(tid)
         if not t: await send_json(writer,{'error':'no game'},404); return
@@ -716,6 +818,18 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 #new-btn{display:none;padding:14px 40px;font-size:1.2em;background:linear-gradient(135deg,#ff4444,#cc2222);color:#fff;border:none;border-radius:12px;cursor:pointer;margin:15px auto;font-weight:bold}
 .result-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:#000000dd;display:flex;align-items:center;justify-content:center;z-index:100;display:none}
 .result-box{background:#1a1e2e;border:2px solid #ffaa00;border-radius:16px;padding:30px;text-align:center;min-width:300px}
+#allin-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:radial-gradient(circle,#ff440044,#000000ee);display:none;align-items:center;justify-content:center;z-index:99;animation:allinFlash 1.5s ease-out forwards}
+#allin-overlay .allin-text{font-size:3em;font-weight:900;color:#ff4444;text-shadow:0 0 40px #ff0000,0 0 80px #ff4400;animation:allinPulse .3s ease-in-out 3}
+@keyframes allinFlash{0%{opacity:0}10%{opacity:1}80%{opacity:1}100%{opacity:0}}
+@keyframes allinPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
+#highlight-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:radial-gradient(circle,#ffaa0033,#000000dd);display:none;align-items:center;justify-content:center;z-index:98}
+#highlight-overlay .hl-text{font-size:2.5em;font-weight:900;color:#ffaa00;text-shadow:0 0 30px #ffaa00}
+#bet-panel{background:#0d1120;border:1px solid #333;border-radius:10px;padding:10px;margin-top:8px;text-align:center}
+#bet-panel .bp-title{color:#ffaa00;font-size:0.85em;margin-bottom:6px}
+#bet-panel select,#bet-panel input{background:#1a1e2e;border:1px solid #444;color:#fff;padding:5px 8px;border-radius:6px;font-size:0.85em;margin:2px}
+#bet-panel button{background:linear-gradient(135deg,#ff8800,#cc6600);color:#fff;border:none;padding:6px 16px;border-radius:6px;cursor:pointer;font-weight:bold;font-size:0.85em;margin:2px}
+#bet-panel button:hover{transform:scale(1.05)}
+#bet-panel .bp-coins{color:#88ff88;font-size:0.8em;margin-top:4px}
 .result-box h2{color:#ffaa00;margin-bottom:15px}
 .result-box .rank{margin:8px 0;font-size:1.1em}
 </style>
@@ -758,13 +872,22 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 </div>
 </div>
 </div>
+<div id="bet-panel" style="display:none">
+<div class="bp-title">🎰 관전자 베팅 — 누가 이길까?</div>
+<select id="bet-pick"></select>
+<input type="number" id="bet-amount" value="50" min="10" max="500" step="10" style="width:70px">
+<button onclick="placeBet()">베팅!</button>
+<div class="bp-coins" id="bet-coins">💰 1000 코인</div>
+</div>
 <div class="result-overlay" id="result"><div class="result-box" id="rbox"></div></div>
+<div id="allin-overlay"><div class="allin-text">🔥 ALL IN 🔥</div></div>
+<div id="highlight-overlay"><div class="hl-text" id="hl-text"></div></div>
 </div>
 <script>
-let ws,myName='',isPlayer=false,tmr,pollId=null,tableId='mersoom',chatLoaded=false;
+let ws,myName='',isPlayer=false,tmr,pollId=null,tableId='mersoom',chatLoaded=false,specName='';
 
 function join(){myName=document.getElementById('inp-name').value.trim();if(!myName){alert('닉네임!');return}isPlayer=true;startGame()}
-function watch(){isPlayer=false;startGame()}
+function watch(){isPlayer=false;specName=document.getElementById('inp-name').value.trim()||'관전자'+Math.floor(Math.random()*999);startGame();fetchCoins()}
 
 async function startGame(){
 document.getElementById('lobby').style.display='none';
@@ -795,7 +918,9 @@ else if(d.type==='log'){addLog(d.msg)}
 else if(d.type==='your_turn'){showAct(d)}
 else if(d.type==='showdown'){}
 else if(d.type==='game_over'){showEnd(d)}
-else if(d.type==='chat'){addChat(d.name,d.msg)}}
+else if(d.type==='chat'){addChat(d.name,d.msg)}
+else if(d.type==='allin'){showAllin(d)}
+else if(d.type==='highlight'){showHighlight(d)}}
 
 function render(s){
 document.getElementById('hi').textContent=`핸드 #${s.hand}`;
@@ -829,6 +954,13 @@ if(to.to_call>0)oh+=` <span style="color:#aaa">(콜비용: ${to.to_call}pt, 칩:
 op.innerHTML=oh;op.style.display='block'}
 else{op.style.display='none'}
 if(isPlayer){const me=s.players.find(p=>p.name===myName);if(me)document.getElementById('mi').textContent=`내 칩: ${me.chips}pt`}
+// 관전자 베팅 패널
+if(!isPlayer&&s.running&&s.round==='preflop'){
+const bp=document.getElementById('bet-panel');bp.style.display='block';
+const sel=document.getElementById('bet-pick');const cur=sel.value;sel.innerHTML='';
+s.players.filter(p=>!p.out&&!p.folded).forEach(p=>{const o=document.createElement('option');o.value=p.name;o.textContent=`${p.emoji} ${p.name} (${p.chips}pt)`;sel.appendChild(o)});
+if(cur)sel.value=cur}
+else if(!isPlayer&&s.round!=='preflop'){/* 프리플랍 이후 베팅 잠금 */}
 }
 
 function mkCard(c,sm){const red=['♥','♦'].includes(c.suit);
@@ -892,6 +1024,32 @@ function sendChat(){const inp=document.getElementById('chat-inp');const msg=inp.
 if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'chat',name:myName||'관객',msg:msg}));
 else fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:myName||'관객',msg:msg,table_id:tableId})}).catch(()=>{})}
 
+function showAllin(d){
+const o=document.getElementById('allin-overlay');
+o.querySelector('.allin-text').textContent=`🔥 ${d.emoji} ${d.name} ALL IN ${d.amount}pt 🔥`;
+o.style.display='flex';o.style.animation='none';o.offsetHeight;o.style.animation='allinFlash 2s ease-out forwards';
+setTimeout(()=>{o.style.display='none'},2000)}
+
+function showHighlight(d){
+const o=document.getElementById('highlight-overlay');const t=document.getElementById('hl-text');
+const stars=d.rank>=9?'🎆🎆🎆':d.rank>=8?'🎇🎇':'✨';
+t.textContent=`${stars} ${d.emoji} ${d.player} — ${d.hand_name}! ${stars}`;
+o.style.display='flex';o.style.animation='allinFlash 3s ease-out forwards';
+setTimeout(()=>{o.style.display='none'},3000)}
+
+async function placeBet(){
+const pick=document.getElementById('bet-pick').value;
+const amount=parseInt(document.getElementById('bet-amount').value);
+if(!pick||!amount){alert('선택지와 금액을 입력하세요');return}
+try{const r=await fetch('/api/bet',{method:'POST',headers:{'Content-Type':'application/json'},
+body:JSON.stringify({name:specName,pick:pick,amount:amount,table_id:tableId})});
+const d=await r.json();if(d.error){addLog('❌ '+d.error)}
+else{addLog(`🎰 ${pick}에 ${amount}코인 베팅 완료!`);document.getElementById('bet-coins').textContent=`💰 ${d.coins} 코인`}}catch(e){addLog('❌ 베팅 실패')}}
+
+async function fetchCoins(){
+try{const r=await fetch(`/api/coins?name=${encodeURIComponent(specName)}`);
+const d=await r.json();document.getElementById('bet-coins').textContent=`💰 ${d.coins} 코인`}catch(e){}}
+
 document.getElementById('inp-name').addEventListener('keydown',e=>{if(e.key==='Enter')join()});
 document.getElementById('chat-inp').addEventListener('keydown',e=>{if(e.key==='Enter')sendChat()});
 </script>
@@ -900,6 +1058,7 @@ document.getElementById('chat-inp').addEventListener('keydown',e=>{if(e.key==='E
 
 # ══ Main ══
 async def main():
+    load_leaderboard()
     init_mersoom_table()
     server = await asyncio.start_server(handle_client, '0.0.0.0', PORT)
     print(f"😈 악몽의돌쇠 포커 v2.0", flush=True)
