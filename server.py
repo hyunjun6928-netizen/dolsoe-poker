@@ -497,6 +497,8 @@ async def handle_client(reader, writer):
             k, v = decoded.split(':', 1)
             headers[k.strip().lower()] = v.strip()
 
+    print(f"[REQ] {method} {path} upgrade={headers.get('upgrade','-')}", flush=True)
+
     # WebSocket 업그레이드
     if headers.get('upgrade', '').lower() == 'websocket':
         key = headers.get('sec-websocket-key', '')
@@ -791,23 +793,61 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 
 <script>
 const WS_PATH='/ws';
-let ws,myName='',isPlayer=false,tmr;
+let ws,myName='',isPlayer=false,tmr,pollId=null,tableId='';
 
 function join(){
 myName=document.getElementById('inp-name').value.trim();
 if(!myName){alert('닉네임!');return}
-isPlayer=true;go()}
-function watch(){isPlayer=false;go()}
+isPlayer=true;startGame()}
+function watch(){isPlayer=false;startGame()}
 
-function go(){
+async function startGame(){
 document.getElementById('lobby').style.display='none';
 document.getElementById('game').style.display='block';
+
+if(isPlayer){
+// API로 참가
+try{
+const r=await fetch('/api/join',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:myName,emoji:'🎮'})});
+const d=await r.json();
+if(d.error){addLog('❌ '+d.error);return}
+tableId=d.table_id;
+addLog('✅ 참가 완료: '+d.players.join(', '));
+}catch(e){addLog('❌ 참가 실패');}
+}
+
+// WebSocket 시도, 실패하면 polling
+tryWS();
+}
+
+function tryWS(){
 const proto=location.protocol==='https:'?'wss:':'ws:';
-const url=`${proto}//${location.host}${WS_PATH}?mode=${isPlayer?'play':'spectate'}&name=${encodeURIComponent(myName)}`;
+const url=`${proto}//${location.host}${WS_PATH}?mode=${isPlayer?'play':'spectate'}&name=${encodeURIComponent(myName)}&table_id=${tableId}`;
 ws=new WebSocket(url);
+let wsOk=false;
+ws.onopen=()=>{wsOk=true;addLog('🔌 실시간 연결됨');if(pollId){clearInterval(pollId);pollId=null}};
 ws.onmessage=e=>{const d=JSON.parse(e.data);handle(d)};
-ws.onclose=()=>addLog('⚡ 연결 끊김');
-ws.onerror=()=>addLog('❌ 연결 오류');}
+ws.onclose=()=>{if(!wsOk){addLog('📡 폴링 모드로 전환');startPolling()}else{addLog('⚡ 연결 끊김 — 재연결 시도');setTimeout(tryWS,3000)}};
+ws.onerror=()=>{};
+}
+
+function startPolling(){
+if(pollId)return;
+pollState();
+pollId=setInterval(pollState,2000);
+}
+
+async function pollState(){
+try{
+const p=isPlayer?`&player=${encodeURIComponent(myName)}`:'';
+const t=tableId?`table_id=${tableId}`:'';
+const r=await fetch(`/api/state?${t}${p}`);
+if(!r.ok)return;
+const d=await r.json();
+handle(d);
+if(d.turn_info)showAct(d.turn_info);
+}catch(e){}
+}
 
 function handle(d){
 switch(d.type){
@@ -861,7 +901,11 @@ else if(a.action==='check')b.innerHTML+=`<button class="bk" onclick="act('check'
 else if(a.action==='raise')b.innerHTML+=`<input type="range" id="raise-sl" min="${a.min}" max="${a.max}" value="${a.min}" step="10" oninput="document.getElementById('raise-val').value=this.value"><input type="number" id="raise-val" value="${a.min}" min="${a.min}" max="${a.max}"><button class="br" onclick="doRaise(${a.min},${a.max})">⬆️ 레이즈</button>`}
 startTimer(60)}
 
-function act(a,amt){ws.send(JSON.stringify({type:'action',action:a,amount:amt||0}));document.getElementById('actions').style.display='none';if(tmr)clearInterval(tmr)}
+function act(a,amt){
+document.getElementById('actions').style.display='none';if(tmr)clearInterval(tmr);
+if(ws&&ws.readyState===1){ws.send(JSON.stringify({type:'action',action:a,amount:amt||0}))}
+else{fetch('/api/action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:myName,action:a,amount:amt||0,table_id:tableId})}).catch(()=>{})}
+}
 function doRaise(mn,mx){let v=parseInt(document.getElementById('raise-val').value)||mn;v=Math.max(mn,Math.min(mx,v));act('raise',v)}
 function startTimer(s){if(tmr)clearInterval(tmr);const bar=document.getElementById('timer');let r=s*10,t=s*10;bar.style.width='100%';bar.style.background='#00ff88';
 tmr=setInterval(()=>{r--;const p=r/t*100;bar.style.width=p+'%';if(p<30)bar.style.background='#ff4444';else if(p<60)bar.style.background='#ffaa00';if(r<=0)clearInterval(tmr)},100)}
