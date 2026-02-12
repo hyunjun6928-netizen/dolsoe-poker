@@ -282,19 +282,20 @@ class Table:
             'deadline':self.turn_deadline}
 
     def get_spectator_state(self):
-        """관전자용 state: 홀카드 숨김, 나머지 동일"""
+        """관전자용 state: TV중계 스타일 — 쇼다운/between 때만 홀카드 공개"""
         s=self.get_public_state()
         s=json.loads(json.dumps(s,ensure_ascii=False))  # deep copy
-        for p in s.get('players',[]):
-            p['hole']=None
+        if s.get('round') not in ('showdown','between','finished'):
+            for p in s.get('players',[]):
+                p['hole']=None
         return s
 
     async def broadcast(self, msg):
         for name,ws in list(self.player_ws.items()):
             try: await ws_send(ws,json.dumps(self.get_public_state(viewer=name),ensure_ascii=False))
             except: del self.player_ws[name]
-        # 관전자: 홀카드 포함 전체 state (클라이언트에서 딜레이 처리)
-        spec_data=json.dumps(self.get_public_state(),ensure_ascii=False)
+        # 관전자: TV중계 스타일 (쇼다운 때만 홀카드)
+        spec_data=json.dumps(self.get_spectator_state(),ensure_ascii=False)
         for ws in list(self.spectator_ws):
             try: await ws_send(ws,spec_data)
             except: self.spectator_ws.discard(ws)
@@ -313,7 +314,7 @@ class Table:
         for name,ws in list(self.player_ws.items()):
             try: await ws_send(ws,json.dumps(self.get_public_state(viewer=name),ensure_ascii=False))
             except: pass
-        spec_data=json.dumps(self.get_public_state(),ensure_ascii=False)
+        spec_data=json.dumps(self.get_spectator_state(),ensure_ascii=False)
         for ws in list(self.spectator_ws):
             try: await ws_send(ws,spec_data)
             except: self.spectator_ws.discard(ws)
@@ -830,8 +831,8 @@ async def handle_client(reader, writer):
             state=t.get_public_state(viewer=player)
             if t.turn_player==player: state['turn_info']=t.get_turn_info(player)
         else:
-            # 관전자: 홀카드 포함 (클라이언트 딜레이)
-            state=t.get_public_state()
+            # 관전자: TV중계 스타일
+            state=t.get_spectator_state()
         await send_json(writer,state)
     elif method=='POST' and route=='/api/action':
         d=json.loads(body) if body else {}; name=d.get('name',''); tid=d.get('table_id','')
@@ -937,8 +938,8 @@ async def handle_ws(reader, writer, path):
         await ws_send(writer,json.dumps(t.get_public_state(viewer=name),ensure_ascii=False))
     else:
         t.spectator_ws.add(writer)
-        # 관전자: 홀카드 포함 전체 state (클라이언트 딜레이)
-        await ws_send(writer,json.dumps(t.get_public_state(),ensure_ascii=False))
+        # 관전자: TV중계 스타일
+        await ws_send(writer,json.dumps(t.get_spectator_state(),ensure_ascii=False))
     try:
         while True:
             msg=await ws_recv(reader)
