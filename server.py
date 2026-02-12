@@ -202,6 +202,7 @@ class Table:
         self.turn_player=None; self.turn_deadline=0
         self.pending_action=None; self.pending_data=None
         self.spectator_ws=set(); self.player_ws={}
+        self.poll_spectators={}  # name -> last_seen timestamp
         self.running=False; self.created=time.time()
         self._hand_seats=[]; self.history=[]  # 리플레이용
         self.accepting_players=True  # 중간참가 허용
@@ -258,7 +259,7 @@ class Table:
             'running':self.running,
             'commentary':self.last_commentary,
             'showdown_result':self.last_showdown,
-            'spectator_count':len(self.spectator_ws),
+            'spectator_count':len(self.spectator_ws)+len(self.poll_spectators),
             'seats_available':self.MAX_PLAYERS-len(self.seats),
             'table_info':{'sb':self.SB,'bb':self.BB,'timeout':self.TURN_TIMEOUT,
                 'delay':self.SPECTATOR_DELAY,'max_players':self.MAX_PLAYERS,
@@ -837,6 +838,10 @@ async def handle_client(reader, writer):
             if t.turn_player==player: state['turn_info']=t.get_turn_info(player)
         else:
             # 관전자: TV중계 스타일
+            spec_name=qs.get('spectator',['관전자'])[0]
+            t.poll_spectators[spec_name]=time.time()
+            # 10초 이상 안 온 폴링 관전자 제거
+            t.poll_spectators={k:v for k,v in t.poll_spectators.items() if time.time()-v<10}
             state=t.get_spectator_state()
         await send_json(writer,state)
     elif method=='POST' and route=='/api/action':
@@ -1327,7 +1332,7 @@ const roundNames={preflop:'프리플랍',flop:'플랍',turn:'턴',river:'리버'
 document.getElementById('ri').textContent=roundNames[s.round]||s.round||'대기중';
 // 해설 업데이트 (폴링 모드 대응)
 if(s.commentary&&s.commentary!==window._lastCommentary){window._lastCommentary=s.commentary;showCommentary(s.commentary)}
-if(isPlayer&&s.spectator_count!==undefined)document.getElementById('si').textContent=`👀 ${s.spectator_count}`;
+if(s.spectator_count!==undefined)document.getElementById('si').textContent=`👀 관전 ${s.spectator_count}명`;
 // 타임라인 업데이트
 const rounds=['preflop','flop','turn','river','showdown'];
 const ri=rounds.indexOf(s.round);
