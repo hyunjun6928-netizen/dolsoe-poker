@@ -168,7 +168,9 @@ class Table:
             p = {'name':s['name'],'emoji':s['emoji'],'chips':s['chips'],
                  'folded':s['folded'],'bet':s['bet'],'style':s['style'],
                  'has_cards':len(s['hole'])>0}
-            if viewer == s['name'] and s['hole']:
+            # 구경꾼(viewer=None): 전체 카드 공개 (TV중계)
+            # 플레이어(viewer=이름): 본인 카드만
+            if s['hole'] and (viewer is None or viewer == s['name']):
                 p['hole'] = [card_dict(c) for c in s['hole']]
             else:
                 p['hole'] = None
