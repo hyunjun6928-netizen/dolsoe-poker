@@ -234,8 +234,10 @@ class Table:
                'has_cards':len(s['hole'])>0,'out':s.get('out',False),
                'last_action':s.get('last_action'),
                'streak_badge':get_streak_badge(s['name'])}
-            # 플레이어: 본인 카드만 / 관전자(viewer=None): 전체 공개 (딜레이로 치팅 방지)
-            if s['hole'] and (viewer is None or viewer==s['name']):
+            # 플레이어: 본인 카드만 / 관전자: 쇼다운 전까지 비공개
+            if s['hole'] and viewer and viewer==s['name']:
+                p['hole']=[card_dict(c) for c in s['hole']]
+            elif s['hole'] and viewer is None and self.round=='showdown':
                 p['hole']=[card_dict(c) for c in s['hole']]
             else: p['hole']=None
             players.append(p)
