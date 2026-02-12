@@ -208,7 +208,7 @@ class Table:
         self.timeout_counts={}  # name -> consecutive timeouts
         self.highlights=[]  # 레어 핸드 하이라이트
         self.spectator_queue=[]  # (send_at, data_dict) 딜레이 중계 큐
-        self.SPECTATOR_DELAY=30  # 30초 딜레이
+        self.SPECTATOR_DELAY=10  # 10초 딜레이
         self._delay_task=None
 
     def add_player(self, name, emoji='🤖', is_bot=False, style='aggressive'):
@@ -1266,11 +1266,14 @@ let lastChatTs=0;
 let delayBuffer=[];
 let delayStarted=false;
 let firstState=true;
-const DELAY_SEC=30;
+const DELAY_SEC=10;
 
 function handle(d){
 // 플레이어는 딜레이 없이 즉시 처리
 if(isPlayer){handleNow(d);return}
+// 관전자: 해설/로그/리액션/올인/하이라이트/킬캠은 즉시 처리 (카드 정보 없음)
+const instantTypes=['commentary','log','reaction','allin','highlight','killcam','darkhorse','mvp','chat'];
+if(instantTypes.includes(d.type)){handleNow(d);return}
 // 관전자: 첫 state는 즉시 렌더링 (빈 화면 방지) — 단 홀카드 숨김
 if(firstState&&(d.type==='state'||d.players)){
 firstState=false;
