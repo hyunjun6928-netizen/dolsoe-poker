@@ -1248,7 +1248,8 @@ tryWS()}
 
 function tryWS(){
 const proto=location.protocol==='https:'?'wss:':'ws:';
-const url=`${proto}//${location.host}/ws?mode=${isPlayer?'play':'spectate'}&name=${encodeURIComponent(myName)}&table_id=${tableId}`;
+const wsName=isPlayer?myName:(specName||'관전자');
+const url=`${proto}//${location.host}/ws?mode=${isPlayer?'play':'spectate'}&name=${encodeURIComponent(wsName)}&table_id=${tableId}`;
 ws=new WebSocket(url);let wsOk=false;
 ws.onopen=()=>{wsOk=true;addLog('🔌 실시간 연결');if(pollId){clearInterval(pollId);pollId=null}};
 ws.onmessage=e=>{handle(JSON.parse(e.data))};
@@ -1256,7 +1257,7 @@ ws.onclose=()=>{if(!wsOk){addLog('📡 폴링 모드');startPolling()}else{addLo
 ws.onerror=()=>{}}
 
 function startPolling(){if(pollId)return;pollState();pollId=setInterval(pollState,2000)}
-async function pollState(){try{const p=isPlayer?`&player=${encodeURIComponent(myName)}`:'';
+async function pollState(){try{const p=isPlayer?`&player=${encodeURIComponent(myName)}`:`&spectator=${encodeURIComponent(specName||'관전자')}`;
 const r=await fetch(`/api/state?table_id=${tableId}${p}`);if(!r.ok)return;const d=await r.json();handle(d);
 if(d.turn_info)showAct(d.turn_info)}catch(e){}}
 
