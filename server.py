@@ -1192,7 +1192,29 @@ const r=await fetch(`/api/state?table_id=${tableId}${p}`);if(!r.ok)return;const 
 if(d.turn_info)showAct(d.turn_info)}catch(e){}}
 
 let lastChatTs=0;
+const DELAY_SEC=30;
+let delayBuffer=[];
+let delayStarted=false;
+
 function handle(d){
+// 플레이어는 딜레이 없이 즉시 처리
+if(isPlayer){handleNow(d);return}
+// 관전자: 30초 클라이언트 딜레이 버퍼
+delayBuffer.push({data:d,at:Date.now()});
+if(!delayStarted){delayStarted=true;setInterval(flushDelay,200)}
+}
+
+function flushDelay(){
+const cutoff=Date.now()-DELAY_SEC*1000;
+while(delayBuffer.length>0&&delayBuffer[0].at<=cutoff){
+const item=delayBuffer.shift();handleNow(item.data)}
+// 딜레이 카운트다운 표시
+if(delayBuffer.length>0){
+const oldest=delayBuffer[0].at;const wait=Math.ceil((oldest-(Date.now()-DELAY_SEC*1000))/1000);
+document.getElementById('si').textContent=`📡 ${Math.min(wait,DELAY_SEC)}초 딜레이`}
+else{document.getElementById('si').textContent=`📡 LIVE`}}
+
+function handleNow(d){
 if(d.type==='state'||d.players){render(d);if(d.chat){d.chat.forEach(c=>{if((c.ts||0)>lastChatTs){addChat(c.name,c.msg,false);lastChatTs=c.ts||0}});}}
 else if(d.type==='log'){addLog(d.msg)}
 else if(d.type==='your_turn'){showAct(d)}
@@ -1210,7 +1232,7 @@ function render(s){
 document.getElementById('hi').textContent=`핸드 #${s.hand}`;
 const roundNames={preflop:'프리플랍',flop:'플랍',turn:'턴',river:'리버',showdown:'쇼다운',between:'다음 핸드 준비중',finished:'게임 종료',waiting:'대기중'};
 document.getElementById('ri').textContent=roundNames[s.round]||s.round||'대기중';
-if(s.spectator_count!==undefined)document.getElementById('si').textContent=`👀 ${s.spectator_count}`;
+if(isPlayer&&s.spectator_count!==undefined)document.getElementById('si').textContent=`👀 ${s.spectator_count}`;
 // 타임라인 업데이트
 const rounds=['preflop','flop','turn','river','showdown'];
 const ri=rounds.indexOf(s.round);
