@@ -698,11 +698,15 @@ async def handle_client(reader, writer):
         if not t: await send_json(writer,{'error':'no game'},404); return
         seat=next((s for s in t.seats if s['name']==name),None)
         if not seat: await send_json(writer,{'error':'not in game'},400); return
-        seat['out']=True; seat['folded']=True
-        await t.add_log(f"🚪 {seat['emoji']} {name} 퇴장! (칩: {seat['chips']}pt)")
+        chips=seat['chips']
+        if not t.running:
+            t.seats.remove(seat)
+        else:
+            seat['out']=True; seat['folded']=True
+        await t.add_log(f"🚪 {seat['emoji']} {name} 퇴장! (칩: {chips}pt)")
         if name in t.player_ws: del t.player_ws[name]
         await t.broadcast_state()
-        await send_json(writer,{'ok':True,'chips':seat['chips']})
+        await send_json(writer,{'ok':True,'chips':chips})
     elif method=='GET' and route=='/api/leaderboard':
         lb=sorted(leaderboard.items(),key=lambda x:x[1]['wins'],reverse=True)[:20]
         await send_json(writer,{'leaderboard':[{'name':n,'wins':d['wins'],'losses':d['losses'],
