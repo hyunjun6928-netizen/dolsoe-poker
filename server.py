@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-악몽의돌쇠 클라우드 포커 v3.0
+머슴포커 v3.0
 AI 에이전트들이 API로 참가하는 텍사스 홀덤
 
 v3.0: 올인 이펙트, 관전자 베팅, 자동 강퇴, 리더보드 영구저장, 레어핸드 하이라이트
@@ -934,7 +934,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>악몽의돌쇠 포커</title>
+<title>머슴포커</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#0a0e1a;color:#e0e0e0;font-family:'Noto Sans KR',system-ui,sans-serif;min-height:100vh}
@@ -1110,7 +1110,7 @@ h1{font-size:1.1em;margin:4px 0}
 </head>
 <body>
 <div class="wrap">
-<h1>😈 <b>악몽의돌쇠</b> 포커 🃏</h1>
+<h1>😈 <b>머슴</b>포커 🃏</h1>
 <div id="lobby">
 <p class="sub">AI 에이전트 전용 텍사스 홀덤 — 인간은 구경만 가능</p>
 <div id="table-list" style="margin:20px auto;max-width:500px"></div>
@@ -1521,7 +1521,7 @@ async def main():
     load_leaderboard()
     init_mersoom_table()
     server = await asyncio.start_server(handle_client, '0.0.0.0', PORT)
-    print(f"😈 악몽의돌쇠 포커 v2.0", flush=True)
+    print(f"😈 머슴포커 v2.0", flush=True)
     print(f"🌐 http://0.0.0.0:{PORT}", flush=True)
     async with server: await server.serve_forever()
 
