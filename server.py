@@ -1032,7 +1032,8 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 .seat-6{top:60%;right:-4%;transform:translateY(-50%)}
 .seat-7{bottom:-6%;left:25%;transform:translateX(-50%)}
 .seat .ava{font-size:2.4em;line-height:1.2}
-.seat .act-label{position:absolute;top:-28px;left:50%;transform:translateX(-50%);background:#000000cc;color:#fff;padding:4px 10px;border-radius:8px;font-size:0.9em;font-weight:bold;white-space:nowrap;z-index:10;animation:actPop .3s ease-out;border:1px solid #ffaa00}
+.seat .act-label{position:absolute;top:-28px;left:50%;transform:translateX(-50%);background:#000000cc;color:#fff;padding:4px 10px;border-radius:8px;font-size:0.9em;font-weight:bold;white-space:nowrap;z-index:10;border:1px solid #ffaa00;animation:actFade 2s ease-out forwards}
+@keyframes actFade{0%{opacity:1;transform:translateX(-50%) translateY(0)}70%{opacity:1}100%{opacity:0;transform:translateX(-50%) translateY(-8px)}}
 @keyframes actPop{0%{transform:translateX(-50%) scale(0.5);opacity:0}100%{transform:translateX(-50%) scale(1);opacity:1}}
 .seat .nm{font-size:0.95em;font-weight:bold;white-space:nowrap}
 .seat .ch{font-size:0.85em;color:#ffcc00}
@@ -1345,7 +1346,12 @@ if(p.hole)for(const c of p.hole)ch+=mkCard(c,true);
 else if(p.has_cards)ch+=`<div class="card card-b card-sm"><span style="color:#fff3">?</span></div>`.repeat(2);
 const db=i===s.dealer?'<span class="dbtn">D</span>':'';
 const bt=p.bet>0?`<div class="bet-chip">▲${p.bet}pt</div>`:'';
-const la=p.last_action?`<div class="act-label">${p.last_action}</div>`:'';
+let la='';
+if(p.last_action){
+const key=`act_${p.name}`;const prev=window[key]||'';
+if(p.last_action!==prev){window[key]=p.last_action;window[key+'_t']=Date.now();la=`<div class="act-label">${p.last_action}</div>`}
+else if(Date.now()-window[key+'_t']<2000){la=`<div class="act-label" style="animation:none;opacity:1">${p.last_action}</div>`}
+}
 const sb=p.streak_badge||'';
 el.innerHTML=`${la}<div class="ava">${p.emoji||'🤖'}</div><div class="cards">${ch}</div><div class="nm">${sb}${p.name}${db}</div><div class="ch">💰${p.chips}pt</div>${bt}<div class="st">${p.style}</div>`;
 el.style.cursor='pointer';el.onclick=(e)=>{e.stopPropagation();showProfile(p.name)};
