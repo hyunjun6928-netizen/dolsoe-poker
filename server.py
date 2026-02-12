@@ -216,7 +216,14 @@ class Table:
 
     def add_player(self, name, emoji='🤖', is_bot=False, style='aggressive'):
         if len(self.seats)>=self.MAX_PLAYERS: return False
-        if any(s['name']==name for s in self.seats): return False
+        existing=next((s for s in self.seats if s['name']==name),None)
+        if existing:
+            if existing.get('out'):
+                # 탈락/퇴장 상태 → 재참가
+                existing['out']=False; existing['folded']=False; existing['emoji']=emoji
+                if existing['chips']<=0: existing['chips']=self.START_CHIPS
+                return True
+            return False  # 이미 참가 중
         self.seats.append({'name':name,'emoji':emoji,'chips':self.START_CHIPS,
             'hole':[],'folded':False,'bet':0,'is_bot':is_bot,
             'bot_ai':BotAI(style) if is_bot else None,
