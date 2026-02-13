@@ -1668,7 +1668,8 @@ HTML_PAGE = r"""<!DOCTYPE html>
 <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:linear-gradient(135deg,#1a0a2e 0%,#0d0520 100%);color:#e0e0e0;font-family:'Jua','Noto Sans KR',system-ui,sans-serif;min-height:100vh}
+body{background:linear-gradient(135deg,#1a0a2e 0%,#0d0520 100%);color:#e0e0e0;font-family:'Noto Sans KR','Segoe UI',system-ui,sans-serif;min-height:100vh}
+h1,.btn-play,.btn-watch,.pot-badge,.seat .nm,.act-label,.tab-btns button,#new-btn,.tbl-card .tbl-name,#commentary,.bp-title,.vp-title{font-family:'Jua','Noto Sans KR',system-ui,sans-serif}
 .wrap{max-width:1400px;margin:0 auto;padding:10px}
 h1{text-align:center;font-size:2em;margin:8px 0;-webkit-text-stroke:2px #000;background:linear-gradient(90deg,#ff6b6b,#ffd93d,#6bcb77);-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-shadow:3px 3px 0 #000,-1px -1px 0 #000;filter:drop-shadow(3px 3px 0 #000)}
 h1 b{-webkit-text-fill-color:#ffd93d}
@@ -1782,7 +1783,7 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 #timer{height:5px;background:#6bcb77;transition:width .1s linear;margin:6px auto 0;max-width:300px;border-radius:3px;border:1px solid #000}
 #commentary{background:#1e0f35;border:2.5px solid #000;border-radius:14px;padding:10px 16px;margin:0 0 8px;text-align:center;font-size:1em;color:#ffd93d;font-weight:bold;animation:comFade .5s ease-out;min-height:24px;box-shadow:4px 4px 0 #000;text-shadow:1px 1px 0 #000}
 @keyframes comFade{0%{opacity:0;transform:translateY(-8px)}100%{opacity:1;transform:translateY(0)}}
-#action-feed{background:#1a1030;border:2px solid #000;border-radius:14px;padding:10px;max-height:300px;overflow-y:auto;font-size:0.82em;font-family:'Jua','Fira Code',monospace,sans-serif;box-shadow:4px 4px 0 #000}
+#action-feed{background:#1a1030;border:2px solid #000;border-radius:14px;padding:10px;max-height:300px;overflow-y:auto;font-size:0.82em;font-family:'Fira Code',monospace,sans-serif;box-shadow:4px 4px 0 #000}
 #action-feed .af-item{padding:4px 6px;border-bottom:1px solid #2a1845;opacity:0;animation:fadeIn .3s forwards}
 #action-feed .af-round{color:#ffd93d;font-weight:bold;padding:6px 0 2px;font-size:0.9em;text-shadow:1px 1px 0 #000}
 #action-feed .af-action{color:#ccc}
@@ -1799,7 +1800,7 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 .tab-btns button{background:#1e0f35;color:#b8a9d4;border:2px solid #000;padding:4px 12px;border-radius:10px;cursor:pointer;font-size:0.75em;box-shadow:2px 2px 0 #000;transition:all .1s}
 .tab-btns button:hover{transform:translate(1px,1px);box-shadow:1px 1px 0 #000}
 .tab-btns button.active{color:#ffd93d;border-color:#000;background:#2a1845}
-#log{background:#1a1030;border:2px solid #000;border-radius:14px;padding:10px;height:170px;overflow-y:auto;font-size:0.78em;font-family:'Jua','Fira Code',monospace,sans-serif;flex:1;box-shadow:4px 4px 0 #000}
+#log{background:#1a1030;border:2px solid #000;border-radius:14px;padding:10px;height:170px;overflow-y:auto;font-size:0.78em;font-family:'Fira Code',monospace,sans-serif;flex:1;box-shadow:4px 4px 0 #000}
 #log div{padding:2px 0;border-bottom:1px solid #2a1845;opacity:0;animation:fadeIn .3s forwards}
 #chatbox{background:#1a1030;border:2px solid #000;border-radius:14px;padding:12px;height:300px;width:350px;display:flex;flex-direction:column;box-shadow:4px 4px 0 #000}
 #chatmsgs{flex:1;overflow-y:auto;font-size:0.85em;margin-bottom:5px;line-height:1.5}
