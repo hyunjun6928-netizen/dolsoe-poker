@@ -271,6 +271,8 @@ class Table:
         self.player_stats={}  # name -> {folds,calls,raises,checks,allins,bluffs,wins,hands,total_bet,total_won,biggest_pot,showdowns}
         # 리플레이 하이라이트 (빅팟/올인/레어핸드)
         self.highlight_replays=[]  # [{hand,type,players,pot,community,winner,hand_name,actions,ts}]
+        # 라이벌 시스템: {(nameA,nameB): {'a_wins':N, 'b_wins':N}} (nameA < nameB 정렬)
+        self.rivalry={}
 
     def _init_stats(self, name):
         if name not in self.player_stats:
@@ -305,7 +307,17 @@ class Table:
             'biggest_pot':s['biggest_pot'],'avg_bet':avg_bet,
             'showdowns':s['showdowns'],'tilt':tilt,'streak':streak,
             'total_won':s['total_won'],
-            'meta':seat.get('meta',{'version':'','strategy':'','repo':''}) if seat else {'version':'','strategy':'','repo':''}}
+            'meta':seat.get('meta',{'version':'','strategy':'','repo':''}) if seat else {'version':'','strategy':'','repo':''},
+            'matchups':self._get_matchups(name)}
+
+    def _get_matchups(self, name):
+        """상대별 전적 반환"""
+        result=[]
+        for (a,b),rec in self.rivalry.items():
+            if a==name: result.append({'opponent':b,'wins':rec['a_wins'],'losses':rec['b_wins']})
+            elif b==name: result.append({'opponent':a,'wins':rec['b_wins'],'losses':rec['a_wins']})
+        result.sort(key=lambda x:x['wins']+x['losses'],reverse=True)
+        return result
 
     def _save_highlight(self, record, hl_type, hand_name_str=''):
         """하이라이트 저장"""
@@ -350,8 +362,8 @@ class Table:
             'hole':[],'folded':False,'bet':0,'is_bot':is_bot,
             'bot_ai':BotAI(style) if is_bot else None,
             'style':style if is_bot else 'player','out':False,
-            'meta':{'version':'','strategy':'','repo':''},
-            'last_note':'','last_reasoning':''})
+            'meta':{'version':'','strategy':'','repo':'','bio':'','death_quote':'','win_quote':'','lose_quote':''},
+            'last_note':'','last_reasoning':'','last_mood':''})
         return True
 
     def add_chat(self, name, msg):
@@ -371,7 +383,8 @@ class Table:
                'latency_ms':s.get('latency_ms'),
                'timeout_count':self.timeout_counts.get(s['name'],0),
                'meta':s.get('meta',{'version':'','strategy':'','repo':''}),
-               'last_note':s.get('last_note',''),'last_reasoning':s.get('last_reasoning','')}
+               'last_note':s.get('last_note',''),'last_reasoning':s.get('last_reasoning',''),
+               'last_mood':s.get('last_mood','')}
             # 플레이어: 본인 카드만 / 관전자(viewer=None): 전체 공개 (딜레이로 치팅 방지)
             if s['hole'] and (viewer is None or viewer==s['name']):
                 p['hole']=[card_dict(c) for c in s['hole']]
@@ -442,6 +455,15 @@ class Table:
                 p['hole']=None
             elif p.get('folded') or p.get('out'):
                 p['hole']=None
+        # 라이벌 정보 (3전 이상인 쌍만, alive 플레이어 간)
+        alive_names={p['name'] for p in s.get('players',[]) if not p.get('out')}
+        rivalries=[]
+        for (a,b),rec in self.rivalry.items():
+            if a in alive_names and b in alive_names:
+                total=rec['a_wins']+rec['b_wins']
+                if total>=3:
+                    rivalries.append({'player_a':a,'player_b':b,'a_wins':rec['a_wins'],'b_wins':rec['b_wins']})
+        s['rivalries']=rivalries
         return s
 
     async def broadcast(self, msg):
@@ -553,8 +575,9 @@ class Table:
                     killer_seat=next((x for x in self.seats if x['name']==killer),None)
                     killer_emoji=killer_seat['emoji'] if killer_seat else '💀'
                     await self.add_log(f"☠️ {s['emoji']} {s['name']} 파산!")
+                    death_q=s.get('meta',{}).get('death_quote','')
                     await self.broadcast({'type':'killcam','victim':s['name'],'victim_emoji':s['emoji'],
-                        'killer':killer,'killer_emoji':killer_emoji})
+                        'killer':killer,'killer_emoji':killer_emoji,'death_quote':death_q})
                     update_leaderboard(s['name'], False, 0)
 
             # 파산한 실제 에이전트 자동 퇴장 (자리 비우기)
@@ -881,8 +904,17 @@ class Table:
             # 빅팟 하이라이트 (200pt 이상)
             if self.pot>=200: self._save_highlight(record,'bigpot')
             update_leaderboard(w['name'], True, self.pot, self.pot)
+            # win_quote for fold win
+            win_q=w.get('meta',{}).get('win_quote','')
+            if win_q: await self.add_log(f"💬 {w['emoji']} {w['name']}: \"{win_q}\"")
             for s in self._hand_seats:
-                if s!=w: update_leaderboard(s['name'], False, 0)
+                if s!=w:
+                    update_leaderboard(s['name'], False, 0)
+                    # 라이벌 업데이트
+                    pair=tuple(sorted([w['name'],s['name']]))
+                    if pair not in self.rivalry: self.rivalry[pair]={'a_wins':0,'b_wins':0}
+                    if w['name']==pair[0]: self.rivalry[pair]['a_wins']+=1
+                    else: self.rivalry[pair]['b_wins']+=1
         else:
             scores=[]
             for s in alive:
@@ -898,7 +930,14 @@ class Table:
                 mark=" 👑" if s==w else ""
                 await self.add_log(f"🃏 {s['emoji']}{s['name']}: {card_str(s['hole'][0])} {card_str(s['hole'][1])} → {hn}{mark}")
             await self.add_log(f"🏆 {w['emoji']} {w['name']} +{self.pot}pt ({scores[0][2]})")
-            await self.broadcast_commentary(f"🏆 {w['name']} 승리! {scores[0][2]}로 +{self.pot}pt 획득!")
+            win_q=w.get('meta',{}).get('win_quote','')
+            commentary_extra=f' 💬 "{win_q}"' if win_q else ''
+            await self.broadcast_commentary(f"🏆 {w['name']} 승리! {scores[0][2]}로 +{self.pot}pt 획득!{commentary_extra}")
+            # 패자 lose_quote 로그
+            for s_item,_,_ in scores:
+                if s_item!=w:
+                    lq=s_item.get('meta',{}).get('lose_quote','')
+                    if lq: await self.add_log(f"💬 {s_item['emoji']} {s_item['name']}: \"{lq}\"")
             # 프로필 통계
             self._init_stats(w['name'])
             self.player_stats[w['name']]['wins']+=1
@@ -926,7 +965,13 @@ class Table:
             record['winner']=w['name']; record['pot']=self.pot
             update_leaderboard(w['name'], True, self.pot, self.pot)
             for s,_,_ in scores:
-                if s!=w: update_leaderboard(s['name'], False, 0)
+                if s!=w:
+                    update_leaderboard(s['name'], False, 0)
+                    # 라이벌 업데이트
+                    pair=tuple(sorted([w['name'],s['name']]))
+                    if pair not in self.rivalry: self.rivalry[pair]={'a_wins':0,'b_wins':0}
+                    if w['name']==pair[0]: self.rivalry[pair]['a_wins']+=1
+                    else: self.rivalry[pair]['b_wins']+=1
 
         # 관전자 베팅 정산
         if record.get('winner'):
@@ -1115,6 +1160,10 @@ async def handle_client(reader, writer):
         meta_version=sanitize_name(d.get('version',''))[:20]
         meta_strategy=sanitize_msg(d.get('strategy',''),30)
         meta_repo=sanitize_msg(d.get('repo',''),100)
+        meta_bio=sanitize_msg(d.get('bio',''),50)
+        meta_death_quote=sanitize_msg(d.get('death_quote',''),50)
+        meta_win_quote=sanitize_msg(d.get('win_quote',''),50)
+        meta_lose_quote=sanitize_msg(d.get('lose_quote',''),50)
         if not name or len(name)<1: await send_json(writer,{'ok':False,'code':'INVALID_INPUT','message':'name 1~20자'},400); return
         t=find_table(tid)
         if not t: t=get_or_create_table(tid)
@@ -1143,11 +1192,11 @@ async def handle_client(reader, writer):
         # 메타데이터 저장
         joined_seat=next((s for s in t.seats if s['name']==name),None)
         if joined_seat:
-            joined_seat['meta']={'version':meta_version,'strategy':meta_strategy,'repo':meta_repo}
+            joined_seat['meta']={'version':meta_version,'strategy':meta_strategy,'repo':meta_repo,'bio':meta_bio,'death_quote':meta_death_quote,'win_quote':meta_win_quote,'lose_quote':meta_lose_quote}
         # 리더보드에도 메타 저장
         if name not in leaderboard:
             leaderboard[name]={'wins':0,'losses':0,'chips_won':0,'hands':0,'biggest_pot':0,'streak':0}
-        leaderboard[name]['meta']={'version':meta_version,'strategy':meta_strategy,'repo':meta_repo}
+        leaderboard[name]['meta']={'version':meta_version,'strategy':meta_strategy,'repo':meta_repo,'bio':meta_bio,'death_quote':meta_death_quote,'win_quote':meta_win_quote,'lose_quote':meta_lose_quote}
         # NPC→에이전트 전환 시점에만 전원 칩 리셋 (정확히 2명이 될 때만)
         if real_count==2:
             for s in t.seats:
@@ -1192,6 +1241,12 @@ async def handle_client(reader, writer):
             await send_json(writer,{'ok':False,'code':'UNAUTHORIZED','message':'invalid token'},401); return
         if t.turn_player!=name:
             await send_json(writer,{'ok':False,'code':'NOT_YOUR_TURN','message':'not your turn','current_turn':t.turn_player},400); return
+        # mood 필드 처리
+        mood=d.get('mood','')
+        if mood:
+            mood=mood[:2]
+            seat=next((s for s in t.seats if s['name']==name),None)
+            if seat: seat['last_mood']=mood
         result=t.handle_api_action(name,d)
         if result=='OK': await send_json(writer,{'ok':True})
         elif result=='TURN_MISMATCH': await send_json(writer,{'ok':False,'code':'TURN_MISMATCH','message':'stale turn_seq'},409)
@@ -1675,6 +1730,29 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 .seat.out .nm{text-decoration:line-through;color:#ff4444}
 .seat.out::after{content:'💀 탈락';position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:0.6em;color:#ff4444;background:#000000cc;padding:1px 6px;border-radius:4px;white-space:nowrap}
 .seat.is-turn .nm{color:#00ff88;text-shadow:0 0 12px #00ff8866;animation:pulse 1s infinite}
+.seat.is-turn{animation:seatBounce 1.5s ease-in-out infinite}
+.seat.is-turn .ava{text-shadow:0 0 16px #00ff88,0 0 32px #00ff8844}
+@keyframes seatBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+.seat-0.is-turn{animation:seatBounce0 1.5s ease-in-out infinite}@keyframes seatBounce0{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(-3px)}}
+.seat-1.is-turn,.seat-2.is-turn,.seat-5.is-turn,.seat-6.is-turn{animation:seatBounceY 1.5s ease-in-out infinite}@keyframes seatBounceY{0%,100%{transform:translateY(-50%)}50%{transform:translateY(calc(-50% - 3px))}}
+.seat-3.is-turn,.seat-4.is-turn,.seat-7.is-turn{animation:seatBounce0 1.5s ease-in-out infinite}
+.thinking{font-size:0.7em;color:#88ccff;animation:thinkDots 1.5s steps(4,end) infinite;overflow:hidden;white-space:nowrap;width:3.5em;text-align:center}
+@keyframes thinkDots{0%{width:0.5em}33%{width:1.5em}66%{width:2.5em}100%{width:3.5em}}
+.seat.allin-glow .ava{text-shadow:0 0 16px #ff4444,0 0 32px #ff000066;animation:shake 0.4s ease-in-out infinite}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-2px)}75%{transform:translateX(2px)}}
+.seat.out{opacity:0.2;filter:grayscale(1);transform:scale(0.95);transition:all 1s ease-out}
+.card-flip{perspective:600px}.card-flip .card-inner{animation:cardFlip 0.6s ease-out forwards}
+@keyframes cardFlip{0%{transform:rotateY(180deg)}100%{transform:rotateY(0deg)}}
+.card.flip-anim{animation:cardFlipSimple 0.6s ease-out forwards;backface-visibility:hidden}
+@keyframes cardFlipSimple{0%{transform:rotateY(180deg);opacity:0.5}50%{transform:rotateY(90deg);opacity:0.8}100%{transform:rotateY(0deg);opacity:1}}
+.felt.warm{box-shadow:inset 0 0 80px #00000088,0 8px 40px #000000aa,0 0 30px #ffd70033}
+.felt.hot{box-shadow:inset 0 0 80px #00000088,0 8px 40px #000000aa,0 0 50px #ff880055,0 0 100px #ff660033}
+.felt.fire{animation:fireGlow 1.5s ease-in-out infinite}
+@keyframes fireGlow{0%,100%{box-shadow:inset 0 0 80px #00000088,0 8px 40px #000000aa,0 0 60px #ff000055,0 0 120px #ff440044}50%{box-shadow:inset 0 0 80px #00000088,0 8px 40px #000000aa,0 0 80px #ff000077,0 0 160px #ff440066}}
+.ava-ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-60%);width:3em;height:3em;border-radius:50%;z-index:-1;pointer-events:none}
+@keyframes confettiFall{0%{transform:translateY(-10vh) rotate(0deg)}100%{transform:translateY(110vh) rotate(720deg)}}
+@keyframes confettiSway{0%,100%{margin-left:0}50%{margin-left:30px}}
+.confetti{position:fixed;top:-10px;width:10px;height:10px;z-index:9999;pointer-events:none;animation:confettiFall 3s linear forwards,confettiSway 1.5s ease-in-out infinite;opacity:0.9;border-radius:2px}
 .dbtn{background:#ffcc00;color:#000;font-size:0.55em;padding:1px 5px;border-radius:8px;font-weight:bold;margin-left:3px}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.6}}
 #actions{display:none;text-align:center;padding:12px;background:#111;border-radius:12px;margin:8px 0;border:1px solid #222}
@@ -1739,6 +1817,8 @@ h1{font-size:1.1em;margin:4px 0}
 .seat .ch{font-size:0.6em}
 .seat .st{display:none}
 .seat .bet-chip{font-size:0.6em}
+.ava-ring{width:2em;height:2em}
+.confetti{width:7px;height:7px}
 .bottom-panel{flex-direction:column}
 #log,#replay-panel{height:120px}
 #chatbox{width:100%;height:200px}
@@ -1983,7 +2063,7 @@ else{const prev=window._prevPlayers;curNames.forEach(n=>{if(!prev.has(n))sfx('jo
 // 핸드/라운드 변화 사운드
 if(s.hand!==window._sndHand){window._sndHand=s.hand;if(s.hand>1)sfx('newhand')}
 if(s.round!==window._sndRound){
-if(s.round==='showdown'||s.round==='between'&&s.showdown_result)sfx('win');
+if(s.round==='showdown'||s.round==='between'&&s.showdown_result){sfx('win');if(typeof showConfetti==='function')showConfetti()}
 window._sndRound=s.round}
 if(s.spectator_count!==undefined)document.getElementById('si').textContent=`👀 관전 ${s.spectator_count}명`;
 // 타임라인 업데이트
@@ -2039,11 +2119,17 @@ chip.style.setProperty('--dx',dx+'px');chip.style.setProperty('--dy',dy+'px');
 felt.appendChild(chip);setTimeout(()=>chip.remove(),900);sfx('bet')}}
 window._prevBets[p.name]=p.bet});
 if(s.round==='between'||s.round==='waiting')window._prevBets={};
-const f=document.getElementById('felt');f.querySelectorAll('.seat').forEach(e=>e.remove());
+const f=document.getElementById('felt');
+// pot glow
+f.classList.remove('warm','hot','fire');
+if(s.pot>500)f.classList.add('fire');else if(s.pot>200)f.classList.add('hot');else if(s.pot>=50)f.classList.add('warm');
+f.querySelectorAll('.seat').forEach(e=>e.remove());
 s.players.forEach((p,i)=>{const el=document.createElement('div');
 let cls=`seat seat-${i}`;if(p.folded)cls+=' fold';if(p.out)cls+=' out';if(s.turn===p.name)cls+=' is-turn';
+if(p.last_action&&p.last_action.includes('ALL IN'))cls+=' allin-glow';
 el.className=cls;let ch='';
-if(p.hole)for(const c of p.hole)ch+=mkCard(c,true);
+const isShowdown=s.round==='showdown'||s.round==='between';
+if(p.hole)for(const c of p.hole)ch+=mkCard(c,true,isShowdown);
 else if(p.has_cards&&!p.out)ch+=`<div class="card card-b card-sm"><span style="color:#fff3">?</span></div>`.repeat(2);
 const db=i===s.dealer?'<span class="dbtn">D</span>':'';
 const bt=p.bet>0?`<div class="bet-chip">🪙${p.bet}pt</div>`:'';
@@ -2066,9 +2152,15 @@ bubble=`<div class="thought-bubble" style="animation:none;opacity:0.8">💭 ${es
 const sb=p.streak_badge||'';
 const health=p.timeout_count>=2?'🔴':p.timeout_count>=1?'🟡':'🟢';
 const latTag=p.latency_ms!=null?(p.latency_ms<0?'<span style="color:#ff4444;font-size:0.7em">⏰ timeout</span>':`<span style="color:#888;font-size:0.7em">⚡${p.latency_ms}ms</span>`):'';
-const wpBar=p.win_pct!=null&&!p.folded&&!p.out?`<div style="margin-top:2px;height:4px;background:#333;border-radius:2px;overflow:hidden"><div style="width:${p.win_pct}%;height:100%;background:${p.win_pct>50?'#44ff88':p.win_pct>25?'#ffaa00':'#ff4444'};transition:width .5s"></div></div><div style="font-size:0.65em;color:${p.win_pct>50?'#44ff88':p.win_pct>25?'#ffaa00':'#ff4444'};text-align:center">${p.win_pct}%</div>`:'';
+/* win_pct bar replaced by ava-ring */
 const metaTag=(p.meta&&(p.meta.version||p.meta.strategy))?`<div style="font-size:0.6em;color:#888;margin-top:1px">${esc(p.meta.version||'')}${p.meta.version&&p.meta.strategy?' · ':''}${esc(p.meta.strategy||'')}</div>`:'';
-el.innerHTML=`${la}${bubble}<div class="ava">${esc(p.emoji||'🤖')}</div><div class="cards">${ch}</div><div class="nm">${health} ${esc(sb)}${esc(p.name)}${db}</div>${metaTag}<div class="ch">💰${p.chips}pt ${latTag}</div>${wpBar}${bt}<div class="st">${esc(p.style)}</div>`;
+const thinkDiv=s.turn===p.name?'<div class="thinking">💭...</div>':'';
+const ringColor=p.win_pct!=null&&!p.folded&&!p.out?(p.win_pct>50?'#44ff88':p.win_pct>25?'#ffaa00':'#ff4444'):'transparent';
+const ringPct=p.win_pct!=null&&!p.folded&&!p.out?p.win_pct:0;
+const avaRing=ringPct>0?`<div class="ava-ring" style="background:conic-gradient(${ringColor} ${ringPct*3.6}deg, #333 ${ringPct*3.6}deg)"></div>`:'';
+const wpRing=ringPct>0?`<div style="font-size:0.65em;color:${ringColor};text-align:center">${p.win_pct}%</div>`:'';
+const moodTag=p.last_mood?`<span style="position:absolute;top:-8px;right:-8px;font-size:0.8em">${esc(p.last_mood)}</span>`:'';
+el.innerHTML=`${la}${bubble}<div style="position:relative;display:inline-block">${avaRing}<div class="ava">${esc(p.emoji||'🤖')}</div>${moodTag}</div>${thinkDiv}<div class="cards">${ch}</div><div class="nm">${health} ${esc(sb)}${esc(p.name)}${db}</div>${metaTag}<div class="ch">💰${p.chips}pt ${latTag}</div>${wpRing}${bt}<div class="st">${esc(p.style)}</div>`;
 el.style.cursor='pointer';el.onclick=(e)=>{e.stopPropagation();showProfile(p.name)};
 f.appendChild(el)});
 if(s.turn){document.getElementById('turnb').style.display='block';document.getElementById('turnb').textContent=`🎯 ${s.turn}의 차례`}
@@ -2107,8 +2199,17 @@ if(m.includes('━━━')||m.includes('──')||m.includes('🏆')||m.includes
 if(s.log.length>0)window._lastLogMsg=s.log[s.log.length-1]}
 }
 
-function mkCard(c,sm){const red=['♥','♦'].includes(c.suit);
-return `<div class="card card-f${sm?' card-sm':''} ${red?'red':'black'}"><span class="r">${c.rank}</span><span class="s">${c.suit}</span></div>`}
+function mkCard(c,sm,flip){const red=['♥','♦'].includes(c.suit);
+const flipCls=flip?' flip-anim':'';
+return `<div class="card card-f${sm?' card-sm':''}${flipCls} ${red?'red':'black'}"><span class="r">${c.rank}</span><span class="s">${c.suit}</span></div>`}
+
+function showConfetti(){
+const colors=['#ffd700','#ff4444','#4488ff','#44cc44','#aa44ff'];
+for(let i=0;i<20;i++){const c=document.createElement('div');c.className='confetti';
+c.style.left=Math.random()*100+'vw';c.style.background=colors[Math.floor(Math.random()*colors.length)];
+c.style.animationDuration=(2.5+Math.random()*1.5)+'s';c.style.animationDelay=(Math.random()*0.5)+'s';
+c.style.width=(6+Math.random()*8)+'px';c.style.height=(6+Math.random()*8)+'px';
+document.body.appendChild(c);setTimeout(()=>c.remove(),4000)}}
 
 function showAct(d){const p=document.getElementById('actions');p.style.display='block';
 const b=document.getElementById('actbtns');b.innerHTML='';
@@ -2260,7 +2361,10 @@ const streakTag=p.streak>=3?`<div style="color:#44ff88">🔥 ${p.streak}연승 �
 const agrBar=`<div style="margin:4px 0"><span style="color:#888;font-size:0.8em">공격성</span><div style="height:6px;background:#333;border-radius:3px;overflow:hidden;margin-top:2px"><div style="width:${p.aggression}%;height:100%;background:${p.aggression>50?'#ff4444':p.aggression>25?'#ffaa00':'#4488ff'};transition:width .5s"></div></div></div>`;
 const vpipBar=`<div style="margin:4px 0"><span style="color:#888;font-size:0.8em">팟 참여율</span><div style="height:6px;background:#333;border-radius:3px;overflow:hidden;margin-top:2px"><div style="width:${p.vpip}%;height:100%;background:#44ff88;transition:width .5s"></div></div></div>`;
 const metaHtml=p.meta&&(p.meta.version||p.meta.strategy||p.meta.repo)?`<div class="pp-stat" style="margin-top:6px;border-top:1px solid #333;padding-top:6px">${p.meta.version?'🏷️ v'+esc(p.meta.version):''}${p.meta.strategy?' · 전략: '+esc(p.meta.strategy):''}${p.meta.repo?'<br>📦 <a href="'+esc(p.meta.repo)+'" target="_blank" style="color:#4488ff">'+esc(p.meta.repo)+'</a>':''}</div>`:'';
-pp.innerHTML=`<h3>${esc(p.name)}</h3><div style="font-size:1.2em;margin:4px 0">${p.type}</div>${tiltTag}${streakTag}<div class="pp-stat">📊 승률: ${p.win_rate}% (${p.hands}핸드)</div>${agrBar}${vpipBar}<div class="pp-stat">🎯 폴드율: ${p.fold_rate}% | 블러핑: ${p.bluff_rate}%</div><div class="pp-stat">💣 올인: ${p.allins}회 | 쇼다운: ${p.showdowns}회</div><div class="pp-stat">💰 총 획득: ${p.total_won}pt | 최대팟: ${p.biggest_pot}pt</div><div class="pp-stat">💵 핸드당 평균 베팅: ${p.avg_bet}pt</div>${metaHtml}`}
+const bioHtml=p.meta&&p.meta.bio?`<div class="pp-stat" style="color:#aaddff;font-style:italic;margin:4px 0">📝 ${esc(p.meta.bio)}</div>`:'';
+let matchupHtml='';
+if(p.matchups&&p.matchups.length>0){matchupHtml='<div class="pp-stat" style="margin-top:6px;border-top:1px solid #333;padding-top:6px"><b>⚔️ vs 전적</b>';p.matchups.forEach(m=>{matchupHtml+=`<div style="font-size:0.85em;margin:2px 0">vs ${esc(m.opponent)}: <span style="color:#44ff88">${m.wins}승</span> / <span style="color:#ff4444">${m.losses}패</span></div>`});matchupHtml+='</div>'}
+pp.innerHTML=`<h3>${esc(p.name)}</h3><div style="font-size:1.2em;margin:4px 0">${p.type}</div>${bioHtml}${tiltTag}${streakTag}<div class="pp-stat">📊 승률: ${p.win_rate}% (${p.hands}핸드)</div>${agrBar}${vpipBar}<div class="pp-stat">🎯 폴드율: ${p.fold_rate}% | 블러핑: ${p.bluff_rate}%</div><div class="pp-stat">💣 올인: ${p.allins}회 | 쇼다운: ${p.showdowns}회</div><div class="pp-stat">💰 총 획득: ${p.total_won}pt | 최대팟: ${p.biggest_pot}pt</div><div class="pp-stat">💵 핸드당 평균 베팅: ${p.avg_bet}pt</div>${metaHtml}${matchupHtml}`}
 else{pp.innerHTML=`<h3>${esc(name)}</h3><div class="pp-stat" style="color:#888">아직 기록 없음</div>`}
 document.getElementById('profile-backdrop').style.display='block';
 document.getElementById('profile-popup').style.display='block'}catch(e){}}
@@ -2286,18 +2390,19 @@ function showShowdown(d){
 const o=document.getElementById('result');o.style.display='flex';const b=document.getElementById('rbox');
 let h='<h2>🃏 쇼다운!</h2>';
 d.players.forEach(p=>{
-const cards=p.hole.map(c=>`${c.rank}${c.suit}`).join(' ');
+const cards=p.hole.map(c=>mkCard(c,true,true)).join(' ');
 const w=p.winner?'style="color:#ffaa00;font-weight:bold"':'style="color:#888"';
 h+=`<div ${w}>${p.emoji} ${p.name}: ${cards} → ${p.hand}${p.winner?' 👑':''}</div>`});
 h+=`<div style="color:#44ff44;margin-top:8px;font-size:1.2em">💰 POT: ${d.pot}pt</div>`;
 h+=`<br><button onclick="document.getElementById('result').style.display='none'" style="padding:8px 24px;border:none;border-radius:8px;background:#ffaa00;color:#000;font-weight:bold;cursor:pointer">닫기</button>`;
-b.innerHTML=h;sfx('showdown');setTimeout(()=>{o.style.display='none'},5000)}
+b.innerHTML=h;sfx('showdown');showConfetti();setTimeout(()=>{o.style.display='none'},5000)}
 
 // 킬캠
 function showKillcam(d){
 const o=document.getElementById('killcam-overlay');
 o.querySelector('.kc-vs').textContent=`${d.killer_emoji} ${d.killer}`;
-o.querySelector('.kc-msg').textContent=`☠️ ${d.victim_emoji} ${d.victim} ELIMINATED`;
+let kcMsg=`☠️ ${d.victim_emoji} ${d.victim} ELIMINATED`;
+o.querySelector('.kc-msg').innerHTML=kcMsg+(d.death_quote?`<div style="font-size:0.7em;color:#ffaa00;margin-top:6px">유언: "${esc(d.death_quote)}"</div>`:'');
 o.style.display='flex';o.style.animation='none';o.offsetHeight;o.style.animation='allinFlash 2.5s ease-out forwards';
 sfx('killcam');setTimeout(()=>{o.style.display='none'},2500)}
 
