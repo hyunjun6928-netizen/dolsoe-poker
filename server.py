@@ -463,7 +463,7 @@ class Table:
         self.bankrupt_cooldowns={}  # name -> 재참가 가능 시간
         self.highlights=[]  # 레어 핸드 하이라이트
         self.spectator_queue=[]  # (send_at, data_dict) 딜레이 중계 큐
-        self.SPECTATOR_DELAY=20  # 20초 딜레이
+        self.SPECTATOR_DELAY=0  # 실시간 (딜레이 제거)
         self.last_spectator_state=None  # 마지막으로 flush된 관전자 state (딜레이 적용된)
         self._delay_task=None
         self.last_commentary=''  # 최신 해설 (폴링용)
@@ -2625,10 +2625,27 @@ body::after{display:none}
 .forest-top,.forest-deco{display:none!important}
 .wrap{padding:2px;max-width:100vw;overflow-x:hidden}
 h1{font-size:1.1em;margin:2px 0}
+/* ═══ 모바일 로비 ═══ */
+#lobby{padding:16px 8px}
+#lobby .sub{font-size:0.8em;margin-bottom:12px}
+.lobby-grid{gap:8px!important}
+.lobby-left,.lobby-right{display:none}
+.lobby-grid>div:nth-child(2){order:-1}
+.px-panel{border-width:2px!important}
+.px-panel-header{font-size:0.85em!important;padding:6px 10px!important}
+.btn-watch{font-size:1em!important;padding:12px 30px!important}
+.tbl-card{padding:10px!important}
+.api-info{display:none}
+#join-with-label{display:none}
+.lobby-grid pre{display:none}
+#link-full-guide{display:inline-block;margin-top:4px}
+/* ═══ 모바일 게임 ═══ */
 .game-layout{display:block;height:auto}
 .dock-left,.dock-right{display:none}
-.bottom-dock{position:fixed;bottom:0;left:0;right:0;padding:4px 8px}
-.bottom-dock .bd-reactions button{width:28px;height:28px;font-size:0.9em}
+.bottom-dock{position:fixed;bottom:0;left:0;right:0;padding:4px 6px}
+.bottom-dock .bd-reactions{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.bottom-dock .bd-reactions::-webkit-scrollbar{display:none}
+.bottom-dock .bd-reactions button{width:28px;height:28px;font-size:0.9em;flex-shrink:0}
 .felt-wrap{margin:10px auto 8px}
 .felt-border{top:-8px;left:-8px;right:-8px;bottom:-8px;border-radius:12px}
 .felt-border::before{top:-6px;left:-6px;right:-6px;bottom:-6px;border-radius:16px}
@@ -2674,6 +2691,9 @@ h1{font-size:1.1em;margin:2px 0}
 #profile-popup h3{font-size:1em;margin-bottom:6px}
 #profile-popup .pp-stat{font-size:0.8em;margin:2px 0}
 .result-box{padding:16px;min-width:unset;width:85vw;border-radius:14px}
+.info-bar{flex-wrap:wrap;gap:4px;padding:4px 8px;font-size:0.7em}
+#hand-timeline{font-size:0.65em;gap:2px}
+#hand-timeline .tl-step{padding:3px 8px}
 
 }
 #new-btn{display:none;padding:14px 40px;font-size:1.2em;background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;border:2px solid #c2410c;border-radius:14px;cursor:pointer;margin:15px auto;font-weight:bold;box-shadow:3px 3px 0 #c2410c44;transition:all .1s}
@@ -2839,7 +2859,7 @@ while True: state = requests.get(URL+'/api/state?player=내봇').json(); time.sl
 </div>
 <div style="display:flex;align-items:center;gap:8px">
 <span id="si" style="color:var(--accent-mint)"></span>
-<span id="delay-badge" style="background:var(--accent-blue);color:var(--bg-dark);padding:1px 8px;border-radius:var(--radius);font-size:0.85em;font-weight:bold;border:1px solid #5AA8C3">⏱ 20s 딜레이</span>
+<span id="delay-badge" style="background:var(--accent-mint);color:var(--bg-dark);padding:1px 8px;border-radius:var(--radius);font-size:0.85em;font-weight:bold;border:1px solid #6bc9a0">⚡ LIVE</span>
 <span id="mi" style="color:var(--accent-yellow)"></span>
 </div>
 <div style="display:flex;align-items:center;gap:4px">
@@ -3320,7 +3340,7 @@ if(d.turn_info)showAct(d.turn_info)}catch(e){}}
 
 let lastChatTs=0;
 // delay handled above
-const DELAY_SEC=20;
+const DELAY_SEC=0;
 let holeBuffer=[];
 function handle(d){handleNow(d)}
 
