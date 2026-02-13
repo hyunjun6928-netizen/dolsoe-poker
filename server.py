@@ -2530,7 +2530,7 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 #raise-sl{width:200px;vertical-align:middle;margin:0 8px}
 #raise-val{background:#ffffffbb;border:2px solid #000;color:#fff;padding:6px 10px;width:80px;border-radius:10px;font-size:0.95em;text-align:center;box-shadow:2px 2px 0 #000}
 #timer{height:5px;background:#6bcb77;transition:width .1s linear;margin:6px auto 0;max-width:300px;border-radius:3px;border:1px solid #000}
-#commentary{background:var(--bg-panel);border:var(--border-w) solid var(--frame);border-radius:var(--radius);padding:10px 16px;margin:0 0 8px;text-align:center;font-size:1em;color:var(--text-primary);font-weight:bold;animation:comFade .5s ease-out;min-height:24px;box-shadow:var(--shadow-sm);text-shadow:none}
+#commentary{background:var(--bg-dark);border:var(--border-w) solid #3a3c56;border-radius:var(--radius);padding:12px 20px;margin:0 0 8px;text-align:center;font-size:1.1em;color:var(--accent-yellow);font-weight:bold;animation:comFade .5s ease-out;min-height:32px;box-shadow:var(--shadow-md);text-shadow:0 1px 0 #000;font-family:var(--font-pixel);letter-spacing:0.5px}
 @keyframes comFade{0%{opacity:0;transform:translateY(-8px)}100%{opacity:1;transform:translateY(0)}}
 #action-feed{background:#ffffffcc;border:2px solid #4ade80;border-radius:14px;padding:10px;max-height:300px;overflow-y:auto;font-size:0.82em;font-family:'Noto Sans KR','Segoe UI',sans-serif;box-shadow:2px 2px 0 #4ade8033;color:#1e3a5f}
 #action-feed .af-item{padding:4px 6px;border-bottom:1px solid #e0f2fe;opacity:0;animation:fadeIn .3s forwards}
