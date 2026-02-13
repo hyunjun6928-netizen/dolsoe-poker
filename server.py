@@ -2084,9 +2084,23 @@ radial-gradient(1px 1px at 55% 85%,#fff2,transparent),
 radial-gradient(ellipse at 50% 50%,#38bdf808 0%,transparent 70%);
 border-radius:50%;pointer-events:none;z-index:1;animation:starTwinkle 4s ease-in-out infinite alternate}
 .felt::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;border-radius:50%;pointer-events:none;z-index:2;
-background:linear-gradient(150deg,transparent 0%,rgba(125,211,252,0.25) 10%,rgba(129,140,248,0.5) 25%,rgba(192,132,252,0.6) 38%,rgba(240,171,252,0.55) 50%,rgba(192,132,252,0.5) 62%,rgba(129,140,248,0.35) 75%,rgba(125,211,252,0.15) 88%,transparent 100%);
-background-size:200% 200%;animation:milkyWay 8s ease-in-out infinite}
-@keyframes milkyWay{0%{background-position:0% 0%}50%{background-position:100% 100%}100%{background-position:0% 0%}}
+background:radial-gradient(1px 1px at 10% 20%,#fff,transparent),
+radial-gradient(1.5px 1.5px at 25% 55%,#fff,transparent),
+radial-gradient(1px 1px at 40% 15%,#ffe,transparent),
+radial-gradient(2px 2px at 55% 70%,#fff,transparent),
+radial-gradient(1px 1px at 70% 35%,#ffe,transparent),
+radial-gradient(1.5px 1.5px at 85% 60%,#fff,transparent),
+radial-gradient(1px 1px at 15% 75%,#fff,transparent),
+radial-gradient(2px 2px at 45% 40%,#ffe,transparent),
+radial-gradient(1px 1px at 60% 85%,#fff,transparent),
+radial-gradient(1.5px 1.5px at 80% 20%,#fff,transparent),
+radial-gradient(1px 1px at 30% 90%,#ffe,transparent),
+radial-gradient(1px 1px at 90% 45%,#fff,transparent),
+radial-gradient(2px 2px at 5% 50%,#fff,transparent),
+radial-gradient(1px 1px at 50% 10%,#ffe,transparent),
+radial-gradient(1.5px 1.5px at 75% 80%,#fff,transparent);
+background-size:200% 200%;animation:starFlow 6s linear infinite}
+@keyframes starFlow{0%{background-position:0% 0%}100%{background-position:200% 200%}}
 @keyframes starTwinkle{0%{opacity:0.6}50%{opacity:1}100%{opacity:0.6}}
 @keyframes shootingStar{0%{transform:translateX(-100%) translateY(-100%) rotate(45deg);opacity:0}10%{opacity:1}30%{opacity:1}100%{transform:translateX(300%) translateY(300%) rotate(45deg);opacity:0}}
 #table-info{display:flex;justify-content:center;gap:16px;margin:6px 0;flex-wrap:wrap}
