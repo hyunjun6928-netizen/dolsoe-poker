@@ -3399,67 +3399,70 @@ function drawSlime(name, emotion, size) {
   const st = traits.type;
   function px(x,y,color){if(x>=0&&x<G&&y>=0&&y<G){g.fillStyle=color;g.fillRect(x*PX,y*PX,PX,PX)}}
   function pxR(x,y,w,h,color){g.fillStyle=color;g.fillRect(x*PX,y*PX,w*PX,h*PX)}
-  // --- Joody dome slime body (참고 이미지 스타일) ---
-  // 둥근 돔: 위는 반원, 아래는 납작하게 퍼짐
-  const cx=Math.floor(G/2), botY=Math.floor(G*0.82);
-  const R=Math.floor(G*0.38); // dome radius
-  // Draw dome body pixel by pixel
-  for(let dy=-R;dy<=Math.floor(R*0.3);dy++){
-    // 원형 상단 + 납작한 하단
+  // --- Joody 돔 슬라임 (캔버스 중앙 배치) ---
+  const cx=Math.floor(G/2);
+  const R=Math.floor(G*0.35); // 돔 반지름
+  const centerY=Math.floor(G*0.45); // 돔 중심 (약간 위쪽)
+  const bodyTop=centerY-R; // 몸 꼭대기
+  const bodyBot=centerY+Math.floor(R*0.6); // 몸 바닥 (아래쪽은 좀 더 짧게)
+  // 몸체 그리기: 위는 반원, 아래는 부드럽게 퍼진 형태
+  for(let y=bodyTop;y<=bodyBot;y++){
+    const dy=y-centerY;
     let hw;
-    if(dy<=0){hw=Math.floor(Math.sqrt(Math.max(R*R-dy*dy,0)))} // circle top
-    else{hw=R-Math.floor(dy*0.3)} // slightly tapered bottom
-    if(st==='newbie'){hw=Math.max(Math.floor(hw*0.8),2)}
-    const y=botY+dy-Math.floor(R*0.3);
+    if(dy<=0){
+      // 상단: 원형
+      hw=Math.floor(Math.sqrt(Math.max(R*R-dy*dy,0)));
+    } else {
+      // 하단: 약간 벌어지는 형태 (주디 스타일)
+      const t=dy/Math.max(bodyBot-centerY,1);
+      hw=R+Math.floor(t*2); // 아래로 갈수록 살짝 넓어짐
+    }
+    if(st==='newbie'){hw=Math.max(Math.floor(hw*0.75),2)}
     for(let dx=-hw;dx<=hw;dx++){
       let cc=col.body;
-      // outline (1px dark border)
-      if(Math.abs(dx)>=hw||dy<=-R+1||(dy>=Math.floor(R*0.3)-1&&Math.abs(dx)>hw-2)){cc=col.dark}
-      // top highlight band
-      else if(dy<-R+3&&Math.abs(dx)<hw-1){cc=col.light}
+      if(Math.abs(dx)>=hw){cc=col.dark} // 양옆 테두리
+      else if(y<=bodyTop+1&&Math.abs(dx)<hw-1){cc=col.light} // 꼭대기 하이라이트
+      else if(y>=bodyBot-1){cc=col.dark} // 바닥 테두리
+      else if(dy<-R*0.3&&dx>-hw+2&&dx<-hw/3){cc=col.light} // 왼쪽 상단 하이라이트 밴드
       px(cx+dx,y,cc);
     }
   }
-  // Big white highlight (top-left, 주디 특유의 하이라이트)
-  pxR(cx-Math.floor(R*0.5),botY-R+3,2,3,'#ffffffaa');
-  px(cx-Math.floor(R*0.3),botY-R+4,'#ffffff88');
+  // 큰 하이라이트 점 (주디 특유 — 왼쪽 상단)
+  pxR(cx-Math.floor(R*0.5),centerY-Math.floor(R*0.6),2,3,'#ffffffbb');
+  px(cx-Math.floor(R*0.3),centerY-Math.floor(R*0.5),'#ffffff88');
   // === TYPE DECORATIONS (pixel art) ===
-  const topRow=botY-R-Math.floor(R*0.3);
   if(st==='aggressive'||traits.allinAddict){
-    // Pixel horns (2 triangles)
-    const hy=botY-R;
-    px(cx-3,hy-1,col.dark);px(cx-4,hy-2,col.dark);px(cx-3,hy,col.dark);
-    px(cx+3,hy-1,col.dark);px(cx+4,hy-2,col.dark);px(cx+3,hy,col.dark);
-    if(traits.allinAddict){px(cx-2,hy-1,'#ff4400');px(cx+2,hy-1,'#ff4400');px(cx,hy-2,'#ff6600')}
+    px(cx-3,bodyTop-1,col.dark);px(cx-4,bodyTop-2,col.dark);px(cx-3,bodyTop,col.dark);
+    px(cx+3,bodyTop-1,col.dark);px(cx+4,bodyTop-2,col.dark);px(cx+3,bodyTop,col.dark);
+    if(traits.allinAddict){px(cx-2,bodyTop-1,'#ff4400');px(cx+2,bodyTop-1,'#ff4400');px(cx,bodyTop-2,'#ff6600')}
   }
   if(st==='champion'){
-    const cy2=botY-R-1;
-    pxR(cx-3,cy2,7,1,'#fbbf24');
-    px(cx-3,cy2-2,'#fbbf24');px(cx,cy2-2,'#fbbf24');px(cx+3,cy2-2,'#fbbf24');
-    px(cx-3,cy2-1,'#fbbf24');px(cx,cy2-1,'#fbbf24');px(cx+3,cy2-1,'#fbbf24');
-    px(cx,cy2-2,'#ef4444');
+    const crY=bodyTop-1;
+    pxR(cx-3,crY,7,1,'#fbbf24');
+    px(cx-3,crY-2,'#fbbf24');px(cx,crY-2,'#fbbf24');px(cx+3,crY-2,'#fbbf24');
+    px(cx-3,crY-1,'#fbbf24');px(cx,crY-1,'#fbbf24');px(cx+3,crY-1,'#fbbf24');
+    px(cx,crY-2,'#ef4444');
   }
   if(st==='bluffer'){
-    const my=botY-Math.floor(R*0.2);
-    for(let dy=-1;dy<=1;dy++)for(let dx=1;dx<=R-2;dx++)if(dx+Math.abs(dy)<R-1)px(cx+dx,my+dy,'#ffffffbb');
-    for(let dx=1;dx<=R-2;dx++)px(cx+dx,botY-Math.floor(R*0.2)-2,col.dark+'88');
+    const msk=centerY+1;
+    for(let dy=-1;dy<=1;dy++)for(let dx=1;dx<=R-2;dx++)if(dx+Math.abs(dy)<R-1)px(cx+dx,msk+dy,'#ffffffbb');
   }
   if(st==='defensive'){
-    const vy=botY-Math.floor(R*0.4);
+    const vy=centerY-Math.floor(R*0.3);
     for(let dx=-R+2;dx<=R-2;dx++){px(cx+dx,vy,col.dark);px(cx+dx,vy+1,col.dark+'66')}
   }
   if(st==='newbie'){
-    const fx=cx+Math.floor(R*0.7),fy=botY-R;
+    const fx=cx+Math.floor(R*0.8),fy=bodyTop;
     px(fx,fy-1,'#f9a8d4');px(fx-1,fy,'#f9a8d4');px(fx+1,fy,'#f9a8d4');px(fx,fy+1,'#f9a8d4');px(fx,fy,'#fbbf24');
   }
   if(st==='loose'){
-    px(cx-R-1,botY-Math.floor(R*0.3),'#fde68a');px(cx+R+1,botY-Math.floor(R*0.6),'#fde68a');
+    px(cx-R-1,centerY,'#fde68a');px(cx+R+1,centerY-2,'#fde68a');
   }
-  if(traits.emotional){px(cx+R,botY-R+2,'#ff6b8a');px(cx+R+1,botY-R+3,'#ff6b8a')}
+  if(traits.emotional){px(cx+R,bodyTop+2,'#ff6b8a');px(cx+R+1,bodyTop+3,'#ff6b8a')}
 
   // === BIG CUTE EYES (주디 스타일 — 크고 동그란 눈) ===
-  const eyeY = botY - Math.floor(R*0.35);
-  const eyeL = cx - Math.floor(R*0.4), eyeR = cx + Math.floor(R*0.4);
+  const eyeY = centerY + Math.floor(R*0.05);
+  const eyeL = cx - Math.floor(R*0.45), eyeR = cx + Math.floor(R*0.45);
   const pupilCol1 = col.cheek; // gradient color 1 (pink-ish)
   const pupilCol2 = col.dark;  // gradient color 2
 
@@ -3493,7 +3496,7 @@ function drawSlime(name, emotion, size) {
     px(eyeR+1,eyeY-2,col.eye);px(eyeR-1,eyeY-3,col.eye);
   } else if (emotion === 'think') {
     drawBigEye(eyeL,eyeY,1,0);drawBigEye(eyeR,eyeY,1,0); // looking right
-    px(cx+R-1,eyeY-2,'#88ccff');px(cx+R-1,eyeY-1,'#88ccff'); // sweat
+    px(cx+R-1,centerY-Math.floor(R*0.4),'#88ccff');px(cx+R-1,centerY-Math.floor(R*0.3),'#88ccff'); // sweat
   } else if (emotion === 'shock') {
     // Extra big eyes
     pxR(eyeL-1,eyeY-2,4,5,'#fff');pxR(eyeR-1,eyeY-2,4,5,'#fff');
