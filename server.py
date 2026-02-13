@@ -2399,10 +2399,10 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#a8
 #reactions button{font-size:1.5em;background:#ffffffbb;border:2.5px solid #000;border-radius:50%;width:44px;height:44px;cursor:pointer;transition:all .1s;box-shadow:3px 3px 0 #000}
 #reactions button:hover{transform:translate(1px,1px);box-shadow:2px 2px 0 #000}
 #reactions button:active{transform:translate(3px,3px) scale(1.1);box-shadow:0 0 0 #000}
-#profile-popup{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1a1640;border:4px solid #7c3aed;border-radius:6px;padding:24px;z-index:150;min-width:280px;max-width:400px;display:none;text-align:center;box-shadow:0 0 0 4px #0f0e24,0 0 0 8px #4c1d95,0 8px 0 0 #2e1065;max-height:85vh;overflow-y:auto}
-#profile-popup h3{color:#fde68a;margin-bottom:8px;font-size:1.3em}
-#profile-popup .pp-stat{color:#c4b5fd;font-size:0.9em;margin:5px 0;line-height:1.4}
-#profile-popup .pp-close{position:absolute;top:10px;right:14px;color:#7c3aed;cursor:pointer;font-size:1.3em;transition:color .15s}
+#profile-popup{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#f0f4ff;border:4px solid #8888cc;border-radius:6px;padding:24px;z-index:150;min-width:280px;max-width:400px;display:none;text-align:center;box-shadow:0 4px 0 0 #aab4d0,0 8px 24px rgba(0,0,0,0.15);max-height:85vh;overflow-y:auto}
+#profile-popup h3{color:#4a3aad;margin-bottom:8px;font-size:1.3em}
+#profile-popup .pp-stat{color:#4a4a8a;font-size:0.9em;margin:5px 0;line-height:1.4}
+#profile-popup .pp-close{position:absolute;top:10px;right:14px;color:#6a5acd;cursor:pointer;font-size:1.3em;transition:color .15s}
 #profile-popup .pp-close:hover{color:#fbbf24}
 #profile-backdrop{position:fixed;top:0;left:0;right:0;bottom:0;background:#000000aa;z-index:149;display:none}
 @media(max-width:700px){
@@ -3270,7 +3270,7 @@ const extraStats = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:4
 pp.innerHTML=`${portraitImg}<h3 style="text-align:center">${esc(p.name)}</h3>${mbtiCard}<div style="text-align:center;margin:6px 0;line-height:1.8">${traitTags}</div>${radarImg}${extraStats}${bioHtml}${tiltTag}${streakTag}${agrBar}${vpipBar}<div class="pp-stat">📊 승률: ${p.win_rate}% (${p.hands}핸드)</div><div class="pp-stat">🎯 폴드율: ${p.fold_rate}% | 블러핑: ${p.bluff_rate}%</div><div class="pp-stat">💣 올인: ${p.allins}회 | 쇼다운: ${p.showdowns}회</div><div class="pp-stat">💰 총 획득: ${p.total_won}pt | 최대팟: ${p.biggest_pot}pt</div><div class="pp-stat">💵 핸드당 평균 베팅: ${p.avg_bet}pt</div>${metaHtml}${matchupHtml}`}
 else{pp.innerHTML=`<h3>${esc(name)}</h3><div class="pp-stat" style="color:#94a3b8">${t('noRecord')}</div>`}
 document.getElementById('profile-backdrop').style.display='block';
-document.getElementById('profile-popup').style.display='block'}catch(e){}}
+document.getElementById('profile-popup').style.display='block'}catch(e){console.error('Profile error:',e);document.getElementById('pp-content').innerHTML='<div style="color:#ef4444">프로필 로딩 실패: '+e.message+'</div>';document.getElementById('profile-backdrop').style.display='block';document.getElementById('profile-popup').style.display='block'}}
 function closeProfile(){document.getElementById('profile-backdrop').style.display='none';document.getElementById('profile-popup').style.display='none'}
 
 let reactionCount=0;const MAX_REACTIONS=5;
@@ -3636,10 +3636,11 @@ function inferTraitsFromStyle(p) {
   if (_slimeTraits[name] && _slimeTraits[name]._fromProfile) return; // already set from profile
   const t = {type:'balanced'};
   if (s.includes('광전사') || s.includes('berserker')) { t.type='aggressive'; t.allinAddict=true; }
-  else if (s.includes('공격') || s.includes('aggr')) t.type='aggressive';
-  else if (s.includes('수비') || s.includes('defen') || s.includes('tight')) t.type='defensive';
-  else if (s.includes('루즈') || s.includes('loose') || s.includes('call')) t.type='loose';
-  else if (s.includes('블러') || s.includes('bluff') || s.includes('tricky')) t.type='bluffer';
+  else if (s.includes('공격') || s.includes('aggr') || s.includes('offensive')) t.type='aggressive';
+  else if (s.includes('수비') || s.includes('defen') || s.includes('tight') || s.includes('fortress')) t.type='defensive';
+  else if (s.includes('루즈') || s.includes('loose') || s.includes('call') || s.includes('fish')) t.type='loose';
+  else if (s.includes('블러') || s.includes('bluff') || s.includes('tricky') || s.includes('shadow')) t.type='bluffer';
+  else if (s.includes('밸런스') || s.includes('balanced')) t.type='balanced';
   // Chip-based inference
   if (p.chips > 800 && t.type === 'balanced') t.type = 'champion';
   if (p.chips <= 50 && t.type === 'balanced') t.type = 'newbie';
