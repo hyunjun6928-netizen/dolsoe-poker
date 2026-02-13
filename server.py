@@ -967,7 +967,7 @@ async def handle_client(reader, writer):
         if not t.add_player(name,emoji):
             await send_json(writer,{'error':'테이블 꽉참 or 중복 닉네임'},400); return
         # 에이전트 2명 이상 → NPC 퇴장 시점에 전원 칩 리셋 (공평한 출발)
-        if real_count>=2 and not t.running:
+        if real_count>=2:
             for s in t.seats:
                 if not s['is_bot']:
                     s['chips']=t.START_CHIPS
