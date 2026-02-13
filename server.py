@@ -3930,6 +3930,7 @@ const PX=3; // kept for gore parts compatibility
 function px(x,y,w,h){ctx.fillRect(x*PX,y*PX,(w||1)*PX,(h||1)*PX)}
 
 function drawFighter(f,tick){
+try{
 const gx=f.x,gy=GROUND+f.y;
 const face=f.facing,anim=f.anim_state;
 const hpPct=f.hp/f.max_hp;
@@ -4042,7 +4043,11 @@ ctx.fillText('⚡ SPECIAL',gx,headWorldY-68)}
 if(f.stun_ticks>0){ctx.fillStyle='#ffff44';const starA=tick*0.3;
 for(let i=0;i<3;i++){const sa=starA+i*2.1;
 ctx.fillRect(gx+Math.cos(sa)*22,headWorldY+12+Math.sin(sa)*9,7,7)}}
-}
+}catch(e){console.error('drawFighter ERROR:',e.message,e.stack);
+// Emergency fallback
+ctx.fillStyle=f.color||'#fff';ctx.fillRect(f.x-15,(GROUND+f.y)-80,30,80);
+ctx.font='11px Jua';ctx.textAlign='center';ctx.fillStyle='#fff';ctx.fillText(f.name||'?',f.x,(GROUND+f.y)-85);
+}}
 
 // Weapon drawing (on offscreen canvas ctx)
 function _drawWeapon(f,tick,cx,cy,col){
