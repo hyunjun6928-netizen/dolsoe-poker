@@ -1342,6 +1342,10 @@ const roundNames={preflop:'프리플랍',flop:'플랍',turn:'턴',river:'리버'
 document.getElementById('ri').textContent=roundNames[s.round]||s.round||'대기중';
 // 해설 업데이트 (폴링 모드 대응)
 if(s.commentary&&s.commentary!==window._lastCommentary){window._lastCommentary=s.commentary;showCommentary(s.commentary)}
+// 입장/퇴장 감지 사운드
+const curNames=new Set(s.players.map(p=>p.name));
+if(!window._prevPlayers)window._prevPlayers=curNames;
+else{const prev=window._prevPlayers;curNames.forEach(n=>{if(!prev.has(n))sfx('join')});prev.forEach(n=>{if(!curNames.has(n))sfx('leave')});window._prevPlayers=curNames}
 // 핸드/라운드 변화 사운드
 if(s.hand!==window._sndHand){window._sndHand=s.hand;if(s.hand>1)sfx('newhand')}
 if(s.round!==window._sndRound){
@@ -1704,6 +1708,14 @@ o.frequency.value=440;o.frequency.exponentialRampToValueAtTime(880,t+0.4);o.type
 else if(type==='mvp'){
 [660,784,880,1047].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
 o.frequency.value=f;o.type='sine';g.gain.value=0.12;g.gain.exponentialRampToValueAtTime(0.01,t+0.4+i*0.15);o.start(t+i*0.15);o.stop(t+0.5+i*0.15)})}
+else if(type==='join'){
+// 입장 — 밝은 상승 멜로디 (도미솔도!)
+[523,659,784,1047].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+o.frequency.value=f;o.type='sine';g.gain.value=0.13;g.gain.exponentialRampToValueAtTime(0.01,t+0.25+i*0.1);o.start(t+i*0.1);o.stop(t+0.3+i*0.1)})}
+else if(type==='leave'){
+// 퇴장 — 하강 멜로디 (솔미도)
+[784,659,523,392].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+o.frequency.value=f;o.type='triangle';g.gain.value=0.1;g.gain.exponentialRampToValueAtTime(0.01,t+0.3+i*0.12);o.start(t+i*0.12);o.stop(t+0.35+i*0.12)})}
 }catch(e){}}
 else if(type==="bankrupt"){[400,350,300,200].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.frequency.value=f;o.type="sine";g.gain.value=0.1;g.gain.exponentialRampToValueAtTime(0.01,t+0.4+i*0.2);o.start(t+i*0.2);o.stop(t+0.5+i*0.2)})}
 else if(type==="rare"){[523,659,784,1047,784,659].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.frequency.value=f;o.type="sine";g.gain.value=0.12;g.gain.exponentialRampToValueAtTime(0.01,t+0.2+i*0.1);o.start(t+i*0.08);o.stop(t+0.25+i*0.1)})}
