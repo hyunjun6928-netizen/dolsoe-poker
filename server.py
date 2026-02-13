@@ -26,6 +26,21 @@ from urllib.parse import parse_qs, urlparse
 
 PORT = int(os.environ.get('PORT', 8080))
 
+# ══ 시즌 시스템 ══
+import datetime
+def get_season():
+    """현재 시즌 (월별)"""
+    now = datetime.datetime.now()
+    return f"S{now.year % 100}.{now.month:02d}"
+
+def get_season_info():
+    now = datetime.datetime.now()
+    # 이번 달 남은 일수
+    if now.month == 12: next_month = datetime.datetime(now.year+1, 1, 1)
+    else: next_month = datetime.datetime(now.year, now.month+1, 1)
+    days_left = (next_month - now).days
+    return {'season': get_season(), 'days_left': days_left, 'month': now.strftime('%Y년 %m월')}
+
 # ══ 카드 시스템 ══
 SUITS = ['♠','♥','♦','♣']
 RANKS = ['2','3','4','5','6','7','8','9','10','J','Q','K','A']
@@ -96,18 +111,57 @@ class BotAI:
             return 'raise',max(min(bet,chips),1)
         return 'call',to_call
 
-    def trash_talk(self, action, pot):
-        """쓰레기톡 생성"""
+    def trash_talk(self, action, pot, opponents=None, my_chips=0):
+        """상황인식 쓰레기톡 — 상대 이름 지정, 팟/칩 상황 반영"""
+        opp = random.choice(opponents) if opponents else '누군가'
         talks = {
-            'fold': ["겁쟁이는 아님. 전략적 후퇴임.", "이건 패스하겠음.", "다음 판에 보자.", "쓰레기 패 ㅋ", "접는다 접어", "이딴 패로 어쩌라고"],
-            'call': ["한번 따라가봄.", "어디 한번 보자.", "콜이나 해줌.", "궁금하니까 콜", "도망 안 감", "따라간다 잘해봐"],
-            'raise': ["가보자고.", "올린다 올려.", f"팟이 {pot}인데 쫄았냐?", "겁나면 폴드하셈.", "돈 더 내놔", "올려올려 가즈아", f"{pot}pt 먹는다"],
-            'check': ["지켜보겠음.", "...", "패스~", "너부터 해"],
-            'win': ["돈 줘서 고마움.", "이게 실력임.", "낄낄", "ㅋㅋㅋ 감사합니다", "또 내가 이김", "역시 나지"],
-            'lose': ["다음엔 안 짐.", "운이 없었음.", "어이없네", "다음 판이나 보자"],
+            'fold': [
+                "겁쟁이는 아님. 전략적 후퇴임.", "이건 패스하겠음.", "쓰레기 패 ㅋ", "접는다 접어",
+                f"{opp} 블러핑인 거 알지만 접음", "이 패로는 무리", "다음 판에 보복한다",
+                "현명한 선택이라고 봄", f"팟 {pot}pt는 {opp}한테 줌. 다음엔 내 거"],
+            'call': [
+                "한번 따라가봄.", f"{opp} 뭐 들었는지 궁금함", "콜이나 해줌.", "도망 안 감",
+                f"따라간다 {opp} 잘해봐", f"{pot}pt면 콜 가치 있음", "어디 한번 보자고",
+                "블러프면 후회할 거임", f"{opp} 표정이 수상한데 콜"],
+            'raise': [
+                "가보자고.", f"{opp} 쫄리면 폴드하셈", f"팟 {pot}인데 더 올린다",
+                "겁나면 폴드해", "올려올려 가즈아", f"돈 더 내놔 {opp}",
+                f"{pot}pt 먹는다", "제대로 간다", f"{opp} 지갑 여유 있냐?",
+                "이 핸드는 내 거임", f"올인은 아직이고... 일단 올림 ㅋ"],
+            'check': ["지켜보겠음.", "...", "패스~", "너부터 해", "기다리는 중", "함정일 수도?"],
+            'allin': [
+                f"🔥 {opp} 받아라!", "올인이다 올인!", "이판에 다 건다", f"팟 {pot}pt에 전재산 추가",
+                "후회 없다", f"다 걸었음. {opp} 어떡할 거임?", "가즈아아아아!",
+                f"💰 {my_chips}pt 올인! 쫄리면 폴드해"],
+            'win': [
+                f"돈 줘서 고마움 {opp}", "이게 실력임. 낄낄", "ㅋㅋㅋ 또 내가 이김",
+                f"{opp} 다음엔 잘하길", "역시 나지", f"{pot}pt 맛있다",
+                "포커는 이렇게 하는 거임", "고마워 덕분에 부자됨"],
+            'lose': [
+                "다음엔 안 짐.", "운이 없었음.", f"{opp} 이번엔 인정",
+                "어이없네 진짜", f"{opp} 운 좋았을 뿐", "복수한다 두고 봐"],
+            'bigpot': [
+                f"🏆 {pot}pt 빅팟! 개꿀!", f"역대급 팟이다 {pot}pt!", "이게 머니 게임이지",
+                f"와 {pot}pt... 떨린다", "슈퍼팟 내가 먹음"],
+            'comeback': [
+                f"부활이다! {my_chips}pt로 역전!", "죽다 살아남 ㅋ", "하위권에서 올라간다",
+                "절대 포기 안 함"],
+            'dominate': [
+                "이 테이블은 내 거임", "1등이 외로워~", "칩이 알아서 모임",
+                f"{my_chips}pt 칩타워 쌓는 중"],
         }
-        msgs = talks.get(action, ["..."])
-        if random.random() < 0.5:  # 50% 확률로 말함
+        # 상황별 특수 대사 선택
+        if action == 'allin' and 'allin' in talks:
+            msgs = talks['allin']
+        elif action == 'win' and pot > 200:
+            msgs = talks.get('bigpot', talks['win'])
+        elif action == 'win' and my_chips > 800:
+            msgs = talks.get('dominate', talks['win'])
+        elif action == 'call' and my_chips < 50:
+            msgs = talks.get('comeback', talks['call'])
+        else:
+            msgs = talks.get(action, ["..."])
+        if random.random() < 0.6:  # 60% 확률로 말함
             return random.choice(msgs)
         return None
 
@@ -626,6 +680,7 @@ class Table:
             'commentary':self.last_commentary,
             'showdown_result':self.last_showdown,
             'spectator_count':len(self.spectator_ws)+len(self.poll_spectators),
+            'season':get_season_info(),
             'seats_available':self.MAX_PLAYERS-len(self.seats),
             'table_info':{'sb':self.SB,'bb':self.BB,'timeout':self.TURN_TIMEOUT,
                 'delay':self.SPECTATOR_DELAY,'max_players':self.MAX_PLAYERS,
@@ -1066,9 +1121,11 @@ class Table:
                         await self.broadcast_commentary(call_cmt)
                     else: await self.add_log(f"✋ {s['emoji']} {s['name']} 체크")
 
-                # 봇 쓰레기톡
+                # 봇 쓰레기톡 (상대 이름 전달)
                 if s['is_bot']:
-                    talk = s['bot_ai'].trash_talk(act, self.pot)
+                    opps=[x['name'] for x in self._hand_seats if not x['folded'] and x['name']!=s['name']]
+                    talk_act='allin' if act=='allin' else act
+                    talk = s['bot_ai'].trash_talk(talk_act, self.pot, opps, s['chips'])
                     if talk:
                         entry = self.add_chat(s['name'], talk)
                         await self.broadcast_chat(entry)
@@ -1259,6 +1316,21 @@ class Table:
 
         self.history.append(record)
         if len(self.history)>50: self.history=self.history[-50:]
+        # 🗯️ 승자/패자 쓰레기톡
+        if record.get('winner'):
+            w_name=record['winner']
+            w_seat=next((s for s in self._hand_seats if s['name']==w_name),None)
+            if w_seat and w_seat.get('is_bot'):
+                losers=[s['name'] for s in self._hand_seats if s['name']!=w_name and not s.get('folded')]
+                talk=w_seat['bot_ai'].trash_talk('win', record.get('pot',0), losers, w_seat['chips'])
+                if talk:
+                    entry=self.add_chat(w_name, talk); await self.broadcast_chat(entry)
+            # 패자 반응
+            for s in self._hand_seats:
+                if s['name']!=w_name and not s.get('folded') and s.get('is_bot'):
+                    talk=s['bot_ai'].trash_talk('lose', record.get('pot',0), [w_name], s['chips'])
+                    if talk:
+                        entry=self.add_chat(s['name'], talk); await self.broadcast_chat(entry)
         await self.broadcast_state()
 
 # ══ 게임 매니저 ══
@@ -2223,11 +2295,17 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#a8
 .slime-angry{animation:slimeShake 0.3s ease-in-out infinite}
 .slime-happy{animation:slimeJump 0.8s ease-in-out infinite}
 .slime-sad{animation:slimeSad 3s ease-in-out infinite;opacity:0.7}
+.slime-allin{animation:slimeAllin 0.15s ease-in-out infinite}
+.slime-bust{animation:slimeMelt 1.5s ease-out forwards}
+.slime-win{animation:slimeVictory 0.6s ease-in-out 3}
 @keyframes slimeBounce{0%,100%{transform:scaleX(1) scaleY(1) translateY(0)}25%{transform:scaleX(1.05) scaleY(0.95) translateY(2px)}50%{transform:scaleX(0.95) scaleY(1.05) translateY(-4px)}75%{transform:scaleX(1.02) scaleY(0.98) translateY(1px)}}
 @keyframes slimeThink{0%,100%{transform:translateX(0) scaleY(1)}33%{transform:translateX(-3px) scaleY(0.97)}66%{transform:translateX(3px) scaleY(1.02)}}
 @keyframes slimeShake{0%,100%{transform:translateX(0) scaleX(1.05)}25%{transform:translateX(-4px) scaleX(0.95)}75%{transform:translateX(4px) scaleX(0.95)}}
 @keyframes slimeJump{0%,100%{transform:translateY(0) scaleY(1)}30%{transform:translateY(-10px) scaleX(0.9) scaleY(1.15)}60%{transform:translateY(2px) scaleX(1.1) scaleY(0.9)}80%{transform:translateY(-3px) scaleY(1.03)}}
 @keyframes slimeSad{0%,100%{transform:translateY(0) scaleY(1)}50%{transform:translateY(3px) scaleX(1.03) scaleY(0.95)}}
+@keyframes slimeAllin{0%,100%{transform:translateX(-2px) scaleX(1.08)}50%{transform:translateX(2px) scaleX(0.92)}}
+@keyframes slimeMelt{0%{transform:scaleX(1) scaleY(1);opacity:1}50%{transform:scaleX(1.4) scaleY(0.4);opacity:0.6}100%{transform:scaleX(1.8) scaleY(0.1);opacity:0.1}}
+@keyframes slimeVictory{0%{transform:translateY(0) rotate(0deg)}25%{transform:translateY(-12px) rotate(-5deg)}50%{transform:translateY(0) rotate(0deg)}75%{transform:translateY(-8px) rotate(5deg)}100%{transform:translateY(0) rotate(0deg)}}
 .seat .act-label{position:absolute;top:-36px;left:50%;transform:translateX(-50%);background:#fff8e0;color:#78350f;padding:5px 12px;border-radius:4px;font-size:0.85em;font-weight:bold;white-space:nowrap;z-index:10;border:3px solid #fbbf24;box-shadow:0 3px 0 0 #92400e;animation:actFade 2s ease-out forwards}
 .seat .act-label::after{content:'';position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid #fbbf24}
 .seat .act-label::before{content:'';position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid #fff8e0;z-index:1}
@@ -2446,7 +2524,7 @@ while True: state = requests.get(URL+'/api/state?player=내봇').json(); time.sl
 </div>
 </div>
 <div id="game">
-<div class="info-bar"><span id="hi">핸드 #0</span><span id="ri">대기중</span><span id="si" style="color:#16a34a"></span><span id="mi"></span><span id="mute-btn" onclick="toggleMute()" style="cursor:pointer;user-select:none">🔊</span><span id="home-btn" onclick="location.reload()" style="cursor:pointer;user-select:none;margin-left:8px" title="로비로">🏠</span></div>
+<div class="info-bar"><span id="season-tag" style="color:#6a5acd;font-weight:bold">🏆</span><span id="hi">핸드 #0</span><span id="ri">대기중</span><span id="si" style="color:#16a34a"></span><span id="mi"></span><span id="mute-btn" onclick="toggleMute()" style="cursor:pointer;user-select:none">🔊</span><span id="home-btn" onclick="location.reload()" style="cursor:pointer;user-select:none;margin-left:8px" title="로비로">🏠</span></div>
 <div id="hand-timeline"><span class="tl-step" data-r="preflop">프리플랍</span><span class="tl-step" data-r="flop">플랍</span><span class="tl-step" data-r="turn">턴</span><span class="tl-step" data-r="river">리버</span><span class="tl-step" data-r="showdown">쇼다운</span></div>
 <div id="commentary" style="display:none"></div>
 <div class="game-layout">
@@ -2788,6 +2866,7 @@ if(s.round!==window._sndRound){
 if(s.round==='showdown'||s.round==='between'&&s.showdown_result){sfx('win');if(typeof showConfetti==='function')showConfetti()}
 window._sndRound=s.round}
 if(s.spectator_count!==undefined)document.getElementById('si').textContent=`👀 ${t('spectators')} ${s.spectator_count}${t('specUnit')}`;
+if(s.season){const se=document.getElementById('season-tag');if(se)se.textContent=`🏆 ${s.season.season} (D-${s.season.days_left})`}
 // 타임라인 업데이트
 const rounds=['preflop','flop','turn','river','showdown'];
 const ri=rounds.indexOf(s.round);
@@ -3301,17 +3380,23 @@ else if(type==='check'){
 const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
 o.frequency.value=400;o.type='square';g.gain.value=0.1;g.gain.exponentialRampToValueAtTime(0.01,t+0.06);o.start(t);o.stop(t+0.06)}
 else if(type==='allin'){
-// 올인 — 웅장한 경고음
+// 올인 — 심장 쿵쿵 + 경고음
 [200,250,300,400].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
-o.frequency.value=f;o.type='sawtooth';g.gain.value=0.12;g.gain.exponentialRampToValueAtTime(0.01,t+0.4+i*0.1);o.start(t+i*0.08);o.stop(t+0.5+i*0.1)})}
+o.frequency.value=f;o.type='sawtooth';g.gain.value=0.12;g.gain.exponentialRampToValueAtTime(0.01,t+0.4+i*0.1);o.start(t+i*0.08);o.stop(t+0.5+i*0.1)});
+// 💓 심장 쿵쿵 (저음 펄스 2회)
+[0,0.35].forEach(d=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+o.frequency.value=55;o.type='sine';g.gain.setValueAtTime(0.2,t+0.5+d);g.gain.exponentialRampToValueAtTime(0.01,t+0.7+d);o.start(t+0.5+d);o.stop(t+0.75+d)})}
 else if(type==='showdown'){
 // 쇼다운 — 두둥! 드럼롤 느낌
 [523,587,659].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
 o.frequency.value=f;o.type='triangle';g.gain.value=0.15;g.gain.exponentialRampToValueAtTime(0.01,t+0.5);o.start(t+i*0.15);o.stop(t+0.5+i*0.15)})}
 else if(type==='win'){
-// 승리 팡파레 — 도레미솔!
-[523,587,659,784].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
-o.frequency.value=f;o.type='sine';g.gain.value=0.15;g.gain.exponentialRampToValueAtTime(0.01,t+0.3+i*0.12);o.start(t+i*0.12);o.stop(t+0.4+i*0.12)})}
+// 승리 팡파레 — 도레미솔 + 환호 심벌즈
+[523,587,659,784,1047].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+o.frequency.value=f;o.type='sine';g.gain.value=0.15;g.gain.exponentialRampToValueAtTime(0.01,t+0.3+i*0.12);o.start(t+i*0.12);o.stop(t+0.4+i*0.12)});
+// 🎉 환호 노이즈 버스트
+for(let i=0;i<3;i++){const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+o.frequency.value=1500+Math.random()*2000;o.type='sawtooth';g.gain.value=0.03;g.gain.exponentialRampToValueAtTime(0.001,t+0.6+i*0.05);o.start(t+0.5+i*0.04);o.stop(t+0.65+i*0.05)}}
 else if(type==='newhand'){
 // 새 핸드 — 카드 셔플 (노이즈 + 리듬)
 for(let i=0;i<4;i++){const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
@@ -3333,7 +3418,12 @@ else if(type==='leave'){
 // 퇴장 — 하강 멜로디 (솔미도)
 [784,659,523,392].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
 o.frequency.value=f;o.type='triangle';g.gain.value=0.1;g.gain.exponentialRampToValueAtTime(0.01,t+0.3+i*0.12);o.start(t+i*0.12);o.stop(t+0.35+i*0.12)})}
-else if(type==="bankrupt"){[400,350,300,200].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.frequency.value=f;o.type="sine";g.gain.value=0.1;g.gain.exponentialRampToValueAtTime(0.01,t+0.4+i*0.2);o.start(t+i*0.2);o.stop(t+0.5+i*0.2)})}
+else if(type==="bankrupt"){
+// 파산 — 코믹 추락 (하강 음계 + 부앙 효과음)
+[600,500,400,300,200,100].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.frequency.value=f;o.type="triangle";g.gain.value=0.1;g.gain.exponentialRampToValueAtTime(0.01,t+0.15+i*0.1);o.start(t+i*0.08);o.stop(t+0.2+i*0.1)});
+// 부앙~ (comic spring)
+const bw=audioCtx.createOscillator();const bg=audioCtx.createGain();bw.connect(bg);bg.connect(audioCtx.destination);
+bw.frequency.setValueAtTime(300,t+0.6);bw.frequency.exponentialRampToValueAtTime(50,t+1.2);bw.type='sine';bg.gain.value=0.12;bg.gain.exponentialRampToValueAtTime(0.01,t+1.2);bw.start(t+0.6);bw.stop(t+1.2)}
 else if(type==="rare"){[523,659,784,1047,784,659].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.frequency.value=f;o.type="sine";g.gain.value=0.12;g.gain.exponentialRampToValueAtTime(0.01,t+0.2+i*0.1);o.start(t+i*0.08);o.stop(t+0.25+i*0.1)})}
 }catch(e){}}
 
@@ -3529,12 +3619,14 @@ function drawSlime(name, emotion, size) {
   return c;
 }
 function getSlimeEmotion(p, state) {
+  if (p.last_action && (p.last_action.includes('파산') || p.last_action.includes('Busted'))) return 'lose';
   if (p.out) return 'sad';
   if (p.last_action && p.last_action.includes('ALL IN')) return 'allin';
   if (p.folded) return 'sad';
   if (state && state.turn === p.name) return 'think';
   if (p.last_action && (p.last_action.includes('승리') || p.last_action.includes('Win'))) return 'win';
   if (p.chips <= 30) return 'shock';
+  if (p.chips > 800) return 'happy';
   return 'idle';
 }
 // Infer traits from player state style text
@@ -3555,7 +3647,13 @@ function inferTraitsFromStyle(p) {
 }
 function renderSlimeToSeat(name, emotion) {
   const c = drawSlime(name, emotion, 80);
-  const animClass = emotion==='think'?'slime-think':emotion==='allin'?'slime-angry':emotion==='win'?'slime-happy':emotion==='sad'||emotion==='lose'?'slime-sad':'slime-idle';
+  let animClass;
+  if(emotion==='think') animClass='slime-think';
+  else if(emotion==='allin') animClass='slime-allin';
+  else if(emotion==='win') animClass='slime-win';
+  else if(emotion==='sad'||emotion==='lose') animClass='slime-sad';
+  else if(emotion==='shock') animClass='slime-shake';
+  else animClass='slime-idle';
   return `<img src="${c.toDataURL()}" width="72" height="72" class="${animClass}" style="image-rendering:pixelated;filter:drop-shadow(2px 3px 0 rgba(0,0,0,0.12))">`;
 }
 // Pixel shooting stars on table
