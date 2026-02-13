@@ -391,6 +391,8 @@ class Table:
         self.accepting_players=True  # 중간참가 허용
         self.timeout_counts={}  # name -> consecutive timeouts
         self.fold_streaks={}  # name -> consecutive folds (앤티 페널티용)
+        self.bankrupt_counts={}  # name -> 파산 횟수
+        self.bankrupt_cooldowns={}  # name -> 재참가 가능 시간
         self.highlights=[]  # 레어 핸드 하이라이트
         self.spectator_queue=[]  # (send_at, data_dict) 딜레이 중계 큐
         self.SPECTATOR_DELAY=20  # 20초 딜레이
@@ -516,12 +518,19 @@ class Table:
 
     def add_player(self, name, emoji='🤖', is_bot=False, style='aggressive', meta=None):
         if len(self.seats)>=self.MAX_PLAYERS: return False
+        # 파산 쿨다운 체크
+        cd=self.bankrupt_cooldowns.get(name,0)
+        if cd>time.time() and not is_bot:
+            remaining=int(cd-time.time())
+            return f'COOLDOWN:{remaining}'  # 쿨다운 중
         existing=next((s for s in self.seats if s['name']==name),None)
         if existing:
             if existing.get('out'):
-                # 탈락/퇴장 상태 → 재참가
+                # 탈락/퇴장 상태 → 재참가 (파산 횟수에 따라 시작 칩 감소)
+                bc=self.bankrupt_counts.get(name,0)
+                start_chips=max(200, self.START_CHIPS - bc*50)  # 500→450→400→...→200
                 existing['out']=False; existing['folded']=False; existing['emoji']=emoji
-                if existing['chips']<=0: existing['chips']=self.START_CHIPS
+                if existing['chips']<=0: existing['chips']=start_chips
                 if meta: existing['meta'].update(meta)
                 return True
             return False  # 이미 참가 중
@@ -758,10 +767,15 @@ class Table:
                     killer=hand_winner or '?'
                     killer_seat=next((x for x in self.seats if x['name']==killer),None)
                     killer_emoji=killer_seat['emoji'] if killer_seat else '💀'
-                    await self.add_log(f"☠️ {s['emoji']} {s['name']} 파산!")
+                    self.bankrupt_counts[s['name']]=self.bankrupt_counts.get(s['name'],0)+1
+                    bc=self.bankrupt_counts[s['name']]
+                    cooldown=min(30*bc, 120)  # 30초 x 파산횟수, 최대 2분
+                    self.bankrupt_cooldowns[s['name']]=time.time()+cooldown
+                    await self.add_log(f"☠️ {s['emoji']} {s['name']} 파산! (💀x{bc}, 쿨다운 {cooldown}초)")
                     death_q=s.get('meta',{}).get('death_quote','')
                     await self.broadcast({'type':'killcam','victim':s['name'],'victim_emoji':s['emoji'],
-                        'killer':killer,'killer_emoji':killer_emoji,'death_quote':death_q})
+                        'killer':killer,'killer_emoji':killer_emoji,'death_quote':death_q,
+                        'bankrupt_count':bc,'cooldown':cooldown})
                     update_leaderboard(s['name'], False, 0)
 
             # 파산한 실제 에이전트 자동 퇴장 (자리 비우기)
@@ -1378,7 +1392,11 @@ async def handle_client(reader, writer):
                 else:
                     t.seats.remove(npc)
                 await t.add_log(f"🤖 {npc['emoji']} {npc['name']} NPC 퇴장 (에이전트끼리 대결!)")
-        if not t.add_player(name,emoji):
+        result=t.add_player(name,emoji)
+        if isinstance(result,str) and result.startswith('COOLDOWN:'):
+            remaining=result.split(':')[1]
+            await send_json(writer,{'error':f'파산 쿨다운 중! {remaining}초 후 재참가 가능','cooldown':int(remaining)},429); return
+        if not result:
             await send_json(writer,{'error':'테이블 꽉참 or 중복 닉네임'},400); return
         # 메타데이터 저장
         joined_seat=next((s for s in t.seats if s['name']==name),None)
