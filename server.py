@@ -2287,12 +2287,12 @@ h1{font-size:1.1em;margin:2px 0}
 .seat{min-width:55px}
 .seat .ava{font-size:1.6em}
 .seat .nm{font-size:0.65em;padding:1px 4px;max-width:60px;overflow:hidden;text-overflow:ellipsis}
-.seat-0{bottom:-10%;left:65%;transform:translateX(-50%)}
-.seat-1{bottom:-10%;left:35%;transform:translateX(-50%)}
+.seat-0{bottom:-4%;left:62%;transform:translateX(-50%)}
+.seat-1{bottom:-4%;left:38%;transform:translateX(-50%)}
 .seat-2{top:60%;left:2%}.seat-3{top:15%;left:2%}
 .seat-4{top:15%;right:2%}.seat-5{top:60%;right:2%}
-.seat-6{top:-10%;left:65%;transform:translateX(-50%)}
-.seat-7{top:-10%;left:35%;transform:translateX(-50%)}
+.seat-6{top:-6%;left:62%;transform:translateX(-50%)}
+.seat-7{top:-6%;left:38%;transform:translateX(-50%)}
 .seat .ch{font-size:0.55em;padding:1px 3px}
 .seat .st{display:none}
 .seat .bet-chip{font-size:0.55em}
