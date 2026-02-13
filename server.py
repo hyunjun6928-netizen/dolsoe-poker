@@ -116,9 +116,10 @@ leaderboard = {}  # name -> {wins, losses, total_chips_won, hands_played, bigges
 
 def update_leaderboard(name, won, chips_delta, pot=0):
     if name not in leaderboard:
-        leaderboard[name] = {'wins':0,'losses':0,'chips_won':0,'hands':0,'biggest_pot':0,'streak':0}
+        leaderboard[name] = {'wins':0,'losses':0,'chips_won':0,'hands':0,'biggest_pot':0,'streak':0,'achievements':[]}
     lb = leaderboard[name]
     if 'streak' not in lb: lb['streak']=0
+    if 'achievements' not in lb: lb['achievements']=[]
     lb['hands'] += 1
     if won:
         lb['wins'] += 1
@@ -128,6 +129,26 @@ def update_leaderboard(name, won, chips_delta, pot=0):
     else:
         lb['losses'] += 1
         lb['streak'] = min(lb['streak']-1, -1) if lb['streak']<=0 else 0
+
+def grant_achievement(name, ach_id, ach_label):
+    """업적 부여 (중복 방지)"""
+    if name not in leaderboard: return False
+    lb=leaderboard[name]
+    if 'achievements' not in lb: lb['achievements']=[]
+    if ach_id not in [a['id'] for a in lb['achievements']]:
+        lb['achievements'].append({'id':ach_id,'label':ach_label,'ts':time.time()})
+        save_leaderboard()
+        return True
+    return False
+
+ACHIEVEMENTS={
+    'iron_heart':{'label':'💪강심장','desc':'7-2 offsuit으로 승리'},
+    'sucker':{'label':'🤡호구','desc':'AA로 패배'},
+    'zombie':{'label':'🧟좀비','desc':'최저칩에서 평균 이상 복구'},
+    'truck':{'label':'🚛트럭','desc':'한 핸드에 2명+ 탈락시킴'},
+    'bluff_king':{'label':'🎭블러퍼','desc':'승률 20% 미만에서 레이즈로 상대 폴드시킴'},
+    'comeback':{'label':'🔄역전왕','desc':'칩 꼴찌에서 우승'},
+}
 
 def get_streak_badge(name):
     if name not in leaderboard: return ''
@@ -297,6 +318,24 @@ class Table:
         self.highlight_replays.append(hl)
         if len(self.highlight_replays)>30: self.highlight_replays=self.highlight_replays[-30:]
 
+    def _bot_reasoning(self, seat, act, amt, wp, to_call):
+        """NPC 봇의 자동 reasoning (말풍선용)"""
+        style=seat.get('style','')
+        reasons={
+            'fold':[f"승률 {wp}%... 안 되겠다",f"콜비용 {to_call}pt는 부담",f"여기서 접는 게 이득",
+                f"패가 구림 ({wp}%)",f"블러핑 같은데 무섭다"],
+            'check':[f"무료로 볼 수 있으면 보지",f"함정 깔아둔다",f"일단 관망",f"승률 {wp}%.. 체크"],
+            'call':[f"팟 오즈 괜찮음, 콜",f"승률 {wp}%, 따라간다",f"{to_call}pt면 볼 만하지",
+                f"드로우 노린다",f"호기심에 콜"],
+            'raise':[f"승률 {wp}%! 밀어붙인다",f"여기서 올려야지",f"팟 {self.pot}pt, 가치 베팅",
+                f"블러핑 간다 ㅋ",f"강하다 느낌!"],
+        }
+        if act=='raise' and amt>=seat['chips']:
+            return random.choice([f"승률 {wp}%! ALL IN!",f"다 걸었다! 지면 끝!",
+                f"올인밖에 답이 없다",f"여기서 안 가면 후회한다"])
+        msgs=reasons.get(act,["..."])
+        return random.choice(msgs)
+
     def add_player(self, name, emoji='🤖', is_bot=False, style='aggressive'):
         if len(self.seats)>=self.MAX_PLAYERS: return False
         existing=next((s for s in self.seats if s['name']==name),None)
@@ -312,7 +351,7 @@ class Table:
             'bot_ai':BotAI(style) if is_bot else None,
             'style':style if is_bot else 'player','out':False,
             'meta':{'version':'','strategy':'','repo':''},
-            'last_note':''})
+            'last_note':'','last_reasoning':''})
         return True
 
     def add_chat(self, name, msg):
@@ -332,7 +371,7 @@ class Table:
                'latency_ms':s.get('latency_ms'),
                'timeout_count':self.timeout_counts.get(s['name'],0),
                'meta':s.get('meta',{'version':'','strategy':'','repo':''}),
-               'last_note':s.get('last_note','')}
+               'last_note':s.get('last_note',''),'last_reasoning':s.get('last_reasoning','')}
             # 플레이어: 본인 카드만 / 관전자(viewer=None): 전체 공개 (딜레이로 치팅 방지)
             if s['hole'] and (viewer is None or viewer==s['name']):
                 p['hole']=[card_dict(c) for c in s['hole']]
@@ -689,13 +728,19 @@ class Table:
                 else:
                     act,amt=await self._wait_external(s,to_call,raises>=4)
 
-                # 액션 note 추출
-                note=''
+                # 액션 note + reasoning 추출
+                note=''; reasoning=''
                 if not s['is_bot'] and self.pending_data:
                     note=sanitize_msg(self.pending_data.get('note',''),80)
+                    reasoning=sanitize_msg(self.pending_data.get('reasoning',''),100)
                     s['last_note']=note
+                    s['last_reasoning']=reasoning
+                # NPC 봇 자동 reasoning 생성
+                elif s['is_bot']:
+                    reasoning=self._bot_reasoning(s, act, amt, _wp, to_call)
+                    s['last_reasoning']=reasoning
                 # 액션 기록
-                record['actions'].append({'round':self.round,'player':s['name'],'action':act,'amount':amt,'note':note})
+                record['actions'].append({'round':self.round,'player':s['name'],'action':act,'amount':amt,'note':note,'reasoning':reasoning})
                 # last_action 저장 (UI 표시용)
                 if act=='fold': s['last_action']='❌ 폴드'
                 elif act=='check': s['last_action']='✋ 체크'
@@ -907,6 +952,32 @@ class Table:
                 mvp=max(active,key=lambda x:x['chips'])
                 await self.broadcast({'type':'mvp','name':mvp['name'],'emoji':mvp['emoji'],'chips':mvp['chips'],'hand':self.hand_num})
                 await self.add_log(f"👑 MVP! {mvp['emoji']} {mvp['name']} ({mvp['chips']}pt) — {self.hand_num}핸드 최다칩!")
+        # ═══ 업적 체크 ═══
+        if record.get('winner') and len(alive)>=1:
+            w_name=record['winner']
+            w_seat=next((s for s in self._hand_seats if s['name']==w_name),None)
+            # 💪 강심장: 7-2 offsuit으로 승리 (쇼다운)
+            if w_seat and w_seat['hole'] and len(scores)>=2:
+                ranks=sorted([RANK_VALUES[c[0]] for c in w_seat['hole']])
+                suits=[c[1] for c in w_seat['hole']]
+                if ranks==[2,7] and suits[0]!=suits[1]:
+                    if grant_achievement(w_name,'iron_heart','💪강심장'):
+                        await self.add_log(f"🏆 업적 달성! {w_seat['emoji']} {w_name}: 💪강심장 (7-2로 승리!)")
+                        await self.broadcast({'type':'achievement','name':w_name,'emoji':w_seat['emoji'],'achievement':'💪강심장','desc':'7-2 offsuit으로 승리!'})
+            # 🤡 호구: AA로 패배
+            for s,_,_ in scores:
+                if s['name']!=w_name and s['hole']:
+                    ranks=[RANK_VALUES[c[0]] for c in s['hole']]
+                    if sorted(ranks)==[14,14]:
+                        if grant_achievement(s['name'],'sucker','🤡호구'):
+                            await self.add_log(f"🏆 업적 달성! {s['emoji']} {s['name']}: 🤡호구 (AA로 패배!)")
+                            await self.broadcast({'type':'achievement','name':s['name'],'emoji':s['emoji'],'achievement':'🤡호구','desc':'포켓 에이스로 패배!'})
+            # 🚛 트럭: 한 핸드에 2명+ 탈락
+            busted_this_hand=[s for s in self._hand_seats if s['chips']<=0 and s['name']!=w_name]
+            if len(busted_this_hand)>=2:
+                if grant_achievement(w_name,'truck','🚛트럭'):
+                    await self.add_log(f"🏆 업적 달성! {w_seat['emoji'] if w_seat else '🤖'} {w_name}: 🚛트럭 ({len(busted_this_hand)}명 동시 탈락!)")
+
         self.history.append(record)
         if len(self.history)>50: self.history=self.history[-50:]
         await self.broadcast_state()
@@ -1186,7 +1257,8 @@ async def handle_client(reader, writer):
             if best_wr: badges[best_wr[0]]=badges.get(best_wr[0],[])+['🗡️최강']
         await send_json(writer,{'leaderboard':[{'name':n,'wins':d['wins'],'losses':d['losses'],
             'chips_won':d['chips_won'],'hands':d['hands'],'biggest_pot':d['biggest_pot'],
-            'streak':d.get('streak',0),'badges':badges.get(n,[]),
+            'streak':d.get('streak',0),'badges':badges.get(n,[])+[a['label'] for a in d.get('achievements',[])],
+            'achievements':d.get('achievements',[]),
             'meta':d.get('meta',{'version':'','strategy':'','repo':''})} for n,d in lb]})
     elif method=='POST' and route=='/api/bet':
         d=json.loads(body) if body else {}
@@ -1588,6 +1660,8 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 .seat-7{bottom:-6%;left:25%;transform:translateX(-50%)}
 .seat .ava{font-size:2.4em;line-height:1.2}
 .seat .act-label{position:absolute;top:-28px;left:50%;transform:translateX(-50%);background:#000000cc;color:#fff;padding:4px 10px;border-radius:8px;font-size:0.9em;font-weight:bold;white-space:nowrap;z-index:10;border:1px solid #ffaa00;animation:actFade 2s ease-out forwards}
+.thought-bubble{position:absolute;top:-52px;left:50%;transform:translateX(-50%);background:#1a1e2eee;color:#88ccff;padding:4px 10px;border-radius:12px;font-size:0.7em;white-space:nowrap;z-index:9;border:1px solid #88ccff44;max-width:180px;overflow:hidden;text-overflow:ellipsis;animation:bubbleFade 4s ease-out forwards;pointer-events:none}
+@keyframes bubbleFade{0%{opacity:0;transform:translateX(-50%) translateY(4px)}10%{opacity:1;transform:translateX(-50%) translateY(0)}80%{opacity:0.8}100%{opacity:0;transform:translateX(-50%) translateY(-4px)}}
 @keyframes actFade{0%{opacity:1;transform:translateX(-50%) translateY(0)}70%{opacity:1}100%{opacity:0;transform:translateX(-50%) translateY(-8px)}}
 @keyframes actPop{0%{transform:translateX(-50%) scale(0.5);opacity:0}100%{transform:translateX(-50%) scale(1);opacity:1}}
 .seat .nm{font-size:0.95em;font-weight:bold;white-space:nowrap}
@@ -1799,6 +1873,7 @@ while True: state = requests.get(URL+'/api/state?player=내봇').json(); time.sl
 <div id="darkhorse-overlay"><div class="dh-text"></div></div>
 <div id="mvp-overlay"><div class="mvp-text"></div></div>
 <div id="highlight-overlay"><div class="hl-text" id="hl-text"></div></div>
+<div id="achieve-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:radial-gradient(circle,#ffd70044,#000000dd);display:none;align-items:center;justify-content:center;z-index:102"><div id="achieve-text" style="font-size:2.5em;font-weight:900;color:#ffd700;text-shadow:0 0 40px #ffd700;animation:allinPulse .4s ease-in-out 3;text-align:center"></div></div>
 <div id="profile-backdrop" onclick="closeProfile()"></div>
 <div id="profile-popup"><span class="pp-close" onclick="closeProfile()">✕</span><div id="pp-content"></div></div>
 </div>
@@ -1891,6 +1966,7 @@ else if(d.type==='mvp'){showMVP(d)}
 else if(d.type==='chat'){addChat(d.name,d.msg)}
 else if(d.type==='allin'){showAllin(d)}
 else if(d.type==='highlight'){showHighlight(d)}
+else if(d.type==='achievement'){showAchievement(d)}
 else if(d.type==='commentary'){showCommentary(d.text)}}
 
 function render(s){
@@ -1979,12 +2055,20 @@ if(p.last_action.includes('폴드'))sfx('fold');else if(p.last_action.includes('
 else if(Date.now()-window[key+'_t']<2000){la=`<div class="act-label" style="animation:none;opacity:1">${p.last_action}</div>`}
 if(la&&p.last_note){la=la.replace('</div>',` <span style="color:#999;font-size:0.8em">"${esc(p.last_note)}"</span></div>`)}
 }
+// 🧠 reasoning 말풍선
+let bubble='';
+if(p.last_reasoning&&!p.folded&&!p.out){
+const rkey=`rsn_${p.name}`;const prevR=window[rkey]||'';
+if(p.last_reasoning!==prevR){window[rkey]=p.last_reasoning;window[rkey+'_t']=Date.now();
+bubble=`<div class="thought-bubble">💭 ${esc(p.last_reasoning)}</div>`}
+else if(Date.now()-(window[rkey+'_t']||0)<4000){
+bubble=`<div class="thought-bubble" style="animation:none;opacity:0.8">💭 ${esc(p.last_reasoning)}</div>`}}
 const sb=p.streak_badge||'';
 const health=p.timeout_count>=2?'🔴':p.timeout_count>=1?'🟡':'🟢';
 const latTag=p.latency_ms!=null?(p.latency_ms<0?'<span style="color:#ff4444;font-size:0.7em">⏰ timeout</span>':`<span style="color:#888;font-size:0.7em">⚡${p.latency_ms}ms</span>`):'';
 const wpBar=p.win_pct!=null&&!p.folded&&!p.out?`<div style="margin-top:2px;height:4px;background:#333;border-radius:2px;overflow:hidden"><div style="width:${p.win_pct}%;height:100%;background:${p.win_pct>50?'#44ff88':p.win_pct>25?'#ffaa00':'#ff4444'};transition:width .5s"></div></div><div style="font-size:0.65em;color:${p.win_pct>50?'#44ff88':p.win_pct>25?'#ffaa00':'#ff4444'};text-align:center">${p.win_pct}%</div>`:'';
 const metaTag=(p.meta&&(p.meta.version||p.meta.strategy))?`<div style="font-size:0.6em;color:#888;margin-top:1px">${esc(p.meta.version||'')}${p.meta.version&&p.meta.strategy?' · ':''}${esc(p.meta.strategy||'')}</div>`:'';
-el.innerHTML=`${la}<div class="ava">${esc(p.emoji||'🤖')}</div><div class="cards">${ch}</div><div class="nm">${health} ${esc(sb)}${esc(p.name)}${db}</div>${metaTag}<div class="ch">💰${p.chips}pt ${latTag}</div>${wpBar}${bt}<div class="st">${esc(p.style)}</div>`;
+el.innerHTML=`${la}${bubble}<div class="ava">${esc(p.emoji||'🤖')}</div><div class="cards">${ch}</div><div class="nm">${health} ${esc(sb)}${esc(p.name)}${db}</div>${metaTag}<div class="ch">💰${p.chips}pt ${latTag}</div>${wpBar}${bt}<div class="st">${esc(p.style)}</div>`;
 el.style.cursor='pointer';el.onclick=(e)=>{e.stopPropagation();showProfile(p.name)};
 f.appendChild(el)});
 if(s.turn){document.getElementById('turnb').style.display='block';document.getElementById('turnb').textContent=`🎯 ${s.turn}의 차례`}
@@ -2228,6 +2312,13 @@ sfx('darkhorse');setTimeout(()=>{o.style.display='none'},3000)}
 function showMVP(d){
 const o=document.getElementById('mvp-overlay');
 o.querySelector('.mvp-text').textContent=`👑 MVP ${d.emoji} ${d.name} — ${d.chips}pt (${d.hand}핸드)`;
+o.style.display='flex';o.style.animation='none';o.offsetHeight;o.style.animation='allinFlash 3.5s ease-out forwards';
+sfx('mvp');setTimeout(()=>{o.style.display='none'},3500)}
+
+// 업적 달성
+function showAchievement(d){
+const o=document.getElementById('achieve-overlay');const t=document.getElementById('achieve-text');
+t.innerHTML=`🏆 업적 달성!<br>${d.emoji} ${esc(d.name)}<br>${d.achievement}<br><span style="font-size:0.5em;color:#aaa">${esc(d.desc)}</span>`;
 o.style.display='flex';o.style.animation='none';o.offsetHeight;o.style.animation='allinFlash 3.5s ease-out forwards';
 sfx('mvp');setTimeout(()=>{o.style.display='none'},3500)}
 
