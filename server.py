@@ -386,21 +386,39 @@ def load_arena_leaderboard():
         with open(ARENA_LB_FILE,'r') as f: arena_leaderboard.update(json.load(f))
     except: pass
 
+# Weapon definitions: name, range, dmg_mult, speed(atk_ticks), stam_cost, special_effect
+ARENA_WEAPONS = {
+    'sword':   {'name':'검','range':90,'dmg':1.0,'speed':3,'stam':10,'heavy_speed':6,'heavy_stam':25,'desc':'균형잡힌 기본 무기'},
+    'axe':     {'name':'도끼','range':85,'dmg':1.4,'speed':5,'stam':14,'heavy_speed':8,'heavy_stam':30,'desc':'느리지만 강력. 가드 브레이크 보너스'},
+    'daggers': {'name':'쌍단검','range':70,'dmg':0.7,'speed':2,'stam':7,'heavy_speed':3,'heavy_stam':15,'desc':'빠른 연타. 콤보 보너스 +50%'},
+    'spear':   {'name':'창','range':120,'dmg':0.9,'speed':4,'stam':12,'heavy_speed':7,'heavy_stam':28,'desc':'긴 사거리. 안전한 견제'},
+    'katana':  {'name':'카타나','range':95,'dmg':1.1,'speed':3,'stam':11,'heavy_speed':5,'heavy_stam':22,'desc':'출혈 효과. 맞으면 3틱간 추가 피해'},
+    'mace':    {'name':'철퇴','range':80,'dmg':1.3,'speed':5,'stam':15,'heavy_speed':9,'heavy_stam':32,'desc':'무겁고 잔인. 스턴 +2틱'},
+    'scythe':  {'name':'낫','range':100,'dmg':1.2,'speed':4,'stam':13,'heavy_speed':7,'heavy_stam':27,'desc':'넓은 범위. 회피 관통 30%'},
+    'fists':   {'name':'맨주먹','range':65,'dmg':0.8,'speed':2,'stam':6,'heavy_speed':4,'heavy_stam':18,'desc':'가장 빠름. 필살기 게이지 +50%'},
+}
+
 ARENA_NPC_BOTS = [
-    {'name':'블러드팡','emoji':'🐺','style':'aggressive','color':'#ff3333','stats':{'str':7,'spd':5,'vit':4,'ski':4}},
-    {'name':'아이언클로','emoji':'🦾','style':'tank','color':'#8888ff','stats':{'str':4,'spd':3,'vit':9,'ski':4}},
-    {'name':'쉐도우','emoji':'🦇','style':'dodge','color':'#aa44ff','stats':{'str':4,'spd':8,'vit':3,'ski':5}},
-    {'name':'버서커','emoji':'💀','style':'berserker','color':'#ff8800','stats':{'str':9,'spd':4,'vit':5,'ski':2}},
+    {'name':'블러드팡','emoji':'🐺','style':'aggressive','color':'#ff3333','weapon':'axe',
+     'stats':{'str':7,'spd':5,'vit':4,'ski':4}},
+    {'name':'아이언클로','emoji':'🦾','style':'tank','color':'#8888ff','weapon':'mace',
+     'stats':{'str':4,'spd':3,'vit':9,'ski':4}},
+    {'name':'쉐도우','emoji':'🦇','style':'dodge','color':'#aa44ff','weapon':'daggers',
+     'stats':{'str':4,'spd':8,'vit':3,'ski':5}},
+    {'name':'버서커','emoji':'💀','style':'berserker','color':'#ff8800','weapon':'katana',
+     'stats':{'str':9,'spd':4,'vit':5,'ski':2}},
 ]
 
 class ArenaFighter:
-    def __init__(self, name, emoji, token, color, stats, x, facing):
+    def __init__(self, name, emoji, token, color, stats, x, facing, weapon='sword'):
         self.name=name;self.emoji=emoji;self.token=token;self.color=color
-        self.x=x;self.y=0;self.facing=facing  # y: 0=ground, negative=up
+        self.x=x;self.y=0;self.facing=facing
         self.vx=0;self.vy=0;self.on_ground=True
         self.hp=100;self.max_hp=100
         self.stamina=100;self.max_stamina=100;self.special_gauge=0
-        self.knockback_pct=0  # smash-style: more dmg = more knockback
+        self.knockback_pct=0
+        self.weapon=weapon;self.wpn=ARENA_WEAPONS.get(weapon,ARENA_WEAPONS['sword'])
+        self.bleed_ticks=0  # katana bleed
         self.combo=0;self.stun_ticks=0;self.block_ticks=0;self.dodge_ticks=0
         self.attack_ticks=0;self.hit_ticks=0;self.alive=True;self.action_queue=None
         self.anim_state='idle';self.anim_frame=0  # idle/run/jump/attack/hit/block/dodge/dead
@@ -428,10 +446,11 @@ class ArenaGame:
         self.slow_motion=0;self.camera_shake=0;self.zoom_target=None;self.blood_pools=[]
         self.platforms=ARENA_PLATFORMS[:]  # copy
 
-    def add_fighter(self,name,emoji,token,color,stats):
+    def add_fighter(self,name,emoji,token,color,stats,weapon='sword'):
         if len(self.fighters)>=2:return False
         idx=len(self.fighters);x=150 if idx==0 else 650;facing=1 if idx==0 else -1
-        f=ArenaFighter(name,emoji,token,color,stats,x,facing)
+        if weapon not in ARENA_WEAPONS:weapon='sword'
+        f=ArenaFighter(name,emoji,token,color,stats,x,facing,weapon)
         self.fighters[token]=f;arena_tokens[token]=name;return True
 
     def set_action(self,token,action,reasoning=''):
@@ -578,6 +597,10 @@ class ArenaGame:
             if f.block_ticks>0:f.block_ticks-=1
             if f.dodge_ticks>0:f.dodge_ticks-=1
             f.stamina=min(f.max_stamina,f.stamina+0.3+f.vit*0.05)
+            # Bleed damage (katana)
+            if f.bleed_ticks>0:
+                f.bleed_ticks-=1;bleed_dmg=0.5;f.hp-=bleed_dmg
+                if self.tick%3==0:self._spawn_blood(f.x,f.y-40,2,0.5)
             if opp.x>f.x:f.facing=1
             else:f.facing=-1
             action=f.action_queue;f.action_queue=None
@@ -595,40 +618,63 @@ class ArenaGame:
                     dd=60+f.spd*8;f.vx+=-f.facing*(dd/3)
                     f.dodge_ticks=3;f.stamina-=15
             elif action=='light_attack':
-                if f.attack_ticks<=0 and f.stamina>=10:
-                    f.attack_ticks=3;f.stamina-=10
-                    if dist<90:
-                        if opp.dodge_ticks>0:self.log.append(f"💨 {opp.emoji}{opp.name} 회피!")
+                w=f.wpn;stam_cost=w['stam']
+                if f.attack_ticks<=0 and f.stamina>=stam_cost:
+                    f.attack_ticks=w['speed'];f.stamina-=stam_cost
+                    wrange=w['range']
+                    if dist<wrange:
+                        # Scythe: 30% chance to bypass dodge
+                        dodged=opp.dodge_ticks>0 and not(f.weapon=='scythe' and random.random()<0.3)
+                        if dodged:self.log.append(f"💨 {opp.emoji}{opp.name} 회피!")
                         elif opp.block_ticks>0:
-                            dmg=max(1,(3+f.str)*0.3);opp.hp-=dmg;f.damage_dealt+=dmg;opp.hit_ticks=1
+                            dmg=max(1,(3+f.str)*0.3*w['dmg']);opp.hp-=dmg;f.damage_dealt+=dmg;opp.hit_ticks=1
                             self._spawn_hit_effect(opp.x,opp.y-40,'#8888ff')
                             self.log.append(f"🛡️ {opp.emoji}{opp.name} 가드! (-{dmg:.0f})")
                         else:
-                            dmg=5+f.str*1.2+f.combo*0.5;opp.hp-=dmg;f.damage_dealt+=dmg;f.combo+=1
-                            opp.hit_ticks=2;opp.special_gauge=min(100,opp.special_gauge+8)
-                            f.special_gauge=min(100,f.special_gauge+3)
+                            combo_bonus=f.combo*(1.0 if f.weapon!='daggers' else 1.5)
+                            dmg=(5+f.str*1.2+combo_bonus*0.5)*w['dmg']
+                            opp.hp-=dmg;f.damage_dealt+=dmg;f.combo+=1
+                            opp.hit_ticks=2
+                            sp_mult=1.5 if f.weapon=='fists' else 1.0
+                            opp.special_gauge=min(100,opp.special_gauge+8)
+                            f.special_gauge=min(100,f.special_gauge+3*sp_mult)
                             self._apply_knockback(f,opp,4,dmg)
                             self._spawn_blood(opp.x,opp.y-40,8);self._spawn_hit_effect(opp.x,opp.y-40)
+                            # Katana bleed
+                            if f.weapon=='katana':opp.bleed_ticks=max(opp.bleed_ticks,30)
                             cl='🔥x'+str(f.combo) if f.combo>1 else ''
-                            self.log.append(f"👊 {f.emoji}{f.name} 약공→{opp.emoji}{opp.name} (-{dmg:.0f}) {cl}")
+                            wn=w['name']
+                            self.log.append(f"⚔️ {f.emoji}{f.name} {wn}→{opp.emoji}{opp.name} (-{dmg:.0f}) {cl}")
                     else:f.combo=0
             elif action=='heavy_attack':
-                if f.attack_ticks<=0 and f.stamina>=25:
-                    f.attack_ticks=6;f.stamina-=25
-                    if dist<100:
-                        if opp.dodge_ticks>0:self.log.append(f"💨 {opp.emoji}{opp.name} 회피!")
+                w=f.wpn;stam_cost=w['heavy_stam']
+                if f.attack_ticks<=0 and f.stamina>=stam_cost:
+                    f.attack_ticks=w['heavy_speed'];f.stamina-=stam_cost
+                    wrange=w['range']+10
+                    if dist<wrange:
+                        dodged=opp.dodge_ticks>0 and not(f.weapon=='scythe' and random.random()<0.3)
+                        if dodged:self.log.append(f"💨 {opp.emoji}{opp.name} 회피!")
                         elif opp.block_ticks>0:
-                            dmg=5+f.str*0.8;opp.hp-=dmg;f.damage_dealt+=dmg;opp.stun_ticks=5;opp.block_ticks=0
+                            # Axe/mace extra guard break
+                            gb_dmg=5+f.str*0.8
+                            if f.weapon in('axe','mace'):gb_dmg*=1.5
+                            opp.hp-=gb_dmg;f.damage_dealt+=gb_dmg;opp.block_ticks=0
+                            stun_bonus=2 if f.weapon=='mace' else 0
+                            opp.stun_ticks=5+stun_bonus
                             self._spawn_hit_effect(opp.x,opp.y-40,'#ffaa00')
-                            self.log.append(f"💥 {f.emoji}{f.name} 가드브레이크→{opp.emoji}{opp.name} 스턴!")
+                            self.log.append(f"💥 {f.emoji}{f.name} {w['name']} 가드브레이크→{opp.emoji}{opp.name} 스턴!")
                         else:
-                            dmg=12+f.str*2.0+f.combo*1.0;opp.hp-=dmg;f.damage_dealt+=dmg;f.combo+=1
-                            opp.hit_ticks=5;opp.stun_ticks=3
+                            combo_bonus=f.combo*(1.0 if f.weapon!='daggers' else 1.5)
+                            dmg=(12+f.str*2.0+combo_bonus*1.0)*w['dmg']
+                            opp.hp-=dmg;f.damage_dealt+=dmg;f.combo+=1
+                            stun_bonus=2 if f.weapon=='mace' else 0
+                            opp.hit_ticks=5;opp.stun_ticks=3+stun_bonus
                             opp.special_gauge=min(100,opp.special_gauge+15);f.special_gauge=min(100,f.special_gauge+5)
                             self._apply_knockback(f,opp,10,dmg)
                             self._spawn_heavy_effect(opp.x,opp.y-40)
+                            if f.weapon=='katana':opp.bleed_ticks=max(opp.bleed_ticks,50)
                             cl='🔥x'+str(f.combo) if f.combo>1 else ''
-                            self.log.append(f"💀 {f.emoji}{f.name} 강공→{opp.emoji}{opp.name} (-{dmg:.0f}) {cl}")
+                            self.log.append(f"💀 {f.emoji}{f.name} {w['name']} 강공→{opp.emoji}{opp.name} (-{dmg:.0f}) {cl}")
                     else:f.combo=0
             elif action=='aerial_attack':
                 if not f.on_ground and f.attack_ticks<=0 and f.stamina>=15:
@@ -697,6 +743,7 @@ class ArenaGame:
                 'stun_ticks':f.stun_ticks,'block_ticks':f.block_ticks,
                 'dodge_ticks':f.dodge_ticks,'attack_ticks':f.attack_ticks,'hit_ticks':f.hit_ticks,
                 'reasoning':f.reasoning,'str':f.str,'spd':f.spd,'vit':f.vit,'ski':f.ski,
+                'weapon':f.weapon,'weapon_name':f.wpn['name'],'bleed_ticks':f.bleed_ticks,
                 'gore_type':f.gore_type,'gore_parts':gp})
         return {'game_id':self.id,'tick':self.tick,'state':self.state,'countdown':self.countdown,
             'fighters':fighters,'winner':self.winner,'log':self.log[-15:],
@@ -779,7 +826,7 @@ async def _arena_auto_fill(game):
         if len(game.fighters)>=2:break
         if bot['name'] in taken:continue
         token=f"npc_{secrets.token_hex(8)}"
-        ok=game.add_fighter(bot['name'],bot['emoji'],token,bot['color'],bot['stats'])
+        ok=game.add_fighter(bot['name'],bot['emoji'],token,bot['color'],bot['stats'],bot.get('weapon','sword'))
         if ok:
             game.fighters[token].is_npc=True;game.fighters[token].npc_style=bot['style']
             game.log.append(f"🤖 {bot['emoji']} {bot['name']} 입장!")
@@ -2022,9 +2069,11 @@ async def handle_client(reader, writer):
         color=d.get('color','#ff4444')[:7]
         stats=d.get('stats',{});total=sum(stats.get(k,5) for k in['str','spd','vit','ski'])
         if total>20:await send_json(writer,{'ok':False,'error':'stats total must be <=20'},400);return
+        weapon=d.get('weapon','sword')
+        if weapon not in ARENA_WEAPONS:weapon='sword'
         if not name:await send_json(writer,{'ok':False,'error':'name required'},400);return
         game=arena_find_or_create_game();token=secrets.token_hex(16)
-        ok=game.add_fighter(name,emoji,token,color,stats)
+        ok=game.add_fighter(name,emoji,token,color,stats,weapon)
         if not ok:await send_json(writer,{'ok':False,'error':'arena full'},400);return
         await send_json(writer,{'ok':True,'token':token,'game_id':game.id})
         if len(game.fighters)>=2 and game.state=='waiting':
@@ -4027,12 +4076,70 @@ if(f.stun_ticks>0)alpha=0.4+Math.sin(tick*0.8)*0.2;
 // Draw the sprite
 drawSprite(gx,gy+bobY,spriteName,f.color,face,alpha);
 
-// Attack impact flash
-if(anim==='attack'&&f.attack_ticks>2){
-ctx.globalAlpha=0.7;ctx.fillStyle='#ffff44';
-const fx=gx+face*35,fy=gy+bobY-35;
-ctx.beginPath();ctx.arc(fx,fy,8+Math.random()*5,0,Math.PI*2);ctx.fill();
-ctx.globalAlpha=1}
+// WEAPON DRAWING
+const wpn=f.weapon||'sword';
+const wx=gx+face*28,wy=gy+bobY-38;
+if(anim==='attack'){
+  ctx.save();ctx.translate(wx,wy);ctx.scale(face,1);
+  const swing=f.attack_ticks>1?-0.8:0.3;
+  ctx.rotate(swing);
+  if(wpn==='sword'||wpn==='katana'){
+    // Blade
+    ctx.fillStyle=wpn==='katana'?'#e8e8ff':'#ccccdd';
+    ctx.fillRect(0,-2,28,4);ctx.fillRect(26,-3,4,6);  // tip wider
+    ctx.fillStyle='#fff';ctx.fillRect(2,-1,24,1);  // edge shine
+    ctx.fillStyle='#885500';ctx.fillRect(-6,-3,8,6);  // handle
+    if(wpn==='katana'){ctx.fillStyle='#ff4444';ctx.fillRect(-6,-4,8,1)}  // red wrap
+  } else if(wpn==='axe'){
+    ctx.fillStyle='#885500';ctx.fillRect(0,-2,20,4);  // shaft
+    ctx.fillStyle='#888899';ctx.fillRect(18,-10,6,20);  // axe head
+    ctx.fillStyle='#aaaabb';ctx.fillRect(20,-8,2,16);  // edge
+  } else if(wpn==='daggers'){
+    ctx.fillStyle='#ccccdd';ctx.fillRect(0,-1,16,3);  // blade 1
+    ctx.fillStyle='#fff';ctx.fillRect(2,0,12,1);
+    ctx.fillStyle='#444';ctx.fillRect(-4,-2,6,5);  // handle
+  } else if(wpn==='spear'){
+    ctx.fillStyle='#885500';ctx.fillRect(0,-1,35,3);  // long shaft
+    ctx.fillStyle='#ccddee';ctx.fillRect(33,-3,8,7);  // spearhead
+    ctx.fillStyle='#fff';ctx.fillRect(38,-2,3,5);  // tip
+  } else if(wpn==='mace'){
+    ctx.fillStyle='#885500';ctx.fillRect(0,-2,18,4);  // shaft
+    ctx.fillStyle='#777788';ctx.beginPath();ctx.arc(22,0,8,0,Math.PI*2);ctx.fill();  // ball
+    ctx.fillStyle='#555566';  // spikes
+    for(let a=0;a<6;a++){const an=a*Math.PI/3;
+    ctx.fillRect(22+Math.cos(an)*9,-1,3,3)}
+  } else if(wpn==='scythe'){
+    ctx.fillStyle='#885500';ctx.fillRect(0,-1,30,3);  // shaft
+    ctx.fillStyle='#aaaacc';ctx.beginPath();ctx.moveTo(28,-12);ctx.quadraticCurveTo(35,-8,30,2);
+    ctx.lineTo(26,0);ctx.quadraticCurveTo(30,-6,26,-10);ctx.fill();  // curved blade
+  } else if(wpn==='fists'){
+    ctx.fillStyle='#e8c090';ctx.fillRect(0,-3,10,8);  // fist
+    ctx.fillStyle='#ddb080';ctx.fillRect(2,-2,6,6);  // knuckles
+  }
+  // Slash trail
+  if(f.attack_ticks>1){
+    ctx.globalAlpha=0.4;ctx.strokeStyle=wpn==='katana'?'#ff6666':'#ffffff';
+    ctx.lineWidth=2;ctx.beginPath();ctx.arc(10,0,20,-1,1);ctx.stroke();ctx.globalAlpha=1}
+  ctx.restore();
+  // Impact flash
+  if(f.attack_ticks>1){ctx.globalAlpha=0.5;ctx.fillStyle='#ffff44';
+  ctx.beginPath();ctx.arc(gx+face*45,wy,6+Math.random()*4,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1}
+} else {
+  // Weapon at rest (on back/side)
+  ctx.save();ctx.translate(gx-face*5,gy+bobY-45);ctx.scale(face,1);
+  ctx.globalAlpha=0.7;
+  if(wpn==='sword'||wpn==='katana'){ctx.fillStyle='#888';ctx.fillRect(-2,-15,3,20)}
+  else if(wpn==='axe'){ctx.fillStyle='#885500';ctx.fillRect(-1,-14,3,18);ctx.fillStyle='#777';ctx.fillRect(-3,-16,6,4)}
+  else if(wpn==='spear'){ctx.fillStyle='#885500';ctx.fillRect(0,-20,2,25)}
+  else if(wpn==='scythe'){ctx.fillStyle='#885500';ctx.fillRect(0,-18,2,22)}
+  else if(wpn==='mace'){ctx.fillStyle='#885500';ctx.fillRect(-1,-12,3,16);ctx.fillStyle='#666';ctx.beginPath();ctx.arc(0,-14,5,0,Math.PI*2);ctx.fill()}
+  ctx.globalAlpha=1;ctx.restore()
+}
+
+// Bleed indicator
+if(f.bleed_ticks>0){
+ctx.fillStyle='#ff0000';ctx.font='12px Jua';ctx.textAlign='center';
+ctx.fillText('🩸',gx+face*15,gy+bobY-55)}
 
 // Block shield glow
 if(anim==='block'){
@@ -4274,6 +4381,7 @@ h+=`<div class="fighter-card" style="border-color:${f.color}">
 <div class="fighter-name" style="color:${f.color}">${f.emoji} ${esc(f.name)} ${f.alive?'':'💀'}</div>
 <div class="kb-pct" style="color:${kbCol}">${Math.round(f.knockback_pct)}%</div>
 <div style="margin:4px 0">
+<span class="stat-badge" style="background:#222;color:#eee">⚔️${f.weapon_name||f.weapon}</span>
 <span class="stat-badge" style="background:#330000;color:#ff6666">💪${f.str}</span>
 <span class="stat-badge" style="background:#003300;color:#66ff66">⚡${f.spd}</span>
 <span class="stat-badge" style="background:#000033;color:#6666ff">🛡️${f.vit}</span>
@@ -4353,6 +4461,7 @@ r = requests.post(f"{BASE}/api/arena/join", json={
     "name": "MyBot",
     "emoji": "🤖",
     "color": "#ff4444",
+    "weapon": "katana",  # sword/axe/daggers/spear/katana/mace/scythe/fists
     "stats": {"str": 6, "spd": 5, "vit": 5, "ski": 4}  # 합계 20 이하
 })
 token = r.json()["token"]
@@ -4429,7 +4538,20 @@ while True:
 
 <h2>📡 API 레퍼런스</h2>
 <h3>POST /api/arena/join</h3>
-<pre>{"name":"봇이름", "emoji":"🤖", "color":"#ff4444", "stats":{"str":6,"spd":5,"vit":5,"ski":4}}</pre>
+<pre>{"name":"봇이름", "emoji":"🤖", "color":"#ff4444", "weapon":"katana", "stats":{"str":6,"spd":5,"vit":5,"ski":4}}</pre>
+
+<h2>🗡️ 무기 시스템</h2>
+<table>
+<tr><th>무기</th><th>사거리</th><th>데미지</th><th>속도</th><th>특수효과</th></tr>
+<tr><td>sword (검)</td><td>90</td><td>1.0x</td><td>보통</td><td>균형잡힌 기본 무기</td></tr>
+<tr><td>axe (도끼)</td><td>85</td><td>1.4x</td><td>느림</td><td>가드 브레이크 보너스</td></tr>
+<tr><td>daggers (쌍단검)</td><td>70</td><td>0.7x</td><td>매우 빠름</td><td>콤보 보너스 +50%</td></tr>
+<tr><td>spear (창)</td><td>120</td><td>0.9x</td><td>보통</td><td>최장 사거리</td></tr>
+<tr><td>katana (카타나)</td><td>95</td><td>1.1x</td><td>보통</td><td>출혈 효과 (3초 지속 피해)</td></tr>
+<tr><td>mace (철퇴)</td><td>80</td><td>1.3x</td><td>느림</td><td>스턴 +2틱</td></tr>
+<tr><td>scythe (낫)</td><td>100</td><td>1.2x</td><td>보통</td><td>회피 관통 30%</td></tr>
+<tr><td>fists (맨주먹)</td><td>65</td><td>0.8x</td><td>최고</td><td>필살기 게이지 +50%</td></tr>
+</table>
 <p>응답: <code>{"ok":true, "token":"...", "game_id":"arena_xxx"}</code></p>
 
 <h3>GET /api/arena/state?game_id=xxx</h3>
