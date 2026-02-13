@@ -2114,14 +2114,14 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 .card.black .r,.card.black .s{color:#111}
 .card-sm{width:46px;height:66px;font-size:0.8em;border-radius:8px}.card-sm .s{font-size:0.95em}
 .seat{position:absolute;text-align:center;z-index:10;transition:all .3s;min-width:70px}
-.seat-0{bottom:-6%;left:50%;transform:translateX(-50%)}
-.seat-1{top:65%;left:-18%;transform:translateY(-50%)}
-.seat-2{top:20%;left:-18%;transform:translateY(-50%)}
-.seat-3{top:-8%;left:28%;transform:translateX(-50%)}
-.seat-4{top:-8%;left:72%;transform:translateX(-50%)}
-.seat-5{top:20%;right:-18%;transform:translateY(-50%)}
-.seat-6{top:65%;right:-18%;transform:translateY(-50%)}
-.seat-7{bottom:-6%;left:25%;transform:translateX(-50%)}
+.seat-0{bottom:-15%;left:62%;transform:translateX(-50%)}
+.seat-1{bottom:-15%;left:30%;transform:translateX(-50%)}
+.seat-2{top:50%;left:-20%;transform:translateY(-50%)}
+.seat-3{top:10%;left:-20%;transform:translateY(-50%)}
+.seat-4{top:10%;right:-20%;transform:translateY(-50%)}
+.seat-5{top:50%;right:-20%;transform:translateY(-50%)}
+.seat-6{top:-18%;left:62%;transform:translateX(-50%)}
+.seat-7{top:-18%;left:30%;transform:translateX(-50%)}
 .seat .ava{font-size:3em;line-height:1.2;filter:drop-shadow(2px 2px 0 #000)}
 .seat .act-label{position:absolute;top:-32px;left:50%;transform:translateX(-50%);background:#ffffffee;color:#075985;padding:5px 12px;border-radius:12px;font-size:0.9em;font-weight:bold;white-space:nowrap;z-index:10;border:2px solid #38bdf8;box-shadow:2px 2px 0 #38bdf844;animation:actFade 2s ease-out forwards}
 .seat .act-label::after{content:'';position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid #000}
@@ -2149,9 +2149,8 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 .seat.is-turn{animation:seatBounce 1.5s ease-in-out infinite}
 .seat.is-turn .ava{text-shadow:0 0 16px #6bcb77,0 0 32px #6bcb7744;filter:drop-shadow(0 0 8px #6bcb77)}
 @keyframes seatBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
-.seat-0.is-turn{animation:seatBounce0 1.5s ease-in-out infinite}@keyframes seatBounce0{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(-3px)}}
-.seat-1.is-turn,.seat-2.is-turn,.seat-5.is-turn,.seat-6.is-turn{animation:seatBounceY 1.5s ease-in-out infinite}@keyframes seatBounceY{0%,100%{transform:translateY(-50%)}50%{transform:translateY(calc(-50% - 3px))}}
-.seat-3.is-turn,.seat-4.is-turn,.seat-7.is-turn{animation:seatBounce0 1.5s ease-in-out infinite}
+.seat-0.is-turn,.seat-1.is-turn,.seat-6.is-turn,.seat-7.is-turn{animation:seatBounceX 1.5s ease-in-out infinite}@keyframes seatBounceX{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(-3px)}}
+.seat-2.is-turn,.seat-3.is-turn,.seat-4.is-turn,.seat-5.is-turn{animation:seatBounceY 1.5s ease-in-out infinite}@keyframes seatBounceY{0%,100%{transform:translateY(-50%)}50%{transform:translateY(calc(-50% - 3px))}}
 .thinking{font-size:0.7em;color:#4b7399;animation:thinkDots 1.5s steps(4,end) infinite;overflow:hidden;white-space:nowrap;width:3.5em;text-align:center}
 @keyframes thinkDots{0%{width:0.5em}33%{width:1.5em}66%{width:2.5em}100%{width:3.5em}}
 .seat.allin-glow .ava{text-shadow:0 0 16px #ff6b6b,0 0 32px #ff000066;filter:drop-shadow(0 0 12px #ff4444);animation:shake 0.4s ease-in-out infinite}
@@ -2235,10 +2234,10 @@ h1{font-size:1.1em;margin:2px 0}
 .seat{min-width:55px}
 .seat .ava{font-size:1.6em}
 .seat .nm{font-size:0.65em;padding:1px 4px;max-width:60px;overflow:hidden;text-overflow:ellipsis}
-.seat-0{bottom:-14%}.seat-7{bottom:-14%;left:20%}
-.seat-3{top:-6%;left:25%}.seat-4{top:-6%;left:75%}
-.seat-1{top:75%;left:1%}.seat-2{top:10%;left:1%}
-.seat-5{top:10%;right:1%}.seat-6{top:75%;right:1%}
+.seat-0{bottom:-16%;left:62%}.seat-1{bottom:-16%;left:25%}
+.seat-2{top:55%;left:-2%}.seat-3{top:10%;left:-2%}
+.seat-4{top:10%;right:-2%}.seat-5{top:55%;right:-2%}
+.seat-6{top:-16%;left:62%}.seat-7{top:-16%;left:25%}
 .seat .ch{font-size:0.55em;padding:1px 3px}
 .seat .st{display:none}
 .seat .bet-chip{font-size:0.55em}
