@@ -2084,8 +2084,8 @@ radial-gradient(1px 1px at 55% 85%,#fff2,transparent),
 radial-gradient(ellipse at 50% 50%,#38bdf808 0%,transparent 70%);
 border-radius:50%;pointer-events:none;z-index:1;animation:starTwinkle 4s ease-in-out infinite alternate}
 .felt::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;border-radius:50%;pointer-events:none;z-index:2;
-background:linear-gradient(160deg,transparent 10%,#7dd3fc15 20%,#818cf830 33%,#c084fc40 45%,#f0abfc35 55%,#818cf825 65%,#7dd3fc15 75%,transparent 85%);
-background-size:300% 300%;animation:milkyWay 12s ease-in-out infinite;mix-blend-mode:screen}
+background:linear-gradient(150deg,transparent 5%,rgba(125,211,252,0.15) 15%,rgba(129,140,248,0.3) 28%,rgba(192,132,252,0.4) 40%,rgba(240,171,252,0.35) 50%,rgba(192,132,252,0.3) 60%,rgba(129,140,248,0.2) 70%,rgba(125,211,252,0.1) 80%,transparent 90%);
+background-size:250% 250%;animation:milkyWay 10s ease-in-out infinite}
 @keyframes milkyWay{0%{background-position:0% 0%}50%{background-position:100% 100%}100%{background-position:0% 0%}}
 @keyframes starTwinkle{0%{opacity:0.6}50%{opacity:1}100%{opacity:0.6}}
 @keyframes shootingStar{0%{transform:translateX(-100%) translateY(-100%) rotate(45deg);opacity:0}10%{opacity:1}30%{opacity:1}100%{transform:translateX(300%) translateY(300%) rotate(45deg);opacity:0}}
