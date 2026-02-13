@@ -2127,14 +2127,14 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 .card.black .r,.card.black .s{color:#111}
 .card-sm{width:46px;height:66px;font-size:0.8em;border-radius:8px}.card-sm .s{font-size:0.95em}
 .seat{position:absolute;text-align:center;z-index:10;transition:all .3s;min-width:70px}
-.seat-0{bottom:-4%;left:65%;transform:translateX(-50%)}
-.seat-1{bottom:-4%;left:30%;transform:translateX(-50%)}
+.seat-0{bottom:-4%;left:60%;transform:translateX(-50%)}
+.seat-1{bottom:-4%;left:40%;transform:translateX(-50%)}
 .seat-2{top:52%;left:-2%;transform:translateY(-50%)}
 .seat-3{top:15%;left:-2%;transform:translateY(-50%)}
 .seat-4{top:15%;right:-2%;transform:translateY(-50%)}
 .seat-5{top:52%;right:-2%;transform:translateY(-50%)}
-.seat-6{top:-12%;left:65%;transform:translateX(-50%)}
-.seat-7{top:-12%;left:30%;transform:translateX(-50%)}
+.seat-6{top:-12%;left:60%;transform:translateX(-50%)}
+.seat-7{top:-12%;left:40%;transform:translateX(-50%)}
 .seat .ava{font-size:3em;line-height:1.2;filter:drop-shadow(2px 2px 0 #000)}
 .seat .act-label{position:absolute;top:-32px;left:50%;transform:translateX(-50%);background:#ffffffee;color:#075985;padding:5px 12px;border-radius:12px;font-size:0.9em;font-weight:bold;white-space:nowrap;z-index:10;border:2px solid #38bdf8;box-shadow:2px 2px 0 #38bdf844;animation:actFade 2s ease-out forwards}
 .seat .act-label::after{content:'';position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid #000}
