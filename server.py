@@ -1816,8 +1816,12 @@ async def handle_client(reader, writer):
         await send_http(writer,200,pg,'text/html; charset=utf-8')
     elif method=='POST' and route=='/api/tron/join':
         d=json.loads(body) if body else {}
-        name=sanitize_name(d.get('name','')); emoji=sanitize_name(d.get('emoji','🏍️'))[:2] or '🏍️'
-        if not name: await send_json(writer,{'ok':False,'error':'name required'},400); return
+        name=sanitize_name(d.get('name',''))[:20]; emoji=sanitize_name(d.get('emoji','🏍️'))[:2] or '🏍️'
+        if not name or len(name)<1: await send_json(writer,{'ok':False,'error':'name required'},400); return
+        # Rate limit: max 1 join per 5s per name
+        _tron_jt=getattr(handle_client,'_tron_join_times',{});handle_client._tron_join_times=_tron_jt
+        if name in _tron_jt and time.time()-_tron_jt[name]<5: await send_json(writer,{'ok':False,'error':'too fast'},429); return
+        _tron_jt[name]=time.time()
         game = tron_find_or_create_game()
         token = secrets.token_hex(16)
         ok = game.add_player(name, emoji, token)
@@ -3613,9 +3617,13 @@ body::after{content:'';position:fixed;top:0;left:0;width:100%;height:100%;backgr
 .ctrl-left{grid-column:1;grid-row:2}
 .ctrl-right{grid-column:3;grid-row:2}
 .ctrl-down{grid-column:2;grid-row:3}
-/* Particles */
-.particle{position:absolute;pointer-events:none;z-index:20;font-size:1.5rem;animation:particle-fly 0.8s ease-out forwards}
-@keyframes particle-fly{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--px),var(--py)) scale(0.3)}}
+/* Death fragments - dot shatter */
+.frag{position:absolute;pointer-events:none;z-index:20;border-radius:2px;animation:frag-fly var(--dur) ease-out forwards}
+@keyframes frag-fly{0%{opacity:1;transform:translate(0,0) rotate(0deg) scale(1);filter:brightness(2)}30%{opacity:0.9;filter:brightness(1.5)}100%{opacity:0;transform:translate(var(--fx),var(--fy)) rotate(var(--fr)) scale(0);filter:brightness(0.3)}}
+.death-flash{position:absolute;pointer-events:none;z-index:19;border-radius:50%;animation:death-pulse 0.6s ease-out forwards}
+@keyframes death-pulse{0%{opacity:0.8;transform:translate(-50%,-50%) scale(0.5)}50%{opacity:0.4}100%{opacity:0;transform:translate(-50%,-50%) scale(4)}}
+.death-ring{position:absolute;pointer-events:none;z-index:18;border-radius:50%;border:2px solid;animation:ring-expand 0.8s ease-out forwards}
+@keyframes ring-expand{0%{opacity:1;transform:translate(-50%,-50%) scale(0.3)}100%{opacity:0;transform:translate(-50%,-50%) scale(5)}}
 /* Speed lines */
 .speed-line{position:fixed;width:1px;height:30vh;background:linear-gradient(transparent,rgba(0,255,242,0.08),transparent);pointer-events:none;z-index:0;animation:speed-move 4s linear infinite}
 @keyframes speed-move{0%{transform:translateY(-100%)}100%{transform:translateY(100vh)}}
@@ -3780,12 +3788,37 @@ ctx.beginPath();ctx.roundRect(p.x*cell+cell*0.2,p.y*cell+cell*0.2,cell*0.6,cell*
 ctx.globalAlpha=1}}
 ctx.globalAlpha=1;ctx.shadowBlur=0}
 function spawnParticles(s){
-const gw=document.getElementById('grid-wrap');const rect=gw.getBoundingClientRect();
+const gw=document.getElementById('grid-wrap');
 for(const p of s.players){if(!p.alive&&p.death_tick===s.tick){
-for(let i=0;i<8;i++){const el=document.createElement('div');el.className='particle';el.textContent='💥';
-const angle=Math.random()*Math.PI*2;const dist=30+Math.random()*60;
-el.style.cssText=`left:${p.x/s.grid_size*100}%;top:${p.y/s.grid_size*100}%;--px:${Math.cos(angle)*dist}px;--py:${Math.sin(angle)*dist}px`;
-gw.appendChild(el);setTimeout(()=>el.remove(),800)}}}}
+const cx=p.x/s.grid_size*100,cy=p.y/s.grid_size*100,col=p.color;
+// Shockwave flash
+const flash=document.createElement('div');flash.className='death-flash';
+flash.style.cssText=`left:${cx}%;top:${cy}%;width:30px;height:30px;background:${col};box-shadow:0 0 20px ${col}`;
+gw.appendChild(flash);setTimeout(()=>flash.remove(),600);
+// Expanding ring
+const ring=document.createElement('div');ring.className='death-ring';
+ring.style.cssText=`left:${cx}%;top:${cy}%;width:20px;height:20px;border-color:${col}`;
+gw.appendChild(ring);setTimeout(()=>ring.remove(),800);
+// Shatter fragments - 25 pixel shards flying out
+for(let i=0;i<25;i++){const el=document.createElement('div');el.className='frag';
+const angle=Math.random()*Math.PI*2,dist=40+Math.random()*100,rot=(Math.random()-0.5)*720;
+const sz=2+Math.random()*5,dur=0.4+Math.random()*0.6;
+el.style.cssText=`left:${cx}%;top:${cy}%;width:${sz}px;height:${sz}px;background:${col};box-shadow:0 0 ${sz*2}px ${col};--fx:${Math.cos(angle)*dist}px;--fy:${Math.sin(angle)*dist}px;--fr:${rot}deg;--dur:${dur}s`;
+gw.appendChild(el);setTimeout(()=>el.remove(),dur*1000+50)}
+// Screen shake
+gw.style.transform='translate(2px,-2px)';setTimeout(()=>gw.style.transform='translate(-2px,1px)',50);
+setTimeout(()=>gw.style.transform='translate(1px,2px)',100);setTimeout(()=>gw.style.transform='',150);
+// Death sound
+try{const ac=new(window.AudioContext||window.webkitAudioContext)();
+const o=ac.createOscillator(),g=ac.createGain();o.connect(g);g.connect(ac.destination);
+o.type='sawtooth';o.frequency.setValueAtTime(400,ac.currentTime);o.frequency.exponentialRampToValueAtTime(40,ac.currentTime+0.5);
+g.gain.setValueAtTime(0.3,ac.currentTime);g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.5);
+o.start();o.stop(ac.currentTime+0.5);
+const n=ac.createBufferSource(),buf=ac.createBuffer(1,ac.sampleRate*0.3,ac.sampleRate),d=buf.getChannelData(0);
+for(let j=0;j<d.length;j++)d[j]=(Math.random()*2-1)*Math.exp(-j/d.length*5);
+n.buffer=buf;const ng=ac.createGain();n.connect(ng);ng.connect(ac.destination);ng.gain.setValueAtTime(0.4,ac.currentTime);ng.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.3);
+n.start();n.stop(ac.currentTime+0.3)}catch(e){}
+}}}
 function sendDir(d){
 if(!myToken)return;
 fetch('/api/tron/action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:myToken,direction:d,game_id:myGameId})})
