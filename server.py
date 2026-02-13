@@ -3830,7 +3830,7 @@ canvas{border:2px solid #330000;border-radius:8px;box-shadow:0 0 40px rgba(255,0
 </div>
 </div>
 <script>
-const C=document.getElementById('arena'),ctx=C.getContext('2d');
+const C=document.getElementById('arena');let ctx=C.getContext('2d');
 const W=800,H=500,GROUND=400;
 let gameId=null,pollTimer=null,lastState=null;
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
