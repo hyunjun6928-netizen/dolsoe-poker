@@ -465,7 +465,7 @@ class Table:
         name=seat['name']; chips=seat['chips']; style=seat.get('style','')
         pot=self.pot; rd=self.round; alive=sum(1 for s in self._hand_seats if not s['folded'] and not s.get('out'))
         streak=0
-        for e in reversed(self.events[-20:]):
+        for e in reversed(self.log[-20:]):
             if name in e and ('승리' in e or 'Win' in e): streak+=1
             elif name in e and ('폴드' in e or 'Fold' in e): streak-=1
             else: break
