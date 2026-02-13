@@ -2225,10 +2225,17 @@ background:
 radial-gradient(80px 80px at 3% 85%,#8b6b3a44,transparent),
 radial-gradient(60px 60px at 97% 80%,#8b6b3a33,transparent),
 radial-gradient(40px 40px at 5% 15%,#6b8b4a22,transparent),
-radial-gradient(50px 50px at 95% 20%,#6b8b4a22,transparent),
-radial-gradient(30px 30px at 15% 50%,#d4956a15,transparent),
-radial-gradient(35px 35px at 85% 45%,#d4956a15,transparent);
+radial-gradient(50px 50px at 95% 20%,#6b8b4a22,transparent);
 opacity:0.8}
+body::after{content:'';position:fixed;bottom:0;left:0;right:0;height:48px;pointer-events:none;z-index:0;
+background:
+repeating-linear-gradient(90deg,#5a9a3a 0px,#5a9a3a 6px,#4a8a2a 6px,#4a8a2a 12px,#6aaa4a 12px,#6aaa4a 18px);
+border-top:6px solid #3a7a1a;image-rendering:pixelated}
+.forest-top{position:fixed;top:0;left:0;right:0;height:48px;pointer-events:none;z-index:0;
+background:
+repeating-linear-gradient(90deg,#5a9a3a 0px,#5a9a3a 6px,#4a8a2a 6px,#4a8a2a 12px,#6aaa4a 12px,#6aaa4a 18px);
+border-bottom:6px solid #3a7a1a;image-rendering:pixelated}
+.forest-deco{position:fixed;pointer-events:none;z-index:0;image-rendering:pixelated}
 @keyframes starTwinkle{0%{opacity:0.5}50%{opacity:1}100%{opacity:0.6}}
 h1,.btn-play,.btn-watch,.pot-badge,.seat .nm,.act-label,.tab-btns button,#new-btn,.tbl-card .tbl-name,#commentary,.bp-title,.vp-title,#log,#replay-panel,#highlight-panel,.sidebar-label,#turn-options,#chatbox{font-family:'DotGothic16','Jua',system-ui,sans-serif}
 .wrap{max-width:1400px;margin:0 auto;padding:10px;position:relative;z-index:1}
@@ -3677,6 +3684,91 @@ s.style.cssText=`position:absolute;width:${sz}px;height:${sz}px;background:${c};
 f.appendChild(s);setTimeout(()=>s.remove(),2500)},1800);
 // Human join removed — AI-only arena
 document.getElementById('chat-inp').addEventListener('keydown',e=>{if(e.key==='Enter')sendChat()});
+
+// === 🌿🍄 Forest Decorations ===
+(function(){
+const PX=3;
+function drawPixelArt(w,h,drawFn){
+  const c=document.createElement('canvas');c.width=w*PX;c.height=h*PX;
+  const g=c.getContext('2d');g.imageSmoothingEnabled=false;
+  function px(x,y,col){g.fillStyle=col;g.fillRect(x*PX,y*PX,PX,PX)}
+  drawFn(px);return c.toDataURL();
+}
+// Mushroom (red cap)
+function mushroom1(){return drawPixelArt(10,12,(px)=>{
+  const c='#e74c3c',cl='#ff6b6b',cd='#c0392b',s='#f5deb3',sd='#d4b896',w='#fff';
+  // Cap
+  px(3,0,c);px(4,0,c);px(5,0,c);px(6,0,c);
+  px(2,1,c);px(3,1,cl);px(4,1,c);px(5,1,w);px(6,1,c);px(7,1,c);
+  px(1,2,c);px(2,2,cl);px(3,2,c);px(4,2,w);px(5,2,c);px(6,2,c);px(7,2,w);px(8,2,c);
+  px(1,3,cd);px(2,3,c);px(3,3,w);px(4,3,c);px(5,3,c);px(6,3,w);px(7,3,c);px(8,3,cd);
+  px(1,4,cd);px(2,4,c);px(3,4,c);px(4,4,c);px(5,4,c);px(6,4,c);px(7,4,c);px(8,4,cd);
+  // Stem
+  px(3,5,s);px(4,5,s);px(5,5,s);px(6,5,s);
+  px(3,6,sd);px(4,6,s);px(5,6,s);px(6,6,sd);
+  px(4,7,sd);px(5,7,sd);
+  // Grass
+  px(2,8,'#5a9a3a');px(3,8,'#4a8a2a');px(4,8,'#6aaa4a');px(5,8,'#5a9a3a');px(6,8,'#4a8a2a');px(7,8,'#5a9a3a');
+})}
+// Mushroom (purple)
+function mushroom2(){return drawPixelArt(8,10,(px)=>{
+  const c='#9b59b6',cl='#bb77dd',cd='#7d3c98',s='#f5deb3',sd='#d4b896';
+  px(2,0,c);px(3,0,c);px(4,0,c);px(5,0,c);
+  px(1,1,cl);px(2,1,c);px(3,1,cl);px(4,1,c);px(5,1,c);px(6,1,cd);
+  px(1,2,cd);px(2,2,c);px(3,2,c);px(4,2,cl);px(5,2,c);px(6,2,cd);
+  px(2,3,s);px(3,3,s);px(4,3,s);px(5,3,s);
+  px(3,4,sd);px(4,4,sd);
+  px(2,5,'#5a9a3a');px(3,5,'#4a8a2a');px(4,5,'#6aaa4a');px(5,5,'#5a9a3a');
+})}
+// Flower
+function flower1(){return drawPixelArt(7,8,(px)=>{
+  const p='#ff69b4',y='#ffd700',g='#5a9a3a',gd='#3a7a1a';
+  px(3,0,p);px(2,1,p);px(3,1,y);px(4,1,p);px(3,2,p);
+  px(3,3,g);px(3,4,g);px(2,4,g);px(3,5,gd);
+})}
+// Small tree
+function tree1(){return drawPixelArt(12,16,(px)=>{
+  const l='#4a8a2a',ll='#6aaa4a',ld='#2a6a0a',t='#8b6b3a',td='#6b4b2a';
+  // Leaves
+  for(let y=0;y<6;y++){const w=2+Math.min(y,3);const ox=6-w;
+    for(let x=ox;x<=6+w-ox;x++){px(x,y,y<2?ll:y<4?l:ld)}}
+  px(4,0,ll);px(5,0,ll);px(6,0,ll);px(7,0,ll);
+  px(3,1,l);px(4,1,ll);px(5,1,l);px(6,1,ll);px(7,1,l);px(8,1,l);
+  px(2,2,l);px(3,2,ll);px(4,2,l);px(5,2,l);px(6,2,l);px(7,2,ll);px(8,2,l);px(9,2,l);
+  px(2,3,ld);px(3,3,l);px(4,3,l);px(5,3,ll);px(6,3,l);px(7,3,l);px(8,3,l);px(9,3,ld);
+  px(3,4,ld);px(4,4,l);px(5,4,l);px(6,4,l);px(7,4,l);px(8,4,ld);
+  px(4,5,ld);px(5,5,l);px(6,5,l);px(7,5,ld);
+  // Trunk
+  px(5,6,t);px(6,6,t);px(5,7,t);px(6,7,td);px(5,8,td);px(6,8,t);px(5,9,t);px(6,9,td);
+})}
+// Place decorations
+const decos=[
+  {fn:mushroom1,x:'2%',y:'calc(100% - 80px)',w:30,h:36},
+  {fn:mushroom2,x:'8%',y:'calc(100% - 60px)',w:24,h:30},
+  {fn:tree1,x:'1%',y:'20%',w:36,h:48},
+  {fn:flower1,x:'5%',y:'calc(100% - 100px)',w:21,h:24},
+  {fn:mushroom1,x:'92%',y:'calc(100% - 75px)',w:30,h:36},
+  {fn:mushroom2,x:'88%',y:'calc(100% - 55px)',w:24,h:30},
+  {fn:tree1,x:'93%',y:'15%',w:36,h:48},
+  {fn:flower1,x:'96%',y:'40%',w:21,h:24},
+  {fn:flower1,x:'3%',y:'50%',w:21,h:24},
+  {fn:mushroom1,x:'95%',y:'60%',w:30,h:36},
+  {fn:mushroom2,x:'4%',y:'75%',w:24,h:30},
+  {fn:flower1,x:'90%',y:'calc(100% - 100px)',w:21,h:24},
+];
+decos.forEach(d=>{
+  const el=document.createElement('div');
+  el.className='forest-deco';
+  el.style.cssText=`left:${d.x};top:${d.y};width:${d.w}px;height:${d.h}px`;
+  const img=document.createElement('img');
+  img.src=d.fn();img.style.cssText='width:100%;height:100%;image-rendering:pixelated';
+  el.appendChild(img);document.body.appendChild(el);
+});
+// Top grass bar
+const topGrass=document.createElement('div');
+topGrass.className='forest-top';
+document.body.appendChild(topGrass);
+})();
 </script>
 </body>
 </html>""".encode('utf-8')
