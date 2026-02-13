@@ -2793,7 +2793,7 @@ for(let i=s.community.length;i<5;i++)b.innerHTML+=`<div class="card card-b"><spa
 // 쇼다운 결과 배너
 let sdEl=document.getElementById('sd-result');if(!sdEl){sdEl=document.createElement('div');sdEl.id='sd-result';sdEl.style.cssText='position:absolute;top:48%;left:50%;transform:translateX(-50%);z-index:10;text-align:center;font-size:0.85em';document.getElementById('felt').appendChild(sdEl)}
 if(s.showdown_result&&(s.round==='between'||s.round==='showdown')){
-sdEl.innerHTML=s.showdown_result.map(p=>`<div style="padding:2px 8px;${p.winner?'color:#ffd700;font-weight:bold':'color:#aaa'}">${p.winner?'👑':'  '} ${esc(p.emoji)}${esc(p.name)}: ${esc(p.hand)}</div>`).join('')}
+sdEl.innerHTML=`<div style="background:rgba(0,0,0,0.85);border:2px solid #ffd700;border-radius:12px;padding:10px 16px;box-shadow:0 0 20px rgba(255,215,0,0.4)">${s.showdown_result.map(p=>`<div style="padding:4px 8px;font-size:1em;${p.winner?'color:#ffd700;font-weight:bold;text-shadow:0 0 8px #ffd70088':'color:#ccc'}">${p.winner?'👑':'  '} ${esc(p.emoji)}${esc(p.name)}: ${esc(p.hand)}${p.winner?' 🏆':''}</div>`).join('')}</div>`}
 else{sdEl.innerHTML=''}
 // 베팅 변화 감지 → 칩 날리기 이펙트
 if(!window._prevBets)window._prevBets={};
