@@ -1276,13 +1276,11 @@ loadTables();setInterval(loadTables,5000);
 
 function join(){myName=document.getElementById('inp-name').value.trim();if(!myName){alert('닉네임!');return}isPlayer=true;startGame()}
 function watch(){
-try{
 isPlayer=false;var ni=document.getElementById('inp-name');specName=(ni?ni.value.trim():'')||'관전자'+Math.floor(Math.random()*999);
 document.getElementById('lobby').style.display='none';
 document.getElementById('game').style.display='block';
 document.getElementById('reactions').style.display='flex';
-tryWS();fetchCoins();
-}catch(e){alert('에러: '+e.message)}}
+startPolling();tryWS();fetchCoins();}
 
 let delayDone=true;
 
