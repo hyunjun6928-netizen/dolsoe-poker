@@ -2102,18 +2102,30 @@ s.players.filter(p=>!p.out&&!p.folded).forEach(p=>{const b=document.createElemen
 if(s.round==='between'||s.round==='finished'||s.round==='waiting'){document.getElementById('vote-panel').style.display='none';currentVote=null}
 document.getElementById('pot').textContent=`🏆 POT: ${s.pot}pt`;
 document.getElementById('pot').style.fontSize=s.pot>200?'1.3em':s.pot>50?'1.1em':'1em';
-// 칩 스택 시각화 (색상별 스택)
+// 황금 더미 시각화
 const cs=document.getElementById('chip-stack');
 if(s.pot>0){
-const stacks=[];
-const chipDef=[{v:100,c:'#ffd700',e:'🟡'},{v:50,c:'#ff6b35',e:'🟠'},{v:10,c:'#4488ff',e:'🔵'},{v:5,c:'#44cc44',e:'🟢'}];
-let remain=s.pot;
-for(const cd of chipDef){const cnt=Math.floor(remain/cd.v);remain%=cd.v;if(cnt>0)stacks.push({color:cd.c,count:Math.min(cnt,8)})}
-if(remain>0)stacks.push({color:'#aaa',count:1});
-cs.innerHTML=stacks.map(st=>{
-let h='';for(let i=0;i<st.count;i++)h+=`<div style="width:22px;height:6px;border-radius:3px;background:${st.color};border:1px solid #fff3;box-shadow:0 1px 2px #0006"></div>`;
-return `<div style="display:flex;flex-direction:column-reverse;align-items:center;gap:1px">${h}</div>`
-}).join('')}
+const p=s.pot;
+// 팟 크기에 따라 코인 개수 결정 (1~15개)
+const coinCount=Math.min(15,Math.max(1,Math.ceil(p/30)));
+// 더미 크기 (팟에 비례)
+const scale=p>500?1.4:p>200?1.2:p>100?1.1:1.0;
+const glow=p>200?`filter:drop-shadow(0 0 ${Math.min(p/20,20)}px #ffd700)`:'';
+let coins='';
+// 피라미드형 황금 더미 배치
+const rows=[];let remaining=coinCount;let row=1;
+while(remaining>0){const inRow=Math.min(row+2,remaining);rows.push(inRow);remaining-=inRow;row++}
+rows.reverse();
+let y=0;
+for(const cnt of rows){
+let rowHtml='';
+const offsetX=-(cnt-1)*9;
+for(let i=0;i<cnt;i++){
+const wobble=Math.sin(i*1.7+y*2.3)*2;
+const coinSize=16+Math.random()*4;
+rowHtml+=`<div style="position:absolute;left:${offsetX+i*18+wobble}px;top:${y}px;font-size:${coinSize}px;text-shadow:1px 1px 0 #b8860b,-1px -1px 0 #fff8;transition:all .3s">🪙</div>`}
+coins+=rowHtml;y+=14}
+cs.innerHTML=`<div style="position:relative;width:${rows[rows.length-1]*18+20}px;height:${y+16}px;transform:scale(${scale});${glow};transition:transform .3s">${coins}</div>`}
 else cs.innerHTML='';
 const b=document.getElementById('board');b.innerHTML='';
 s.community.forEach((c,i)=>{const card=mkCard(c);b.innerHTML+=card});
