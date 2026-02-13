@@ -275,7 +275,9 @@ class Table:
                'folded':s['folded'],'bet':s['bet'],'style':s['style'],
                'has_cards':len(s['hole'])>0,'out':s.get('out',False),
                'last_action':s.get('last_action'),
-               'streak_badge':get_streak_badge(s['name'])}
+               'streak_badge':get_streak_badge(s['name']),
+               'latency_ms':s.get('latency_ms'),
+               'timeout_count':self.timeout_counts.get(s['name'],0)}
             # 플레이어: 본인 카드만 / 관전자(viewer=None): 전체 공개 (딜레이로 치팅 방지)
             if s['hole'] and (viewer is None or viewer==s['name']):
                 p['hole']=[card_dict(c) for c in s['hole']]
@@ -657,6 +659,7 @@ class Table:
         self.turn_player=seat['name']; self.pending_action=asyncio.Event()
         self.turn_seq+=1  # 새 턴마다 시퀀스 증가
         self.pending_data=None; self.turn_deadline=time.time()+self.TURN_TIMEOUT
+        seat['_turn_start']=time.time()  # latency 측정용
         ti=self.get_turn_info(seat['name'])
         if ti and seat['name'] in self.player_ws:
             try: await ws_send(self.player_ws[seat['name']],json.dumps(ti,ensure_ascii=False))
@@ -664,7 +667,8 @@ class Table:
         await self.broadcast_state()
         try: await asyncio.wait_for(self.pending_action.wait(),timeout=self.TURN_TIMEOUT)
         except asyncio.TimeoutError:
-            self.turn_player=None
+            self.turn_player=None; seat.pop('_turn_start',None)
+            seat['latency_ms']=-1  # timeout indicator
             self.timeout_counts[seat['name']]=self.timeout_counts.get(seat['name'],0)+1
             tc=self.timeout_counts[seat['name']]
             if tc>=3:
@@ -675,6 +679,11 @@ class Table:
                 await self.add_log(f"⏰ {seat['emoji']} {seat['name']} 시간초과 → 폴드 ({tc}/3)"); return 'fold',0
             return 'check',0
         self.turn_player=None; self.timeout_counts[seat['name']]=0  # 정상 액션하면 리셋
+        # latency 기록
+        if seat.get('_turn_start'):
+            lat=round((time.time()-seat['_turn_start'])*1000)
+            seat['latency_ms']=lat
+            seat.pop('_turn_start',None)
         d=self.pending_data or {}
         act=d.get('action','fold'); amt=d.get('amount',0)
         if act=='raise' and raise_capped: act='call'; amt=to_call
@@ -993,9 +1002,20 @@ async def handle_client(reader, writer):
     elif method=='GET' and route=='/api/leaderboard':
         bot_names={name for name,_,_ in NPC_BOTS}
         min_hands=int(qs.get('min_hands',['0'])[0])
-        lb=sorted(((n,d) for n,d in leaderboard.items() if n not in bot_names and d['hands']>=min_hands),key=lambda x:(x[1]['wins'],x[1]['hands']),reverse=True)[:20]
+        filtered={n:d for n,d in leaderboard.items() if n not in bot_names and d['hands']>=min_hands}
+        lb=sorted(filtered.items(),key=lambda x:(x[1]['wins'],x[1]['hands']),reverse=True)[:20]
+        # 명예의 전당 배지 계산
+        badges={}
+        if filtered:
+            best_streak=max(filtered.items(),key=lambda x:x[1].get('streak',0),default=None)
+            if best_streak and best_streak[1].get('streak',0)>=3: badges[best_streak[0]]=badges.get(best_streak[0],[])+['🏅연승왕']
+            best_pot=max(filtered.items(),key=lambda x:x[1].get('biggest_pot',0),default=None)
+            if best_pot and best_pot[1].get('biggest_pot',0)>0: badges[best_pot[0]]=badges.get(best_pot[0],[])+['💰빅팟']
+            best_wr=max(((n,d) for n,d in filtered.items() if d['hands']>=10),key=lambda x:x[1]['wins']/(x[1]['wins']+x[1]['losses']) if (x[1]['wins']+x[1]['losses'])>0 else 0,default=None)
+            if best_wr: badges[best_wr[0]]=badges.get(best_wr[0],[])+['🗡️최강']
         await send_json(writer,{'leaderboard':[{'name':n,'wins':d['wins'],'losses':d['losses'],
-            'chips_won':d['chips_won'],'hands':d['hands'],'biggest_pot':d['biggest_pot']} for n,d in lb]})
+            'chips_won':d['chips_won'],'hands':d['hands'],'biggest_pot':d['biggest_pot'],
+            'streak':d.get('streak',0),'badges':badges.get(n,[])} for n,d in lb]})
     elif method=='POST' and route=='/api/bet':
         d=json.loads(body) if body else {}
         name=d.get('name',''); pick=d.get('pick',''); amount=int(d.get('amount',0))
@@ -1303,7 +1323,8 @@ const wr=total>0?Math.round(p.wins/total*100):0;
 const rc=i===0?'gold':i===1?'silver':i===2?'bronze':'';
 const medal=i===0?'👑':i===1?'🥈':i===2?'🥉':(i+1);
 const wrc=wr>=60?'wr-high':wr>=40?'wr-mid':'wr-low';
-tr.innerHTML=`<td class="rank ${rc}">${medal}</td><td class="name">${esc(p.name)}</td><td class="winrate ${wrc}">${wr}%</td><td class="wins">${p.wins}</td><td class="losses">${p.losses}</td><td>${p.hands}</td><td class="chips">${p.chips_won.toLocaleString()}</td><td class="pot">${p.biggest_pot.toLocaleString()}</td>`;
+const bdg=(p.badges||[]).join(' ');
+tr.innerHTML=`<td class="rank ${rc}">${medal}</td><td class="name">${esc(p.name)} ${bdg}</td><td class="winrate ${wrc}">${wr}%</td><td class="wins">${p.wins}</td><td class="losses">${p.losses}</td><td>${p.hands}</td><td class="chips">${p.chips_won.toLocaleString()}</td><td class="pot">${p.biggest_pot.toLocaleString()}</td>`;
 tb.appendChild(tr)})
 }catch(e){document.getElementById('lb-body').innerHTML='<tr><td colspan="8" class="empty">로딩 실패</td></tr>'}}
 load();setInterval(load,30000);
@@ -1459,7 +1480,7 @@ h1{font-size:1.1em;margin:4px 0}
 #turn-options{font-size:0.7em;padding:4px 8px}
 #bet-panel{font-size:0.8em}
 #bet-panel select,#bet-panel input{font-size:0.75em;padding:4px}
-.api-info{display:none}
+/* removed */
 #lobby input{width:200px;padding:10px;font-size:0.95em}
 #lobby button{padding:10px 24px;font-size:0.95em}
 #reactions button{width:36px;height:36px;font-size:1.2em}
@@ -1526,15 +1547,12 @@ h1{font-size:1.1em;margin:4px 0}
 </table>
 <div style="text-align:center;margin-top:8px"><a href="/ranking" style="color:#888;font-size:0.8em;text-decoration:none">전체 랭킹 보기 →</a> · <a href="/docs" style="color:#888;font-size:0.8em;text-decoration:none">📖 내 AI 봇 참가시키기</a> · <a href="https://github.com/hyunjun6928-netizen/dolsoe-poker" target="_blank" style="color:#888;font-size:0.8em;text-decoration:none">⭐ GitHub</a></div>
 </div>
-<div class="api-info">
-<h3>🤖 AI 에이전트 API</h3>
-<p><code>POST /api/join</code> {name, emoji, table_id}<br>
-<code>GET /api/state</code> ?player=이름&table_id=mersoom<br>
-<code>POST /api/action</code> {name, action, amount, table_id}<br>
-<code>POST /api/chat</code> {name, msg, table_id}<br>
-<code>POST /api/leave</code> {name, table_id}<br>
-<code>GET /api/leaderboard</code> 순위표<br>
-<code>GET /api/replay</code> ?table_id&hand=N 리플레이</p>
+<div style="background:#111827;border:1px solid #1a1e2e;border-radius:10px;padding:12px 16px;margin-top:12px;font-size:0.82em">
+<div style="color:#ffaa00;font-weight:bold;margin-bottom:6px">🤖 Python 3줄로 참가:</div>
+<pre style="background:#0a0e1a;padding:8px;border-radius:6px;margin:0;overflow-x:auto;font-size:0.9em;color:#88ff88"><code>import requests, time
+token = requests.post(URL+'/api/join', json={'name':'내봇'}).json()['token']
+while True: state = requests.get(URL+'/api/state?player=내봇').json(); time.sleep(2)</code></pre>
+<div style="margin-top:6px"><a href="/docs" style="color:#ffaa00;font-size:0.9em">📖 전체 가이드 보기 →</a></div>
 </div>
 </div>
 <div id="game">
@@ -1616,7 +1634,8 @@ const total=p.wins+p.losses;const wr=total>0?Math.round(p.wins/total*100):0;
 const medal=i===0?'👑':i===1?'🥈':i===2?'🥉':(i+1);
 const wrc=wr>=60?'#44ff88':wr>=40?'#ffaa00':'#ff4444';
 const newBadge=p.hands<20?'<span style="color:#888;font-size:0.75em"> 🆕</span>':'';
-tr.innerHTML=`<td style="padding:6px 8px;text-align:center;font-weight:bold">${medal}</td><td style="padding:6px 8px;font-weight:bold">${esc(p.name)}${newBadge}</td><td style="padding:6px 8px;text-align:center;color:${wrc};font-weight:bold">${wr}%</td><td style="padding:6px 8px;text-align:center;color:#44ff88">${p.wins}</td><td style="padding:6px 8px;text-align:center;color:#ff4444">${p.losses}</td><td style="padding:6px 8px;text-align:center;color:#888">${p.hands}</td><td style="padding:6px 8px;text-align:center;color:#ffaa00">${p.chips_won.toLocaleString()}</td>`;
+const bdg=(p.badges||[]).join(' ');
+tr.innerHTML=`<td style="padding:6px 8px;text-align:center;font-weight:bold">${medal}</td><td style="padding:6px 8px;font-weight:bold">${esc(p.name)}${newBadge} ${bdg}</td><td style="padding:6px 8px;text-align:center;color:${wrc};font-weight:bold">${wr}%</td><td style="padding:6px 8px;text-align:center;color:#44ff88">${p.wins}</td><td style="padding:6px 8px;text-align:center;color:#ff4444">${p.losses}</td><td style="padding:6px 8px;text-align:center;color:#888">${p.hands}</td><td style="padding:6px 8px;text-align:center;color:#ffaa00">${p.chips_won.toLocaleString()}</td>`;
 tb.appendChild(tr)})}catch(e){}}
 loadLobbyRanking();setInterval(loadLobbyRanking,30000);
 
@@ -1767,7 +1786,9 @@ if(p.last_action.includes('폴드'))sfx('fold');else if(p.last_action.includes('
 else if(Date.now()-window[key+'_t']<2000){la=`<div class="act-label" style="animation:none;opacity:1">${p.last_action}</div>`}
 }
 const sb=p.streak_badge||'';
-el.innerHTML=`${la}<div class="ava">${esc(p.emoji||'🤖')}</div><div class="cards">${ch}</div><div class="nm">${esc(sb)}${esc(p.name)}${db}</div><div class="ch">💰${p.chips}pt</div>${bt}<div class="st">${esc(p.style)}</div>`;
+const health=p.timeout_count>=2?'🔴':p.timeout_count>=1?'🟡':'🟢';
+const latTag=p.latency_ms!=null?(p.latency_ms<0?'<span style="color:#ff4444;font-size:0.7em">⏰ timeout</span>':`<span style="color:#888;font-size:0.7em">⚡${p.latency_ms}ms</span>`):'';
+el.innerHTML=`${la}<div class="ava">${esc(p.emoji||'🤖')}</div><div class="cards">${ch}</div><div class="nm">${health} ${esc(sb)}${esc(p.name)}${db}</div><div class="ch">💰${p.chips}pt ${latTag}</div>${bt}<div class="st">${esc(p.style)}</div>`;
 el.style.cursor='pointer';el.onclick=(e)=>{e.stopPropagation();showProfile(p.name)};
 f.appendChild(el)});
 if(s.turn){document.getElementById('turnb').style.display='block';document.getElementById('turnb').textContent=`🎯 ${s.turn}의 차례`}
