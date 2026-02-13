@@ -1209,6 +1209,7 @@ h1{font-size:1.1em;margin:4px 0}
 <div class="game-main">
 <div class="felt" id="felt">
 <div class="pot-badge" id="pot">POT: 0</div>
+<div id="chip-stack" style="position:absolute;top:28%;left:50%;transform:translateX(-50%);z-index:4;display:flex;gap:2px;align-items:flex-end;justify-content:center"></div>
 <div class="board" id="board"></div>
 <div class="turn-badge" id="turnb"></div>
 <div id="turn-options" style="display:none;background:#111;border:1px solid #333;border-radius:8px;padding:8px 12px;margin:6px auto;max-width:600px;font-size:0.82em;text-align:center"></div>
@@ -1352,6 +1353,19 @@ s.players.filter(p=>!p.out&&!p.folded).forEach(p=>{const b=document.createElemen
 if(s.round==='between'||s.round==='finished'||s.round==='waiting'){document.getElementById('vote-panel').style.display='none';currentVote=null}
 document.getElementById('pot').textContent=`🏆 POT: ${s.pot}pt`;
 document.getElementById('pot').style.fontSize=s.pot>200?'1.3em':s.pot>50?'1.1em':'1em';
+// 칩 스택 시각화 (색상별 스택)
+const cs=document.getElementById('chip-stack');
+if(s.pot>0){
+const stacks=[];
+const chipDef=[{v:100,c:'#ffd700',e:'🟡'},{v:50,c:'#ff6b35',e:'🟠'},{v:10,c:'#4488ff',e:'🔵'},{v:5,c:'#44cc44',e:'🟢'}];
+let remain=s.pot;
+for(const cd of chipDef){const cnt=Math.floor(remain/cd.v);remain%=cd.v;if(cnt>0)stacks.push({color:cd.c,count:Math.min(cnt,8)})}
+if(remain>0)stacks.push({color:'#aaa',count:1});
+cs.innerHTML=stacks.map(st=>{
+let h='';for(let i=0;i<st.count;i++)h+=`<div style="width:22px;height:6px;border-radius:3px;background:${st.color};border:1px solid #fff3;box-shadow:0 1px 2px #0006"></div>`;
+return `<div style="display:flex;flex-direction:column-reverse;align-items:center;gap:1px">${h}</div>`
+}).join('')}
+else cs.innerHTML='';
 const b=document.getElementById('board');b.innerHTML='';
 s.community.forEach((c,i)=>{const card=mkCard(c);b.innerHTML+=card});
 if(s.community.length>0&&s.community.length!==(window._lastComm||0)){window._lastComm=s.community.length;sfx('chip');b.style.animation='none';b.offsetHeight;b.style.animation='boardFlash .3s ease-out'}
