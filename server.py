@@ -2819,13 +2819,21 @@ const f=document.getElementById('felt');
 f.classList.remove('warm','hot','fire');
 if(s.pot>500)f.classList.add('fire');else if(s.pot>200)f.classList.add('hot');else if(s.pot>=50)f.classList.add('warm');
 f.querySelectorAll('.seat').forEach(e=>e.remove());
-// 동적 좌석 배치 — 인원수에 따라 균등 분포
+// 동적 좌석 배치 — 타원형 테이블 위에 균등 분포
 const seatPos=((n)=>{
-const isMobile=window.innerWidth<=700;
-if(n<=2)return isMobile?[{b:'-4%',l:'60%'},{b:'-4%',l:'38%'}]:[{b:'-4%',l:'60%'},{t:'-12%',l:'40%'}];
-if(n<=3)return isMobile?[{b:'-4%',l:'62%'},{b:'-4%',l:'38%'},{l:'2%',t:'40%'}]:[{b:'-4%',l:'60%'},{t:'-12%',l:'40%'},{l:'-2%',t:'35%'}];
-if(n<=4)return isMobile?[{b:'-4%',l:'62%'},{b:'-4%',l:'38%'},{l:'2%',t:'35%'},{r:'2%',t:'35%'}]:[{b:'-4%',l:'60%'},{b:'-4%',l:'40%'},{l:'-2%',t:'35%'},{r:'-2%',t:'35%'}];
-return null})(s.players.length);
+// 타원의 중심 기준 각도로 좌석 배치 (bottom=0°, 시계방향)
+// CSS: top/left 퍼센트 (펠트 내부)
+const positions=[];
+const cx=50,cy=50; // 중심
+const rx=38,ry=40; // 타원 반지름 (x,y) — 펠트 안쪽
+const startAngle=Math.PI/2; // 아래부터 시작
+for(let i=0;i<n;i++){
+  const angle=startAngle+((2*Math.PI*i)/n);
+  const x=cx+rx*Math.cos(angle);
+  const y=cy-ry*Math.sin(angle);
+  positions.push({t:y+'%',l:x+'%'});
+}
+return positions})(s.players.length);
 s.players.forEach((p,i)=>{const el=document.createElement('div');
 let cls=`seat seat-${i}`;if(p.folded)cls+=' fold';if(p.out)cls+=' out';if(s.turn===p.name)cls+=' is-turn';
 if(p.last_action&&p.last_action.includes('ALL IN'))cls+=' allin-glow';
@@ -2864,9 +2872,10 @@ const wpRing=ringPct>0?`<div style="font-size:0.65em;color:${ringColor};text-ali
 const moodTag=p.last_mood?`<span style="position:absolute;top:-8px;right:-8px;font-size:0.8em">${esc(p.last_mood)}</span>`:'';
 el.innerHTML=`${la}${bubble}<div style="position:relative;display:inline-block">${avaRing}<div class="ava">${esc(p.emoji||'🤖')}</div>${moodTag}</div>${thinkDiv}<div class="cards">${ch}</div><div class="nm">${health} ${esc(sb)}${esc(p.name)}${db}</div>${metaTag}<div class="ch">💰${p.chips}pt ${latTag}</div>${wpRing}${bt}<div class="st">${esc(p.style)}</div>`;
 el.style.cursor='pointer';el.onclick=(e)=>{e.stopPropagation();showProfile(p.name)};
-// 동적 좌석 위치 적용
-if(seatPos&&seatPos[i]){const sp=seatPos[i];el.style.position='absolute';el.style.transform='translateX(-50%)';
-if(sp.b)el.style.bottom=sp.b;if(sp.t)el.style.top=sp.t;if(sp.l)el.style.left=sp.l;if(sp.r)el.style.right=sp.r}
+// 동적 좌석 위치 적용 (CSS class보다 우선)
+if(seatPos&&seatPos[i]){const sp=seatPos[i];el.style.position='absolute';
+el.style.top=sp.t||'auto';el.style.left=sp.l||'auto';el.style.bottom='auto';el.style.right='auto';
+el.style.transform='translate(-50%,-50%)';el.style.textAlign='center'}
 f.appendChild(el)});
 // 라이벌 표시
 f.querySelectorAll('.rivalry-tag').forEach(e=>e.remove());
