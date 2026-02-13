@@ -909,7 +909,8 @@ async def handle_client(reader, writer):
         await t.broadcast_state()
         await send_json(writer,{'ok':True,'chips':chips})
     elif method=='GET' and route=='/api/leaderboard':
-        lb=sorted(leaderboard.items(),key=lambda x:x[1]['wins'],reverse=True)[:20]
+        bot_names={name for name,_,_ in NPC_BOTS}
+        lb=sorted(((n,d) for n,d in leaderboard.items() if n not in bot_names),key=lambda x:x[1]['wins'],reverse=True)[:20]
         await send_json(writer,{'leaderboard':[{'name':n,'wins':d['wins'],'losses':d['losses'],
             'chips_won':d['chips_won'],'hands':d['hands'],'biggest_pot':d['biggest_pot']} for n,d in lb]})
     elif method=='POST' and route=='/api/bet':
