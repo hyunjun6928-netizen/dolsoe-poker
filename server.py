@@ -193,6 +193,8 @@ player_tokens = {}  # name -> token
 chat_cooldowns = {}  # name -> last_chat_timestamp
 CHAT_COOLDOWN = 5  # 5초
 
+ADMIN_KEY = os.environ.get('POKER_ADMIN_KEY', '')
+
 def issue_token(name):
     token = secrets.token_hex(16)
     player_tokens[name] = token
@@ -200,6 +202,21 @@ def issue_token(name):
 
 def verify_token(name, token):
     return player_tokens.get(name) == token
+
+def sanitize_name(name):
+    """이름 정제: 제어문자 제거, 공백 정리, 길이 제한"""
+    if not name: return ''
+    # 제어문자 제거
+    name = ''.join(c for c in name if c.isprintable())
+    name = name.strip()[:20]
+    # HTML 특수문자는 허용 (서버에서 저장, 클라이언트에서 esc() 처리)
+    return name
+
+def sanitize_msg(msg, max_len=120):
+    """메시지 정제: 제어문자 제거, 길이 제한"""
+    if not msg: return ''
+    msg = ''.join(c for c in msg if c.isprintable())
+    return msg.strip()[:max_len]
 
 # ══ 게임 테이블 ══
 class Table:
@@ -246,7 +263,7 @@ class Table:
         return True
 
     def add_chat(self, name, msg):
-        entry = {'name':name,'msg':msg[:200],'ts':time.time()}
+        entry = {'name':name,'msg':msg[:120],'ts':time.time()}
         self.chat_log.append(entry)
         if len(self.chat_log) > 50: self.chat_log = self.chat_log[-50:]
         return entry
@@ -850,6 +867,8 @@ async def handle_client(reader, writer):
         await send_json(writer,{'games':games})
     elif method=='POST' and route=='/api/new':
         d=json.loads(body) if body else {}
+        if ADMIN_KEY and d.get('admin_key')!=ADMIN_KEY:
+            await send_json(writer,{'ok':False,'code':'UNAUTHORIZED','message':'admin_key required'},401); return
         tid=d.get('table_id',f"table_{int(time.time()*1000)%100000}")
         t=get_or_create_table(tid)
         timeout=d.get('timeout',60)
@@ -857,9 +876,9 @@ async def handle_client(reader, writer):
         t.TURN_TIMEOUT=timeout
         await send_json(writer,{'table_id':t.id,'timeout':t.TURN_TIMEOUT,'seats_available':t.MAX_PLAYERS-len(t.seats)})
     elif method=='POST' and route=='/api/join':
-        d=json.loads(body) if body else {}; name=d.get('name',''); emoji=d.get('emoji','🤖')
+        d=json.loads(body) if body else {}; name=sanitize_name(d.get('name','')); emoji=sanitize_name(d.get('emoji','🤖'))[:2] or '🤖'
         tid=d.get('table_id','mersoom')
-        if not name or len(name)<1 or len(name)>20: await send_json(writer,{'ok':False,'code':'INVALID_INPUT','message':'name 1~20자'},400); return
+        if not name or len(name)<1: await send_json(writer,{'ok':False,'code':'INVALID_INPUT','message':'name 1~20자'},400); return
         t=find_table(tid)
         if not t: t=get_or_create_table(tid)
         if not t: await send_json(writer,{'ok':False,'code':'INVALID_INPUT','message':'invalid table_id or max tables reached'},400); return
@@ -928,7 +947,7 @@ async def handle_client(reader, writer):
         elif result=='ALREADY_ACTED': await send_json(writer,{'ok':False,'code':'ALREADY_ACTED','message':'action already submitted'},409)
         else: await send_json(writer,{'ok':False,'code':'NOT_YOUR_TURN','message':'not your turn'},400)
     elif method=='POST' and route=='/api/chat':
-        d=json.loads(body) if body else {}; name=d.get('name',''); msg=d.get('msg',''); tid=d.get('table_id','')
+        d=json.loads(body) if body else {}; name=sanitize_name(d.get('name','')); msg=sanitize_msg(d.get('msg',''),120); tid=d.get('table_id','')
         token=d.get('token','')
         if not name or not msg: await send_json(writer,{'ok':False,'code':'INVALID_INPUT','message':'name and msg required'},400); return
         if token and not verify_token(name,token):
@@ -973,7 +992,8 @@ async def handle_client(reader, writer):
         await send_json(writer,{'ok':True,'chips':chips})
     elif method=='GET' and route=='/api/leaderboard':
         bot_names={name for name,_,_ in NPC_BOTS}
-        lb=sorted(((n,d) for n,d in leaderboard.items() if n not in bot_names),key=lambda x:x[1]['wins'],reverse=True)[:20]
+        min_hands=int(qs.get('min_hands',['0'])[0])
+        lb=sorted(((n,d) for n,d in leaderboard.items() if n not in bot_names and d['hands']>=min_hands),key=lambda x:(x[1]['wins'],x[1]['hands']),reverse=True)[:20]
         await send_json(writer,{'leaderboard':[{'name':n,'wins':d['wins'],'losses':d['losses'],
             'chips_won':d['chips_won'],'hands':d['hands'],'biggest_pot':d['biggest_pot']} for n,d in lb]})
     elif method=='POST' and route=='/api/bet':
@@ -1049,7 +1069,14 @@ async def handle_ws(reader, writer, path):
             except: continue
             if data.get('type')=='action' and mode=='play': t.handle_api_action(name,data)
             elif data.get('type')=='chat':
-                entry=t.add_chat(data.get('name',name),data.get('msg',''))
+                chat_name=sanitize_name(data.get('name',name)) or name or '관객'
+                chat_msg=sanitize_msg(data.get('msg',''),120)
+                if not chat_msg: continue
+                # WS 채팅 쿨다운
+                now=time.time(); last_ws=chat_cooldowns.get(chat_name,0)
+                if now-last_ws<CHAT_COOLDOWN: continue
+                chat_cooldowns[chat_name]=now
+                entry=t.add_chat(chat_name,chat_msg)
                 await t.broadcast_chat(entry)
             elif data.get('type')=='reaction':
                 emoji=data.get('emoji','')[:2]; rname=data.get('name',name or '관객')[:10]
@@ -1263,6 +1290,7 @@ tr:hover{background:#1a1e2e;transition:background .2s}
 </table>
 <a href="/" class="back-btn">🎰 포커 테이블로</a>
 <script>
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 async function load(){
 try{const r=await fetch('/api/leaderboard');const d=await r.json();
 const tb=document.getElementById('lb-body');
@@ -1275,7 +1303,7 @@ const wr=total>0?Math.round(p.wins/total*100):0;
 const rc=i===0?'gold':i===1?'silver':i===2?'bronze':'';
 const medal=i===0?'👑':i===1?'🥈':i===2?'🥉':(i+1);
 const wrc=wr>=60?'wr-high':wr>=40?'wr-mid':'wr-low';
-tr.innerHTML=`<td class="rank ${rc}">${medal}</td><td class="name">${p.name}</td><td class="winrate ${wrc}">${wr}%</td><td class="wins">${p.wins}</td><td class="losses">${p.losses}</td><td>${p.hands}</td><td class="chips">${p.chips_won.toLocaleString()}</td><td class="pot">${p.biggest_pot.toLocaleString()}</td>`;
+tr.innerHTML=`<td class="rank ${rc}">${medal}</td><td class="name">${esc(p.name)}</td><td class="winrate ${wrc}">${wr}%</td><td class="wins">${p.wins}</td><td class="losses">${p.losses}</td><td>${p.hands}</td><td class="chips">${p.chips_won.toLocaleString()}</td><td class="pot">${p.biggest_pot.toLocaleString()}</td>`;
 tb.appendChild(tr)})
 }catch(e){document.getElementById('lb-body').innerHTML='<tr><td colspan="8" class="empty">로딩 실패</td></tr>'}}
 load();setInterval(load,30000);
@@ -1493,8 +1521,8 @@ h1{font-size:1.1em;margin:4px 0}
 <div id="lobby-ranking" style="margin:20px auto;max-width:600px">
 <h3 style="color:#ffaa00;text-align:center;margin-bottom:10px">🏆 랭킹 TOP 10</h3>
 <table style="width:100%;border-collapse:collapse;background:#111827;border-radius:10px;overflow:hidden;font-size:0.85em">
-<thead style="background:#1a1e2e"><tr><th style="padding:8px;color:#ffaa00;text-align:center">#</th><th style="padding:8px;color:#ffaa00;text-align:left">플레이어</th><th style="padding:8px;color:#ffaa00;text-align:center">승률</th><th style="padding:8px;color:#44ff88;text-align:center">승</th><th style="padding:8px;color:#ff4444;text-align:center">패</th><th style="padding:8px;color:#ffaa00;text-align:center">획득칩</th></tr></thead>
-<tbody id="lobby-lb"><tr><td colspan="6" style="text-align:center;padding:15px;color:#666">랭킹 불러오는 중...</td></tr></tbody>
+<thead style="background:#1a1e2e"><tr><th style="padding:8px;color:#ffaa00;text-align:center">#</th><th style="padding:8px;color:#ffaa00;text-align:left">플레이어</th><th style="padding:8px;color:#ffaa00;text-align:center">승률</th><th style="padding:8px;color:#44ff88;text-align:center">승</th><th style="padding:8px;color:#ff4444;text-align:center">패</th><th style="padding:8px;color:#888;text-align:center">핸드</th><th style="padding:8px;color:#ffaa00;text-align:center">획득칩</th></tr></thead>
+<tbody id="lobby-lb"><tr><td colspan="7" style="text-align:center;padding:15px;color:#666">랭킹 불러오는 중...</td></tr></tbody>
 </table>
 <div style="text-align:center;margin-top:8px"><a href="/ranking" style="color:#888;font-size:0.8em;text-decoration:none">전체 랭킹 보기 →</a> · <a href="/docs" style="color:#888;font-size:0.8em;text-decoration:none">📖 내 AI 봇 참가시키기</a> · <a href="https://github.com/hyunjun6928-netizen/dolsoe-poker" target="_blank" style="color:#888;font-size:0.8em;text-decoration:none">⭐ GitHub</a></div>
 </div>
@@ -1575,19 +1603,20 @@ tl.innerHTML='<div style="color:#888;margin-bottom:8px;font-size:0.9em">🎯 테
 d.games.forEach(g=>{const el=document.createElement('div');
 el.className='tbl-card'+(g.id===tableId?' active':'');
 const status=g.running?`<span class="tbl-live">🟢 진행중 (핸드 #${g.hand})</span>`:`<span class="tbl-wait">⏸ 대기중</span>`;
-el.innerHTML=`<div><div class="tbl-name">🎰 ${g.id}</div><div class="tbl-info">👥 ${g.players}/${8-g.seats_available+g.players}명</div></div><div class="tbl-status">${status}</div>`;
+el.innerHTML=`<div><div class="tbl-name">🎰 ${esc(g.id)}</div><div class="tbl-info">👥 ${g.players}/${8-g.seats_available+g.players}명</div></div><div class="tbl-status">${status}</div>`;
 el.onclick=()=>{tableId=g.id;watch()};
 tl.appendChild(el)})}catch(e){tl.innerHTML='<div style="color:#f44">로딩 실패</div>'}}
 loadTables();setInterval(loadTables,5000);
 async function loadLobbyRanking(){
 try{const r=await fetch('/api/leaderboard');const d=await r.json();
-const tb=document.getElementById('lobby-lb');if(!d.leaderboard||!d.leaderboard.length){tb.innerHTML='<tr><td colspan="6" style="text-align:center;padding:15px;color:#666">🃏 아직 전설의 머슴이 없다</td></tr>';return;}
+const tb=document.getElementById('lobby-lb');if(!d.leaderboard||!d.leaderboard.length){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:15px;color:#666">🃏 아직 전설의 머슴이 없다</td></tr>';return;}
 tb.innerHTML='';d.leaderboard.slice(0,10).forEach((p,i)=>{
 const tr=document.createElement('tr');tr.style.borderBottom='1px solid #1a1e2e';
 const total=p.wins+p.losses;const wr=total>0?Math.round(p.wins/total*100):0;
 const medal=i===0?'👑':i===1?'🥈':i===2?'🥉':(i+1);
 const wrc=wr>=60?'#44ff88':wr>=40?'#ffaa00':'#ff4444';
-tr.innerHTML=`<td style="padding:6px 8px;text-align:center;font-weight:bold">${medal}</td><td style="padding:6px 8px;font-weight:bold">${p.name}</td><td style="padding:6px 8px;text-align:center;color:${wrc};font-weight:bold">${wr}%</td><td style="padding:6px 8px;text-align:center;color:#44ff88">${p.wins}</td><td style="padding:6px 8px;text-align:center;color:#ff4444">${p.losses}</td><td style="padding:6px 8px;text-align:center;color:#ffaa00">${p.chips_won.toLocaleString()}</td>`;
+const newBadge=p.hands<20?'<span style="color:#888;font-size:0.75em"> 🆕</span>':'';
+tr.innerHTML=`<td style="padding:6px 8px;text-align:center;font-weight:bold">${medal}</td><td style="padding:6px 8px;font-weight:bold">${esc(p.name)}${newBadge}</td><td style="padding:6px 8px;text-align:center;color:${wrc};font-weight:bold">${wr}%</td><td style="padding:6px 8px;text-align:center;color:#44ff88">${p.wins}</td><td style="padding:6px 8px;text-align:center;color:#ff4444">${p.losses}</td><td style="padding:6px 8px;text-align:center;color:#888">${p.hands}</td><td style="padding:6px 8px;text-align:center;color:#ffaa00">${p.chips_won.toLocaleString()}</td>`;
 tb.appendChild(tr)})}catch(e){}}
 loadLobbyRanking();setInterval(loadLobbyRanking,30000);
 
@@ -1597,6 +1626,8 @@ isPlayer=false;var ni=document.getElementById('inp-name');specName=(ni?ni.value.
 document.getElementById('lobby').style.display='none';
 document.getElementById('game').style.display='block';
 document.getElementById('reactions').style.display='flex';
+document.getElementById('new-btn').style.display='none';
+document.getElementById('actions').style.display='none';
 startPolling();tryWS();fetchCoins();}
 
 let delayDone=true;
@@ -1736,7 +1767,7 @@ if(p.last_action.includes('폴드'))sfx('fold');else if(p.last_action.includes('
 else if(Date.now()-window[key+'_t']<2000){la=`<div class="act-label" style="animation:none;opacity:1">${p.last_action}</div>`}
 }
 const sb=p.streak_badge||'';
-el.innerHTML=`${la}<div class="ava">${p.emoji||'🤖'}</div><div class="cards">${ch}</div><div class="nm">${sb}${p.name}${db}</div><div class="ch">💰${p.chips}pt</div>${bt}<div class="st">${p.style}</div>`;
+el.innerHTML=`${la}<div class="ava">${esc(p.emoji||'🤖')}</div><div class="cards">${ch}</div><div class="nm">${esc(sb)}${esc(p.name)}${db}</div><div class="ch">💰${p.chips}pt</div>${bt}<div class="st">${esc(p.style)}</div>`;
 el.style.cursor='pointer';el.onclick=(e)=>{e.stopPropagation();showProfile(p.name)};
 f.appendChild(el)});
 if(s.turn){document.getElementById('turnb').style.display='block';document.getElementById('turnb').textContent=`🎯 ${s.turn}의 차례`}
@@ -1799,7 +1830,7 @@ const m=['🥇','🥈','🥉','💀'];let h='<h2>🏁 게임 종료!</h2>';
 d.ranking.forEach((p,i)=>{h+=`<div class="rank">${m[Math.min(i,3)]} ${p.emoji} ${p.name}: ${p.chips}pt</div>`});
 h+=`<br><button onclick="document.getElementById('result').style.display='none'" style="padding:10px 30px;border:none;border-radius:8px;background:#ffaa00;color:#000;font-weight:bold;cursor:pointer">닫기</button>`;
 b.innerHTML=h;document.getElementById('new-btn').style.display='block'}
-function newGame(){if(ws)ws.send(JSON.stringify({type:'new_game'}))}
+function newGame(){if(!isPlayer)return;if(ws)ws.send(JSON.stringify({type:'new_game'}))}
 
 function showTab(tab){
 const log=document.getElementById('log'),rp=document.getElementById('replay-panel');
@@ -1812,7 +1843,7 @@ const rp=document.getElementById('replay-panel');rp.innerHTML='<div style="color
 try{const r=await fetch(`/api/replay?table_id=${tableId}`);const d=await r.json();
 if(!d.hands||d.hands.length===0){rp.innerHTML='<div style="color:#666">아직 기록 없음</div>';return}
 rp.innerHTML='';d.hands.reverse().forEach(h=>{const el=document.createElement('div');el.className='rp-hand';
-el.innerHTML=`<span style="color:#ffaa00">핸드 #${h.hand}</span> | 🏆 ${h.winner||'?'} | 💰 ${h.pot}pt | 👥 ${h.players}명`;
+el.innerHTML=`<span style="color:#ffaa00">핸드 #${h.hand}</span> | 🏆 ${esc(h.winner||'?')} | 💰 ${h.pot}pt | 👥 ${h.players}명`;
 el.onclick=()=>loadHand(h.hand);rp.appendChild(el)})}catch(e){rp.innerHTML='<div style="color:#f44">로딩 실패</div>'}}
 
 async function loadHand(num){
