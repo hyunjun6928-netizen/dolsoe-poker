@@ -2117,8 +2117,8 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 .seat-0{bottom:-6%;left:50%;transform:translateX(-50%)}
 .seat-1{top:65%;left:-12%;transform:translateY(-50%)}
 .seat-2{top:20%;left:-12%;transform:translateY(-50%)}
-.seat-3{top:-16%;left:28%;transform:translateX(-50%)}
-.seat-4{top:-16%;left:72%;transform:translateX(-50%)}
+.seat-3{top:-8%;left:28%;transform:translateX(-50%)}
+.seat-4{top:-8%;left:72%;transform:translateX(-50%)}
 .seat-5{top:20%;right:-12%;transform:translateY(-50%)}
 .seat-6{top:65%;right:-12%;transform:translateY(-50%)}
 .seat-7{bottom:-6%;left:25%;transform:translateX(-50%)}
@@ -2236,7 +2236,7 @@ h1{font-size:1.1em;margin:2px 0}
 .seat .ava{font-size:1.6em}
 .seat .nm{font-size:0.65em;padding:1px 4px;max-width:60px;overflow:hidden;text-overflow:ellipsis}
 .seat-0{bottom:-14%}.seat-7{bottom:-14%;left:20%}
-.seat-3{top:-14%;left:25%}.seat-4{top:-14%;left:75%}
+.seat-3{top:-6%;left:25%}.seat-4{top:-6%;left:75%}
 .seat-1{top:75%;left:1%}.seat-2{top:10%;left:1%}
 .seat-5{top:10%;right:1%}.seat-6{top:75%;right:1%}
 .seat .ch{font-size:0.55em;padding:1px 3px}
