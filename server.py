@@ -2237,8 +2237,8 @@ h1{font-size:1.1em;margin:2px 0}
 .seat .nm{font-size:0.65em;padding:1px 4px;max-width:60px;overflow:hidden;text-overflow:ellipsis}
 .seat-0{bottom:-14%}.seat-7{bottom:-14%;left:20%}
 .seat-3{top:-14%;left:25%}.seat-4{top:-14%;left:75%}
-.seat-1{top:72%;left:-10%}.seat-2{top:12%;left:-10%}
-.seat-5{top:12%;right:-10%}.seat-6{top:72%;right:-10%}
+.seat-1{top:75%;left:1%}.seat-2{top:10%;left:1%}
+.seat-5{top:10%;right:1%}.seat-6{top:75%;right:1%}
 .seat .ch{font-size:0.55em;padding:1px 3px}
 .seat .st{display:none}
 .seat .bet-chip{font-size:0.55em}
