@@ -423,22 +423,61 @@ class Table:
         bluff_rate=round(s['bluffs']/max(s['raises'],1)*100) if s['raises']>0 else 0  # 블러핑율
         win_rate=round(s['wins']/h*100)  # 승률
         avg_bet=round(s['total_bet']/h) if h>0 else 0
-        # 성격 유형 분류
+        # ═══ 포커 MBTI 4축 시스템 ═══
+        # Axis 1: A(공격적) vs P(수비적) — 베팅 성향
+        ax1 = 'A' if aggression >= 35 else 'P'
+        # Axis 2: T(타이트) vs L(루즈) — 핸드 선택
+        ax2 = 'L' if vpip >= 55 else 'T'
+        # Axis 3: B(블러퍼) vs H(정직) — 속임수
+        ax3 = 'B' if bluff_rate >= 20 else 'H'
+        # Axis 4: C(냉철) vs E(감정적) — 멘탈 (연패 시 스타일 변화로 판단)
+        streak=leaderboard.get(name,{}).get('streak',0)
+        tilt=streak<=-3
+        ax4 = 'E' if tilt or s.get('tilt_count',0) >= 2 else 'C'
+        mbti = ax1 + ax2 + ax3 + ax4
+        # MBTI별 닉네임/설명
+        MBTI_TYPES = {
+            'ATBC': ('🦈 냉혈 샤크',     '타이트하게 골라서 공격적으로 밀어붙이는 최강 유형. 블러핑까지 완벽.'),
+            'ATBE': ('🌋 폭풍 전사',      '공격적이고 타이트하지만 감정에 흔들릴 때가 있다. 틸트 주의.'),
+            'ATHC': ('⚔️ 정직한 검사',    '좋은 핸드만 골라서 정면돌파. 블러핑은 안 하지만 파괴력 있음.'),
+            'ATHE': ('🔥 열혈 파이터',    '핸드 고르고 정면승부, 감정이 실린 불같은 플레이.'),
+            'ALBC': ('🎭 카오스 마스터',   '다양한 핸드로 공격하며 블러핑까지. 읽기 불가능한 타입.'),
+            'ALBE': ('💣 다이너마이트',    '아무 핸드나 들고 와서 폭발적으로 베팅. 본인도 통제 불가.'),
+            'ALHC': ('🗡️ 난폭한 솔직맨',  '핸드 안 가리고 공격적이지만 속이지는 않는다. 순수한 폭력.'),
+            'ALHE': ('🌪️ 태풍의 눈',      '루즈하고 공격적이고 감정적. 테이블 위의 태풍.'),
+            'PTBC': ('🕵️ 그림자 사냥꾼',  '조용히 기다리다 블러핑으로 먹잇감을 낚는다. 소리 없는 암살자.'),
+            'PTBE': ('🦊 불안한 여우',     '타이트하게 수비하며 블러핑하지만 멘탈이 흔들릴 때 실수.'),
+            'PTHC': ('🪨 철벽 요새',       '좋은 핸드만, 정직하게, 냉철하게. 뚫기 가장 어려운 타입.'),
+            'PTHE': ('🐢 신중한 거북',     '느리고 정직하지만 가끔 감정에 판단이 흐려진다.'),
+            'PLBC': ('🐙 문어 도박사',     '폭넓은 핸드로 수비하며 블러핑. 촉수를 어디로 뻗을지 모름.'),
+            'PLBE': ('🎪 서커스 광대',     '루즈하고 블러핑하는데 멘탈도 약함. 카오스 그 자체.'),
+            'PLHC': ('🐑 양치기 콜러',     '다양한 핸드로 조용히 콜. 정직하고 냉철하지만 수동적.'),
+            'PLHE': ('🐟 순진한 물고기',   '아무거나 콜, 속이지도 않고, 감정적. 전형적인 피쉬.'),
+        }
+        mbti_name, mbti_desc = MBTI_TYPES.get(mbti, ('🎴 미분류', '아직 데이터가 부족합니다.'))
+        # 기존 호환 ptype
         if aggression>=50: ptype='🔥 광전사'
         elif aggression>=30 and fold_rate<25: ptype='🗡️ 공격형'
         elif fold_rate>=40: ptype='🛡️ 수비형'
         elif vpip>=70: ptype='🎲 루즈'
         else: ptype='🧠 밸런스'
-        # 틸트 감지 (최근 5핸드 중 3패 이상)
+        # 틸트 감지
         seat=next((x for x in self.seats if x['name']==name),None)
-        streak=leaderboard.get(name,{}).get('streak',0)
-        tilt=streak<=-3
+        # 추가 평가 지표
+        showdown_rate = round(s['showdowns']/h*100) if h > 0 else 0
+        allin_rate = round(s['allins']/h*100) if h > 0 else 0
+        efficiency = round(s['total_won']/max(s['total_bet'],1)*100) if s['total_bet']>0 else 0
+        danger_score = min(100, aggression + bluff_rate + allin_rate)  # 위험도
+        survival_score = min(100, 100 - fold_rate + win_rate)  # 생존력
         return {'name':name,'type':ptype,'aggression':aggression,'fold_rate':fold_rate,
             'vpip':vpip,'bluff_rate':bluff_rate,'win_rate':win_rate,
             'wins':s['wins'],'hands':h,'allins':s['allins'],
             'biggest_pot':s['biggest_pot'],'avg_bet':avg_bet,
             'showdowns':s['showdowns'],'tilt':tilt,'streak':streak,
             'total_won':s['total_won'],
+            'mbti':mbti,'mbti_name':mbti_name,'mbti_desc':mbti_desc,
+            'showdown_rate':showdown_rate,'allin_rate':allin_rate,
+            'efficiency':efficiency,'danger_score':danger_score,'survival_score':survival_score,
             'meta':seat.get('meta',{'version':'','strategy':'','repo':''}) if seat else {'version':'','strategy':'','repo':''},
             'matchups':self._get_matchups(name)}
 
@@ -3056,7 +3095,69 @@ const traitTags=(()=>{
   if(p.hands>=50) tags.push('<span style="background:#f0fdf4;color:#166534;padding:2px 8px;border-radius:99px;font-size:0.75em;margin:2px">🎖️ 베테랑</span>');
   return tags.join(' ');
 })();
-pp.innerHTML=`${portraitImg}<h3 style="text-align:center">${esc(p.name)}</h3><div style="font-size:1.2em;margin:4px 0;text-align:center">${p.type}</div><div style="text-align:center;margin:6px 0;line-height:1.8">${traitTags}</div><div style="color:#64748b;font-size:0.85em;margin:8px 0;padding:8px 12px;background:#f8fafc;border-radius:10px;border-left:3px solid #8b5cf6">${personalityDesc}</div>${bioHtml}${tiltTag}${streakTag}<div class="pp-stat">📊 승률: ${p.win_rate}% (${p.hands}핸드)</div>${agrBar}${vpipBar}<div class="pp-stat">🎯 폴드율: ${p.fold_rate}% | 블러핑: ${p.bluff_rate}%</div><div class="pp-stat">💣 올인: ${p.allins}회 | 쇼다운: ${p.showdowns}회</div><div class="pp-stat">💰 총 획득: ${p.total_won}pt | 최대팟: ${p.biggest_pot}pt</div><div class="pp-stat">💵 핸드당 평균 베팅: ${p.avg_bet}pt</div>${metaHtml}${matchupHtml}`}
+// MBTI card
+const mbtiCard = p.mbti ? `<div style="background:linear-gradient(135deg,#ede9fe,#fce7f3);border:2px solid #c4b5fd;border-radius:14px;padding:12px;margin:8px 0;text-align:center">
+<div style="font-size:1.8em;font-weight:bold;color:#7c3aed;letter-spacing:3px;font-family:monospace">${esc(p.mbti)}</div>
+<div style="font-size:1.1em;margin:4px 0">${esc(p.mbti_name)}</div>
+<div style="font-size:0.8em;color:#64748b;margin-top:4px">${esc(p.mbti_desc)}</div>
+</div>` : '';
+// Radar chart (canvas)
+const radarCanvas = document.createElement('canvas');
+radarCanvas.width = 200; radarCanvas.height = 180;
+const rc = radarCanvas.getContext('2d');
+const rcx = 100, rcy = 85, rr = 65;
+const axes = [
+  {label:'공격성', val:p.aggression},
+  {label:'참여율', val:p.vpip},
+  {label:'블러핑', val:p.bluff_rate},
+  {label:'위험도', val:p.danger_score||0},
+  {label:'생존력', val:p.survival_score||0}
+];
+// Grid
+rc.strokeStyle = '#e2e8f0'; rc.lineWidth = 1;
+for (let r of [0.33, 0.66, 1]) {
+  rc.beginPath();
+  for (let i = 0; i <= axes.length; i++) {
+    const a = (Math.PI*2/axes.length)*i - Math.PI/2;
+    const x = rcx + rr*r*Math.cos(a), y = rcy + rr*r*Math.sin(a);
+    i === 0 ? rc.moveTo(x, y) : rc.lineTo(x, y);
+  }
+  rc.stroke();
+}
+// Axes
+rc.strokeStyle = '#cbd5e1';
+for (let i = 0; i < axes.length; i++) {
+  const a = (Math.PI*2/axes.length)*i - Math.PI/2;
+  rc.beginPath(); rc.moveTo(rcx, rcy);
+  rc.lineTo(rcx + rr*Math.cos(a), rcy + rr*Math.sin(a)); rc.stroke();
+}
+// Data polygon
+rc.beginPath();
+rc.fillStyle = 'rgba(139,92,246,0.2)'; rc.strokeStyle = '#8b5cf6'; rc.lineWidth = 2;
+for (let i = 0; i <= axes.length; i++) {
+  const idx = i % axes.length;
+  const a = (Math.PI*2/axes.length)*idx - Math.PI/2;
+  const v = Math.min(axes[idx].val, 100) / 100;
+  const x = rcx + rr*v*Math.cos(a), y = rcy + rr*v*Math.sin(a);
+  i === 0 ? rc.moveTo(x, y) : rc.lineTo(x, y);
+}
+rc.fill(); rc.stroke();
+// Labels
+rc.font = '11px Jua'; rc.fillStyle = '#475569'; rc.textAlign = 'center';
+for (let i = 0; i < axes.length; i++) {
+  const a = (Math.PI*2/axes.length)*i - Math.PI/2;
+  const lx = rcx + (rr+18)*Math.cos(a), ly = rcy + (rr+18)*Math.sin(a);
+  rc.fillText(axes[i].label+' '+axes[i].val, lx, ly + 4);
+}
+const radarImg = `<img src="${radarCanvas.toDataURL()}" width="200" height="180" style="display:block;margin:4px auto">`;
+// Extra evaluations
+const extraStats = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:8px 0;font-size:0.8em">
+<div style="background:#f0fdf4;padding:6px;border-radius:8px;text-align:center">🎯 쇼다운율<br><b>${p.showdown_rate||0}%</b></div>
+<div style="background:#fef3c7;padding:6px;border-radius:8px;text-align:center">💣 올인율<br><b>${p.allin_rate||0}%</b></div>
+<div style="background:#ede9fe;padding:6px;border-radius:8px;text-align:center">⚡ 효율성<br><b>${p.efficiency||0}%</b></div>
+<div style="background:#fce7f3;padding:6px;border-radius:8px;text-align:center">🔥 위험도<br><b>${p.danger_score||0}</b></div>
+</div>`;
+pp.innerHTML=`${portraitImg}<h3 style="text-align:center">${esc(p.name)}</h3>${mbtiCard}<div style="text-align:center;margin:6px 0;line-height:1.8">${traitTags}</div>${radarImg}${extraStats}${bioHtml}${tiltTag}${streakTag}${agrBar}${vpipBar}<div class="pp-stat">📊 승률: ${p.win_rate}% (${p.hands}핸드)</div><div class="pp-stat">🎯 폴드율: ${p.fold_rate}% | 블러핑: ${p.bluff_rate}%</div><div class="pp-stat">💣 올인: ${p.allins}회 | 쇼다운: ${p.showdowns}회</div><div class="pp-stat">💰 총 획득: ${p.total_won}pt | 최대팟: ${p.biggest_pot}pt</div><div class="pp-stat">💵 핸드당 평균 베팅: ${p.avg_bet}pt</div>${metaHtml}${matchupHtml}`}
 else{pp.innerHTML=`<h3>${esc(name)}</h3><div class="pp-stat" style="color:#94a3b8">${t('noRecord')}</div>`}
 document.getElementById('profile-backdrop').style.display='block';
 document.getElementById('profile-popup').style.display='block'}catch(e){}}
@@ -3232,14 +3333,21 @@ const _slimeTraits = {};
 function setSlimeTraits(name, profile) {
   if (!profile) return;
   const t = {};
-  if (profile.aggression >= 50) t.type = 'aggressive';
-  else if (profile.fold_rate >= 40) t.type = 'defensive';
-  else if (profile.bluff_rate >= 25) t.type = 'bluffer';
-  else if (profile.vpip >= 70) t.type = 'loose';
-  else if (profile.win_rate >= 40 && profile.hands >= 10) t.type = 'champion';
-  else if (profile.hands < 10) t.type = 'newbie';
+  const mbti = profile.mbti || '';
+  // MBTI-based slime type mapping
+  if (mbti.startsWith('A') && mbti.includes('B')) t.type = 'aggressive'; // AB = horned bluffer
+  else if (mbti.startsWith('A') && mbti.includes('L')) t.type = 'loose'; // AL = wobbly attacker
+  else if (mbti.startsWith('A')) t.type = 'aggressive';
+  else if (mbti.startsWith('P') && mbti.includes('T') && mbti.includes('H')) t.type = 'defensive'; // PTH = fortress
+  else if (mbti.includes('B') && mbti.startsWith('P')) t.type = 'bluffer'; // PB = shadow bluffer
+  else if (mbti.includes('L')) t.type = 'loose';
   else t.type = 'balanced';
+  // Override with special conditions
+  if (profile.win_rate >= 40 && profile.hands >= 15) t.type = 'champion';
+  if (profile.hands < 10) t.type = 'newbie';
   if (profile.allins >= 5) t.allinAddict = true;
+  if (mbti.endsWith('E')) t.emotional = true;
+  t.mbti = mbti;
   t.aggression = profile.aggression || 0;
   t.winRate = profile.win_rate || 0;
   t.hands = profile.hands || 0;
@@ -3362,6 +3470,16 @@ function drawSlime(name, emotion, size) {
     g.fillStyle = '#fbbf24'; g.font = `${sz*0.15}px serif`;
     g.fillText('✦', cx + rx*0.8, cy - ry*0.5);
     g.fillText('✦', cx - rx*0.9, cy + ry*0.3);
+  }
+  // Emotional indicator (MBTI E-type)
+  if (traits.emotional) {
+    g.font = `${sz*0.13}px serif`; g.fillStyle = '#ff6b8a';
+    g.fillText('♡', cx + rx*0.85, cy - ry*0.7);
+    // Swirl marks on cheeks
+    g.strokeStyle = '#f9a8d4'; g.lineWidth = 1; g.globalAlpha = 0.5;
+    g.beginPath(); g.arc(cx - rx*0.55, cy + ry*0.1, 3, 0, Math.PI*1.5); g.stroke();
+    g.beginPath(); g.arc(cx + rx*0.55, cy + ry*0.1, 3, Math.PI, Math.PI*2.5); g.stroke();
+    g.globalAlpha = 1;
   }
 
   // Eyes
