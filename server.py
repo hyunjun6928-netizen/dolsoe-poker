@@ -2257,17 +2257,28 @@ h1 b{-webkit-text-fill-color:#2d8a4e}
 .api-info code{background:#ffffffbb;padding:2px 6px;border-radius:6px;color:#6bcb77;border:1px solid #000}
 #game{display:none}
 .info-bar{display:flex;justify-content:space-between;padding:6px 12px;font-size:0.8em;color:#6b5040;background:#ffeedd;border-radius:4px;margin-bottom:8px;border:3px solid #c4956a;box-shadow:0 4px 0 0 #8b6d4a}
+.felt-wrap{position:relative;margin:20px auto 30px}
+.felt-border{position:absolute;top:-20px;left:-20px;right:-20px;bottom:-20px;
+background:linear-gradient(180deg,#a07848 0%,#8b6538 50%,#7a5528 100%);
+border-radius:20px;border:4px solid #6b4226;
+box-shadow:0 6px 0 0 #5a3a1e,0 0 0 2px #4a2a10,inset 0 2px 0 #c4956a;
+z-index:0;image-rendering:pixelated}
+.felt-border::before{content:'';position:absolute;top:-12px;left:-12px;right:-12px;bottom:-12px;
+background:repeating-linear-gradient(90deg,#5a9a3a 0px,#4a8a2a 4px,#6aaa4a 4px,#5a9a3a 8px,#3a7a1a 8px,#5a9a3a 12px);
+border-radius:26px;z-index:-1;border:3px solid #2a6a0a;
+box-shadow:0 4px 0 0 #1a5a00}
+.felt-border::after{content:'';position:absolute;top:2px;left:10%;right:10%;height:3px;
+background:linear-gradient(90deg,transparent,#c4956a88,transparent);border-radius:3px}
 .felt{position:relative;
-background:linear-gradient(180deg,#2d8a4e 0%,#238b45 40%,#1a7a38 70%,#1a6b30 100%);
-border:6px solid #8b5e3c;outline:3px solid #6b4226;border-radius:12px;width:100%;padding-bottom:55%;
-box-shadow:0 0 0 4px #5a3a1e,0 0 0 8px #4a2a10,0 8px 0 0 #3a1a0a;margin:40px auto 50px;overflow:visible;image-rendering:pixelated}
+background:linear-gradient(180deg,#2d8a4e 0%,#238b45 30%,#1a7a38 60%,#1a6b30 100%);
+border:3px solid #1a5a20;border-radius:14px;width:100%;padding-bottom:55%;
+box-shadow:inset 0 4px 12px #00000033,inset 0 -2px 8px #ffffff11;overflow:visible;image-rendering:pixelated}
 .felt::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;
 background:
-radial-gradient(3px 3px at 10% 15%,#ffffff22,transparent),radial-gradient(4px 4px at 25% 60%,#ffffff18,transparent),
-radial-gradient(3px 3px at 40% 30%,#ffffff20,transparent),radial-gradient(5px 5px at 55% 75%,#ffffff15,transparent),
-radial-gradient(3px 3px at 70% 20%,#ffffff22,transparent),radial-gradient(4px 4px at 85% 55%,#ffffff18,transparent),
-radial-gradient(3px 3px at 15% 80%,#ffffff15,transparent),radial-gradient(4px 4px at 60% 45%,#ffffff20,transparent);
-border-radius:12px;pointer-events:none;z-index:1;opacity:0.6}
+radial-gradient(3px 3px at 10% 15%,#ffffff18,transparent),radial-gradient(4px 4px at 30% 60%,#ffffff12,transparent),
+radial-gradient(3px 3px at 50% 25%,#ffffff15,transparent),radial-gradient(4px 4px at 70% 70%,#ffffff12,transparent),
+radial-gradient(3px 3px at 85% 35%,#ffffff18,transparent),radial-gradient(3px 3px at 20% 80%,#ffffff12,transparent);
+border-radius:14px;pointer-events:none;z-index:1;opacity:0.5}
 
 .tbl-card{background:#fff4e8;border:3px solid #c4956a;border-radius:4px;padding:14px;margin:8px 0;cursor:pointer;transition:all .1s;display:flex;justify-content:space-between;align-items:center;box-shadow:0 3px 0 0 #8b6d4a}
 .tbl-card:hover{border-color:#2d8a4e;transform:translate(1px,1px);box-shadow:3px 3px 0 #8b6d4a}
@@ -2417,9 +2428,14 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#8b
 @media(max-width:700px){
 *{box-sizing:border-box}
 body{overflow-x:hidden}
+body::after{display:none}
+.forest-top,.forest-deco{display:none!important}
 .wrap{padding:2px;max-width:100vw;overflow-x:hidden}
 h1{font-size:1.1em;margin:2px 0}
-.felt{padding-bottom:80%;border-radius:8px;margin:20px auto 15px;border-width:3px;outline-width:1px;box-shadow:0 4px 0 0 #5a3a1e}
+.felt-wrap{margin:10px auto 8px}
+.felt-border{top:-8px;left:-8px;right:-8px;bottom:-8px;border-radius:12px}
+.felt-border::before{top:-6px;left:-6px;right:-6px;bottom:-6px;border-radius:16px}
+.felt{padding-bottom:80%;border-radius:8px;box-shadow:inset 0 2px 6px #00000033}
 .board{gap:2px}
 .card{width:34px;height:50px;font-size:0.65em;border-radius:3px;box-shadow:0 3px 0 0 #000}
 .card-sm{width:28px;height:42px;font-size:0.55em}
@@ -2538,12 +2554,13 @@ while True: state = requests.get(URL+'/api/state?player=내봇').json(); time.sl
 <div id="commentary" style="display:none"></div>
 <div class="game-layout">
 <div class="game-main">
-<div class="felt" id="felt">
+<div class="felt-wrap"><div class="felt-border"></div><div class="felt" id="felt">
 <div class="pot-badge" id="pot">POT: 0</div>
 <div id="chip-stack" style="position:absolute;top:38%;left:50%;transform:translateX(-50%);z-index:4;display:flex;gap:2px;align-items:flex-end;justify-content:center"></div>
 <div class="board" id="board"></div>
 <div class="turn-badge" id="turnb"></div>
 <div id="turn-options" style="display:none;background:#111;border:1px solid #333;border-radius:8px;padding:8px 12px;margin:6px auto;max-width:600px;font-size:0.82em;text-align:center"></div>
+</div>
 </div>
 </div>
 <div class="game-sidebar">
@@ -3741,20 +3758,91 @@ function tree1(){return drawPixelArt(12,16,(px)=>{
   // Trunk
   px(5,6,t);px(6,6,t);px(5,7,t);px(6,7,td);px(5,8,td);px(6,8,t);px(5,9,t);px(6,9,td);
 })}
-// Place decorations
+// Cute slime peeking from corner
+function peekSlime(colorIdx){return drawPixelArt(14,10,(px)=>{
+  const cols=[
+    {b:'#7ec87e',d:'#5aa85a',l:'#a8e8a8',e:'#2a5a2a',ck:'#ff9999'},
+    {b:'#e8a0c0',d:'#c87898',l:'#ffc8e0',e:'#6a2848',ck:'#ffaaaa'},
+    {b:'#f0c860',d:'#c8a040',l:'#ffe888',e:'#6a5020',ck:'#ff8888'},
+    {b:'#80b8e8',d:'#5898c8',l:'#a8d8ff',e:'#284868',ck:'#ffaaaa'},
+  ][colorIdx%4];
+  // Dome body
+  for(let y=2;y<=9;y++){let hw=y<5?y:7-Math.max(0,y-7);hw=Math.min(hw,6);
+    for(let dx=-hw;dx<=hw;dx++){let c=cols.b;if(Math.abs(dx)>=hw)c=cols.d;else if(y<=3&&dx<0)c=cols.l;
+      px(7+dx,y,c)}}
+  // Eyes
+  px(5,5,'#fff');px(6,5,'#fff');px(5,6,cols.e);px(6,6,'#fff');
+  px(8,5,'#fff');px(9,5,'#fff');px(8,6,cols.e);px(9,6,'#fff');
+  // Cheeks
+  px(4,7,cols.ck+'77');px(10,7,cols.ck+'77');
+  // Mouth
+  px(7,7,cols.e);
+})}
+// Big cute mushroom
+function bigMushroom(){return drawPixelArt(16,20,(px)=>{
+  const c='#e74c3c',cl='#ff6b6b',cd='#c0392b',s='#f5deb3',sd='#d4b896',w='#fff';
+  // Cap (bigger)
+  for(let y=0;y<8;y++){const hw=y<2?3+y:y<6?6:6-(y-5);
+    for(let dx=-hw;dx<=hw;dx++){let cc=c;if(Math.abs(dx)>=hw)cc=cd;else if(y<2)cc=cl;
+      px(8+dx,y,cc)}}
+  // White dots
+  px(5,2,w);px(6,2,w);px(9,1,w);px(10,1,w);px(11,3,w);px(12,3,w);px(6,5,w);px(10,5,w);
+  // Stem
+  for(let y=8;y<14;y++){px(6,y,s);px(7,y,s);px(8,y,s);px(9,y,s);if(y>10){px(6,y,sd);px(9,y,sd)}}
+  // Grass base
+  for(let x=3;x<13;x++)px(x,14,x%2?'#5a9a3a':'#4a8a2a');
+  for(let x=4;x<12;x++)px(x,13,x%3?'#6aaa4a':'#5a9a3a');
+})}
+// Big tree
+function bigTree(){return drawPixelArt(18,24,(px)=>{
+  const l='#4a8a2a',ll='#6aaa4a',ld='#2a6a0a',t='#8b6b3a',td='#6b4b2a';
+  // Canopy layers
+  for(let y=0;y<12;y++){const r=y<2?3+y:y<4?6:y<8?7+Math.floor((8-y)*0.3):7-(y-8);
+    for(let dx=-r;dx<=r;dx++){let c=y<3?ll:y<7?l:ld;if(Math.abs(dx)>=r-1)c=ld;
+      if(y<2&&dx<0)c=ll;px(9+dx,y,c)}}
+  // Trunk
+  for(let y=12;y<20;y++){px(8,y,t);px(9,y,t);px(10,y,t);if(y>15){px(7,y,td);px(11,y,td)}}
+  // Roots
+  px(6,19,td);px(7,19,td);px(11,19,td);px(12,19,td);
+  px(5,20,td);px(6,20,'#5a9a3a');px(12,20,'#5a9a3a');px(13,20,td);
+})}
+// Daisy flower
+function daisy(){return drawPixelArt(8,10,(px)=>{
+  const p='#fff',y='#ffd700',g='#5a9a3a',gd='#3a7a1a';
+  px(4,0,p);px(3,1,p);px(4,1,y);px(5,1,p);px(4,2,p);
+  px(2,1,p);px(6,1,p);px(4,3,g);px(4,4,g);px(3,5,g);px(4,5,g);px(4,6,gd);
+})}
+// Place decorations (bigger, more numerous)
 const decos=[
-  {fn:mushroom1,x:'2%',y:'calc(100% - 80px)',w:30,h:36},
-  {fn:mushroom2,x:'8%',y:'calc(100% - 60px)',w:24,h:30},
-  {fn:tree1,x:'1%',y:'20%',w:36,h:48},
-  {fn:flower1,x:'5%',y:'calc(100% - 100px)',w:21,h:24},
-  {fn:mushroom1,x:'92%',y:'calc(100% - 75px)',w:30,h:36},
-  {fn:mushroom2,x:'88%',y:'calc(100% - 55px)',w:24,h:30},
-  {fn:tree1,x:'93%',y:'15%',w:36,h:48},
-  {fn:flower1,x:'96%',y:'40%',w:21,h:24},
-  {fn:flower1,x:'3%',y:'50%',w:21,h:24},
-  {fn:mushroom1,x:'95%',y:'60%',w:30,h:36},
-  {fn:mushroom2,x:'4%',y:'75%',w:24,h:30},
-  {fn:flower1,x:'90%',y:'calc(100% - 100px)',w:21,h:24},
+  // Left side
+  {fn:bigTree,x:'0%',y:'8%',w:54,h:72},
+  {fn:bigMushroom,x:'1%',y:'calc(100% - 120px)',w:48,h:60},
+  {fn:mushroom2,x:'4%',y:'calc(100% - 65px)',w:36,h:45},
+  {fn:flower1,x:'2%',y:'45%',w:30,h:36},
+  {fn:daisy,x:'5%',y:'65%',w:24,h:30},
+  {fn:peekSlime.bind(null,0),x:'1%',y:'calc(100% - 180px)',w:42,h:30},
+  // Right side
+  {fn:bigTree,x:'94%',y:'5%',w:54,h:72},
+  {fn:bigMushroom,x:'93%',y:'calc(100% - 115px)',w:48,h:60},
+  {fn:mushroom1,x:'90%',y:'calc(100% - 70px)',w:36,h:45},
+  {fn:flower1,x:'95%',y:'50%',w:30,h:36},
+  {fn:daisy,x:'92%',y:'35%',w:24,h:30},
+  {fn:peekSlime.bind(null,1),x:'93%',y:'calc(100% - 175px)',w:42,h:30},
+  // Top decorations
+  {fn:mushroom1,x:'15%',y:'2px',w:30,h:36},
+  {fn:flower1,x:'30%',y:'8px',w:24,h:30},
+  {fn:mushroom2,x:'70%',y:'5px',w:30,h:38},
+  {fn:daisy,x:'85%',y:'10px',w:24,h:30},
+  {fn:peekSlime.bind(null,2),x:'50%',y:'2px',w:42,h:30},
+  // Bottom decorations
+  {fn:mushroom1,x:'20%',y:'calc(100% - 55px)',w:30,h:36},
+  {fn:bigMushroom,x:'40%',y:'calc(100% - 70px)',w:42,h:52},
+  {fn:flower1,x:'60%',y:'calc(100% - 45px)',w:24,h:30},
+  {fn:mushroom2,x:'75%',y:'calc(100% - 50px)',w:30,h:38},
+  {fn:peekSlime.bind(null,3),x:'55%',y:'calc(100% - 40px)',w:42,h:30},
+  // Extra scattered
+  {fn:daisy,x:'7%',y:'30%',w:21,h:27},
+  {fn:flower1,x:'88%',y:'70%',w:21,h:27},
 ];
 decos.forEach(d=>{
   const el=document.createElement('div');
