@@ -765,8 +765,8 @@ class Table:
                     reasoning=sanitize_msg(self.pending_data.get('reasoning',''),100)
                     s['last_note']=note
                     s['last_reasoning']=reasoning
-                # NPC 봇 자동 reasoning 생성
-                elif s['is_bot']:
+                # reasoning 없으면 자동생성 (외부 에이전트 포함)
+                if not reasoning:
                     reasoning=self._bot_reasoning(s, act, amt, _wp, to_call)
                     s['last_reasoning']=reasoning
                 # 액션 기록
