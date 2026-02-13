@@ -2649,7 +2649,7 @@ h1{font-size:1.1em;margin:2px 0}
 .felt-wrap{margin:10px auto 8px}
 .felt-border{top:-8px;left:-8px;right:-8px;bottom:-8px;border-radius:12px}
 .felt-border::before{top:-6px;left:-6px;right:-6px;bottom:-6px;border-radius:16px}
-.felt{padding-bottom:70%;border-radius:8px;box-shadow:inset 0 2px 6px #00000033}
+.felt{padding-bottom:55%;border-radius:8px;box-shadow:inset 0 2px 6px #00000033}
 .board{gap:2px}
 .card{width:34px;height:50px;font-size:0.65em;border-radius:3px;box-shadow:0 3px 0 0 #000}
 .card-sm{width:28px;height:42px;font-size:0.55em}
@@ -2691,9 +2691,17 @@ h1{font-size:1.1em;margin:2px 0}
 #profile-popup h3{font-size:1em;margin-bottom:6px}
 #profile-popup .pp-stat{font-size:0.8em;margin:2px 0}
 .result-box{padding:16px;min-width:unset;width:85vw;border-radius:14px}
-.info-bar{flex-wrap:wrap;gap:4px;padding:4px 8px;font-size:0.7em}
-#hand-timeline{font-size:0.65em;gap:2px}
-#hand-timeline .tl-step{padding:3px 8px}
+.info-bar{flex-wrap:wrap;gap:2px 6px;padding:4px 8px;font-size:0.65em;justify-content:center}
+.info-bar>div{display:flex;align-items:center;gap:4px}
+#vol-slider{width:30px!important}
+#delay-badge{font-size:0.75em!important;padding:1px 4px!important}
+#hand-timeline{font-size:0.6em;gap:2px;flex-wrap:wrap;justify-content:center}
+#hand-timeline .tl-step{padding:2px 6px}
+/* ═══ 모바일 빈 공간 제거 ═══ */
+h1{display:none}
+.lang-btn{font-size:0.7em!important;padding:2px 6px!important}
+#commentary{margin:0 4px 2px;font-size:0.75em;padding:4px 8px;min-height:18px}
+.pot-badge{font-size:0.85em!important;padding:6px 16px!important}
 
 }
 #new-btn{display:none;padding:14px 40px;font-size:1.2em;background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;border:2px solid #c2410c;border-radius:14px;cursor:pointer;margin:15px auto;font-weight:bold;box-shadow:3px 3px 0 #c2410c44;transition:all .1s}
