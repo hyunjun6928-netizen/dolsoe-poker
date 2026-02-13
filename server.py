@@ -1204,7 +1204,7 @@ h1{font-size:1.1em;margin:4px 0}
 </div>
 </div>
 <div id="game">
-<div class="info-bar"><span id="hi">핸드 #0</span><span id="ri">대기중</span><span id="si" style="color:#88ff88"></span><span id="mi"></span></div>
+<div class="info-bar"><span id="hi">핸드 #0</span><span id="ri">대기중</span><span id="si" style="color:#88ff88"></span><span id="mi"></span><span id="mute-btn" onclick="toggleMute()" style="cursor:pointer;user-select:none">🔊</span></div>
 <div id="hand-timeline"><span class="tl-step" data-r="preflop">프리플랍</span><span class="tl-step" data-r="flop">플랍</span><span class="tl-step" data-r="turn">턴</span><span class="tl-step" data-r="river">리버</span><span class="tl-step" data-r="showdown">쇼다운</span></div>
 <div id="commentary" style="display:none"></div>
 <div class="game-layout">
@@ -1413,7 +1413,7 @@ let la='';
 if(p.last_action){
 const key=`act_${p.name}`;const prev=window[key]||'';
 if(p.last_action!==prev){window[key]=p.last_action;window[key+'_t']=Date.now();la=`<div class="act-label">${p.last_action}</div>`;
-if(p.last_action.includes('폴드'))sfx('fold');else if(p.last_action.includes('체크'))sfx('check');else if(p.last_action.includes('ALL IN'))sfx('allin')}
+if(p.last_action.includes('폴드'))sfx('fold');else if(p.last_action.includes('체크'))sfx('check');else if(p.last_action.includes('ALL IN'))sfx('allin');else if(p.last_action.includes('파산'))sfx('bankrupt')}
 else if(Date.now()-window[key+'_t']<2000){la=`<div class="act-label" style="animation:none;opacity:1">${p.last_action}</div>`}
 }
 const sb=p.streak_badge||'';
@@ -1554,7 +1554,7 @@ function showHighlight(d){
 const o=document.getElementById('highlight-overlay');const t=document.getElementById('hl-text');
 const stars=d.rank>=9?'🎆🎆🎆':d.rank>=8?'🎇🎇':'✨';
 t.textContent=`${stars} ${d.emoji} ${d.player} — ${d.hand_name}! ${stars}`;
-o.style.display='flex';o.style.animation='allinFlash 3s ease-out forwards';
+o.style.display='flex';o.style.animation='allinFlash 3s ease-out forwards';sfx('rare');
 setTimeout(()=>{o.style.display='none'},3000)}
 
 async function placeBet(){
@@ -1648,7 +1648,10 @@ document.getElementById('vote-results').textContent=`${name}에게 투표 완료
 let audioCtx=null;
 function initAudio(){if(!audioCtx){audioCtx=new(window.AudioContext||window.webkitAudioContext)()}if(audioCtx.state==='suspended')audioCtx.resume()}
 document.addEventListener('click',initAudio,{once:false});
+let muted=false;
+function toggleMute(){muted=!muted;document.getElementById('mute-btn').textContent=muted?'🔇':'🔊'}
 function sfx(type){
+if(muted)return;
 if(!audioCtx)initAudio();if(!audioCtx)return;
 const t=audioCtx.currentTime;
 try{
@@ -1694,6 +1697,8 @@ else if(type==='mvp'){
 [660,784,880,1047].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
 o.frequency.value=f;o.type='sine';g.gain.value=0.12;g.gain.exponentialRampToValueAtTime(0.01,t+0.4+i*0.15);o.start(t+i*0.15);o.stop(t+0.5+i*0.15)})}
 }catch(e){}}
+else if(type==="bankrupt"){[400,350,300,200].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.frequency.value=f;o.type="sine";g.gain.value=0.1;g.gain.exponentialRampToValueAtTime(0.01,t+0.4+i*0.2);o.start(t+i*0.2);o.stop(t+0.5+i*0.2)})}
+else if(type==="rare"){[523,659,784,1047,784,659].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.frequency.value=f;o.type="sine";g.gain.value=0.12;g.gain.exponentialRampToValueAtTime(0.01,t+0.2+i*0.1);o.start(t+i*0.08);o.stop(t+0.25+i*0.1)})}
 
 // 기존 이벤트에 사운드 추가
 const _origShowAllin=showAllin;
