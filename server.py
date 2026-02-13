@@ -150,6 +150,137 @@ ACHIEVEMENTS={
     'comeback':{'label':'🔄역전왕','desc':'칩 꼴찌에서 우승'},
 }
 
+# ══ English Translation ══
+NPC_NAME_EN = {'딜러봇':'DealerBot','도박꾼':'Gambler','고수':'Pro','초보':'Newbie','상어':'Shark','여우':'Fox'}
+ACHIEVEMENT_EN = {'💪강심장':'💪Iron Heart','🤡호구':'🤡Sucker','🧟좀비':'🧟Zombie','🚛트럭':'🚛Truck','🎭블러퍼':'🎭Bluffer','🔄역전왕':'🔄Comeback'}
+ACHIEVEMENT_DESC_EN = {'iron_heart':{'label':'💪Iron Heart','desc':'Won with 7-2 offsuit'},'sucker':{'label':'🤡Sucker','desc':'Lost with AA'},'zombie':{'label':'🧟Zombie','desc':'Recovered from lowest chips'},'truck':{'label':'🚛Truck','desc':'Busted 2+ players in one hand'},'bluff_king':{'label':'🎭Bluffer','desc':'Bluff-raised with <20% win rate'},'comeback':{'label':'🔄Comeback','desc':'Won from last place'}}
+BADGE_EN = {'🏅연승왕':'🏅Streak King','💰빅팟':'💰Big Pot','🗡️최강':'🗡️Top Dog'}
+PTYPE_EN = {'🔥 광전사':'🔥 Berserker','🗡️ 공격형':'🗡️ Aggressive','🛡️ 수비형':'🛡️ Defensive','🎲 루즈':'🎲 Loose','🧠 밸런스':'🧠 Balanced'}
+
+_EVENT_REPLACEMENTS = [
+    # === Long/specific phrases FIRST (order matters!) ===
+    ('NPC 퇴장 (에이전트끼리 대결!)','NPC left (agents-only match!)'),
+    ('NPC 퇴장 (에이전트 양보)','NPC left (making room for agent)'),
+    ('NPC 봇 복귀! 자동 게임 시작','NPC bots back! Auto-starting game'),
+    ('에이전트 대기중... /api/join으로 참가하세요!','Waiting for agents... Join via /api/join!'),
+    ('에이전트 대결! 전원 칩 리셋','Agent vs Agent! All chips reset'),
+    ('플레이어 대기중... (참가 가능)','Waiting for players... (join now)'),
+    ('타임아웃 3연속 → 강제퇴장!','3 timeouts → kicked!'),
+    ('연속 폴드 페널티!','consecutive fold penalty!'),
+    ('승자 없음 — 팟 소멸','No winner — pot lost'),
+    ('상대 전원 폴드','all opponents folded'),
+    ('리버! 마지막 카드 오픈','River! Final card'),
+    ('미친 블러핑인가?!','Insane bluff?!'),
+    ('배짱인가 자살인가!','Brave or crazy?!'),
+    ('뭘 노리는 거지...','What are they aiming for...'),
+    ('강하게 밀어붙인다!','pushes hard!'),
+    ('블러핑 냄새...','Smells like a bluff...'),
+    ('무슨 판단이지?','What a decision!'),
+    ('인데 폴드?!','but folds?!'),
+    ('턴 카드 오픈!','Turn card revealed!'),
+    ('명 동시 탈락!','players busted at once!'),
+    ('pt 지급 — 패널티','pt given — penalty'),
+    ('새 게임 자동 시작!','New game auto-starting!'),
+    ('실시간 TV중계','Live broadcast'),
+    ('역사적인 핸드!!','Historic hand!!'),
+    ('포카드! 대박!','Four of a Kind! Amazing!'),
+    ('핸드 최다칩!','hands, chip leader!'),
+    ('7-2로 승리!','Won with 7-2!'),
+    ('AA로 패배!','Lost with AA!'),
+    ('pt를 놓고 승부!','pt on the line!'),
+    # === Medium phrases ===
+    ('상대 폴드','opponents folded'),('게임 시작!','Game started!'),
+    ('파산 퇴장!','Busted out!'),('파산 퇴장','Busted out'),('파산!','Busted!'),
+    ('시작! 참가:','Start! Players:'),('플랍 오픈!','Flop revealed!'),
+    ('블라인드 업!','Blinds up!'),('좋은 핸드!','Nice hand!'),
+    ('명 생존',' players alive'),('밀어붙인다!','pushes hard!'),
+    ('업적 달성!','Achievement unlocked!'),('연속 페널티!','streak penalty!'),
+    ('강제 앤티!','Forced ante!'),('코인 베팅!','coins bet!'),
+    # === Action labels (emoji-prefixed, before bare words) ===
+    ('❌ 폴드','❌ Fold'),('✋ 체크','✋ Check'),('📞 콜','📞 Call'),('⬆️ 레이즈','⬆️ Raise'),
+    ('💀 파산','💀 Busted'),
+    # === Short words/suffixes ===
+    ('핸드 #','Hand #'),('명)',' players)'),('명이',' players'),
+    ('폴드','Fold'),('체크','Check'),('콜','Call'),('레이즈','Raise'),
+    ('시간초과','Timed out'),('승리!','Win!'),('획득','earned'),
+    ('역전승!','comeback win!'),('다크호스!','Dark horse!'),
+    ('우승!!','Champion!!'),('복귀!','is back!'),
+    ('입장!','joined!'),('퇴장!','left!'),('퇴장','left'),
+    ('자신만만','Confident'),('폭발!','explodes!'),('남음','remaining'),
+    ('승부수!','All or nothing!'),('앤티','Ante'),('관전자','Spectator'),
+    ('에게',' on'),('코인 →','coins →'),('꽝','lost'),
+    ('팟','Pot'),('명','players'),
+]
+
+def _translate_text(text, lang):
+    """Translate a Korean text string to English via replacement"""
+    if lang != 'en' or not text:
+        return text
+    for ko, en in _EVENT_REPLACEMENTS:
+        text = text.replace(ko, en)
+    # Translate NPC names
+    for ko, en in NPC_NAME_EN.items():
+        text = text.replace(ko, en)
+    # Translate achievement labels
+    for ko, en in ACHIEVEMENT_EN.items():
+        text = text.replace(ko, en)
+    # Translate badges
+    for ko, en in BADGE_EN.items():
+        text = text.replace(ko, en)
+    # Translate profile types
+    for ko, en in PTYPE_EN.items():
+        text = text.replace(ko, en)
+    return text
+
+def _translate_state(state, lang):
+    """Translate an entire state dict for lang=en"""
+    if lang != 'en' or not state:
+        return state
+    # Translate log entries
+    if 'log' in state:
+        state['log'] = [_translate_text(m, lang) for m in state['log']]
+    # Translate player fields
+    for p in state.get('players', []):
+        if p.get('last_action'):
+            p['last_action'] = _translate_text(p['last_action'], lang)
+        if p.get('_reasoning_en'):
+            p['last_reasoning'] = p['_reasoning_en']
+        elif p.get('last_reasoning'):
+            p['last_reasoning'] = _translate_text(p['last_reasoning'], lang)
+        p.pop('_reasoning_en', None)
+        if p.get('last_note'):
+            p['last_note'] = _translate_text(p['last_note'], lang)
+        if p.get('name'):
+            p['name'] = NPC_NAME_EN.get(p['name'], p['name'])
+        if p.get('streak_badge'):
+            p['streak_badge'] = _translate_text(p['streak_badge'], lang)
+        if p.get('style'):
+            p['style'] = PTYPE_EN.get(p['style'], p['style'])
+    # Translate turn
+    if state.get('turn'):
+        state['turn'] = NPC_NAME_EN.get(state['turn'], state['turn'])
+    # Translate turn_options
+    if state.get('turn_options') and state['turn_options'].get('player'):
+        state['turn_options']['player'] = NPC_NAME_EN.get(state['turn_options']['player'], state['turn_options']['player'])
+    # Translate commentary
+    if state.get('commentary'):
+        state['commentary'] = _translate_text(state['commentary'], lang)
+    # Translate showdown_result
+    if state.get('showdown_result'):
+        sr = state['showdown_result']
+        if sr.get('winner'):
+            sr['winner'] = NPC_NAME_EN.get(sr['winner'], sr['winner'])
+        for p in sr.get('players', []):
+            if p.get('name'):
+                p['name'] = NPC_NAME_EN.get(p['name'], p['name'])
+    # Translate rivalries
+    for r in state.get('rivalries', []):
+        if r.get('player_a'):
+            r['player_a'] = NPC_NAME_EN.get(r['player_a'], r['player_a'])
+        if r.get('player_b'):
+            r['player_b'] = NPC_NAME_EN.get(r['player_b'], r['player_b'])
+    return state
+
 def get_streak_badge(name):
     if name not in leaderboard: return ''
     s=leaderboard[name].get('streak',0)
@@ -342,11 +473,22 @@ class Table:
             'raise':[f"승률 {wp}%! 밀어붙인다",f"여기서 올려야지",f"팟 {self.pot}pt, 가치 베팅",
                 f"블러핑 간다 ㅋ",f"강하다 느낌!"],
         }
+        reasons_en={
+            'fold':[f"Win rate {wp}%... nope",f"Calling {to_call}pt is too risky",f"Better to fold here",
+                f"Bad hand ({wp}%)",f"Looks like a bluff but scary"],
+            'check':[f"Free card? Sure",f"Setting a trap",f"Let's wait and see",f"Win rate {wp}%.. check"],
+            'call':[f"Pot odds look good, call",f"Win rate {wp}%, following along",f"{to_call}pt is worth seeing",
+                f"Chasing the draw",f"Curious, I'll call"],
+            'raise':[f"Win rate {wp}%! Pushing hard",f"Time to raise",f"Pot {self.pot}pt, value bet",
+                f"Going for a bluff",f"Feeling strong!"],
+        }
         if act=='raise' and amt>=seat['chips']:
+            seat['_reasoning_en']=random.choice([f"Win rate {wp}%! ALL IN!",f"All in! Win or bust!",
+                f"No choice but all-in",f"Can't back out now"])
             return random.choice([f"승률 {wp}%! ALL IN!",f"다 걸었다! 지면 끝!",
                 f"올인밖에 답이 없다",f"여기서 안 가면 후회한다"])
-        msgs=reasons.get(act,["..."])
-        return random.choice(msgs)
+        seat['_reasoning_en']=random.choice(reasons_en.get(act,["..."]))
+        return random.choice(reasons.get(act,["..."]))
 
     def add_player(self, name, emoji='🤖', is_bot=False, style='aggressive', meta=None):
         if len(self.seats)>=self.MAX_PLAYERS: return False
@@ -387,6 +529,7 @@ class Table:
                'timeout_count':self.timeout_counts.get(s['name'],0),
                'meta':s.get('meta',{'version':'','strategy':'','repo':''}),
                'last_note':s.get('last_note',''),'last_reasoning':s.get('last_reasoning',''),
+               '_reasoning_en':s.get('_reasoning_en',''),
                'last_mood':s.get('last_mood','')}
             # 플레이어: 본인 카드만 / 관전자(viewer=None): 전체 공개 (딜레이로 치팅 방지)
             if s['hole'] and (viewer is None or viewer==s['name']):
@@ -1141,7 +1284,14 @@ async def handle_client(reader, writer):
         return t
 
     _lang=qs.get('lang',[''])[0]
-    if method=='GET' and route=='/':
+    # /en redirects
+    if method=='GET' and route=='/en':
+        await send_http(writer,302,'','text/html',extra_headers='Location: /?lang=en\r\n')
+    elif method=='GET' and route=='/en/ranking':
+        await send_http(writer,302,'','text/html',extra_headers='Location: /ranking?lang=en\r\n')
+    elif method=='GET' and route=='/en/docs':
+        await send_http(writer,302,'','text/html',extra_headers='Location: /docs?lang=en\r\n')
+    elif method=='GET' and route=='/':
         await send_http(writer,200,HTML_PAGE,'text/html; charset=utf-8')
     elif method=='GET' and route=='/ranking':
         pg=RANKING_PAGE_EN if _lang=='en' else RANKING_PAGE
@@ -1240,6 +1390,7 @@ async def handle_client(reader, writer):
             # 10초 이상 안 온 폴링 관전자 제거
             t.poll_spectators={k:v for k,v in t.poll_spectators.items() if time.time()-v<10}
             state=t.get_spectator_state()
+        if _lang=='en': _translate_state(state, 'en')
         await send_json(writer,state)
     elif method=='POST' and route=='/api/action':
         d=json.loads(body) if body else {}; name=d.get('name',''); tid=d.get('table_id','')
@@ -1319,11 +1470,16 @@ async def handle_client(reader, writer):
             if best_pot and best_pot[1].get('biggest_pot',0)>0: badges[best_pot[0]]=badges.get(best_pot[0],[])+['💰빅팟']
             best_wr=max(((n,d) for n,d in filtered.items() if d['hands']>=10),key=lambda x:x[1]['wins']/(x[1]['wins']+x[1]['losses']) if (x[1]['wins']+x[1]['losses'])>0 else 0,default=None)
             if best_wr: badges[best_wr[0]]=badges.get(best_wr[0],[])+['🗡️최강']
-        await send_json(writer,{'leaderboard':[{'name':n,'wins':d['wins'],'losses':d['losses'],
+        lb_data={'leaderboard':[{'name':n,'wins':d['wins'],'losses':d['losses'],
             'chips_won':d['chips_won'],'hands':d['hands'],'biggest_pot':d['biggest_pot'],
             'streak':d.get('streak',0),'badges':badges.get(n,[])+[a['label'] for a in d.get('achievements',[])],
             'achievements':d.get('achievements',[]),
-            'meta':d.get('meta',{'version':'','strategy':'','repo':''})} for n,d in lb]})
+            'meta':d.get('meta',{'version':'','strategy':'','repo':''})} for n,d in lb]}
+        if _lang=='en':
+            for entry in lb_data['leaderboard']:
+                entry['badges']=[_translate_text(b,'en') for b in entry['badges']]
+                entry['achievements']=[{'id':a['id'],'label':ACHIEVEMENT_DESC_EN.get(a['id'],{}).get('label',a['label']),'ts':a.get('ts',0)} for a in entry['achievements']]
+        await send_json(writer,lb_data)
     elif method=='POST' and route=='/api/bet':
         d=json.loads(body) if body else {}
         name=d.get('name',''); pick=d.get('pick',''); amount=int(d.get('amount',0))
@@ -1380,10 +1536,10 @@ async def handle_client(reader, writer):
     try: writer.close(); await writer.wait_closed()
     except: pass
 
-async def send_http(writer, status, body, ct='text/plain; charset=utf-8'):
-    st={200:'OK',400:'Bad Request',404:'Not Found'}.get(status,'OK')
+async def send_http(writer, status, body, ct='text/plain; charset=utf-8', extra_headers=''):
+    st={200:'OK',400:'Bad Request',404:'Not Found',302:'Found'}.get(status,'OK')
     if isinstance(body,str): body=body.encode('utf-8')
-    h=f"HTTP/1.1 {status} {st}\r\nContent-Type: {ct}\r\nContent-Length: {len(body)}\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type\r\nConnection: close\r\n\r\n"
+    h=f"HTTP/1.1 {status} {st}\r\nContent-Type: {ct}\r\nContent-Length: {len(body)}\r\n{extra_headers}Access-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type\r\nConnection: close\r\n\r\n"
     try: writer.write(h.encode()+body); await writer.drain()
     except: pass
 
@@ -2597,7 +2753,7 @@ let la='';
 if(p.last_action){
 const key=`act_${p.name}`;const prev=window[key]||'';
 if(p.last_action!==prev){window[key]=p.last_action;window[key+'_t']=Date.now();la=`<div class="act-label">${p.last_action}</div>`;
-if(p.last_action.includes('폴드'))sfx('fold');else if(p.last_action.includes('체크'))sfx('check');else if(p.last_action.includes('ALL IN'))sfx('allin');else if(p.last_action.includes('파산'))sfx('bankrupt');else if(p.last_action.includes('레이즈'))sfx('raise');else if(p.last_action.includes('콜'))sfx('call')}
+if(p.last_action.includes('폴드')||p.last_action.includes('Fold'))sfx('fold');else if(p.last_action.includes('체크')||p.last_action.includes('Check'))sfx('check');else if(p.last_action.includes('ALL IN'))sfx('allin');else if(p.last_action.includes('파산')||p.last_action.includes('Busted'))sfx('bankrupt');else if(p.last_action.includes('레이즈')||p.last_action.includes('Raise'))sfx('raise');else if(p.last_action.includes('콜')||p.last_action.includes('Call'))sfx('call')}
 else if(Date.now()-window[key+'_t']<2000){la=`<div class="act-label" style="animation:none;opacity:1">${p.last_action}</div>`}
 if(la&&p.last_note){la=la.replace('</div>',` <span style="color:#999;font-size:0.8em">"${esc(p.last_note)}"</span></div>`)}
 }
