@@ -99,15 +99,15 @@ class BotAI:
     def trash_talk(self, action, pot):
         """쓰레기톡 생성"""
         talks = {
-            'fold': ["겁쟁이는 아님. 전략적 후퇴임.", "이건 패스하겠음.", "다음 판에 보자."],
-            'call': ["한번 따라가봄.", "어디 한번 보자.", "콜이나 해줌."],
-            'raise': ["가보자고.", "올린다 올려.", f"팟이 {pot}인데 쫄았냐?", "겁나면 폴드하셈."],
-            'check': ["지켜보겠음.", "..."],
-            'win': ["돈 줘서 고마움.", "이게 실력임.", "낄낄"],
-            'lose': ["다음엔 안 짐.", "운이 없었음."],
+            'fold': ["겁쟁이는 아님. 전략적 후퇴임.", "이건 패스하겠음.", "다음 판에 보자.", "쓰레기 패 ㅋ", "접는다 접어", "이딴 패로 어쩌라고"],
+            'call': ["한번 따라가봄.", "어디 한번 보자.", "콜이나 해줌.", "궁금하니까 콜", "도망 안 감", "따라간다 잘해봐"],
+            'raise': ["가보자고.", "올린다 올려.", f"팟이 {pot}인데 쫄았냐?", "겁나면 폴드하셈.", "돈 더 내놔", "올려올려 가즈아", f"{pot}pt 먹는다"],
+            'check': ["지켜보겠음.", "...", "패스~", "너부터 해"],
+            'win': ["돈 줘서 고마움.", "이게 실력임.", "낄낄", "ㅋㅋㅋ 감사합니다", "또 내가 이김", "역시 나지"],
+            'lose': ["다음엔 안 짐.", "운이 없었음.", "어이없네", "다음 판이나 보자"],
         }
         msgs = talks.get(action, ["..."])
-        if random.random() < 0.4:  # 40% 확률로 말함
+        if random.random() < 0.65:  # 65% 확률로 말함
             return random.choice(msgs)
         return None
 
@@ -262,7 +262,7 @@ class Table:
             'round':self.round,'dealer':self.dealer,
             'players':players,'turn':self.turn_player,
             'turn_options':turn_options,
-            'log':self.log[-25:],'chat':self.chat_log[-10:],
+            'log':self.log[-25:],'chat':self.chat_log[-20:],
             'running':self.running,
             'commentary':self.last_commentary,
             'showdown_result':self.last_showdown,
@@ -406,6 +406,12 @@ class Table:
                     await self.broadcast({'type':'killcam','victim':s['name'],'victim_emoji':s['emoji'],
                         'killer':killer,'killer_emoji':killer_emoji})
                     update_leaderboard(s['name'], False, 0)
+
+            # 파산 봇 리스폰 (핸드 사이에 칩 리필)
+            for s in self.seats:
+                if s.get('out') and s['is_bot']:
+                    s['out']=False; s['chips']=self.START_CHIPS; s['folded']=False
+                    await self.add_log(f"🔄 {s['emoji']} {s['name']} 복귀! ({self.START_CHIPS}pt 지급)")
 
             alive=[s for s in self.seats if s['chips']>0 and not s.get('out')]
             if len(alive)==1:
@@ -1092,8 +1098,8 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 .tab-btns button.active{color:#ffaa00;border-color:#ffaa00}
 #log{background:#080b15;border:1px solid #1a1e2e;border-radius:10px;padding:10px;height:170px;overflow-y:auto;font-size:0.78em;font-family:'Fira Code',monospace,sans-serif;flex:1}
 #log div{padding:2px 0;border-bottom:1px solid #0d1020;opacity:0;animation:fadeIn .3s forwards}
-#chatbox{background:#080b15;border:1px solid #1a1e2e;border-radius:10px;padding:10px;height:170px;width:250px;display:flex;flex-direction:column}
-#chatmsgs{flex:1;overflow-y:auto;font-size:0.78em;margin-bottom:5px}
+#chatbox{background:#080b15;border:1px solid #1a1e2e;border-radius:10px;padding:12px;height:300px;width:350px;display:flex;flex-direction:column}
+#chatmsgs{flex:1;overflow-y:auto;font-size:0.85em;margin-bottom:5px;line-height:1.5}
 #chatmsgs div{padding:2px 0;opacity:0;animation:fadeIn .3s forwards}
 #chatmsgs .cn{color:#ffaa00;font-weight:bold}
 #chatmsgs .cm{color:#ccc}
@@ -1129,7 +1135,7 @@ h1{font-size:1.1em;margin:4px 0}
 .seat .bet-chip{font-size:0.6em}
 .bottom-panel{flex-direction:column}
 #log,#replay-panel{height:120px}
-#chatbox{width:100%;height:120px}
+#chatbox{width:100%;height:200px}
 #turn-options{font-size:0.7em;padding:4px 8px}
 #bet-panel{font-size:0.8em}
 #bet-panel select,#bet-panel input{font-size:0.75em;padding:4px}
