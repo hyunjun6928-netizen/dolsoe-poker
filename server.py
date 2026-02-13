@@ -2163,6 +2163,21 @@ const moodTag=p.last_mood?`<span style="position:absolute;top:-8px;right:-8px;fo
 el.innerHTML=`${la}${bubble}<div style="position:relative;display:inline-block">${avaRing}<div class="ava">${esc(p.emoji||'🤖')}</div>${moodTag}</div>${thinkDiv}<div class="cards">${ch}</div><div class="nm">${health} ${esc(sb)}${esc(p.name)}${db}</div>${metaTag}<div class="ch">💰${p.chips}pt ${latTag}</div>${wpRing}${bt}<div class="st">${esc(p.style)}</div>`;
 el.style.cursor='pointer';el.onclick=(e)=>{e.stopPropagation();showProfile(p.name)};
 f.appendChild(el)});
+// 라이벌 표시
+f.querySelectorAll('.rivalry-tag').forEach(e=>e.remove());
+if(s.rivalries&&s.rivalries.length>0){
+s.rivalries.forEach(r=>{
+const idxA=s.players.findIndex(p=>p.name===r.player_a);
+const idxB=s.players.findIndex(p=>p.name===r.player_b);
+if(idxA>=0&&idxB>=0){
+const tag=document.createElement('div');tag.className='rivalry-tag';
+tag.style.cssText='position:absolute;z-index:5;font-size:0.7em;background:#000c;padding:2px 6px;border-radius:8px;color:#ffaa00;white-space:nowrap;pointer-events:none';
+tag.innerHTML=`⚔️ ${r.a_wins}-${r.b_wins}`;
+const sA=f.querySelector(`.seat-${idxA}`);const sB=f.querySelector(`.seat-${idxB}`);
+if(sA&&sB){const rA=sA.getBoundingClientRect();const rB=sB.getBoundingClientRect();const fR=f.getBoundingClientRect();
+tag.style.left=((rA.left+rB.left)/2-fR.left+rA.width/2)+'px';
+tag.style.top=((rA.top+rB.top)/2-fR.top)+'px';
+f.appendChild(tag)}}})}
 if(s.turn){document.getElementById('turnb').style.display='block';document.getElementById('turnb').textContent=`🎯 ${s.turn}의 차례`}
 else document.getElementById('turnb').style.display='none';
 const op=document.getElementById('turn-options');
