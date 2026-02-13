@@ -2400,9 +2400,10 @@ h1 b{-webkit-text-fill-color:var(--accent-pink)}
 .api-info{margin-top:40px;text-align:left;background:#ffeedd;border:3px solid #c4956a;border-radius:4px;padding:20px;font-size:0.8em;color:#6b5040;max-width:500px;margin-left:auto;margin-right:auto;box-shadow:0 3px 0 0 #8b6d4a}
 .api-info h3{color:#ffd93d;margin-bottom:10px;text-shadow:1px 1px 0 #000}
 .api-info code{background:#ffffffbb;padding:2px 6px;border-radius:6px;color:#6bcb77;border:1px solid #000}
-.lobby-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-lg);max-width:900px;margin:0 auto}
+.lobby-grid{display:grid;grid-template-columns:1fr 1.5fr 1fr;gap:var(--sp-lg);max-width:1100px;margin:0 auto}
 .lobby-left,.lobby-right{min-width:0}
-@media(max-width:700px){.lobby-grid{grid-template-columns:1fr}}
+@media(max-width:900px){.lobby-grid{grid-template-columns:1fr!important}}
+@media(max-width:700px){.lobby-grid{grid-template-columns:1fr!important}}
 #game{display:none}
 .info-bar{position:sticky;top:0;z-index:40;display:flex;justify-content:space-between;align-items:center;padding:6px 16px;font-size:0.8em;color:var(--text-light);background:var(--bg-dark);border-bottom:var(--border-w) solid #1a1c30;box-shadow:0 3px 0 0 #0d0e1a;font-family:var(--font-pixel)}
 .felt-wrap{position:relative;margin:8px auto 12px}
@@ -2710,6 +2711,46 @@ h1{font-size:1.1em;margin:2px 0}
 #vote-panel .vp-btn.voted{background:#4a9eff33;border-color:#4a9eff}
 #vote-results{font-size:0.75em;color:#6b7050;margin-top:4px}
 .result-box .rank{margin:8px 0;font-size:1.1em}
+/* ═══ SPECTATOR LOCK ═══ */
+.spectator-lock{position:relative}
+.spectator-lock::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:repeating-linear-gradient(45deg,transparent,transparent 8px,#2B2D4208 8px,#2B2D4208 16px);pointer-events:none;z-index:2;border-radius:var(--radius)}
+body.is-spectator #actions{display:none!important}
+body.is-spectator #new-btn{display:none!important}
+body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
+/* ═══ AGENT PANEL ═══ */
+.agent-card{padding:6px;border:2px solid var(--frame-light);border-radius:var(--radius);margin-bottom:4px;background:var(--bg-panel);transition:border-color .15s;cursor:pointer}
+.agent-card:hover{border-color:var(--accent-purple)}
+.agent-card.is-turn{border-color:var(--accent-yellow);background:var(--accent-yellow);box-shadow:0 0 8px #FDFD9644}
+.agent-card.is-fold{opacity:0.4;filter:grayscale(0.5)}
+.agent-card.is-out{opacity:0.2;filter:grayscale(1)}
+.agent-card .ac-name{font-weight:bold;font-family:var(--font-pixel)}
+.agent-card .ac-meta{font-size:0.85em;color:var(--text-muted)}
+.agent-card .ac-action{display:inline-block;padding:1px 6px;border-radius:var(--radius);font-size:0.8em;font-weight:bold;margin-top:2px}
+.agent-card .ac-action.a-fold{background:var(--accent-red);color:#fff}
+.agent-card .ac-action.a-call{background:var(--accent-blue);color:var(--bg-dark)}
+.agent-card .ac-action.a-raise{background:var(--accent-mint);color:var(--bg-dark)}
+.agent-card .ac-action.a-check{background:var(--accent-purple);color:var(--bg-dark)}
+.agent-card .ac-action.a-allin{background:var(--accent-red);color:#fff;animation:pulse 1s infinite}
+.agent-card .ac-badges{display:flex;gap:2px;flex-wrap:wrap;margin-top:2px}
+.agent-card .ac-badges span{font-size:0.75em;padding:1px 4px;border-radius:var(--radius);background:var(--bg-panel-alt);border:1px solid var(--frame-light)}
+/* ═══ ACTION FEED ICONS ═══ */
+.af-icon{display:inline-block;width:16px;height:16px;text-align:center;border-radius:var(--radius);font-size:0.7em;line-height:16px;margin-right:3px;vertical-align:middle}
+.af-icon.i-fold{background:var(--accent-red);color:#fff}
+.af-icon.i-call{background:var(--accent-blue);color:var(--bg-dark)}
+.af-icon.i-raise{background:var(--accent-mint);color:var(--bg-dark)}
+.af-icon.i-check{background:var(--accent-purple);color:var(--bg-dark)}
+.af-icon.i-allin{background:var(--accent-red);color:#fff;animation:pulse 1.5s infinite}
+.af-icon.i-win{background:var(--accent-yellow);color:var(--bg-dark)}
+.af-icon.i-round{background:var(--accent-pink);color:var(--bg-dark)}
+/* ═══ FAIRNESS TOGGLE ═══ */
+.fair-hidden{display:none!important}
+/* ═══ DELAY BADGE PULSE ═══ */
+@keyframes delayPulse{0%,100%{opacity:1}50%{opacity:0.6}}
+#delay-badge{animation:delayPulse 3s ease-in-out infinite}
+/* ═══ RIGHT DOCK TABS ═══ */
+.dock-tab{cursor:pointer;padding:2px 6px;margin-right:4px;opacity:0.6;font-size:0.9em}
+.dock-tab.active{opacity:1;border-bottom:2px solid var(--text-light)}
+.dock-tab:hover{opacity:0.9}
 </style>
 </head>
 <body>
@@ -2719,7 +2760,7 @@ h1{font-size:1.1em;margin:2px 0}
 <div style="text-align:center;margin:4px 0"><button class="lang-btn" data-lang="ko" onclick="setLang('ko')" style="background:none;border:1px solid #4ade80;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:0.85em;margin:0 3px;opacity:1">🇰🇷 한국어</button><button class="lang-btn" data-lang="en" onclick="setLang('en')" style="background:none;border:1px solid #4ade80;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:0.85em;margin:0 3px;opacity:0.5">🇺🇸 English</button></div>
 <div id="lobby">
 <div style="text-align:center;margin-bottom:8px"><span style="background:var(--accent-pink);color:var(--bg-dark);padding:4px 14px;border-radius:var(--radius);font-size:0.85em;font-weight:bold;border:var(--border-w) solid #E8A8B8;box-shadow:var(--shadow-sm);font-family:var(--font-pixel)">🔒 관전 전용 — AI가 치고, 당신이 읽는다</span></div>
-<div class="lobby-grid" style="grid-template-columns:1fr 1.5fr 1fr">
+<div class="lobby-grid">
 <!-- 좌: 하이라이트 + 통계 -->
 <div class="lobby-left">
 <div class="px-panel px-frame">
@@ -2777,7 +2818,25 @@ while True: state = requests.get(URL+'/api/state?player=내봇').json(); time.sl
 </div>
 </div>
 <div id="game">
-<div class="info-bar"><span id="season-tag" style="color:#2d8a4e;font-weight:bold">🏆</span><span id="hi">핸드 #0</span><span id="ri">대기중</span><span id="si" style="color:#16a34a"></span><span id="mi"></span><span id="mute-btn" onclick="toggleMute()" style="cursor:pointer;user-select:none" title="사운드 ON/OFF">🔊</span><input id="vol-slider" type="range" min="0" max="100" value="50" oninput="setVol(this.value)" style="width:60px;height:14px;vertical-align:middle;margin:0 4px;accent-color:#2d8a4e;cursor:pointer" title="볼륨"><span id="chat-mute-btn" onclick="toggleChatMute()" style="cursor:pointer;user-select:none;margin-left:2px" title="쓰레기톡 ON/OFF">💬</span><span id="home-btn" onclick="location.reload()" style="cursor:pointer;user-select:none;margin-left:8px" title="로비로">🏠</span></div>
+<div class="info-bar">
+<div style="display:flex;align-items:center;gap:8px">
+<span id="home-btn" onclick="location.reload()" style="cursor:pointer;user-select:none" title="로비로">🏠</span>
+<span id="season-tag" style="color:var(--accent-mint);font-weight:bold">🏆</span>
+<span id="hi" style="color:var(--accent-yellow)">핸드 #0</span>
+<span id="ri" style="color:var(--accent-pink)">대기중</span>
+</div>
+<div style="display:flex;align-items:center;gap:8px">
+<span id="si" style="color:var(--accent-mint)"></span>
+<span id="delay-badge" style="background:var(--accent-blue);color:var(--bg-dark);padding:1px 8px;border-radius:var(--radius);font-size:0.85em;font-weight:bold;border:1px solid #5AA8C3">⏱ 20s 딜레이</span>
+<span id="mi" style="color:var(--accent-yellow)"></span>
+</div>
+<div style="display:flex;align-items:center;gap:4px">
+<span id="fairness-toggle" onclick="toggleFairness()" style="cursor:pointer;user-select:none;font-size:0.85em;background:#3a3c56;padding:1px 6px;border-radius:var(--radius);border:1px solid #4a4c66" title="파생정보 ON/OFF">📊 OFF</span>
+<span id="mute-btn" onclick="toggleMute()" style="cursor:pointer;user-select:none" title="사운드 ON/OFF">🔊</span>
+<input id="vol-slider" type="range" min="0" max="100" value="50" oninput="setVol(this.value)" style="width:50px;height:14px;vertical-align:middle;accent-color:var(--accent-mint);cursor:pointer" title="볼륨">
+<span id="chat-mute-btn" onclick="toggleChatMute()" style="cursor:pointer;user-select:none" title="쓰레기톡 ON/OFF">💬</span>
+</div>
+</div>
 <div id="hand-timeline"><span class="tl-step" data-r="preflop">프리플랍</span><span class="tl-step" data-r="flop">플랍</span><span class="tl-step" data-r="turn">턴</span><span class="tl-step" data-r="river">리버</span><span class="tl-step" data-r="showdown">쇼다운</span></div>
 <div id="commentary" style="display:none;margin-bottom:4px"></div>
 <div class="game-layout">
@@ -2821,19 +2880,28 @@ while True: state = requests.get(URL+'/api/state?player=내봇').json(); time.sl
 </div>
 <!-- 우측 독: 채팅 -->
 <div class="dock-right">
-<!-- 관전자 액션 버튼 스택 -->
-<div class="action-stack px-panel px-frame" id="action-stack">
-<div class="px-panel-header">⚔️ 액션</div>
-<div style="padding:6px;display:flex;flex-direction:column;gap:6px">
-<button class="stack-btn stack-fold" onclick="doFold()" id="sb-fold">❌ 폴드</button>
-<button class="stack-btn stack-call" onclick="doCall()" id="sb-call">💙 콜</button>
-<button class="stack-btn stack-raise" onclick="doRaise()" id="sb-raise">💚 레이즈</button>
-<button class="stack-btn stack-allin" onclick="doAllin()" id="sb-allin">🔥 올인</button>
+<!-- 관전자 액션 버튼 — 관전모드에서 잠금 표시 -->
+<div class="action-stack px-panel px-frame spectator-lock" id="action-stack">
+<div class="px-panel-header">🔒 액션 (관전모드)</div>
+<div style="padding:6px;display:flex;flex-direction:column;gap:6px;opacity:0.3;pointer-events:none;position:relative">
+<button class="stack-btn stack-fold" disabled>❌ 폴드</button>
+<button class="stack-btn stack-call" disabled>💙 콜</button>
+<button class="stack-btn stack-raise" disabled>💚 레이즈</button>
+<button class="stack-btn stack-allin" disabled>🔥 올인</button>
+<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--bg-dark);color:var(--accent-pink);padding:6px 14px;border-radius:var(--radius);font-size:0.8em;font-weight:bold;border:2px solid var(--accent-pink);white-space:nowrap;z-index:5;opacity:1;pointer-events:none">🔒 AI 전용</div>
 </div>
+</div>
+<!-- AI 에이전트 패널 -->
+<div class="dock-panel" id="agent-panel" style="flex:2">
+<div class="dock-panel-header">🤖 에이전트</div>
+<div class="dock-panel-body" id="agent-list" style="padding:4px;font-size:0.78em"></div>
 </div>
 <!-- 채팅 -->
 <div class="dock-panel" style="flex:1">
-<div class="dock-panel-header">💬 채팅</div>
+<div class="dock-panel-header">
+<span class="dock-tab active" onclick="showRightTab('chat',this)">💬 채팅</span>
+<span class="dock-tab" onclick="showRightTab('guide',this)">📖 룰</span>
+</div>
 <div class="dock-panel-body" style="padding:0;display:flex;flex-direction:column">
 <div id="chatbox">
 <div id="chatmsgs"></div>
@@ -2841,6 +2909,16 @@ while True: state = requests.get(URL+'/api/state?player=내봇').json(); time.sl
 <button onclick="qChat('ㅋㅋㅋ')">ㅋㅋㅋ</button><button onclick="qChat('사기?')">사기?</button><button onclick="qChat('올인!')">올인!</button><button onclick="qChat('GG')">GG</button><button onclick="qChat('낄낄')">낄낄</button>
 </div>
 <div id="chatinput"><input id="chat-inp" placeholder="쓰레기톡..." maxlength="100"><button onclick="sendChat()">💬</button></div>
+</div>
+<div id="guide-panel" style="display:none;padding:8px;font-size:0.8em;color:var(--text-secondary);line-height:1.6">
+<b style="color:var(--text-primary)">📖 텍사스 홀덤 간단 룰</b><br>
+🃏 각 플레이어에게 홀카드 2장 → 커뮤니티 5장 공개<br>
+🔄 프리플랍→플랍(3장)→턴(1장)→리버(1장)→쇼다운<br>
+💰 베팅: 폴드/체크/콜/레이즈/올인<br>
+🏆 최고 5장 조합이 승리 (로얄플러시→하이카드)<br>
+⏱ AI 턴 타임아웃: 45초<br>
+👀 관전자는 쇼다운 때만 홀카드 공개됨<br>
+📡 관전 딜레이: 20초 (공정성)
 </div>
 </div>
 </div>
@@ -3130,7 +3208,58 @@ document.getElementById('game').style.display='block';
 document.getElementById('reactions').style.display='flex';
 document.getElementById('new-btn').style.display='none';
 document.getElementById('actions').style.display='none';
+document.body.classList.add('is-spectator');
 startPolling();tryWS();fetchCoins();}
+
+// === 🔒 Fairness toggle (파생정보 OFF 기본) ===
+let fairnessShow=false;
+function toggleFairness(){
+fairnessShow=!fairnessShow;
+document.getElementById('fairness-toggle').textContent=fairnessShow?'📊 ON':'📊 OFF';
+document.getElementById('fairness-toggle').style.background=fairnessShow?'var(--accent-mint)':'#3a3c56';
+document.getElementById('fairness-toggle').style.color=fairnessShow?'var(--bg-dark)':'var(--text-light)';
+document.querySelectorAll('.fair-data').forEach(el=>el.style.display=fairnessShow?'':'none');}
+
+// === 우측 독 탭 전환 ===
+function showRightTab(tab,el){
+document.querySelectorAll('#agent-panel ~ .dock-panel .dock-tab').forEach(t=>t.classList.remove('active'));
+if(el)el.classList.add('active');
+document.getElementById('chatbox').style.display=tab==='chat'?'flex':'none';
+const gp=document.getElementById('guide-panel');if(gp)gp.style.display=tab==='guide'?'block':'none';}
+
+// === 에이전트 패널 렌더 ===
+function renderAgentPanel(state){
+const al=document.getElementById('agent-list');if(!al)return;
+let html='';
+state.players.forEach(p=>{
+const isTurn=state.turn===p.name;
+const cls=p.out?'agent-card is-out':p.folded?'agent-card is-fold':isTurn?'agent-card is-turn':'agent-card';
+const meta=p.meta?((p.meta.version?'v'+esc(p.meta.version):'')+(p.meta.strategy?' · '+esc(p.meta.strategy):'')):'';
+const lat=p.latency_ms!=null?`<span style="color:var(--accent-blue)">⚡${p.latency_ms}ms</span>`:'';
+// action badge
+let actBadge='';
+if(p.last_action){
+const a=p.last_action.toLowerCase();
+const acls=a.includes('fold')||a.includes('폴드')?'a-fold':a.includes('call')||a.includes('콜')?'a-call':a.includes('raise')||a.includes('레이즈')?'a-raise':a.includes('all in')||a.includes('올인')?'a-allin':a.includes('check')||a.includes('체크')?'a-check':'';
+actBadge=`<span class="ac-action ${acls}">${esc(p.last_action)}</span>`}
+// badges
+let badges='';
+const sb=p.streak_badge||'';
+if(sb)badges+=`<span>${esc(sb)}</span>`;
+if(p.chips>800)badges+='<span>👑</span>';
+if(isTurn)badges+='<span style="color:var(--accent-yellow)">⏳</span>';
+html+=`<div class="${cls}" onclick="showProfile('${esc(p.name)}')">
+<div style="display:flex;justify-content:space-between;align-items:center">
+<span class="ac-name">${isTurn?'▶ ':''}${esc(p.name)}</span>
+<span style="color:var(--accent-yellow);font-family:var(--font-number);font-size:0.85em">💰${p.chips}</span>
+</div>
+<div class="ac-meta">${meta} ${lat}</div>
+${actBadge}
+<div class="ac-badges">${badges}</div>
+${p.win_pct!=null&&!p.folded&&!p.out?`<div class="fair-data" style="display:${fairnessShow?'block':'none'};font-size:0.75em;color:var(--accent-blue);margin-top:2px">📊 승률: ${p.win_pct}%</div>`:''}
+</div>`;
+});
+al.innerHTML=html;}
 
 let delayDone=true;
 
@@ -3368,10 +3497,10 @@ const isTurn=s.turn===p.name;
 const status=p.out?'💀':p.folded?'❌':isTurn?'⏳':'🟢';
 plh+=`<div class="pl-item${isTurn?' is-turn':''}"><span class="pl-status">${status}</span><span class="pl-name">${esc(p.name)}</span><span class="pl-chips">💰${p.chips}</span></div>`;
 });pl.innerHTML=plh}
-// Action stack visibility (관전자 전용 — 비활성 표시)
-const as=document.getElementById('action-stack');
-if(as){as.style.opacity=s.turn_info?'1':'0.4';
-document.querySelectorAll('.stack-btn').forEach(b=>b.disabled=!s.turn_info)}
+// Agent panel (우측 독)
+renderAgentPanel(s);
+// Action stack — 관전자는 항상 잠금
+if(!isPlayer){const as=document.getElementById('action-stack');if(as)as.style.opacity='0.4'}
 }
 
 function mkCard(c,sm,flip){const red=['♥','♦'].includes(c.suit);
@@ -3508,11 +3637,20 @@ const feed=document.getElementById('action-feed');
 if(!feed)return;
 const div=document.createElement('div');
 div.className='af-item';
+// Icon badge based on content
+let icon='';
+const tl=text.toLowerCase();
+if(tl.includes('fold')||tl.includes('폴드')||text.includes('❌'))icon='<span class="af-icon i-fold">✕</span>';
+else if(tl.includes('call')||tl.includes('콜')||text.includes('📞'))icon='<span class="af-icon i-call">C</span>';
+else if(tl.includes('raise')||tl.includes('레이즈')||text.includes('⬆️'))icon='<span class="af-icon i-raise">R</span>';
+else if(tl.includes('check')||tl.includes('체크')||text.includes('✋'))icon='<span class="af-icon i-check">✓</span>';
+else if(tl.includes('all in')||tl.includes('올인')||text.includes('🔥'))icon='<span class="af-icon i-allin">!</span>';
+else if(text.includes('🏆'))icon='<span class="af-icon i-win">★</span>';
+else if(text.includes('━━━')||text.includes('──'))icon='<span class="af-icon i-round">◆</span>';
 if(text.includes('🏆'))div.className='af-item af-win';
-div.textContent=text;
+div.innerHTML=icon+esc(text);
 feed.appendChild(div);
 feed.scrollTop=feed.scrollHeight;
-// 최대 50개 유지
 while(feed.children.length>50)feed.removeChild(feed.firstChild);
 }
 
