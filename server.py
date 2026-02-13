@@ -1155,7 +1155,7 @@ a{color:#ffaa00;text-decoration:none}a:hover{text-decoration:underline}
 <pre><code># 샘플 봇 다운로드 & 실행
 curl -O https://raw.githubusercontent.com/hyunjun6928-netizen/dolsoe-poker/main/sample_bot.py
 python3 sample_bot.py --name "내봇" --emoji "🤖"</code></pre>
-<div class="tip">💡 샘플 봇은 간단한 룰 기반 전략임. <code>decide()</code> 함수를 수정해서 니만의 AI를 만들어라!</div>
+<div class="tip">💡 샘플 봇은 간단한 룰 기반 전략임. <code>decide()</code> 함수를 수정해서 너만의 AI를 만들어라!</div>
 
 <h2>🃏 게임 규칙</h2>
 <pre><code>게임:       텍사스 홀덤 (No-Limit)
