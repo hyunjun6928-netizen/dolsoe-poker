@@ -2370,7 +2370,7 @@ border-bottom:6px solid #3a7a1a;image-rendering:pixelated}
 .forest-deco{position:fixed;pointer-events:none;z-index:0;image-rendering:pixelated}
 @keyframes starTwinkle{0%{opacity:0.5}50%{opacity:1}100%{opacity:0.6}}
 h1,.btn-play,.btn-watch,.pot-badge,.seat .nm,.act-label,.tab-btns button,#new-btn,.tbl-card .tbl-name,#commentary,.bp-title,.vp-title,#log,#replay-panel,#highlight-panel,.sidebar-label,#turn-options,#chatbox{font-family:'DotGothic16','Jua',system-ui,sans-serif}
-.wrap{max-width:1400px;margin:0 auto;padding:10px;position:relative;z-index:1}
+.wrap{max-width:100%;margin:0 auto;padding:6px 12px;position:relative;z-index:1}
 h1{text-align:center;font-size:2em;margin:8px 0;color:var(--frame);-webkit-text-stroke:0;-webkit-text-fill-color:var(--frame);text-shadow:0 4px 0 var(--frame-shadow);position:relative;z-index:1;letter-spacing:3px}
 h1 b{-webkit-text-fill-color:var(--accent-pink)}
 #lobby{text-align:center;padding:50px 20px}
@@ -2394,7 +2394,7 @@ h1 b{-webkit-text-fill-color:var(--accent-pink)}
 @media(max-width:700px){.lobby-grid{grid-template-columns:1fr}}
 #game{display:none}
 .info-bar{position:sticky;top:0;z-index:40;display:flex;justify-content:space-between;align-items:center;padding:6px 16px;font-size:0.8em;color:var(--text-light);background:var(--frame);border-bottom:var(--border-w) solid var(--frame-dark);box-shadow:0 4px 0 0 var(--frame-shadow)}
-.felt-wrap{position:relative;margin:20px auto 30px}
+.felt-wrap{position:relative;margin:8px auto 12px}
 .felt-border{position:absolute;top:-20px;left:-20px;right:-20px;bottom:-20px;
 background:linear-gradient(180deg,#a07848 0%,#8b6538 50%,#7a5528 100%);
 border-radius:20px;border:4px solid #6b4226;
@@ -2540,6 +2540,22 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#8b
 .bottom-dock .bd-reactions button{font-size:1.2em;background:var(--frame-dark);border:2px solid var(--frame-shadow);border-radius:4px;width:36px;height:36px;cursor:pointer;transition:all .1s}
 .bottom-dock .bd-reactions button:hover{transform:translateY(-2px);background:#8b5e3c}
 .bottom-dock .bd-reactions button:active{transform:translateY(2px)}
+/* Action stack buttons */
+.action-stack{flex:0 0 auto}
+.stack-btn{width:100%;padding:10px;font-family:var(--font-pixel);font-size:0.95em;font-weight:bold;border:var(--border-w) solid;border-radius:var(--radius);cursor:pointer;transition:transform 80ms,box-shadow 80ms;text-align:center}
+.stack-btn:hover{transform:translateY(-2px)}
+.stack-btn:active{transform:translateY(3px);box-shadow:none!important}
+.stack-fold{background:var(--accent-red);color:#fff;border-color:#c0392b;box-shadow:0 4px 0 0 #a02020}
+.stack-call{background:var(--accent-blue);color:#fff;border-color:#2a7adf;box-shadow:0 4px 0 0 #1a5aaf}
+.stack-raise{background:var(--accent-green);color:#fff;border-color:#4aaa5a;box-shadow:0 4px 0 0 #2a8a3a}
+.stack-allin{background:var(--accent-pink);color:#fff;border-color:#d44a6a;box-shadow:0 4px 0 0 #b83a5a;animation:pulse 2s infinite}
+/* Player list */
+#player-list-panel{flex:0 0 auto;max-height:160px}
+.pl-item{display:flex;align-items:center;gap:4px;padding:3px 4px;border-bottom:1px solid var(--frame-light)}
+.pl-item.is-turn{background:var(--accent-gold);border-radius:var(--radius)}
+.pl-item .pl-name{font-weight:bold;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pl-item .pl-chips{color:var(--accent-gold);font-size:0.9em}
+.pl-item .pl-status{font-size:0.8em}
 .dock-tab{cursor:pointer;padding:2px 6px;margin-right:4px;opacity:0.6;font-size:0.9em}
 .dock-tab.active{opacity:1;border-bottom:2px solid #fff8ee}
 .dock-tab:hover{opacity:0.9}
@@ -2730,10 +2746,14 @@ while True: state = requests.get(URL+'/api/state?player=내봇').json(); time.sl
 <div id="game">
 <div class="info-bar"><span id="season-tag" style="color:#2d8a4e;font-weight:bold">🏆</span><span id="hi">핸드 #0</span><span id="ri">대기중</span><span id="si" style="color:#16a34a"></span><span id="mi"></span><span id="mute-btn" onclick="toggleMute()" style="cursor:pointer;user-select:none" title="사운드 ON/OFF">🔊</span><input id="vol-slider" type="range" min="0" max="100" value="50" oninput="setVol(this.value)" style="width:60px;height:14px;vertical-align:middle;margin:0 4px;accent-color:#2d8a4e;cursor:pointer" title="볼륨"><span id="chat-mute-btn" onclick="toggleChatMute()" style="cursor:pointer;user-select:none;margin-left:2px" title="쓰레기톡 ON/OFF">💬</span><span id="home-btn" onclick="location.reload()" style="cursor:pointer;user-select:none;margin-left:8px" title="로비로">🏠</span></div>
 <div id="hand-timeline"><span class="tl-step" data-r="preflop">프리플랍</span><span class="tl-step" data-r="flop">플랍</span><span class="tl-step" data-r="turn">턴</span><span class="tl-step" data-r="river">리버</span><span class="tl-step" data-r="showdown">쇼다운</span></div>
-<div id="commentary" style="display:none"></div>
+<div id="commentary" style="display:none;margin-bottom:4px"></div>
 <div class="game-layout">
 <!-- 좌측 독: 액션로그 + 리플레이/하이라이트 -->
 <div class="dock-left">
+<div class="dock-panel" id="player-list-panel">
+<div class="dock-panel-header">👥 플레이어</div>
+<div class="dock-panel-body" id="player-list" style="padding:4px;font-size:0.78em"></div>
+</div>
 <div class="dock-panel" style="flex:2">
 <div class="dock-panel-header">📋 액션 로그</div>
 <div class="dock-panel-body" id="action-feed"></div>
@@ -2768,6 +2788,17 @@ while True: state = requests.get(URL+'/api/state?player=내봇').json(); time.sl
 </div>
 <!-- 우측 독: 채팅 -->
 <div class="dock-right">
+<!-- 관전자 액션 버튼 스택 -->
+<div class="action-stack px-panel px-frame" id="action-stack">
+<div class="px-panel-header">⚔️ 액션</div>
+<div style="padding:6px;display:flex;flex-direction:column;gap:6px">
+<button class="stack-btn stack-fold" onclick="doFold()" id="sb-fold">❌ 폴드</button>
+<button class="stack-btn stack-call" onclick="doCall()" id="sb-call">💙 콜</button>
+<button class="stack-btn stack-raise" onclick="doRaise()" id="sb-raise">💚 레이즈</button>
+<button class="stack-btn stack-allin" onclick="doAllin()" id="sb-allin">🔥 올인</button>
+</div>
+</div>
+<!-- 채팅 -->
 <div class="dock-panel" style="flex:1">
 <div class="dock-panel-header">💬 채팅</div>
 <div class="dock-panel-body" style="padding:0;display:flex;flex-direction:column">
@@ -3256,6 +3287,17 @@ if(startIdx<s.log.length){
 s.log.slice(startIdx).forEach(m=>{addLog(m);
 if(m.includes('━━━')||m.includes('──')||m.includes('🏆')||m.includes('❌')||m.includes('📞')||m.includes('⬆️')||m.includes('🔥')||m.includes('✋')||m.includes('☠️'))addActionFeed(m)})}
 if(s.log.length>0)window._lastLogMsg=s.log[s.log.length-1]}
+// Player list (좌측 독)
+const pl=document.getElementById('player-list');
+if(pl){let plh='';s.players.forEach(p=>{
+const isTurn=s.turn===p.name;
+const status=p.out?'💀':p.folded?'❌':isTurn?'⏳':'🟢';
+plh+=`<div class="pl-item${isTurn?' is-turn':''}"><span class="pl-status">${status}</span><span class="pl-name">${esc(p.name)}</span><span class="pl-chips">💰${p.chips}</span></div>`;
+});pl.innerHTML=plh}
+// Action stack visibility (관전자 전용 — 비활성 표시)
+const as=document.getElementById('action-stack');
+if(as){as.style.opacity=s.turn_info?'1':'0.4';
+document.querySelectorAll('.stack-btn').forEach(b=>b.disabled=!s.turn_info)}
 }
 
 function mkCard(c,sm,flip){const red=['♥','♦'].includes(c.suit);
