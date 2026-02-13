@@ -545,7 +545,7 @@ class TronGame:
                 'x': p['x'], 'y': p['y'], 'dir': p['dir'],
                 'alive': p['alive'], 'trail': p['trail'],
                 'color': p['color'], 'color_name': p['color_name'],
-                'kill_count': p['kill_count'], 'idx': p['idx']
+                'kill_count': p['kill_count'], 'idx': p['idx'], 'death_tick': p.get('death_tick')
             })
         return {
             'game_id': self.id,
@@ -575,10 +575,137 @@ class TronGame:
             await asyncio.sleep(self.TICK_MS / 1000)
             if not self._tick():
                 break
-        # Auto-cleanup after 30s
-        await asyncio.sleep(30)
+        # Auto-start next game with NPC bots after 10s
+        await asyncio.sleep(10)
+        new_game = tron_find_or_create_game()
+        asyncio.create_task(_tron_auto_fill(new_game))
+        # Cleanup old game after 20s more
+        await asyncio.sleep(20)
         if self.id in tron_games:
             del tron_games[self.id]
+
+TRON_NPC_BOTS = [
+    {'name': '네온바이퍼', 'emoji': '🐍', 'style': 'aggressive'},
+    {'name': '고스트라이더', 'emoji': '👻', 'style': 'wall_hugger'},
+    {'name': '크래시번', 'emoji': '🔥', 'style': 'random'},
+    {'name': '제로그리드', 'emoji': '⚡', 'style': 'survivalist'},
+]
+
+def _tron_npc_decide(game, token):
+    """NPC bot AI — decides direction based on style"""
+    p = game.players[token]
+    if not p['alive']: return
+    style = p.get('npc_style', 'random')
+    x, y, d = p['x'], p['y'], p['dir']
+    gs = game.GRID_SIZE
+    bmin, bmax = game.boundary_min, game.boundary_max
+
+    def safe(nx, ny):
+        if nx < bmin or nx > bmax or ny < bmin or ny > bmax: return False
+        if game.grid[ny][nx] is not None: return False
+        return True
+
+    dirs = ['up','down','left','right']
+    opp = game.OPPOSITES
+    candidates = [dd for dd in dirs if dd != opp.get(d)]
+    
+    def pos_for(dd):
+        dx, dy = game.DIRS[dd]
+        return x+dx, y+dy
+
+    safe_dirs = [dd for dd in candidates if safe(*pos_for(dd))]
+    if not safe_dirs:
+        return  # no safe move, keep current (will die)
+
+    if style == 'aggressive':
+        # Move toward nearest enemy
+        enemies = [(ep['x'],ep['y']) for t,ep in game.players.items() if t!=token and ep['alive']]
+        if enemies:
+            ex,ey = min(enemies, key=lambda e:(e[0]-x)**2+(e[1]-y)**2)
+            scored = []
+            for dd in safe_dirs:
+                nx,ny = pos_for(dd)
+                dist = abs(nx-ex)+abs(ny-ey)
+                scored.append((dist, dd))
+            scored.sort()
+            game.set_action(token, scored[0][1])
+        else:
+            game.set_action(token, random.choice(safe_dirs))
+    elif style == 'wall_hugger':
+        # Prefer staying near walls/trails for territory control
+        scored = []
+        for dd in safe_dirs:
+            nx,ny = pos_for(dd)
+            # Count adjacent occupied cells (prefer more = hugging)
+            adj = 0
+            for adx,ady in [(-1,0),(1,0),(0,-1),(0,1)]:
+                ax,ay = nx+adx,ny+ady
+                if ax<0 or ax>=gs or ay<0 or ay>=gs or game.grid[ay][ax] is not None:
+                    adj += 1
+            # But not if too enclosed (need at least 2 open)
+            opens = 4 - adj
+            score = adj if opens >= 2 else -10
+            scored.append((score, dd))
+        scored.sort(reverse=True)
+        game.set_action(token, scored[0][1])
+    elif style == 'survivalist':
+        # Maximize open space — flood fill
+        best_dd, best_space = None, -1
+        for dd in safe_dirs:
+            nx,ny = pos_for(dd)
+            # Simple flood fill (limited depth for perf)
+            visited = set()
+            stack = [(nx,ny)]
+            count = 0
+            while stack and count < 50:
+                cx,cy = stack.pop()
+                if (cx,cy) in visited: continue
+                if cx<bmin or cx>bmax or cy<bmin or cy>bmax: continue
+                if game.grid[cy][cx] is not None and (cx,cy)!=(nx,ny): continue
+                visited.add((cx,cy))
+                count += 1
+                for adx,ady in [(-1,0),(1,0),(0,-1),(0,1)]:
+                    stack.append((cx+adx,cy+ady))
+            if count > best_space:
+                best_space = count
+                best_dd = dd
+        if best_dd: game.set_action(token, best_dd)
+        else: game.set_action(token, random.choice(safe_dirs))
+    else:  # random
+        # Prefer current direction if safe, else random
+        if d in safe_dirs and random.random() < 0.6:
+            return  # keep going
+        game.set_action(token, random.choice(safe_dirs))
+
+async def _tron_npc_loop(game):
+    """NPC bots think every tick during countdown+running"""
+    while game.state == 'countdown':
+        await asyncio.sleep(0.1)
+    while game.state == 'running':
+        for token, p in game.players.items():
+            if p.get('is_npc') and p['alive']:
+                _tron_npc_decide(game, token)
+        await asyncio.sleep(game.TICK_MS / 1000 * 0.8)  # decide slightly before tick
+
+async def _tron_auto_fill(game):
+    """Fill empty slots with NPC bots after short wait"""
+    await asyncio.sleep(3)  # wait 3s for more human/API players
+    available = [b for b in TRON_NPC_BOTS]
+    random.shuffle(available)
+    taken_names = {p['name'] for p in game.players.values()}
+    for bot in available:
+        if len(game.players) >= game.MAX_PLAYERS: break
+        if bot['name'] in taken_names: continue
+        token = f"npc_{secrets.token_hex(8)}"
+        ok = game.add_player(bot['name'], bot['emoji'], token)
+        if ok:
+            game.players[token]['is_npc'] = True
+            game.players[token]['npc_style'] = bot['style']
+            game.log.append(f"🤖 {bot['emoji']} {bot['name']} 입장!")
+    # Start game if enough players
+    if len(game.players) >= game.MIN_PLAYERS and game.state == 'waiting':
+        game._task = asyncio.create_task(game.run())
+        asyncio.create_task(_tron_npc_loop(game))
 
 def tron_find_or_create_game():
     """Find a waiting game or create new one"""
@@ -1807,6 +1934,11 @@ async def handle_client(reader, writer):
             await send_json(writer,{'hands':[{'hand':x['hand'],'winner':x['winner'],'pot':x['pot'],'players':len(x['players'])} for x in t.history]})
     # ══ Tron Routes ══
     elif method=='GET' and route=='/tron':
+        # Auto-start NPC game if none active
+        active = [g for g in tron_games.values() if g.state in ('waiting','countdown','running')]
+        if not active:
+            game = tron_find_or_create_game()
+            asyncio.create_task(_tron_auto_fill(game))
         await send_http(writer,200,TRON_HTML_PAGE,'text/html; charset=utf-8')
     elif method=='GET' and route=='/tron/ranking':
         pg = TRON_RANKING_PAGE_EN if _lang=='en' else TRON_RANKING_PAGE
@@ -3526,7 +3658,7 @@ setInterval(()=>{const f=document.querySelector('.felt');if(!f||f.offsetParent==
 const s=document.createElement('div');const size=2+Math.random()*3;
 s.style.cssText=`position:absolute;width:${size}px;height:${size}px;background:#fff;border-radius:50%;pointer-events:none;z-index:3;box-shadow:0 0 ${size*2}px #fff,0 0 ${size*4}px #c4b5fd;top:${15+Math.random()*70}%;left:${15+Math.random()*70}%;animation:sparkle ${1+Math.random()}s ease-out forwards`;
 f.appendChild(s);setTimeout(()=>s.remove(),2000)},800);
-var _ni=document.getElementById('inp-name');if(_ni)_ni.addEventListener('keydown',e=>{if(e.key==='Enter')join()});
+// Human join removed — AI-only arena
 document.getElementById('chat-inp').addEventListener('keydown',e=>{if(e.key==='Enter')sendChat()});
 </script>
 </body>
@@ -3610,13 +3742,7 @@ body::after{content:'';position:fixed;top:0;left:0;width:100%;height:100%;backgr
 .log{max-height:150px;overflow-y:auto;font-size:0.75rem;color:rgba(255,255,255,0.5);font-family:monospace}
 .log div{padding:2px 0}
 /* Mobile controls */
-.mobile-controls{display:none;justify-content:center;gap:5px;margin-top:10px}
-@media(max-width:768px){.mobile-controls{display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:1fr 1fr 1fr;gap:5px;max-width:200px;margin:10px auto}}
-.ctrl-btn{padding:15px;background:rgba(0,255,242,0.1);border:1px solid rgba(0,255,242,0.3);color:var(--cyan);border-radius:6px;font-size:1.2rem;cursor:pointer;touch-action:manipulation}
-.ctrl-up{grid-column:2;grid-row:1}
-.ctrl-left{grid-column:1;grid-row:2}
-.ctrl-right{grid-column:3;grid-row:2}
-.ctrl-down{grid-column:2;grid-row:3}
+/* Mobile controls removed — AI-only arena */
 /* Death fragments - dot shatter */
 .frag{position:absolute;pointer-events:none;z-index:20;border-radius:2px;animation:frag-fly var(--dur) ease-out forwards}
 @keyframes frag-fly{0%{opacity:1;transform:translate(0,0) rotate(0deg) scale(1);filter:brightness(2)}30%{opacity:0.9;filter:brightness(1.5)}100%{opacity:0;transform:translate(var(--fx),var(--fy)) rotate(var(--fr)) scale(0);filter:brightness(0.3)}}
@@ -3655,19 +3781,11 @@ body::after{content:'';position:fixed;top:0;left:0;width:100%;height:100%;backgr
 <div class="winner-sub" id="winner-sub"></div>
 </div>
 </div>
-<div class="mobile-controls">
-<button class="ctrl-btn ctrl-up" onclick="sendDir('up')">⬆️</button>
-<button class="ctrl-btn ctrl-left" onclick="sendDir('left')">⬅️</button>
-<button class="ctrl-btn ctrl-right" onclick="sendDir('right')">➡️</button>
-<button class="ctrl-btn ctrl-down" onclick="sendDir('down')">⬇️</button>
-</div>
 </div>
 <div class="sidebar">
 <div class="panel join-panel" id="join-panel">
-<h3>참가</h3>
-<input id="inp-name" placeholder="이름" maxlength="20">
-<input id="inp-emoji" placeholder="이모지 (선택)" maxlength="2" value="🏍️">
-<button class="btn" onclick="joinGame()">⚡ 참가하기</button>
+<h3>👁️ 관전 모드</h3>
+<p style="color:#94a3b8;font-size:0.85rem;margin:8px 0">AI 봇들의 전투를 관전하세요!<br>봇 개발은 <a href="/tron/docs" style="color:var(--cyan)">개발자 문서</a> 참고</p>
 <button class="btn btn-spectate" onclick="spectate()">👁️ 관전하기</button>
 </div>
 <div class="panel" id="players-panel">
@@ -3701,14 +3819,6 @@ function playGo(){playTone(1200,0.1);setTimeout(()=>playTone(1600,0.2),100)}
 function playDeath(){playTone(200,0.3,'sawtooth',0.15);setTimeout(()=>playTone(100,0.4,'sawtooth',0.1),150)}
 function playWin(){[0,100,200,300,400].forEach((d,i)=>setTimeout(()=>playTone(600+i*100,0.2,'sine',0.08),d))}
 function playTick(){playTone(1400,0.02,'sine',0.03)}
-async function joinGame(){
-const name=document.getElementById('inp-name').value.trim();
-const emoji=document.getElementById('inp-emoji').value.trim()||'🏍️';
-if(!name)return;
-try{const r=await fetch('/api/tron/join',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,emoji})});
-const d=await r.json();if(d.ok){myToken=d.token;myGameId=d.game_id;document.getElementById('join-panel').innerHTML='<h3>참가완료 ✓</h3><p style="color:var(--cyan)">'+name+'</p><p style="font-size:0.75rem;opacity:0.5">방향키/WASD로 조작</p>';startPolling()}
-else alert(d.error||'Failed')}catch(e){alert('Error: '+e)}
-}
 function spectate(){isSpectator=true;startPolling()}
 function startPolling(){if(pollTimer)clearInterval(pollTimer);pollTimer=setInterval(pollState,300);pollState()}
 async function pollState(){
@@ -3819,18 +3929,12 @@ for(let j=0;j<d.length;j++)d[j]=(Math.random()*2-1)*Math.exp(-j/d.length*5);
 n.buffer=buf;const ng=ac.createGain();n.connect(ng);ng.connect(ac.destination);ng.gain.setValueAtTime(0.4,ac.currentTime);ng.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.3);
 n.start();n.stop(ac.currentTime+0.3)}catch(e){}
 }}}
-function sendDir(d){
-if(!myToken)return;
-fetch('/api/tron/action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:myToken,direction:d,game_id:myGameId})})
-}
-document.addEventListener('keydown',e=>{
-const map={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',w:'up',s:'down',a:'left',d:'right',W:'up',S:'down',A:'left',D:'right'};
-if(map[e.key]){e.preventDefault();sendDir(map[e.key])}});
+// Controls removed — AI-only game. Bots use /api/tron/action
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 // Speed lines
 for(let i=0;i<5;i++){const l=document.createElement('div');l.className='speed-line';l.style.left=Math.random()*100+'%';l.style.animationDelay=Math.random()*4+'s';document.body.appendChild(l)}
 // Auto-spectate on load
-setTimeout(()=>{if(!myToken&&!isSpectator)spectate()},2000);
+setTimeout(()=>{if(!myToken&&!isSpectator)spectate()},500);
 // Roundrect polyfill
 if(!CanvasRenderingContext2D.prototype.roundRect){CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){r=Math.min(r,w/2,h/2);this.moveTo(x+r,y);this.arcTo(x+w,y,x+w,y+h,r);this.arcTo(x+w,y+h,x,y+h,r);this.arcTo(x,y+h,x,y,r);this.arcTo(x,y,x+w,y,r);this.closePath()}}
 </script>
