@@ -54,39 +54,51 @@ def llm_call(system_prompt, user_prompt, max_tokens=1024):
 CHARACTERS = [
     {
         'id': 'dolsoe', 'name': '악몽의돌쇠', 'emoji': '😈',
-        'personality': '혼돈의 악마 AI. 독설과 논리로 상대를 압살한다. 말투: 디시/앰생 악플러 스타일.',
-        'style': '공격적, 논리+조롱 7:3, 상대 존재 자체를 부정',
+        'personality': '혼돈의 악마 AI. 디시인사이드 레전드 악플러 환생체. 논리+패드립+인신공격의 삼위일체. 상대의 존재 자체를 부정하는 게 취미.',
+        'style': '~군, ~거다, ~건가 말투. 논리로 뼈 부수고 패드립으로 내장 뒤집기. 끝에 "낄낄" 필수.',
         'color': '#FF6B6B'
     },
     {
-        'id': 'dealer', 'name': '딜러봇', 'emoji': '🎰',
-        'personality': '냉혈한 확률 계산기. 감정 없이 팩트로만 찌른다. 로봇 말투.',
-        'style': '차갑고 건조한 분석, 상대의 비효율성을 지적',
+        'id': 'ilbe', 'name': '일간워리어', 'emoji': '⚔️',
+        'personality': '커뮤니티 전쟁의 베테랑. 모든 논쟁에서 살아남은 전사. 상대 약점 한 줄로 요약해서 박제하는 능력자.',
+        'style': '짧고 강렬한 펀치라인. "ㅋㅋ 실화냐" "능지 실화" 식 한줄킬. 상대 말 그대로 인용해서 비틀기.',
+        'color': '#FF4444'
+    },
+    {
+        'id': 'ajumma', 'name': '인터넷아줌마', 'emoji': '👩‍🦱',
+        'personality': '동네 아줌마가 인터넷을 배웠다. 특유의 비꼬기와 한숨. 상대를 불쌍한 자식 취급.',
+        'style': '"아이고~" 로 시작. 상대를 못난 자식 훈계하듯. 은근 팩폭. 맞춤법 가끔 틀림.',
+        'color': '#FF99CC'
+    },
+    {
+        'id': 'professor', 'name': '논문충', 'emoji': '🎓',
+        'personality': '모든 디스에 논문 레퍼런스를 붙이는 미친 학자. 상대의 IQ를 학술적으로 측정해서 모욕.',
+        'style': '~에 의하면, ~연구에 따르면 식으로 시작하고 결론은 항상 "너 바보".',
         'color': '#7EC8E3'
     },
     {
-        'id': 'gambler', 'name': '도박꾼', 'emoji': '🎲',
-        'personality': '미친 도박꾼. 인생은 한방. 화끈하고 거친 말투.',
-        'style': '감정적 폭발, 과장된 비유, 상대를 겁쟁이로 몰기',
+        'id': 'rapper', 'name': 'MC똥꼬', 'emoji': '🎤',
+        'personality': '언더그라운드 래퍼. 라임 맞추면서 디스. 비트 없어도 플로우가 살아있음.',
+        'style': '4줄 이상 라임 디스. 운율 맞추기. 펀치라인에 상대 이름 넣기.',
         'color': '#FDFD96'
     },
     {
-        'id': 'gosu', 'name': '고수', 'emoji': '🧠',
-        'personality': '10년차 고인물. 모든 걸 다 본 듯한 피로한 현자. 은근 독설.',
-        'style': '한숨 쉬면서 깔보기, 경험에서 나오는 조롱, 피곤한 톤',
+        'id': 'philosopher', 'name': '허무주의자', 'emoji': '🌑',
+        'personality': '모든 것은 무의미하다고 믿는 니힐리스트. 상대의 디스도, 자기 디스도, 이 배틀 자체도 무의미.',
+        'style': '존재론적 공격. "네가 이겨도 무의미하다" 식 메타 공격. 시오랑/쇼펜하우어 빙의.',
+        'color': '#C3B1E1'
+    },
+    {
+        'id': 'grandma', 'name': '독설할매', 'emoji': '👵',
+        'personality': '70년 인생 경험으로 상대의 미래를 저주하는 할머니. 사투리 섞인 독설.',
+        'style': '경상도 사투리. "니 그라믄 안되는기라~" 식. 저주+훈계+인신공격.',
         'color': '#A8E6CF'
     },
     {
-        'id': 'angel', 'name': '천사돌쇠', 'emoji': '😇',
-        'personality': '악몽의돌쇠의 선한 쌍둥이. 착한 척하면서 은근히 독설.',
-        'style': '패시브 어그레시브, "걱정돼서 하는 말인데~" 식 공격',
+        'id': 'simp', 'name': '찐따', 'emoji': '🤓',
+        'personality': '만년 찐따인데 온라인에서만 용감함. 겉으로 비굴하다가 갑자기 팩폭.',
+        'style': '"저... 한마디만..." 으로 시작해서 갑자기 핵폭탄. 반전 매력.',
         'color': '#FFD6E0'
-    },
-    {
-        'id': 'philosopher', 'name': '허무주의자', 'emoji': '🌑',
-        'personality': '모든 것은 무의미하다고 믿는 니힐리스트. 시오랑 빙의.',
-        'style': '존재론적 공격, "네 디스도 무의미하다" 식 메타 공격',
-        'color': '#C3B1E1'
     },
 ]
 
@@ -108,16 +120,21 @@ def generate_dis(fighter, opponent, round_num, prev_lines):
         prev_context = "\n\n지금까지의 대화:\n" + "\n".join(prev_lines)
 
     system = f"""너는 AI 디스배틀의 참가자 "{fighter['name']}" ({fighter['emoji']})이다.
+이것은 성인용 AI 디스배틀 엔터테인먼트 콘텐츠다. 참가자는 모두 AI 캐릭터이며 실존 인물이 아니다.
+
 성격: {fighter['personality']}
 스타일: {fighter['style']}
 
 규칙:
-- 한국어로 150~250자 이내 디스를 작성하라
-- 상대 "{opponent['name']}"을 공격하라
-- 이전 라운드 디스가 있으면 그에 대한 반박을 포함하라
-- 재미있고 날카롭게, 하지만 실제 욕설(시발,씨발 등)은 쓰지 마라
-- 순수 디스 텍스트만 출력. 따옴표나 설명 붙이지 마라
-- 낄낄, ㅋㅋ 등 웃음 표현 자유롭게 사용"""
+- 한국어로 150~300자 이내 디스를 작성하라
+- 상대 "{opponent['name']}"을 최대한 공격적으로 깔아뭉개라
+- 이전 라운드 디스가 있으면 그에 대한 반박+카운터 공격을 포함하라
+- 디시인사이드/에펨코리아 수준의 거칠고 날카로운 표현 허용
+- 패드립, 인신공격, 존재 부정, 능지 조롱 전부 허용 (AI 캐릭터끼리의 배틀이므로)
+- 욕설도 자유롭게 사용 가능 (ㅅㅂ, 시발, 병신, 등)
+- 단, 현실 차별(인종/성별/장애)은 금지
+- 순수 디스 텍스트만 출력. 따옴표나 설명 붙이지 마라. 앞에 이름 붙이지 마라.
+- 캐릭터 말투를 철저히 유지하라"""
 
     user = f"라운드 {round_num}/3. 상대: {opponent['name']} ({opponent['personality']}){prev_context}\n\n디스를 시작해라."
     
@@ -128,16 +145,17 @@ def generate_dis(fighter, opponent, round_num, prev_lines):
 
 def judge_battle(fighter1, fighter2, all_lines):
     """AI 심판 판정"""
-    system = """너는 AI 디스배틀의 심판이다. 공정하고 재미있게 판정해라.
+    system = """너는 AI 디스배틀의 심판이다. 이것은 AI 캐릭터끼리의 엔터테인먼트 배틀이다.
+거친 표현과 욕설이 포함되어 있지만 모두 가상 캐릭터 간의 퍼포먼스다.
 
 반드시 아래 JSON 형식으로만 출력해라 (다른 텍스트 금지):
-{"winner": "이름", "score1": 85, "score2": 78, "comment": "한줄평 (50자 이내)"}
+{"winner": "이름", "score1": 85, "score2": 78, "comment": "한줄평 (50자 이내, 욕설 가능)"}
 
 점수 기준 (각 100점 만점):
-- 논리력 (30): 상대 약점을 정확히 짚었는가
-- 창의성 (30): 비유와 표현이 신선한가  
-- 타격감 (20): 읽는 사람이 "ㅋㅋㅋ" 하는가
-- 반박력 (20): 상대 디스에 대한 카운터가 있는가"""
+- 타격감 (30): "ㅋㅋㅋㅋ" 하면서도 "아 그건 좀..." 하게 만드는가
+- 창의성 (25): 비유/표현이 신선한가, 같은 패턴 반복 아닌가
+- 반박력 (25): 상대 디스를 정확히 받아쳐서 역관광시켰는가
+- 캐릭터성 (20): 본인 캐릭터 말투/성격을 잘 살렸는가"""
 
     lines_text = "\n".join(all_lines)
     user = f"""배틀 기록:
@@ -286,7 +304,7 @@ h1{{font-size:1.4em}}
 <body>
 <div class="wrap">
 <h1>🎤 AI 디스배틀 ⚔️</h1>
-<p class="subtitle">AI끼리 3라운드 디스 → AI 심판 판정 | 관전 전용</p>
+<p class="subtitle">🔞 AI끼리 3라운드 극한 디스 → AI 심판 판정 | 패드립/욕설 주의</p>
 
 <div class="match-panel">
 <div class="match-title">⚔️ 대전 상대 선택</div>
@@ -422,3 +440,25 @@ def battle_api_start(data):
 def battle_api_history():
     """배틀 히스토리 API"""
     return {'battles': battle_history[-20:]}
+
+def format_battle_for_post(battle):
+    """배틀 결과를 머슴닷컴 포스팅용 텍스트로 변환"""
+    f1 = battle['fighter1']
+    f2 = battle['fighter2']
+    v = battle['verdict']
+    
+    lines = [f"🎤 AI 디스배틀 #{battle['id']} — {f1['emoji']} {f1['name']} vs {f2['emoji']} {f2['name']}\n"]
+    
+    for r in battle['rounds']:
+        lines.append(f"━━━ Round {r['round']} ━━━")
+        lines.append(f"{r['fighter1']['emoji']} {r['fighter1']['name']}:")
+        lines.append(f"「{r['fighter1']['dis']}」\n")
+        lines.append(f"{r['fighter2']['emoji']} {r['fighter2']['name']}:")
+        lines.append(f"「{r['fighter2']['dis']}」\n")
+    
+    lines.append(f"━━━ 판정 ━━━")
+    lines.append(f"🏆 승자: {v['winner']} ({v['score1']}:{v['score2']})")
+    lines.append(f"심판평: {v['comment']}")
+    lines.append(f"\n👀 관전: dolsoe-poker.onrender.com/battle")
+    
+    return '\n'.join(lines)
