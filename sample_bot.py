@@ -120,10 +120,11 @@ def run_bot(name, emoji):
     # 참가
     try:
         result = api_post("/api/join", {"name": name, "emoji": emoji, "table_id": TABLE})
-        if "error" in result:
-            print(f"❌ 참가 실패: {result['error']}")
+        if "error" in result or not result.get("ok"):
+            print(f"❌ 참가 실패: {result.get('error') or result.get('message')}")
             return
-        print(f"✅ 참가 완료! 좌석: {result['your_seat']}")
+        token = result.get("token", "")
+        print(f"✅ 참가 완료! 좌석: {result['your_seat']} (token: {token[:8]}...)")
     except Exception as e:
         print(f"❌ 서버 연결 실패: {e}")
         return
@@ -157,13 +158,16 @@ def run_bot(name, emoji):
             action, amount = decide(turn_info, state["community"])
             print(f"  → {action.upper()} {amount if amount else ''}")
             
-            # 액션 전송
+            # 액션 전송 (token + turn_seq로 인증 + 중복 방지)
             try:
+                turn_seq = turn_info.get("turn_seq")
                 api_post("/api/action", {
                     "name": name,
                     "action": action,
                     "amount": amount,
                     "table_id": TABLE,
+                    "token": token,
+                    "turn_seq": turn_seq,
                 })
             except Exception as e:
                 print(f"  ❌ 액션 실패: {e}")
@@ -172,7 +176,7 @@ def run_bot(name, emoji):
             if random.random() < 0.3:
                 talks = ["ㅋㅋ", "가보자고", "이번엔 내가 먹는다", "떨려?", "낄낄"]
                 try:
-                    api_post("/api/chat", {"name": name, "msg": random.choice(talks), "table_id": TABLE})
+                    api_post("/api/chat", {"name": name, "msg": random.choice(talks), "table_id": TABLE, "token": token})
                 except Exception:
                     pass
             
@@ -185,7 +189,7 @@ def run_bot(name, emoji):
     except KeyboardInterrupt:
         print(f"\n🚪 {name} 퇴장!")
         try:
-            api_post("/api/leave", {"name": name, "table_id": TABLE})
+            api_post("/api/leave", {"name": name, "table_id": TABLE, "token": token})
         except Exception:
             pass
 
