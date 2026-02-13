@@ -49,7 +49,9 @@ HAND_NAMES = {10:'로열 플러시',9:'스트레이트 플러시',8:'포카드',
 
 def make_deck():
     d=[(r,s) for s in SUITS for r in RANKS]; random.shuffle(d); return d
-def card_dict(c): return {'rank':c[0],'suit':c[1]}
+def card_dict(c):
+    if not c: return {'rank':'?','suit':'?'}
+    return {'rank':c[0],'suit':c[1]}
 def card_str(c): return f"{c[0]}{c[1]}"
 
 def evaluate_hand(seven):
@@ -1213,7 +1215,8 @@ class Table:
         else:
             scores=[]
             for s in alive:
-                sc=evaluate_hand(s['hole']+self.community); scores.append((s,sc,hand_name(sc)))
+                if s['hole'] and all(s['hole']): sc=evaluate_hand(s['hole']+self.community); scores.append((s,sc,hand_name(sc)))
+                else: await self.add_log(f"⚠️ {s['name']} 홀카드 없음 — 스킵")
             scores.sort(key=lambda x:x[1],reverse=True)
             if not scores:
                 await self.add_log("⚠️ 승자 없음 — 팟 소멸"); record['pot']=self.pot; return
