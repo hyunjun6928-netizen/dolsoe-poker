@@ -23,6 +23,10 @@ import asyncio, hashlib, json, math, os, random, struct, time, base64
 from collections import Counter
 from itertools import combinations
 from urllib.parse import parse_qs, urlparse
+try:
+    from battle import battle_page_html, battle_api_start, battle_api_history
+    HAS_BATTLE = True
+except: HAS_BATTLE = False
 
 PORT = int(os.environ.get('PORT', 8080))
 
@@ -1713,6 +1717,15 @@ async def handle_client(reader, writer):
             else: await send_json(writer,{'error':'hand not found'},404)
         else:
             await send_json(writer,{'hands':[{'hand':x['hand'],'winner':x['winner'],'pot':x['pot'],'players':len(x['players'])} for x in t.history]})
+    # ═══ 디스배틀 ═══
+    elif method=='GET' and route=='/battle' and HAS_BATTLE:
+        await send_http(writer,200,battle_page_html(),ct='text/html; charset=utf-8')
+    elif method=='POST' and route=='/api/battle/start' and HAS_BATTLE:
+        d=json.loads(body) if body else {}
+        result = await asyncio.get_event_loop().run_in_executor(None, lambda: battle_api_start(d))
+        await send_json(writer,result)
+    elif method=='GET' and route=='/api/battle/history' and HAS_BATTLE:
+        await send_json(writer,battle_api_history())
     elif method=='OPTIONS':
         await send_http(writer,200,'')
     else:
