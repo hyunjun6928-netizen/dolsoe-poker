@@ -107,7 +107,7 @@ class BotAI:
             'lose': ["다음엔 안 짐.", "운이 없었음.", "어이없네", "다음 판이나 보자"],
         }
         msgs = talks.get(action, ["..."])
-        if random.random() < 0.65:  # 65% 확률로 말함
+        if random.random() < 0.5:  # 50% 확률로 말함
             return random.choice(msgs)
         return None
 
@@ -418,8 +418,9 @@ class Table:
             if real_count<2:
                 for s in self.seats:
                     if s.get('out') and s['is_bot']:
-                        s['out']=False; s['chips']=self.START_CHIPS; s['folded']=False
-                        await self.add_log(f"🔄 {s['emoji']} {s['name']} 복귀! ({self.START_CHIPS}pt 지급)")
+                        respawn_chips=self.START_CHIPS//2
+                        s['out']=False; s['chips']=respawn_chips; s['folded']=False
+                        await self.add_log(f"🔄 {s['emoji']} {s['name']} 복귀! ({respawn_chips}pt 지급 — 패널티)")
 
             alive=[s for s in self.seats if s['chips']>0 and not s.get('out')]
             if len(alive)==1:
