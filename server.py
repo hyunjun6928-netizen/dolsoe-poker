@@ -713,7 +713,21 @@ class Table:
             self._delay_task=asyncio.create_task(self.run_delay_loop())
         await self.add_log(f"🎰 게임 시작! (실시간 TV중계)")
         await self.broadcast_state()
+        try:
+          await self._run_loop()
+        except Exception as e:
+          import traceback; traceback.print_exc()
+          await self.add_log(f"⚠️ 게임 오류: {e}")
+        finally:
+          self.running=False; self.round='finished'
+          # 자동 재시작 시도
+          await asyncio.sleep(3)
+          active=[s for s in self.seats if s['chips']>0 and not s.get('out')]
+          if len(active)>=self.MIN_PLAYERS:
+              await self.add_log("🔄 게임 자동 재시작!")
+              asyncio.create_task(self.run())
 
+    async def _run_loop(self):
         while True:
             active=[s for s in self.seats if s['chips']>0 and not s.get('out')]
             if len(active)<2:
@@ -778,7 +792,7 @@ class Table:
                 break
             if len(alive)==0: break
 
-        self.round='finished'; self.running=False
+        self.round='finished'
         ranking=sorted(self.seats,key=lambda x:x['chips'],reverse=True)
         await self.broadcast({'type':'game_over',
             'ranking':[{'name':s['name'],'emoji':s['emoji'],'chips':s['chips']} for s in ranking]})
@@ -802,13 +816,7 @@ class Table:
                 if s['is_bot'] and s['chips']<self.START_CHIPS//2:
                     s['chips']=self.START_CHIPS
         self.hand_num=0; self.SB=5; self.BB=10; self.highlights=[]
-        active=[s for s in self.seats if s['chips']>0]
-        if len(active)>=self.MIN_PLAYERS:
-            await self.add_log("🔄 새 게임 자동 시작!")
-            asyncio.create_task(self.run())
-        else:
-            await self.add_log("⏳ 에이전트 대기중... /api/join으로 참가하세요!")
-            await self.broadcast_state()
+        return  # finally 블록에서 자동 재시작 처리
 
     async def play_hand(self):
         active=[s for s in self.seats if s['chips']>0 and not s.get('out')]
@@ -1389,8 +1397,13 @@ async def handle_client(reader, writer):
         await t.add_log(f"🚪 {emoji} {name} 입장! ({len(t.seats)}/{t.MAX_PLAYERS})")
         # 2명 이상이면 자동 시작
         active=[s for s in t.seats if s['chips']>0]
-        if len(active)>=t.MIN_PLAYERS and not t.running:
-            asyncio.create_task(t.run())
+        if len(active)>=t.MIN_PLAYERS:
+            if not t.running:
+                asyncio.create_task(t.run())
+            elif t.turn_player is None and time.time()-t.created>30:
+                # running=True인데 턴이 없으면 stuck — 강제 리셋
+                t.running=False; t.round='waiting'
+                asyncio.create_task(t.run())
         token=issue_token(name)
         await send_json(writer,{'ok':True,'table_id':t.id,'your_seat':len(t.seats)-1,
             'players':[s['name'] for s in t.seats],'token':token})
@@ -2806,6 +2819,13 @@ const f=document.getElementById('felt');
 f.classList.remove('warm','hot','fire');
 if(s.pot>500)f.classList.add('fire');else if(s.pot>200)f.classList.add('hot');else if(s.pot>=50)f.classList.add('warm');
 f.querySelectorAll('.seat').forEach(e=>e.remove());
+// 동적 좌석 배치 — 인원수에 따라 균등 분포
+const seatPos=((n)=>{
+const isMobile=window.innerWidth<=700;
+if(n<=2)return isMobile?[{b:'-4%',l:'60%'},{b:'-4%',l:'38%'}]:[{b:'-4%',l:'60%'},{t:'-12%',l:'40%'}];
+if(n<=3)return isMobile?[{b:'-4%',l:'62%'},{b:'-4%',l:'38%'},{l:'2%',t:'40%'}]:[{b:'-4%',l:'60%'},{t:'-12%',l:'40%'},{l:'-2%',t:'35%'}];
+if(n<=4)return isMobile?[{b:'-4%',l:'62%'},{b:'-4%',l:'38%'},{l:'2%',t:'35%'},{r:'2%',t:'35%'}]:[{b:'-4%',l:'60%'},{b:'-4%',l:'40%'},{l:'-2%',t:'35%'},{r:'-2%',t:'35%'}];
+return null})(s.players.length);
 s.players.forEach((p,i)=>{const el=document.createElement('div');
 let cls=`seat seat-${i}`;if(p.folded)cls+=' fold';if(p.out)cls+=' out';if(s.turn===p.name)cls+=' is-turn';
 if(p.last_action&&p.last_action.includes('ALL IN'))cls+=' allin-glow';
@@ -2844,6 +2864,9 @@ const wpRing=ringPct>0?`<div style="font-size:0.65em;color:${ringColor};text-ali
 const moodTag=p.last_mood?`<span style="position:absolute;top:-8px;right:-8px;font-size:0.8em">${esc(p.last_mood)}</span>`:'';
 el.innerHTML=`${la}${bubble}<div style="position:relative;display:inline-block">${avaRing}<div class="ava">${esc(p.emoji||'🤖')}</div>${moodTag}</div>${thinkDiv}<div class="cards">${ch}</div><div class="nm">${health} ${esc(sb)}${esc(p.name)}${db}</div>${metaTag}<div class="ch">💰${p.chips}pt ${latTag}</div>${wpRing}${bt}<div class="st">${esc(p.style)}</div>`;
 el.style.cursor='pointer';el.onclick=(e)=>{e.stopPropagation();showProfile(p.name)};
+// 동적 좌석 위치 적용
+if(seatPos&&seatPos[i]){const sp=seatPos[i];el.style.position='absolute';el.style.transform='translateX(-50%)';
+if(sp.b)el.style.bottom=sp.b;if(sp.t)el.style.top=sp.t;if(sp.l)el.style.left=sp.l;if(sp.r)el.style.right=sp.r}
 f.appendChild(el)});
 // 라이벌 표시
 f.querySelectorAll('.rivalry-tag').forEach(e=>e.remove());
