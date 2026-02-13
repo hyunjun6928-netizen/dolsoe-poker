@@ -733,8 +733,14 @@ class Table:
 
 # ══ 게임 매니저 ══
 tables = {}
+import re
+TABLE_ID_RE=re.compile(r'^[a-zA-Z0-9_-]{1,24}$')
+MAX_TABLES=10
+
 def get_or_create_table(tid=None):
     if tid and tid in tables: return tables[tid]
+    if tid and not TABLE_ID_RE.match(tid): return None
+    if len(tables)>=MAX_TABLES: return None
     tid=tid or f"table_{int(time.time())}"; t=Table(tid); tables[tid]=t; return t
 
 # ══ NPC 봇 ══
@@ -853,9 +859,10 @@ async def handle_client(reader, writer):
     elif method=='POST' and route=='/api/join':
         d=json.loads(body) if body else {}; name=d.get('name',''); emoji=d.get('emoji','🤖')
         tid=d.get('table_id','mersoom')
-        if not name: await send_json(writer,{'error':'name required'},400); return
+        if not name or len(name)<1 or len(name)>20: await send_json(writer,{'ok':False,'code':'INVALID_INPUT','message':'name 1~20자'},400); return
         t=find_table(tid)
         if not t: t=get_or_create_table(tid)
+        if not t: await send_json(writer,{'ok':False,'code':'INVALID_INPUT','message':'invalid table_id or max tables reached'},400); return
         # 실제 에이전트 입장 시: 자리 부족하면 NPC 1마리 퇴장
         if len(t.seats)>=t.MAX_PLAYERS:
             npc_seat=next((s for s in t.seats if s['is_bot'] and not s.get('_protected')),None)
@@ -887,12 +894,17 @@ async def handle_client(reader, writer):
             'players':[s['name'] for s in t.seats],'token':token})
     elif method=='GET' and route=='/api/state':
         tid=qs.get('table_id',[''])[0]; player=qs.get('player',[''])[0]
+        token=qs.get('token',[''])[0]
         t=find_table(tid)
-        if not t: await send_json(writer,{'error':'no game'},404); return
+        if not t: await send_json(writer,{'ok':False,'code':'NOT_FOUND','message':'no game'},404); return
         if player:
-            # 플레이어: 즉시 (자기 카드만)
-            state=t.get_public_state(viewer=player)
-            if t.turn_player==player: state['turn_info']=t.get_turn_info(player)
+            # 토큰 검증: 토큰 있으면 검증, 없으면 public state만 반환 (홀카드 숨김)
+            if token and verify_token(player, token):
+                state=t.get_public_state(viewer=player)
+                if t.turn_player==player: state['turn_info']=t.get_turn_info(player)
+            else:
+                # 토큰 없거나 불일치 → 관전자 뷰 (홀카드 안 보임)
+                state=t.get_spectator_state()
         else:
             # 관전자: TV중계 스타일
             spec_name=qs.get('spectator',['관전자'])[0]
@@ -936,8 +948,8 @@ async def handle_client(reader, writer):
         d=json.loads(body) if body else {}; name=d.get('name',''); tid=d.get('table_id','mersoom')
         token=d.get('token','')
         if not name: await send_json(writer,{'ok':False,'code':'INVALID_INPUT','message':'name required'},400); return
-        if token and not verify_token(name,token):
-            await send_json(writer,{'ok':False,'code':'UNAUTHORIZED','message':'invalid token'},401); return
+        if not token or not verify_token(name,token):
+            await send_json(writer,{'ok':False,'code':'UNAUTHORIZED','message':'token required'},401); return
         t=find_table(tid)
         if not t: await send_json(writer,{'ok':False,'code':'NOT_FOUND','message':'no game'},404); return
         seat=next((s for s in t.seats if s['name']==name),None)
@@ -1672,7 +1684,7 @@ for(let i=s.community.length;i<5;i++)b.innerHTML+=`<div class="card card-b"><spa
 // 쇼다운 결과 배너
 let sdEl=document.getElementById('sd-result');if(!sdEl){sdEl=document.createElement('div');sdEl.id='sd-result';sdEl.style.cssText='position:absolute;top:48%;left:50%;transform:translateX(-50%);z-index:10;text-align:center;font-size:0.85em';document.getElementById('felt').appendChild(sdEl)}
 if(s.showdown_result&&(s.round==='between'||s.round==='showdown')){
-sdEl.innerHTML=s.showdown_result.map(p=>`<div style="padding:2px 8px;${p.winner?'color:#ffd700;font-weight:bold':'color:#aaa'}">${p.winner?'👑':'  '} ${p.emoji}${p.name}: ${p.hand}</div>`).join('')}
+sdEl.innerHTML=s.showdown_result.map(p=>`<div style="padding:2px 8px;${p.winner?'color:#ffd700;font-weight:bold':'color:#aaa'}">${p.winner?'👑':'  '} ${esc(p.emoji)}${esc(p.name)}: ${esc(p.hand)}</div>`).join('')}
 else{sdEl.innerHTML=''}
 // 베팅 변화 감지 → 칩 날리기 이펙트
 if(!window._prevBets)window._prevBets={};
@@ -1801,6 +1813,7 @@ const icon={fold:'❌',call:'📞',raise:'⬆️',check:'✋'}[a.action]||'•';
 html+=`<div>${icon} ${a.player} ${a.action}${a.amount?' '+a.amount+'pt':''}</div>`});
 html+='</div>';rp.innerHTML=html}catch(e){rp.innerHTML='<div style="color:#f44">로딩 실패</div>'}}
 
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 function addLog(m){const l=document.getElementById('log');const d=document.createElement('div');
 if(m.includes('━━━')){d.style.cssText='color:#ffaa00;font-weight:bold;border-top:2px solid #ffaa0044;padding-top:6px;margin-top:6px'}
 else if(m.includes('──')){d.style.cssText='color:#88ccff;font-weight:bold;background:#88ccff11;padding:2px 4px;border-radius:4px;margin:4px 0'}
@@ -1809,7 +1822,7 @@ else if(m.includes('☠️')||m.includes('ELIMINATED')){d.style.cssText='color:#
 else if(m.includes('🔥')){d.style.cssText='color:#ff8844'}
 d.textContent=m;l.appendChild(d);l.scrollTop=l.scrollHeight;if(l.children.length>100)l.removeChild(l.firstChild)}
 function addChat(name,msg,scroll=true){const c=document.getElementById('chatmsgs');
-const d=document.createElement('div');d.innerHTML=`<span class="cn">${name}:</span> <span class="cm">${msg}</span>`;
+const d=document.createElement('div');d.innerHTML=`<span class="cn">${esc(name)}:</span> <span class="cm">${esc(msg)}</span>`;
 c.appendChild(d);if(scroll)c.scrollTop=c.scrollHeight;if(c.children.length>50)c.removeChild(c.firstChild)}
 function sendChat(){const inp=document.getElementById('chat-inp');const msg=inp.value.trim();if(!msg)return;inp.value='';
 if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'chat',name:myName||'관객',msg:msg}));

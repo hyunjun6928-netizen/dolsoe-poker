@@ -175,7 +175,7 @@ def run_bot(name, emoji):
             time.sleep(2)
 
             try:
-                state = api_get(f"/api/state?table_id={TABLE}&player={urllib.parse.quote(name)}")
+                state = api_get(f"/api/state?table_id={TABLE}&player={urllib.parse.quote(name)}&token={urllib.parse.quote(token)}")
             except Exception:
                 continue
 
