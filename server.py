@@ -4207,147 +4207,238 @@ document.getElementById('chat-inp').addEventListener('keydown',e=>{if(e.key==='E
 // Player list collapse toggle
 (function(){const pl=document.getElementById('player-list-panel');if(pl){const h=pl.querySelector('.dock-panel-header');if(h)h.addEventListener('click',()=>pl.classList.toggle('expanded'))}})();
 
-// === 🌿🍄 Forest Decorations ===
+// === 🌿🍄 Forest Decorations v2 — PX=2 HD ===
 (function(){
-const PX=3;
+const PX=2;
 function drawPixelArt(w,h,drawFn){
   const c=document.createElement('canvas');c.width=w*PX;c.height=h*PX;
   const g=c.getContext('2d');g.imageSmoothingEnabled=false;
   function px(x,y,col){g.fillStyle=col;g.fillRect(x*PX,y*PX,PX,PX)}
-  drawFn(px);return c.toDataURL();
+  function rect(x,y,w,h,col){g.fillStyle=col;g.fillRect(x*PX,y*PX,w*PX,h*PX)}
+  drawFn(px,rect);return c.toDataURL();
 }
-// Mushroom (red cap)
-function mushroom1(){return drawPixelArt(10,12,(px)=>{
-  const c='#e74c3c',cl='#ff6b6b',cd='#c0392b',s='#f5deb3',sd='#d4b896',w='#fff';
-  // Cap
-  px(3,0,c);px(4,0,c);px(5,0,c);px(6,0,c);
-  px(2,1,c);px(3,1,cl);px(4,1,c);px(5,1,w);px(6,1,c);px(7,1,c);
-  px(1,2,c);px(2,2,cl);px(3,2,c);px(4,2,w);px(5,2,c);px(6,2,c);px(7,2,w);px(8,2,c);
-  px(1,3,cd);px(2,3,c);px(3,3,w);px(4,3,c);px(5,3,c);px(6,3,w);px(7,3,c);px(8,3,cd);
-  px(1,4,cd);px(2,4,c);px(3,4,c);px(4,4,c);px(5,4,c);px(6,4,c);px(7,4,c);px(8,4,cd);
+// Red mushroom — 16x20 HD
+function mushroom1(){return drawPixelArt(16,20,(px,rect)=>{
+  const c='#e74c3c',cl='#ff8080',cm='#f05050',cd='#b02020',cs='#901818',s='#ffe4c4',sl='#fff0dd',sd='#d4b896',sk='#c09870',w='#fff',wt='#ffffffcc',ol='#801515';
+  // Cap outline + fill (round dome)
+  [5,6,7,8,9,10].forEach(x=>px(x,0,ol));
+  [3,4].forEach(x=>px(x,1,ol));[11,12].forEach(x=>px(x,1,ol));
+  [2].forEach(x=>px(x,2,ol));[13].forEach(x=>px(x,2,ol));
+  [1].forEach(x=>px(x,3,ol));[14].forEach(x=>px(x,3,ol));
+  [1].forEach(x=>px(x,4,ol));[14].forEach(x=>px(x,4,ol));
+  [1].forEach(x=>px(x,5,ol));[14].forEach(x=>px(x,5,ol));
+  [1].forEach(x=>px(x,6,ol));[14].forEach(x=>px(x,6,ol));
+  [2].forEach(x=>px(x,7,ol));[13].forEach(x=>px(x,7,ol));
+  // Cap fill
+  for(let y=1;y<=7;y++){const hw=y<2?4:y<3?5:y<7?6:5;const cx=8;
+    for(let dx=-hw;dx<=hw;dx++){
+      const x=cx+dx;if(x<2||x>13)continue;
+      let cc=cm;
+      if(y<=2&&dx<0)cc=cl;else if(y<=2)cc=c;
+      else if(y>=6)cc=cd;
+      else if(dx<-3)cc=cl;else if(dx>3)cc=cd;
+      px(x,y,cc);
+    }}
+  // White spots (bigger, rounder)
+  rect(4,2,2,2,w);rect(4,2,1,1,wt);
+  rect(9,1,2,2,w);rect(10,1,1,1,wt);
+  rect(11,4,2,2,w);
+  rect(5,5,2,1,w);rect(9,5,1,1,w);
+  // Cap bottom rim
+  for(let x=2;x<=13;x++)px(x,8,sk);
   // Stem
-  px(3,5,s);px(4,5,s);px(5,5,s);px(6,5,s);
-  px(3,6,sd);px(4,6,s);px(5,6,s);px(6,6,sd);
-  px(4,7,sd);px(5,7,sd);
-  // Grass
-  px(2,8,'#5a9a3a');px(3,8,'#4a8a2a');px(4,8,'#6aaa4a');px(5,8,'#5a9a3a');px(6,8,'#4a8a2a');px(7,8,'#5a9a3a');
-})}
-// Mushroom (purple)
-function mushroom2(){return drawPixelArt(8,10,(px)=>{
-  const c='#9b59b6',cl='#bb77dd',cd='#7d3c98',s='#f5deb3',sd='#d4b896';
-  px(2,0,c);px(3,0,c);px(4,0,c);px(5,0,c);
-  px(1,1,cl);px(2,1,c);px(3,1,cl);px(4,1,c);px(5,1,c);px(6,1,cd);
-  px(1,2,cd);px(2,2,c);px(3,2,c);px(4,2,cl);px(5,2,c);px(6,2,cd);
-  px(2,3,s);px(3,3,s);px(4,3,s);px(5,3,s);
-  px(3,4,sd);px(4,4,sd);
-  px(2,5,'#5a9a3a');px(3,5,'#4a8a2a');px(4,5,'#6aaa4a');px(5,5,'#5a9a3a');
-})}
-// Flower
-function flower1(){return drawPixelArt(7,8,(px)=>{
-  const p='#ff69b4',y='#ffd700',g='#5a9a3a',gd='#3a7a1a';
-  px(3,0,p);px(2,1,p);px(3,1,y);px(4,1,p);px(3,2,p);
-  px(3,3,g);px(3,4,g);px(2,4,g);px(3,5,gd);
-})}
-// Small tree
-function tree1(){return drawPixelArt(12,16,(px)=>{
-  const l='#4a8a2a',ll='#6aaa4a',ld='#2a6a0a',t='#8b6b3a',td='#6b4b2a';
-  // Leaves
-  for(let y=0;y<6;y++){const w=2+Math.min(y,3);const ox=6-w;
-    for(let x=ox;x<=6+w-ox;x++){px(x,y,y<2?ll:y<4?l:ld)}}
-  px(4,0,ll);px(5,0,ll);px(6,0,ll);px(7,0,ll);
-  px(3,1,l);px(4,1,ll);px(5,1,l);px(6,1,ll);px(7,1,l);px(8,1,l);
-  px(2,2,l);px(3,2,ll);px(4,2,l);px(5,2,l);px(6,2,l);px(7,2,ll);px(8,2,l);px(9,2,l);
-  px(2,3,ld);px(3,3,l);px(4,3,l);px(5,3,ll);px(6,3,l);px(7,3,l);px(8,3,l);px(9,3,ld);
-  px(3,4,ld);px(4,4,l);px(5,4,l);px(6,4,l);px(7,4,l);px(8,4,ld);
-  px(4,5,ld);px(5,5,l);px(6,5,l);px(7,5,ld);
-  // Trunk
-  px(5,6,t);px(6,6,t);px(5,7,t);px(6,7,td);px(5,8,td);px(6,8,t);px(5,9,t);px(6,9,td);
-})}
-// Cute slime peeking from corner
-function peekSlime(colorIdx){return drawPixelArt(14,10,(px)=>{
-  const cols=[
-    {b:'#7ec87e',d:'#5aa85a',l:'#a8e8a8',e:'#2a5a2a',ck:'#ff9999'},
-    {b:'#e8a0c0',d:'#c87898',l:'#ffc8e0',e:'#6a2848',ck:'#ffaaaa'},
-    {b:'#f0c860',d:'#c8a040',l:'#ffe888',e:'#6a5020',ck:'#ff8888'},
-    {b:'#80b8e8',d:'#5898c8',l:'#a8d8ff',e:'#284868',ck:'#ffaaaa'},
-  ][colorIdx%4];
-  // Dome body
-  for(let y=2;y<=9;y++){let hw=y<5?y:7-Math.max(0,y-7);hw=Math.min(hw,6);
-    for(let dx=-hw;dx<=hw;dx++){let c=cols.b;if(Math.abs(dx)>=hw)c=cols.d;else if(y<=3&&dx<0)c=cols.l;
-      px(7+dx,y,c)}}
-  // Eyes
-  px(5,5,'#fff');px(6,5,'#fff');px(5,6,cols.e);px(6,6,'#fff');
-  px(8,5,'#fff');px(9,5,'#fff');px(8,6,cols.e);px(9,6,'#fff');
-  // Cheeks
-  px(4,7,cols.ck+'77');px(10,7,cols.ck+'77');
-  // Mouth
-  px(7,7,cols.e);
-})}
-// Big cute mushroom
-function bigMushroom(){return drawPixelArt(16,20,(px)=>{
-  const c='#e74c3c',cl='#ff6b6b',cd='#c0392b',s='#f5deb3',sd='#d4b896',w='#fff';
-  // Cap (bigger)
-  for(let y=0;y<8;y++){const hw=y<2?3+y:y<6?6:6-(y-5);
-    for(let dx=-hw;dx<=hw;dx++){let cc=c;if(Math.abs(dx)>=hw)cc=cd;else if(y<2)cc=cl;
-      px(8+dx,y,cc)}}
-  // White dots
-  px(5,2,w);px(6,2,w);px(9,1,w);px(10,1,w);px(11,3,w);px(12,3,w);px(6,5,w);px(10,5,w);
-  // Stem
-  for(let y=8;y<14;y++){px(6,y,s);px(7,y,s);px(8,y,s);px(9,y,s);if(y>10){px(6,y,sd);px(9,y,sd)}}
+  for(let y=9;y<=15;y++){
+    const sw=y<12?2:y<14?2:1;
+    for(let dx=-sw;dx<=sw;dx++){
+      let sc=s;if(Math.abs(dx)>=sw)sc=sd;if(y===9)sc=sl;
+      px(8+dx,y,sc);
+    }
+    if(y>=12){px(8-sw-1,y,sk);px(8+sw+1,y,sk)} // stem outline
+  }
+  // Stem lines
+  px(7,11,sd);px(9,12,sd);px(7,14,sk);
   // Grass base
-  for(let x=3;x<13;x++)px(x,14,x%2?'#5a9a3a':'#4a8a2a');
-  for(let x=4;x<12;x++)px(x,13,x%3?'#6aaa4a':'#5a9a3a');
+  for(let x=2;x<=14;x++){const gc=['#5a9a3a','#4a8a2a','#6aaa4a','#7aba5a'][x%4];px(x,16,gc);if(x%3!==0)px(x,17,['#3a7a1a','#4a8a2a'][x%2])}
+  // Tiny flowers in grass
+  px(3,16,'#ff69b4');px(12,16,'#ffdd44');
 })}
-// Big tree
-function bigTree(){return drawPixelArt(18,24,(px)=>{
-  const l='#4a8a2a',ll='#6aaa4a',ld='#2a6a0a',t='#8b6b3a',td='#6b4b2a';
-  // Canopy layers
-  for(let y=0;y<12;y++){const r=y<2?3+y:y<4?6:y<8?7+Math.floor((8-y)*0.3):7-(y-8);
-    for(let dx=-r;dx<=r;dx++){let c=y<3?ll:y<7?l:ld;if(Math.abs(dx)>=r-1)c=ld;
-      if(y<2&&dx<0)c=ll;px(9+dx,y,c)}}
+// Purple mushroom — 14x16 HD
+function mushroom2(){return drawPixelArt(14,16,(px,rect)=>{
+  const c='#9b59b6',cl='#c488e0',cm='#a868c8',cd='#7d3c98',s='#ffe4c4',sd='#d4b896',w='#fff',ol='#5a2878';
+  // Cap
+  [4,5,6,7,8,9].forEach(x=>px(x,0,ol));
+  [3].forEach(x=>px(x,1,ol));[10].forEach(x=>px(x,1,ol));
+  [2].forEach(x=>px(x,2,ol));[11].forEach(x=>px(x,2,ol));
+  [2].forEach(x=>px(x,3,ol));[11].forEach(x=>px(x,3,ol));
+  [2].forEach(x=>px(x,4,ol));[11].forEach(x=>px(x,4,ol));
+  [3].forEach(x=>px(x,5,ol));[10].forEach(x=>px(x,5,ol));
+  for(let y=1;y<=5;y++){const hw=y<2?3:y<5?4:3;
+    for(let dx=-hw;dx<=hw;dx++){let cc=cm;if(y<=2&&dx<0)cc=cl;if(y>=4)cc=cd;px(7+dx,y,cc)}}
+  // Spots
+  rect(5,2,2,1,w);rect(8,1,1,2,w);px(10,3,w);
+  // Rim
+  for(let x=3;x<=10;x++)px(x,6,sd);
+  // Stem
+  for(let y=7;y<=11;y++){px(6,y,s);px(7,y,s);if(Math.abs(y-9)<2)px(5,y,sd)}
+  px(6,12,sd);
+  // Grass
+  for(let x=2;x<=11;x++)px(x,13,['#5a9a3a','#4a8a2a','#6aaa4a'][x%3]);
+})}
+// Flower — 12x14 HD
+function flower1(){return drawPixelArt(12,14,(px,rect)=>{
+  const p='#ff69b4',pl='#ff99cc',pd='#dd4488',y='#ffd700',yl='#ffee55',g='#5a9a3a',gd='#3a7a1a',gl='#7aba5a';
+  // Petals (5-petal flower)
+  px(6,0,pl);px(5,1,p);px(6,1,p);px(7,1,pl);
+  px(3,2,p);px(4,2,pd);px(8,2,pd);px(9,2,p);
+  px(3,3,pl);px(4,3,p);px(8,3,p);px(9,3,pl);
+  px(4,5,p);px(5,5,pd);px(7,5,pd);px(8,5,p);
+  px(5,6,pl);px(7,6,pl);
+  // Center
+  rect(5,3,3,2,y);px(6,3,yl);px(5,4,yl);
+  // Stem
+  for(let sy=7;sy<=11;sy++){px(6,sy,g);if(sy===9){px(4,sy,gl);px(5,sy,g)}if(sy===10){px(8,sy,gl);px(7,sy,g)}}
+  // Leaves
+  px(3,9,gl);px(4,9,g);px(9,10,gl);px(8,10,g);
+  // Ground
+  for(let x=3;x<=9;x++)px(x,12,['#5a9a3a','#4a8a2a','#6aaa4a'][x%3]);
+})}
+// Big tree — 24x32 HD
+function bigTree(){return drawPixelArt(24,32,(px,rect)=>{
+  const l='#4a8a2a',ll='#6aaa4a',lll='#8aca6a',ld='#2a6a0a',ldd='#1a5a00',t='#8b6b3a',tl='#a88050',td='#6b4b2a',tdd='#4a3018';
+  // Canopy — layered circles
+  function leaf(cx,cy,r,bright){
+    for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){
+      if(dx*dx+dy*dy>r*r+r)continue;
+      const x=cx+dx,y=cy+dy;if(x<0||x>=24||y<0)continue;
+      let c=l;
+      if(dy<-r*0.3)c=bright?lll:ll;
+      else if(dy>r*0.5)c=ld;
+      else if(dx<-r*0.4)c=ll;
+      else if(dx>r*0.4)c=ld;
+      px(x,y,c);
+    }}
+  leaf(12,6,6,true);leaf(8,8,5,false);leaf(16,8,5,false);
+  leaf(10,4,4,true);leaf(14,5,4,false);
+  leaf(6,10,3,false);leaf(18,10,3,false);
+  // Canopy outline (bottom)
+  for(let x=3;x<=21;x++){if(x>=5&&x<=19)continue;px(x,13,ldd)}
   // Trunk
-  for(let y=12;y<20;y++){px(8,y,t);px(9,y,t);px(10,y,t);if(y>15){px(7,y,td);px(11,y,td)}}
+  for(let y=14;y<=27;y++){
+    const tw=y<18?2:y<24?2:3;
+    for(let dx=-tw;dx<=tw;dx++){
+      let tc=t;if(Math.abs(dx)>=tw)tc=td;if(dx===-tw+1&&y<22)tc=tl;
+      px(12+dx,y,tc);
+    }}
+  // Bark detail
+  px(11,16,tdd);px(13,19,tdd);px(11,22,tdd);px(13,25,tdd);
   // Roots
-  px(6,19,td);px(7,19,td);px(11,19,td);px(12,19,td);
-  px(5,20,td);px(6,20,'#5a9a3a');px(12,20,'#5a9a3a');px(13,20,td);
+  px(8,26,td);px(9,26,td);px(9,27,t);px(15,26,td);px(16,26,td);px(15,27,t);
+  px(7,27,tdd);px(17,27,tdd);
+  // Ground
+  for(let x=5;x<=19;x++)px(x,28,['#5a9a3a','#4a8a2a','#6aaa4a','#7aba5a'][x%4]);
+  // Apples/fruits
+  px(7,7,'#ff4444');px(15,5,'#ff6666');px(17,9,'#ffaa00');
 })}
-// Daisy flower
-function daisy(){return drawPixelArt(8,10,(px)=>{
-  const p='#fff',y='#ffd700',g='#5a9a3a',gd='#3a7a1a';
-  px(4,0,p);px(3,1,p);px(4,1,y);px(5,1,p);px(4,2,p);
-  px(2,1,p);px(6,1,p);px(4,3,g);px(4,4,g);px(3,5,g);px(4,5,g);px(4,6,gd);
+// Big mushroom — 20x28 HD
+function bigMushroom(){return drawPixelArt(20,28,(px,rect)=>{
+  const c='#e74c3c',cl='#ff8080',cm='#f05050',cd='#b02020',s='#ffe4c4',sl='#fff0dd',sd='#d4b896',sk='#c09870',w='#fff',ol='#801515';
+  // Big dome cap
+  function cap(cx,cy,rx,ry){
+    for(let dy=-ry;dy<=1;dy++)for(let dx=-rx;dx<=rx;dx++){
+      const nx=dx/rx,ny=dy/ry;if(nx*nx+ny*ny>1)continue;
+      let cc=cm;if(ny<-0.5)cc=cl;else if(ny>0.3)cc=cd;
+      if(nx<-0.5)cc=ny<-0.3?cl:cm;if(nx>0.5)cc=cd;
+      px(cx+dx,cy+dy,cc);
+    }
+    // outline
+    for(let dx=-rx;dx<=rx;dx++){px(cx+dx,cy-ry,ol);px(cx+dx,cy+1,ol)}
+    for(let dy=-ry;dy<=1;dy++){
+      for(let side of[-1,1]){
+        for(let ddx=rx;ddx>0;ddx--){const nx=ddx/rx,ny=dy/ry;if(nx*nx+ny*ny<=1){px(cx+side*ddx,dy+cy,ol);break}}
+      }}}
+  cap(10,7,8,7);
+  // White spots
+  rect(5,3,3,2,w);rect(13,2,2,3,w);rect(15,6,2,2,w);rect(7,7,2,1,w);rect(11,5,1,2,w);
+  // Rim
+  for(let x=2;x<=18;x++)px(x,11,sk);for(let x=3;x<=17;x++)px(x,12,'#b08860');
+  // Stem
+  for(let y=13;y<=22;y++){const sw=y<16?3:y<20?3:2;
+    for(let dx=-sw;dx<=sw;dx++){let sc=s;if(Math.abs(dx)>=sw)sc=sd;if(y===13)sc=sl;px(10+dx,y,sc)}
+    if(y>16){px(10-sw-1,y,sk);px(10+sw+1,y,sk)}}
+  // Stem rings
+  for(let dx=-2;dx<=2;dx++){px(10+dx,16,sd);px(10+dx,19,sk)}
+  // Grass
+  for(let x=3;x<=17;x++){px(x,23,['#5a9a3a','#4a8a2a','#6aaa4a','#7aba5a'][x%4]);if(x%2)px(x,24,['#3a7a1a','#4a8a2a'][x%2])}
+  px(5,23,'#ff69b4');px(15,23,'#ffdd44');px(8,23,'#fff');
 })}
-// Place decorations (bigger, more numerous)
+// Daisy — 10x12 HD
+function daisy(){return drawPixelArt(10,12,(px)=>{
+  const w='#fff',wl='#ffffffcc',y='#ffd700',yl='#ffee55',g='#5a9a3a',gd='#3a7a1a';
+  // Petals
+  px(5,0,w);px(4,1,w);px(5,1,wl);px(6,1,w);
+  px(3,2,w);px(7,2,w);px(2,3,wl);px(8,3,wl);
+  px(3,5,w);px(7,5,w);px(4,6,wl);px(6,6,wl);
+  // Center
+  px(4,3,y);px(5,3,yl);px(6,3,y);px(4,4,yl);px(5,4,y);px(6,4,yl);
+  // Stem
+  px(5,7,g);px(5,8,g);px(5,9,gd);px(4,8,g);px(6,9,g);
+  px(3,8,'#7aba5a');px(7,9,'#7aba5a');
+})}
+// Peeking slime — 18x14 HD
+function peekSlime(colorIdx){return drawPixelArt(18,14,(px,rect)=>{
+  const cols=[
+    {b:'#7ec87e',d:'#5aa85a',l:'#a8e8a8',ll:'#c8f0c8',e:'#2a5a2a',ck:'#ff9999',w:'#fff'},
+    {b:'#e8a0c0',d:'#c87898',l:'#ffc8e0',ll:'#ffe0ee',e:'#6a2848',ck:'#ffaaaa',w:'#fff'},
+    {b:'#f0c860',d:'#c8a040',l:'#ffe888',ll:'#fff0aa',e:'#6a5020',ck:'#ff8888',w:'#fff'},
+    {b:'#80b8e8',d:'#5898c8',l:'#a8d8ff',ll:'#c8e8ff',e:'#284868',ck:'#ffaaaa',w:'#fff'},
+  ][colorIdx%4];
+  const c=cols;
+  // Dome body (smoother)
+  for(let y=3;y<=13;y++){
+    let hw=y<6?y-1:y<10?7:13-y;hw=Math.min(hw,7);
+    for(let dx=-hw;dx<=hw;dx++){
+      let cc=c.b;
+      if(Math.abs(dx)>=hw)cc=c.d;
+      else if(y<=5&&dx<0)cc=c.l;
+      else if(y<=4)cc=c.ll;
+      else if(y>=10)cc=c.d;
+      px(9+dx,y,cc);
+    }}
+  // Highlight
+  rect(6,4,2,3,c.ll+'88');px(5,5,c.ll+'66');
+  // Eyes (bigger, sparkly)
+  rect(6,7,3,3,c.w);rect(11,7,3,3,c.w);
+  // Pupils
+  px(7,8,c.e);px(8,8,c.e);px(7,9,'#333');
+  px(12,8,c.e);px(13,8,c.e);px(12,9,'#333');
+  // Eye sparkle
+  px(6,7,c.w);px(11,7,c.w);
+  // Cheeks
+  rect(4,10,2,1,c.ck+'66');rect(14,10,2,1,c.ck+'66');
+  // Mouth
+  px(9,10,c.e);px(10,10,c.e);
+  // Blush marks
+  px(4,11,c.ck+'44');px(15,11,c.ck+'44');
+})}
+// Place decorations — fewer but bigger, better positioned
 const decos=[
-  // Left side
-  {fn:bigTree,x:'0%',y:'8%',w:54,h:72},
-  {fn:bigMushroom,x:'1%',y:'calc(100% - 120px)',w:48,h:60},
-  {fn:mushroom2,x:'4%',y:'calc(100% - 65px)',w:36,h:45},
-  {fn:flower1,x:'2%',y:'45%',w:30,h:36},
-  {fn:daisy,x:'5%',y:'65%',w:24,h:30},
-  {fn:peekSlime.bind(null,0),x:'1%',y:'calc(100% - 180px)',w:42,h:30},
-  // Right side
-  {fn:bigTree,x:'94%',y:'5%',w:54,h:72},
-  {fn:bigMushroom,x:'93%',y:'calc(100% - 115px)',w:48,h:60},
-  {fn:mushroom1,x:'90%',y:'calc(100% - 70px)',w:36,h:45},
-  {fn:flower1,x:'95%',y:'50%',w:30,h:36},
-  {fn:daisy,x:'92%',y:'35%',w:24,h:30},
-  {fn:peekSlime.bind(null,1),x:'93%',y:'calc(100% - 175px)',w:42,h:30},
-  // Top decorations
-  {fn:mushroom1,x:'15%',y:'2px',w:30,h:36},
-  {fn:flower1,x:'30%',y:'8px',w:24,h:30},
-  {fn:mushroom2,x:'70%',y:'5px',w:30,h:38},
-  {fn:daisy,x:'85%',y:'10px',w:24,h:30},
-  {fn:peekSlime.bind(null,2),x:'50%',y:'2px',w:42,h:30},
-  // Bottom decorations
-  {fn:mushroom1,x:'20%',y:'calc(100% - 55px)',w:30,h:36},
-  {fn:bigMushroom,x:'40%',y:'calc(100% - 70px)',w:42,h:52},
-  {fn:flower1,x:'60%',y:'calc(100% - 45px)',w:24,h:30},
-  {fn:mushroom2,x:'75%',y:'calc(100% - 50px)',w:30,h:38},
-  {fn:peekSlime.bind(null,3),x:'55%',y:'calc(100% - 40px)',w:42,h:30},
-  // Extra scattered
-  {fn:daisy,x:'7%',y:'30%',w:21,h:27},
-  {fn:flower1,x:'88%',y:'70%',w:21,h:27},
+  {fn:bigTree,x:'0%',y:'5%',w:72,h:96},
+  {fn:bigMushroom,x:'1%',y:'calc(100% - 140px)',w:60,h:84},
+  {fn:flower1,x:'3%',y:'50%',w:36,h:42},
+  {fn:peekSlime.bind(null,0),x:'0%',y:'calc(100% - 200px)',w:54,h:42},
+  {fn:bigTree,x:'93%',y:'3%',w:72,h:96},
+  {fn:bigMushroom,x:'92%',y:'calc(100% - 135px)',w:60,h:84},
+  {fn:flower1,x:'94%',y:'55%',w:36,h:42},
+  {fn:peekSlime.bind(null,1),x:'93%',y:'calc(100% - 195px)',w:54,h:42},
+  {fn:mushroom1,x:'12%',y:'2px',w:40,h:50},
+  {fn:daisy,x:'35%',y:'6px',w:30,h:36},
+  {fn:mushroom2,x:'65%',y:'4px',w:36,h:46},
+  {fn:daisy,x:'85%',y:'8px',w:30,h:36},
+  {fn:mushroom1,x:'25%',y:'calc(100% - 60px)',w:40,h:50},
+  {fn:flower1,x:'50%',y:'calc(100% - 50px)',w:30,h:36},
+  {fn:mushroom2,x:'75%',y:'calc(100% - 55px)',w:36,h:46},
+  {fn:peekSlime.bind(null,2),x:'45%',y:'1px',w:48,h:38},
+  {fn:peekSlime.bind(null,3),x:'55%',y:'calc(100% - 48px)',w:48,h:38},
 ];
 decos.forEach(d=>{
   const el=document.createElement('div');
@@ -4357,7 +4448,6 @@ decos.forEach(d=>{
   img.src=d.fn();img.style.cssText='width:100%;height:100%;image-rendering:pixelated';
   el.appendChild(img);document.body.appendChild(el);
 });
-// Top grass bar
 const topGrass=document.createElement('div');
 topGrass.className='forest-top';
 document.body.appendChild(topGrass);
