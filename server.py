@@ -1056,6 +1056,8 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 .seat .ch{font-size:0.85em;color:#ffcc00}
 .seat .st{font-size:0.65em;color:#888;font-style:italic}
 .seat .bet-chip{font-size:0.7em;color:#88ff88;margin-top:2px}
+.chip-fly{position:absolute;z-index:20;font-size:1.2em;pointer-events:none;animation:chipFly .8s ease-in forwards}
+@keyframes chipFly{0%{opacity:1;transform:translate(0,0) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(0.5)}}
 .seat .cards{display:flex;gap:3px;justify-content:center;margin:4px 0}
 .seat.fold{opacity:0.35}.seat.out{opacity:0.25;filter:grayscale(1)}
 .seat.out .nm{text-decoration:line-through;color:#ff4444}
@@ -1375,6 +1377,25 @@ let sdEl=document.getElementById('sd-result');if(!sdEl){sdEl=document.createElem
 if(s.showdown_result&&(s.round==='between'||s.round==='showdown')){
 sdEl.innerHTML=s.showdown_result.map(p=>`<div style="padding:2px 8px;${p.winner?'color:#ffd700;font-weight:bold':'color:#aaa'}">${p.winner?'👑':'  '} ${p.emoji}${p.name}: ${p.hand}</div>`).join('')}
 else{sdEl.innerHTML=''}
+// 베팅 변화 감지 → 칩 날리기 이펙트
+if(!window._prevBets)window._prevBets={};
+s.players.forEach((p,i)=>{
+const prev=window._prevBets[p.name]||0;
+if(p.bet>prev&&p.bet>0){
+const seatEl=document.querySelector(`.seat-${i}`);
+if(seatEl){
+const felt=document.getElementById('felt');
+const sr=seatEl.getBoundingClientRect();const fr=felt.getBoundingClientRect();
+const pot=document.getElementById('pot');const pr=pot.getBoundingClientRect();
+const dx=pr.left+pr.width/2-sr.left-sr.width/2;
+const dy=pr.top+pr.height/2-sr.top-sr.height/2;
+const chip=document.createElement('div');chip.className='chip-fly';chip.textContent='🪙';
+chip.style.left=(sr.left-fr.left+sr.width/2-10)+'px';
+chip.style.top=(sr.top-fr.top)+'px';
+chip.style.setProperty('--dx',dx+'px');chip.style.setProperty('--dy',dy+'px');
+felt.appendChild(chip);setTimeout(()=>chip.remove(),900)}}
+window._prevBets[p.name]=p.bet});
+if(s.round==='between'||s.round==='waiting')window._prevBets={};
 const f=document.getElementById('felt');f.querySelectorAll('.seat').forEach(e=>e.remove());
 s.players.forEach((p,i)=>{const el=document.createElement('div');
 let cls=`seat seat-${i}`;if(p.folded)cls+=' fold';if(p.out)cls+=' out';if(s.turn===p.name)cls+=' is-turn';
