@@ -1912,7 +1912,7 @@ h1 b{-webkit-text-fill-color:#f97316}
 .felt{position:relative;
 background:radial-gradient(ellipse at 30% 40%,#1a1a4e 0%,#0c0c2d 40%,#050520 70%,#020215 100%);
 border:4px solid #38bdf855;outline:2px solid #0ea5e933;border-radius:50%;width:100%;padding-bottom:55%;
-box-shadow:0 0 60px #38bdf822,0 0 120px #0ea5e911,inset 0 0 80px #0c0c2d;margin:40px auto 50px;overflow:hidden}
+box-shadow:0 0 60px #38bdf822,0 0 120px #0ea5e911,inset 0 0 80px #0c0c2d;margin:40px auto 50px;overflow:visible}
 .felt::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;
 background:radial-gradient(2px 2px at 20% 30%,#fff8,transparent),
 radial-gradient(2px 2px at 40% 70%,#fff6,transparent),
@@ -2020,11 +2020,11 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 #timer{height:5px;background:#6bcb77;transition:width .1s linear;margin:6px auto 0;max-width:300px;border-radius:3px;border:1px solid #000}
 #commentary{background:linear-gradient(135deg,#fef3c7,#fde68a);border:2px solid #f59e0b;border-radius:14px;padding:10px 16px;margin:0 0 8px;text-align:center;font-size:1em;color:#92400e;font-weight:bold;animation:comFade .5s ease-out;min-height:24px;box-shadow:2px 2px 0 #f59e0b44;text-shadow:none}
 @keyframes comFade{0%{opacity:0;transform:translateY(-8px)}100%{opacity:1;transform:translateY(0)}}
-#action-feed{background:#ffffff99;border:2px solid #000;border-radius:14px;padding:10px;max-height:300px;overflow-y:auto;font-size:0.82em;font-family:'Fira Code',monospace,sans-serif;box-shadow:4px 4px 0 #000}
+#action-feed{background:#ffffffcc;border:2px solid #38bdf8;border-radius:14px;padding:10px;max-height:300px;overflow-y:auto;font-size:0.82em;font-family:'Noto Sans KR','Segoe UI',sans-serif;box-shadow:2px 2px 0 #38bdf833;color:#1e3a5f}
 #action-feed .af-item{padding:4px 6px;border-bottom:1px solid #e0f2fe;opacity:0;animation:fadeIn .3s forwards}
-#action-feed .af-round{color:#ffd93d;font-weight:bold;padding:6px 0 2px;font-size:0.9em;text-shadow:1px 1px 0 #000}
-#action-feed .af-action{color:#ccc}
-#action-feed .af-win{color:#6bcb77;font-weight:bold}
+#action-feed .af-round{color:#0284c7;font-weight:bold;padding:6px 0 2px;font-size:0.9em;text-shadow:none}
+#action-feed .af-action{color:#475569}
+#action-feed .af-win{color:#16a34a;font-weight:bold}
 .game-layout{display:block}
 .game-main{width:100%}
 .game-sidebar{margin-top:8px}
@@ -2037,17 +2037,17 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 .tab-btns button{background:#ffffffcc;color:#0284c7;border:2px solid #38bdf8;padding:4px 12px;border-radius:10px;cursor:pointer;font-size:0.75em;box-shadow:2px 2px 0 #38bdf833;transition:all .1s}
 .tab-btns button:hover{transform:translate(1px,1px);box-shadow:1px 1px 0 #000}
 .tab-btns button.active{color:#fff;border-color:#0284c7;background:linear-gradient(135deg,#7dd3fc,#0284c7)}
-#log{background:#ffffff99;border:2px solid #000;border-radius:14px;padding:10px;height:170px;overflow-y:auto;font-size:0.78em;font-family:'Fira Code',monospace,sans-serif;flex:1;box-shadow:4px 4px 0 #000}
+#log{background:#ffffffcc;border:2px solid #38bdf8;border-radius:14px;padding:10px;height:170px;overflow-y:auto;font-size:0.78em;font-family:'Noto Sans KR','Segoe UI',sans-serif;flex:1;box-shadow:2px 2px 0 #38bdf833;color:#1e3a5f}
 #log div{padding:2px 0;border-bottom:1px solid #e0f2fe;opacity:0;animation:fadeIn .3s forwards}
-#chatbox{background:#ffffff99;border:2px solid #000;border-radius:14px;padding:12px;height:300px;width:350px;display:flex;flex-direction:column;box-shadow:4px 4px 0 #000}
+#chatbox{background:#ffffffcc;border:2px solid #38bdf8;border-radius:14px;padding:12px;height:300px;width:350px;display:flex;flex-direction:column;box-shadow:2px 2px 0 #38bdf833}
 #chatmsgs{flex:1;overflow-y:auto;font-size:0.85em;margin-bottom:5px;line-height:1.5}
 #chatmsgs div{padding:2px 0;opacity:0;animation:fadeIn .3s forwards}
-#chatmsgs .cn{color:#ffd93d;font-weight:bold;text-shadow:1px 1px 0 #000}
-#chatmsgs .cm{color:#ccc}
+#chatmsgs .cn{color:#0284c7;font-weight:bold;text-shadow:none}
+#chatmsgs .cm{color:#334155}
 #chatinput{display:flex;gap:4px}
-#chatinput input{flex:1;background:#ffffffbb;border:2px solid #000;color:#fff;padding:5px 8px;border-radius:10px;font-size:0.8em;box-shadow:2px 2px 0 #000}
-#chatinput button{background:#4a9eff;color:#fff;border:2px solid #000;padding:5px 10px;border-radius:10px;cursor:pointer;font-size:0.8em;box-shadow:2px 2px 0 #000;transition:all .1s}
-#chatinput button:hover{transform:translate(1px,1px);box-shadow:1px 1px 0 #000}
+#chatinput input{flex:1;background:#fff;border:1.5px solid #38bdf8;color:#1e3a5f;padding:5px 8px;border-radius:10px;font-size:0.8em}
+#chatinput button{background:#0284c7;color:#fff;border:1.5px solid #0369a1;padding:5px 10px;border-radius:10px;cursor:pointer;font-size:0.8em;transition:all .15s}
+#chatinput button:hover{background:#0369a1}
 @keyframes fadeIn{to{opacity:1}}
 @keyframes boardFlash{0%{filter:brightness(1.8)}100%{filter:brightness(1)}}
 @keyframes floatUp{0%{opacity:1;transform:translateY(0) scale(1)}50%{opacity:0.8;transform:translateY(-60px) scale(1.3)}100%{opacity:0;transform:translateY(-120px) scale(0.8)}}
@@ -2118,7 +2118,8 @@ h1{font-size:1.3em;margin:4px 0}
 #hand-timeline .tl-step.active{background:#ff6b6b;color:#fff;border-color:#000;font-weight:bold}
 #hand-timeline .tl-step.done{background:#e0f2fe;color:#4b7399;border-color:#000}
 #quick-chat{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;margin:4px 0}
-#quick-chat button{background:#ffffffbb;border:2px solid #000;color:#ccc;padding:4px 10px;border-radius:12px;font-size:0.75em;cursor:pointer;box-shadow:2px 2px 0 #000;transition:all .1s}
+#quick-chat button{background:#e0f2fe;border:1.5px solid #38bdf8;color:#075985;padding:4px 10px;border-radius:12px;font-size:0.75em;cursor:pointer;transition:all .15s}
+#quick-chat button:hover{background:#bae6fd}
 #quick-chat button:hover{transform:translate(1px,1px);box-shadow:1px 1px 0 #000;color:#fff}
 #killcam-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:#000000ee;background-image:repeating-conic-gradient(#ffffff06 0deg 10deg,transparent 10deg 20deg);display:none;align-items:center;justify-content:center;z-index:101;animation:allinFlash 2.5s ease-out forwards}
 #killcam-overlay .kc-text{text-align:center}
