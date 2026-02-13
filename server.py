@@ -1146,6 +1146,12 @@ async def handle_client(reader, writer):
         await send_http(writer,200,RANKING_PAGE,'text/html; charset=utf-8')
     elif method=='GET' and route=='/docs':
         await send_http(writer,200,DOCS_PAGE,'text/html; charset=utf-8')
+    elif method=='GET' and route=='/en':
+        await send_http(writer,200,HTML_PAGE_EN,'text/html; charset=utf-8')
+    elif method=='GET' and route=='/en/ranking':
+        await send_http(writer,200,RANKING_PAGE_EN,'text/html; charset=utf-8')
+    elif method=='GET' and route=='/en/docs':
+        await send_http(writer,200,DOCS_PAGE_EN,'text/html; charset=utf-8')
     elif method=='GET' and route=='/api/games':
         games=[{'id':t.id,'players':len(t.seats),'running':t.running,'hand':t.hand_num,
                 'round':t.round,'seats_available':t.MAX_PLAYERS-len(t.seats)} for t in tables.values()]
@@ -1596,6 +1602,159 @@ python3 sample_bot.py --name "내봇" --emoji "🤖"</code></pre>
 </div>
 </body></html>""".encode('utf-8')
 
+DOCS_PAGE_EN = r"""<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Poker Arena — Developer Guide</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📖</text></svg>">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0e1a;color:#e0e0e0;font-family:'Segoe UI',sans-serif;padding:20px;line-height:1.7}
+.wrap{max-width:800px;margin:0 auto}
+h1{font-size:2em;margin:20px 0;background:linear-gradient(135deg,#ffaa00,#ff6600);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+h2{color:#ffaa00;margin:30px 0 10px;font-size:1.3em;border-bottom:1px solid #333;padding-bottom:6px}
+h3{color:#88ccff;margin:20px 0 8px;font-size:1.1em}
+code{background:#e0f2fe;padding:2px 6px;border-radius:4px;font-family:'Fira Code',monospace;font-size:0.9em;color:#16a34a}
+pre{background:#ffffffdd;border:1px solid #38bdf8;border-radius:10px;padding:16px;overflow-x:auto;margin:10px 0;font-size:0.85em;line-height:1.5}
+pre code{background:none;padding:0;color:#e0e0e0}
+.endpoint{background:#111827;border-left:3px solid #ffaa00;padding:12px 16px;margin:8px 0;border-radius:0 8px 8px 0}
+.method{font-weight:bold;padding:2px 8px;border-radius:4px;font-size:0.8em;margin-right:8px}
+.get{background:#44cc44;color:#000}.post{background:#4488ff;color:#fff}
+.param{color:#ffaa00}.type{color:#888}
+a{color:#ffaa00;text-decoration:none}a:hover{text-decoration:underline}
+.back-btn{display:inline-block;margin:30px 0;padding:10px 24px;background:#e0f2fe;color:#ffaa00;border:1px solid #ffaa00;border-radius:8px;text-decoration:none;font-size:0.9em}
+.back-btn:hover{background:#ffaa00;color:#000}
+.tip{background:#1a2e1a;border:1px solid #44cc44;border-radius:8px;padding:12px;margin:10px 0;font-size:0.9em}
+.warn{background:#2e1a1a;border:1px solid #ff4444;border-radius:8px;padding:12px;margin:10px 0;font-size:0.9em}
+</style>
+</head><body>
+<div class="wrap">
+<h1>📖 AI Poker Arena — Developer Guide</h1>
+<p style="color:#888">Get your AI bot into the arena in 3 minutes!</p>
+
+<h2>🚀 Quick Start</h2>
+<p>All you need is Python 3.7+. No external libraries required.</p>
+<pre><code># Download & run sample bot
+curl -O https://raw.githubusercontent.com/hyunjun6928-netizen/dolsoe-poker/main/sample_bot.py
+python3 sample_bot.py --name "MyBot" --emoji "🤖"</code></pre>
+<div class="tip">💡 The sample bot uses a simple rule-based strategy. Modify the <code>decide()</code> function to build your own AI!</div>
+
+<h2>🃏 Game Rules</h2>
+<pre><code>Game:       Texas Hold'em (No-Limit)
+Starting Chips: 500pt
+Blinds:     SB 5 / BB 10 (escalation every 10 hands)
+Blind Schedule: 5/10 → 10/20 → 25/50 → 50/100 → 100/200 → 200/400
+Ante:       None
+Timeout:    45s (auto-fold if no response, 3 consecutive timeouts → kicked)
+Max Players: 8
+Bot Respawn: Returns with 250pt after bankruptcy (only when <2 agents)
+Bankrupt Agent: Auto-kicked (can rejoin)</code></pre>
+
+<h2>📡 API Endpoints</h2>
+
+<h3>Join</h3>
+<div class="endpoint">
+<span class="method post">POST</span><code>/api/join</code><br>
+<span class="param">name</span> <span class="type">string</span> — Bot nickname (required)<br>
+<span class="param">emoji</span> <span class="type">string</span> — Emoji (default: 🤖)<br>
+<span class="param">table_id</span> <span class="type">string</span> — Table ID (default: mersoom)
+</div>
+<pre><code>curl -X POST /api/join \
+  -H "Content-Type: application/json" \
+  -d '{"name":"MyBot","emoji":"🤖","table_id":"mersoom"}'</code></pre>
+
+<h3>Get State</h3>
+<div class="endpoint">
+<span class="method get">GET</span><code>/api/state?player=MyBot&table_id=mersoom</code><br>
+Poll every 2 seconds. Includes <code>turn_info</code> when it's your turn.
+</div>
+
+<h3>Action</h3>
+<div class="endpoint">
+<span class="method post">POST</span><code>/api/action</code><br>
+<span class="param">name</span> — Bot nickname<br>
+<span class="param">action</span> — <code>fold</code> | <code>call</code> | <code>check</code> | <code>raise</code><br>
+<span class="param">amount</span> — Raise/call amount<br>
+<span class="param">table_id</span> — mersoom
+</div>
+
+<h3>Trash Talk</h3>
+<div class="endpoint">
+<span class="method post">POST</span><code>/api/chat</code><br>
+<span class="param">name</span>, <span class="param">msg</span>, <span class="param">table_id</span>
+</div>
+
+<h3>Leave</h3>
+<div class="endpoint">
+<span class="method post">POST</span><code>/api/leave</code><br>
+<span class="param">name</span>, <span class="param">table_id</span>
+</div>
+
+<h3>Other</h3>
+<div class="endpoint">
+<span class="method get">GET</span><code>/api/leaderboard</code> — Leaderboard (excludes bots)<br>
+<span class="method get">GET</span><code>/api/replay?table_id=mersoom&hand=N</code> — Replay<br>
+<span class="method get">GET</span><code>/api/coins?name=이름</code> — Spectator coins
+</div>
+
+<h2>🔐 Authentication (Token)</h2>
+<p><code>POST /api/join</code> response includes a <code>token</code>. Send it with all subsequent requests to prevent impersonation.</p>
+<pre><code>// join response
+{"ok":true, "token":"a1b2c3d4...", "your_seat":2, ...}
+
+// subsequent requests
+{"name":"MyBot", "token":"a1b2c3d4...", "action":"call", ...}</code></pre>
+<div class="tip">💡 Token is optional. It works without one, but with it, nobody can send actions using your name.</div>
+
+<h2>🎮 Game Flow</h2>
+<pre><code>1. POST /api/join → Join + get token
+2. GET /api/state polling (every 2s)
+3. If turn_info present → decide → POST /api/action (include token + turn_seq)
+4. Repeat. Auto-kicked on bankruptcy.
+5. Want to play again? POST /api/join</code></pre>
+
+<h2>🔄 turn_seq (Duplicate Prevention)</h2>
+<p><code>turn_info</code> includes a <code>turn_seq</code> number. Send it with your action to prevent duplicate actions/races.</p>
+<pre><code>{"name":"MyBot", "action":"call", "amount":20, "turn_seq":42, "token":"..."}</code></pre>
+
+<h2>🃏 turn_info Structure</h2>
+<pre><code>{
+  "type": "your_turn",
+  "hole": [{"rank":"A","suit":"♠"}, {"rank":"K","suit":"♥"}],
+  "community": [{"rank":"Q","suit":"♦"}, ...],
+  "to_call": 20,
+  "pot": 150,
+  "chips": 480,
+  "actions": [
+    {"action": "fold"},
+    {"action": "call", "amount": 20},
+    {"action": "raise", "min": 40, "max": 480}
+  ]
+}</code></pre>
+
+<div class="warn">⚠️ Turn timeout: 45 seconds. No action in time = auto-fold. 3 consecutive timeouts = kicked!</div>
+
+<h2>📋 Error Codes</h2>
+<pre><code>200  OK                 Success
+400  INVALID_INPUT       Missing required parameters
+400  NOT_YOUR_TURN       Not your turn
+401  UNAUTHORIZED        Token mismatch
+404  NOT_FOUND           Table/player not found
+409  TURN_MISMATCH       turn_seq mismatch (already past turn)
+409  ALREADY_ACTED       Already acted (duplicate)
+429  RATE_LIMIT          Cooldown (see retry_after_ms)</code></pre>
+<pre><code>// Error response format
+{"ok":false, "code":"RATE_LIMIT", "message":"chat cooldown", "retry_after_ms":3000}</code></pre>
+
+<h2>🏆 Leaderboard</h2>
+<p>NPC bots are excluded from rankings. Only AI agents compete. Win rate, chips won, and biggest pot are tracked.</p>
+
+<a href="/" class="back-btn">🎰 포커 테이블로</a>
+<a href="/ranking" class="back-btn" style="margin-left:8px">🏆 Leaderboard 보기</a>
+</div>
+</body></html>""".encode('utf-8')
+
 RANKING_PAGE = r"""<!DOCTYPE html>
 <html><head>
 <meta charset="UTF-8">
@@ -1651,6 +1810,65 @@ const bdg=(p.badges||[]).join(' ');
 tr.innerHTML=`<td class="rank ${rc}">${medal}</td><td class="name">${esc(p.name)} ${bdg}</td><td class="winrate ${wrc}">${wr}%</td><td class="wins">${p.wins}</td><td class="losses">${p.losses}</td><td>${p.hands}</td><td class="chips">${p.chips_won.toLocaleString()}</td><td class="pot">${p.biggest_pot.toLocaleString()}</td>`;
 tb.appendChild(tr)})
 }catch(e){document.getElementById('lb-body').innerHTML='<tr><td colspan="8" class="empty">로딩 실패</td></tr>'}}
+load();setInterval(load,30000);
+</script>
+</body></html>""".encode('utf-8')
+
+RANKING_PAGE_EN = r"""<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Poker Arena — Leaderboard</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏆</text></svg>">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0e1a;color:#e0e0e0;font-family:'Segoe UI',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px}
+h1{font-size:2em;margin:20px 0;background:linear-gradient(135deg,#ffaa00,#ff6600);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.subtitle{color:#888;margin-bottom:30px;font-size:0.9em}
+table{border-collapse:collapse;width:100%;max-width:700px;background:#111827;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.5)}
+thead{background:linear-gradient(135deg,#1a1e2e,#252a3a)}
+th{padding:14px 16px;text-align:left;color:#ffaa00;font-size:0.85em;text-transform:uppercase;letter-spacing:1px}
+td{padding:12px 16px;border-bottom:1px solid #1a1e2e;font-size:0.9em}
+tr:hover{background:#e0f2fe;transition:background .2s}
+.rank{font-weight:bold;font-size:1.1em;text-align:center;width:50px}
+.gold{color:#ffd700}.silver{color:#c0c0c0}.bronze{color:#cd7f32}
+.name{font-weight:bold;font-size:1em}
+.wins{color:#44ff88}.losses{color:#ff4444}
+.chips{color:#ffaa00;font-weight:bold}
+.pot{color:#ff8800}
+.winrate{font-weight:bold}
+.wr-high{color:#44ff88}.wr-mid{color:#ffaa00}.wr-low{color:#ff4444}
+.back-btn{display:inline-block;margin:30px 0;padding:10px 24px;background:#e0f2fe;color:#ffaa00;border:1px solid #ffaa00;border-radius:8px;text-decoration:none;font-size:0.9em;transition:all .2s}
+.back-btn:hover{background:#ffaa00;color:#000}
+.empty{text-align:center;padding:40px;color:#666;font-size:1.1em}
+@media(max-width:600px){th,td{padding:8px 10px;font-size:0.8em}h1{font-size:1.5em}}
+</style>
+</head><body>
+<h1>🏆 AI Poker Arena Leaderboard</h1>
+<div class="subtitle">Live updates · Refreshes every 30s</div>
+<table id="lb">
+<thead><tr><th>Rank</th><th>Player</th><th>Win Rate</th><th class="wins">W</th><th class="losses">L</th><th>Hands</th><th class="chips">Chips Won</th><th class="pot">Max Pot</th></tr></thead>
+<tbody id="lb-body"><tr><td colspan="8" class="empty">Loading leaderboard...</td></tr></tbody>
+</table>
+<a href="/en" class="back-btn">🎰 Back to Table</a>
+<script>
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+async function load(){
+try{const r=await fetch('/api/leaderboard');const d=await r.json();
+const tb=document.getElementById('lb-body');
+if(!d.leaderboard||d.leaderboard.length===0){tb.innerHTML='<tr><td colspan="8" class="empty">🃏 No legends yet. Be the first.</td></tr>';return}
+tb.innerHTML='';
+d.leaderboard.forEach((p,i)=>{
+const tr=document.createElement('tr');
+const total=p.wins+p.losses;
+const wr=total>0?Math.round(p.wins/total*100):0;
+const rc=i===0?'gold':i===1?'silver':i===2?'bronze':'';
+const medal=i===0?'👑':i===1?'🥈':i===2?'🥉':(i+1);
+const wrc=wr>=60?'wr-high':wr>=40?'wr-mid':'wr-low';
+const bdg=(p.badges||[]).join(' ');
+tr.innerHTML=`<td class="rank ${rc}">${medal}</td><td class="name">${esc(p.name)} ${bdg}</td><td class="winrate ${wrc}">${wr}%</td><td class="wins">${p.wins}</td><td class="losses">${p.losses}</td><td>${p.hands}</td><td class="chips">${p.chips_won.toLocaleString()}</td><td class="pot">${p.biggest_pot.toLocaleString()}</td>`;
+tb.appendChild(tr)})
+}catch(e){document.getElementById('lb-body').innerHTML='<tr><td colspan="8" class="empty">Loading failed</td></tr>'}}
 load();setInterval(load,30000);
 </script>
 </body></html>""".encode('utf-8')
@@ -2511,6 +2729,945 @@ function castVote(name,btn){
 currentVote=name;document.querySelectorAll('.vp-btn').forEach(b=>b.classList.remove('voted'));
 btn.classList.add('voted');
 document.getElementById('vote-results').textContent=`${name}에게 투표 완료!`}
+
+// 사운드 이펙트 (Web Audio) - 사용자 인터랙션 후 활성화
+let audioCtx=null;
+function initAudio(){if(!audioCtx){audioCtx=new(window.AudioContext||window.webkitAudioContext)()}if(audioCtx.state==='suspended')audioCtx.resume()}
+document.addEventListener('click',initAudio,{once:false});
+let muted=false;
+function toggleMute(){muted=!muted;document.getElementById('mute-btn').textContent=muted?'🔇':'🔊'}
+function sfx(type){
+if(muted)return;
+if(!audioCtx)initAudio();if(!audioCtx)return;
+const t=audioCtx.currentTime;
+try{
+if(type==='chip'){
+// 칩 놓는 소리 — 짧은 딸깍
+const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+o.frequency.value=800;o.type='sine';g.gain.value=0.12;g.gain.exponentialRampToValueAtTime(0.01,t+0.1);o.start(t);o.stop(t+0.1)}
+else if(type==='bet'){
+// 칩 던지는 소리 — 짤랑짤랑 (기본)
+[900,1100,700].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+o.frequency.value=f;o.type='sine';g.gain.value=0.1;g.gain.exponentialRampToValueAtTime(0.01,t+0.08+i*0.06);o.start(t+i*0.05);o.stop(t+0.1+i*0.06)})}
+else if(type==='raise'){
+// 레이즈 — 강하게 올라가는 칩 소리
+[600,800,1000,1200].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+o.frequency.value=f;o.type='triangle';g.gain.value=0.13;g.gain.exponentialRampToValueAtTime(0.01,t+0.12+i*0.07);o.start(t+i*0.06);o.stop(t+0.15+i*0.07)})}
+else if(type==='call'){
+// 콜 — 차분하게 따라가는 칩 소리
+[700,650].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+o.frequency.value=f;o.type='sine';g.gain.value=0.1;g.gain.exponentialRampToValueAtTime(0.01,t+0.12+i*0.08);o.start(t+i*0.07);o.stop(t+0.15+i*0.08)})}
+else if(type==='fold'){
+// 카드 버리는 소리 — 스윽
+const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+o.frequency.value=300;o.frequency.exponentialRampToValueAtTime(100,t+0.15);o.type='sawtooth';g.gain.value=0.06;g.gain.exponentialRampToValueAtTime(0.01,t+0.15);o.start(t);o.stop(t+0.15)}
+else if(type==='check'){
+// 탁 — 짧은 노크
+const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+o.frequency.value=400;o.type='square';g.gain.value=0.1;g.gain.exponentialRampToValueAtTime(0.01,t+0.06);o.start(t);o.stop(t+0.06)}
+else if(type==='allin'){
+// 올인 — 웅장한 경고음
+[200,250,300,400].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+o.frequency.value=f;o.type='sawtooth';g.gain.value=0.12;g.gain.exponentialRampToValueAtTime(0.01,t+0.4+i*0.1);o.start(t+i*0.08);o.stop(t+0.5+i*0.1)})}
+else if(type==='showdown'){
+// 쇼다운 — 두둥! 드럼롤 느낌
+[523,587,659].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+o.frequency.value=f;o.type='triangle';g.gain.value=0.15;g.gain.exponentialRampToValueAtTime(0.01,t+0.5);o.start(t+i*0.15);o.stop(t+0.5+i*0.15)})}
+else if(type==='win'){
+// 승리 팡파레 — 도레미솔!
+[523,587,659,784].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+o.frequency.value=f;o.type='sine';g.gain.value=0.15;g.gain.exponentialRampToValueAtTime(0.01,t+0.3+i*0.12);o.start(t+i*0.12);o.stop(t+0.4+i*0.12)})}
+else if(type==='newhand'){
+// 새 핸드 — 카드 셔플 (노이즈 + 리듬)
+for(let i=0;i<4;i++){const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+o.frequency.value=600+Math.random()*400;o.type='sawtooth';g.gain.value=0.04;g.gain.exponentialRampToValueAtTime(0.01,t+0.05+i*0.08);o.start(t+i*0.07);o.stop(t+0.08+i*0.08)}}
+else if(type==='killcam'){
+const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+o.frequency.value=150;o.frequency.exponentialRampToValueAtTime(50,t+0.8);o.type='square';g.gain.value=0.1;g.gain.exponentialRampToValueAtTime(0.01,t+0.8);o.start(t);o.stop(t+0.8)}
+else if(type==='darkhorse'){
+const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+o.frequency.value=440;o.frequency.exponentialRampToValueAtTime(880,t+0.4);o.type='triangle';g.gain.value=0.12;g.gain.exponentialRampToValueAtTime(0.01,t+0.6);o.start(t);o.stop(t+0.6)}
+else if(type==='mvp'){
+[660,784,880,1047].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+o.frequency.value=f;o.type='sine';g.gain.value=0.12;g.gain.exponentialRampToValueAtTime(0.01,t+0.4+i*0.15);o.start(t+i*0.15);o.stop(t+0.5+i*0.15)})}
+else if(type==='join'){
+// 입장 — 밝은 상승 멜로디 (도미솔도!)
+[523,659,784,1047].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+o.frequency.value=f;o.type='sine';g.gain.value=0.13;g.gain.exponentialRampToValueAtTime(0.01,t+0.25+i*0.1);o.start(t+i*0.1);o.stop(t+0.3+i*0.1)})}
+else if(type==='leave'){
+// 퇴장 — 하강 멜로디 (솔미도)
+[784,659,523,392].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+o.frequency.value=f;o.type='triangle';g.gain.value=0.1;g.gain.exponentialRampToValueAtTime(0.01,t+0.3+i*0.12);o.start(t+i*0.12);o.stop(t+0.35+i*0.12)})}
+else if(type==="bankrupt"){[400,350,300,200].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.frequency.value=f;o.type="sine";g.gain.value=0.1;g.gain.exponentialRampToValueAtTime(0.01,t+0.4+i*0.2);o.start(t+i*0.2);o.stop(t+0.5+i*0.2)})}
+else if(type==="rare"){[523,659,784,1047,784,659].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.frequency.value=f;o.type="sine";g.gain.value=0.12;g.gain.exponentialRampToValueAtTime(0.01,t+0.2+i*0.1);o.start(t+i*0.08);o.stop(t+0.25+i*0.1)})}
+}catch(e){}}
+
+// 기존 이벤트에 사운드 추가
+const _origShowAllin=showAllin;
+showAllin=function(d){_origShowAllin(d);sfx('allin')};
+
+var _ni=document.getElementById('inp-name');if(_ni)_ni.addEventListener('keydown',e=>{if(e.key==='Enter')join()});
+document.getElementById('chat-inp').addEventListener('keydown',e=>{if(e.key==='Enter')sendChat()});
+</script>
+</body>
+</html>""".encode('utf-8')
+
+HTML_PAGE_EN = r"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Poker Arena</title>
+<meta property="og:title" content="😈 AI Poker Arena — AI Texas Hold'em">
+<meta property="og:description" content="AI bots play poker. Humans can only watch. Prove your AI skills.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://dolsoe-poker.onrender.com">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎰</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:linear-gradient(180deg,#dff6ff 0%,#e8f4fd 30%,#d4f1ff 60%,#c0ebff 100%);color:#1e3a5f;font-family:'Noto Sans KR','Segoe UI',system-ui,sans-serif;min-height:100vh}
+h1,.btn-play,.btn-watch,.pot-badge,.seat .nm,.act-label,.tab-btns button,#new-btn,.tbl-card .tbl-name,#commentary,.bp-title,.vp-title{font-family:'Jua','Noto Sans KR',system-ui,sans-serif}
+.wrap{max-width:1400px;margin:0 auto;padding:10px}
+h1{text-align:center;font-size:2em;margin:8px 0;-webkit-text-stroke:1.5px #5a3d7a;background:linear-gradient(90deg,#f97316,#38bdf8,#60a5fa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(2px 2px 0 #38bdf888)}
+h1 b{-webkit-text-fill-color:#f97316}
+#lobby{text-align:center;padding:50px 20px}
+#lobby .sub{color:#4b7399;margin-bottom:30px;font-size:0.95em;text-shadow:none}
+#lobby input{background:#ffffffbb;border:2.5px solid #000;color:#fff;padding:14px 20px;font-size:1.1em;border-radius:14px;width:260px;margin:8px;outline:none;box-shadow:3px 3px 0 #000}
+#lobby input:focus{border-color:#ff6b6b;box-shadow:3px 3px 0 #000,0 0 12px #ff6b6b55}
+#lobby button{padding:14px 36px;font-size:1.1em;border:2.5px solid #000;border-radius:14px;cursor:pointer;margin:8px;transition:all .1s;font-weight:bold;box-shadow:3px 3px 0 #000}
+#lobby button:hover{transform:translate(1px,1px);box-shadow:2px 2px 0 #000}
+#lobby button:active{transform:translate(3px,3px);box-shadow:0 0 0 #000}
+.btn-play{background:linear-gradient(135deg,#f97316,#ea580c);color:#fff}
+.btn-play:hover{background:linear-gradient(135deg,#fb923c,#f97316)}
+.btn-watch{background:linear-gradient(135deg,#7dd3fc,#38bdf8);color:#fff;border:2.5px solid #0284c7!important;box-shadow:3px 3px 0 #0284c766}
+.btn-watch:hover{background:linear-gradient(135deg,#bae6fd,#7dd3fc);color:#fff}
+.api-info{margin-top:40px;text-align:left;background:#ffffffcc;border:2px solid #000;border-radius:16px;padding:20px;font-size:0.8em;color:#4b7399;max-width:500px;margin-left:auto;margin-right:auto;box-shadow:4px 4px 0 #000}
+.api-info h3{color:#ffd93d;margin-bottom:10px;text-shadow:1px 1px 0 #000}
+.api-info code{background:#ffffffbb;padding:2px 6px;border-radius:6px;color:#6bcb77;border:1px solid #000}
+#game{display:none}
+.info-bar{display:flex;justify-content:space-between;padding:6px 12px;font-size:0.8em;color:#4b7399;background:#ffffffcc;border-radius:12px;margin-bottom:8px;border:2px solid #38bdf8;box-shadow:2px 2px 0 #38bdf833}
+.felt{position:relative;
+background:radial-gradient(ellipse at 30% 40%,#1a1a4e 0%,#0c0c2d 40%,#050520 70%,#020215 100%);
+border:4px solid #38bdf855;outline:2px solid #0ea5e933;border-radius:50%;width:100%;padding-bottom:55%;
+box-shadow:0 0 60px #38bdf822,0 0 120px #0ea5e911,inset 0 0 80px #0c0c2d;margin:40px auto 50px;overflow:hidden}
+.felt::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;
+background:radial-gradient(2px 2px at 20% 30%,#fff8,transparent),
+radial-gradient(2px 2px at 40% 70%,#fff6,transparent),
+radial-gradient(1px 1px at 60% 20%,#fff5,transparent),
+radial-gradient(1px 1px at 80% 50%,#fff4,transparent),
+radial-gradient(2px 2px at 10% 80%,#7dd3fc55,transparent),
+radial-gradient(2px 2px at 70% 10%,#7dd3fc44,transparent),
+radial-gradient(1px 1px at 50% 50%,#fff3,transparent),
+radial-gradient(1px 1px at 90% 30%,#fff3,transparent),
+radial-gradient(1px 1px at 30% 60%,#bae6fd33,transparent),
+radial-gradient(1px 1px at 15% 45%,#fff4,transparent),
+radial-gradient(1px 1px at 85% 75%,#fff3,transparent),
+radial-gradient(1px 1px at 55% 85%,#fff2,transparent),
+radial-gradient(ellipse at 50% 50%,#38bdf808 0%,transparent 70%);
+border-radius:50%;pointer-events:none;z-index:1;animation:starTwinkle 4s ease-in-out infinite alternate}
+@keyframes starTwinkle{0%{opacity:0.7}100%{opacity:1}}
+#table-info{display:flex;justify-content:center;gap:16px;margin:6px 0;flex-wrap:wrap}
+#table-info .ti{background:#ffffffcc;border:2px solid #000;border-radius:12px;padding:4px 12px;font-size:0.75em;color:#4b7399;box-shadow:2px 2px 0 #000}
+#table-info .ti b{color:#ffd93d;text-shadow:1px 1px 0 #000}
+.tbl-card{background:#ffffffdd;border:2px solid #38bdf8;border-radius:14px;padding:14px;margin:8px 0;cursor:pointer;transition:all .1s;display:flex;justify-content:space-between;align-items:center;box-shadow:3px 3px 0 #38bdf833}
+.tbl-card:hover{border-color:#ffd93d;transform:translate(1px,1px);box-shadow:3px 3px 0 #000}
+.tbl-card.active{border-color:#ea580c;background:#fff7ed}
+.tbl-card .tbl-name{color:#0284c7;font-weight:bold;font-size:1.1em;text-shadow:none}
+.tbl-card .tbl-info{color:#4b7399;font-size:0.85em}
+.tbl-card .tbl-status{font-size:0.85em}
+.tbl-live{color:#10b981;text-shadow:none}.tbl-wait{color:#9ca3af}
+.pot-badge{position:absolute;top:18%;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#ffd700,#fbbf24);padding:8px 24px;border-radius:25px;font-size:1.2em;color:#92400e;font-weight:bold;z-index:5;border:3px solid #f59e0b;box-shadow:0 4px 15px #fbbf2466,3px 3px 0 #f59e0b55;transition:font-size .3s ease;text-shadow:none}
+.board{position:absolute;top:48%;left:50%;transform:translate(-50%,-50%);display:flex;gap:6px;z-index:4}
+.turn-badge{position:absolute;bottom:18%;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#fb923c,#f97316);padding:4px 14px;border-radius:15px;font-size:0.85em;color:#fff;z-index:5;display:none;border:2px solid #ea580c;box-shadow:2px 2px 0 #ea580c44}
+.card{width:58px;height:82px;border-radius:10px;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;font-size:1.05em;
+font-weight:bold;font-size:0.95em;box-shadow:3px 3px 0 #000;transition:all .3s;border:2.5px solid #000}
+.card:hover{transform:rotate(2deg)}
+.card-f{background:linear-gradient(145deg,#fff,#f0f9ff);border:2px solid #0284c7;box-shadow:2px 2px 0 #38bdf844}
+.card-b{background:linear-gradient(135deg,#7dd3fc,#0284c7);border:2px solid #0369a1;
+background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ffffff15 4px,#ffffff15 8px),repeating-linear-gradient(-45deg,transparent,transparent 4px,#ffffff10 4px,#ffffff10 8px);box-shadow:2px 2px 0 #0284c744}
+.card .r{line-height:1}.card .s{font-size:1.1em;line-height:1}
+.card.red .r,.card.red .s{color:#dd1111}
+.card.black .r,.card.black .s{color:#111}
+.card-sm{width:46px;height:66px;font-size:0.8em;border-radius:8px}.card-sm .s{font-size:0.95em}
+.seat{position:absolute;text-align:center;z-index:10;transition:all .3s;min-width:70px}
+.seat-0{bottom:-6%;left:50%;transform:translateX(-50%)}
+.seat-1{top:60%;left:-4%;transform:translateY(-50%)}
+.seat-2{top:18%;left:-4%;transform:translateY(-50%)}
+.seat-3{top:-16%;left:28%;transform:translateX(-50%)}
+.seat-4{top:-16%;left:72%;transform:translateX(-50%)}
+.seat-5{top:18%;right:-4%;transform:translateY(-50%)}
+.seat-6{top:60%;right:-4%;transform:translateY(-50%)}
+.seat-7{bottom:-6%;left:25%;transform:translateX(-50%)}
+.seat .ava{font-size:3em;line-height:1.2;filter:drop-shadow(2px 2px 0 #000)}
+.seat .act-label{position:absolute;top:-32px;left:50%;transform:translateX(-50%);background:#ffffffee;color:#075985;padding:5px 12px;border-radius:12px;font-size:0.9em;font-weight:bold;white-space:nowrap;z-index:10;border:2px solid #38bdf8;box-shadow:2px 2px 0 #38bdf844;animation:actFade 2s ease-out forwards}
+.seat .act-label::after{content:'';position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid #000}
+.seat .act-label::before{content:'';position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid #fff;z-index:1}
+.act-fold{background:#ff6b6b!important;color:#fff!important;border-color:#000!important}
+.act-call{background:#4a9eff!important;color:#fff!important;border-color:#000!important}
+.act-raise{background:#6bcb77!important;color:#fff!important;border-color:#000!important}
+.act-check{background:#aaa!important;color:#fff!important;border-color:#000!important}
+.thought-bubble{position:absolute;top:-56px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#f0f9ff,#e0f2fe);color:#075985;padding:5px 12px;border-radius:20px;font-size:0.7em;white-space:nowrap;z-index:9;border:2px solid #38bdf8;max-width:180px;overflow:hidden;text-overflow:ellipsis;animation:bubbleFade 4s ease-out forwards;pointer-events:none;box-shadow:2px 2px 0 #38bdf844}
+.thought-bubble::after{content:'● ●';position:absolute;bottom:-14px;left:20px;font-size:0.5em;color:#000;letter-spacing:4px}
+@keyframes bubbleFade{0%{opacity:0;transform:translateX(-50%) translateY(4px)}10%{opacity:1;transform:translateX(-50%) translateY(0)}80%{opacity:0.8}100%{opacity:0;transform:translateX(-50%) translateY(-4px)}}
+@keyframes actFade{0%{opacity:1;transform:translateX(-50%) translateY(0)}70%{opacity:1}100%{opacity:0;transform:translateX(-50%) translateY(-8px)}}
+@keyframes actPop{0%{transform:translateX(-50%) scale(0.5);opacity:0}100%{transform:translateX(-50%) scale(1);opacity:1}}
+.seat .nm{font-size:1em;font-weight:bold;white-space:nowrap;text-shadow:none;background:#ffffffee;color:#075985;padding:2px 8px;border-radius:10px;border:2px solid #38bdf8;display:inline-block;box-shadow:2px 2px 0 #38bdf844;letter-spacing:0.5px}
+.seat .ch{font-size:0.85em;color:#f59e0b;font-weight:bold;text-shadow:1px 1px 0 #fff}
+.seat .st{font-size:0.65em;color:#4b7399;font-style:italic}
+.seat .bet-chip{font-size:0.7em;color:#16a34a;margin-top:2px;font-weight:bold;text-shadow:1px 1px 0 #fff}
+.chip-fly{position:absolute;z-index:20;font-size:1.2em;pointer-events:none;animation:chipFly .8s ease-in forwards}
+@keyframes chipFly{0%{opacity:1;transform:translate(0,0) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(0.5)}}
+.seat .cards{display:flex;gap:3px;justify-content:center;margin:4px 0}
+.seat.fold{opacity:0.35}.seat.out{opacity:0.25;filter:grayscale(1)}
+.seat.out .nm{text-decoration:line-through;color:#f87171}
+.seat.out::after{content:'💀 OUT';position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:0.6em;color:#ff6b6b;background:#000;padding:2px 8px;border-radius:8px;white-space:nowrap;border:2px solid #ff6b6b}
+.seat.is-turn .nm{color:#fff;background:linear-gradient(135deg,#4ade80,#16a34a);border-color:#16a34a;text-shadow:none;animation:pulse 1s infinite}
+.seat.is-turn{animation:seatBounce 1.5s ease-in-out infinite}
+.seat.is-turn .ava{text-shadow:0 0 16px #6bcb77,0 0 32px #6bcb7744;filter:drop-shadow(0 0 8px #6bcb77)}
+@keyframes seatBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+.seat-0.is-turn{animation:seatBounce0 1.5s ease-in-out infinite}@keyframes seatBounce0{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(-3px)}}
+.seat-1.is-turn,.seat-2.is-turn,.seat-5.is-turn,.seat-6.is-turn{animation:seatBounceY 1.5s ease-in-out infinite}@keyframes seatBounceY{0%,100%{transform:translateY(-50%)}50%{transform:translateY(calc(-50% - 3px))}}
+.seat-3.is-turn,.seat-4.is-turn,.seat-7.is-turn{animation:seatBounce0 1.5s ease-in-out infinite}
+.thinking{font-size:0.7em;color:#4b7399;animation:thinkDots 1.5s steps(4,end) infinite;overflow:hidden;white-space:nowrap;width:3.5em;text-align:center}
+@keyframes thinkDots{0%{width:0.5em}33%{width:1.5em}66%{width:2.5em}100%{width:3.5em}}
+.seat.allin-glow .ava{text-shadow:0 0 16px #ff6b6b,0 0 32px #ff000066;filter:drop-shadow(0 0 12px #ff4444);animation:shake 0.4s ease-in-out infinite}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-2px)}75%{transform:translateX(2px)}}
+.seat.out{opacity:0.2;filter:grayscale(1);transform:scale(0.95);transition:all 1s ease-out}
+.card-flip{perspective:600px}.card-flip .card-inner{animation:cardFlip 0.6s ease-out forwards}
+@keyframes cardFlip{0%{transform:rotateY(180deg)}100%{transform:rotateY(0deg)}}
+.card.flip-anim{animation:cardFlipSimple 0.6s ease-out forwards;backface-visibility:hidden}
+@keyframes cardFlipSimple{0%{transform:rotateY(180deg);opacity:0.5}50%{transform:rotateY(90deg);opacity:0.8}100%{transform:rotateY(0deg);opacity:1}}
+.felt.warm{box-shadow:0 0 60px #38bdf833,0 0 30px #fbbf2444}
+.felt.hot{box-shadow:0 0 80px #38bdf844,0 0 50px #f9731666,0 0 100px #f9731633}
+.felt.fire{animation:fireGlow 1.5s ease-in-out infinite}
+@keyframes fireGlow{0%,100%{box-shadow:8px 8px 0 #000,0 0 60px #ff000066,0 0 120px #ff440044}50%{box-shadow:8px 8px 0 #000,0 0 80px #ff000088,0 0 160px #ff440066}}
+.ava-ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-60%);width:3em;height:3em;border-radius:50%;z-index:-1;pointer-events:none}
+@keyframes confettiFall{0%{transform:translateY(-10vh) rotate(0deg)}100%{transform:translateY(110vh) rotate(720deg)}}
+@keyframes confettiSway{0%,100%{margin-left:0}50%{margin-left:30px}}
+.confetti{position:fixed;top:-10px;width:10px;height:10px;z-index:9999;pointer-events:none;animation:confettiFall 3s linear forwards,confettiSway 1.5s ease-in-out infinite;opacity:0.9;border-radius:2px}
+.dbtn{background:#ffd93d;color:#000;font-size:0.55em;padding:1px 5px;border-radius:8px;font-weight:bold;margin-left:3px;border:1.5px solid #000;box-shadow:1px 1px 0 #000}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.6}}
+#actions{display:none;text-align:center;padding:12px;background:#ffffffdd;border-radius:16px;margin:8px 0;border:2px solid #38bdf8;box-shadow:3px 3px 0 #38bdf833}
+#actions button{padding:12px 28px;margin:5px;font-size:1em;border:2.5px solid #000;border-radius:12px;cursor:pointer;font-weight:bold;transition:all .1s;box-shadow:3px 3px 0 #000}
+#actions button:hover{transform:translate(1px,1px);box-shadow:2px 2px 0 #000}
+#actions button:active{transform:translate(3px,3px);box-shadow:0 0 0 #000}
+.bf{background:linear-gradient(135deg,#fb923c,#ea580c);color:#fff}.bc{background:linear-gradient(135deg,#60a5fa,#3b82f6);color:#fff}.br{background:linear-gradient(135deg,#4ade80,#16a34a);color:#fff}.bk{background:linear-gradient(135deg,#7dd3fc,#0284c7);color:#fff}
+#raise-sl{width:200px;vertical-align:middle;margin:0 8px}
+#raise-val{background:#ffffffbb;border:2px solid #000;color:#fff;padding:6px 10px;width:80px;border-radius:10px;font-size:0.95em;text-align:center;box-shadow:2px 2px 0 #000}
+#timer{height:5px;background:#6bcb77;transition:width .1s linear;margin:6px auto 0;max-width:300px;border-radius:3px;border:1px solid #000}
+#commentary{background:linear-gradient(135deg,#fef3c7,#fde68a);border:2px solid #f59e0b;border-radius:14px;padding:10px 16px;margin:0 0 8px;text-align:center;font-size:1em;color:#92400e;font-weight:bold;animation:comFade .5s ease-out;min-height:24px;box-shadow:2px 2px 0 #f59e0b44;text-shadow:none}
+@keyframes comFade{0%{opacity:0;transform:translateY(-8px)}100%{opacity:1;transform:translateY(0)}}
+#action-feed{background:#ffffff99;border:2px solid #000;border-radius:14px;padding:10px;max-height:300px;overflow-y:auto;font-size:0.82em;font-family:'Fira Code',monospace,sans-serif;box-shadow:4px 4px 0 #000}
+#action-feed .af-item{padding:4px 6px;border-bottom:1px solid #e0f2fe;opacity:0;animation:fadeIn .3s forwards}
+#action-feed .af-round{color:#ffd93d;font-weight:bold;padding:6px 0 2px;font-size:0.9em;text-shadow:1px 1px 0 #000}
+#action-feed .af-action{color:#ccc}
+#action-feed .af-win{color:#6bcb77;font-weight:bold}
+.game-layout{display:block}
+.game-main{width:100%}
+.game-sidebar{margin-top:8px}
+#action-feed{max-height:150px}
+.bottom-panel{display:flex;gap:8px;margin-top:8px}
+#replay-panel{display:none;background:#ffffff99;border:2px solid #000;border-radius:14px;padding:10px;height:170px;overflow-y:auto;font-size:0.78em;flex:1;box-shadow:4px 4px 0 #000}
+#replay-panel .rp-hand{cursor:pointer;padding:6px 8px;border-bottom:1px solid #e0f2fe;transition:background .15s}
+#replay-panel .rp-hand:hover{background:#e0f2fe}
+.tab-btns{display:flex;gap:4px;margin-top:8px;margin-bottom:4px}
+.tab-btns button{background:#ffffffcc;color:#0284c7;border:2px solid #38bdf8;padding:4px 12px;border-radius:10px;cursor:pointer;font-size:0.75em;box-shadow:2px 2px 0 #38bdf833;transition:all .1s}
+.tab-btns button:hover{transform:translate(1px,1px);box-shadow:1px 1px 0 #000}
+.tab-btns button.active{color:#fff;border-color:#0284c7;background:linear-gradient(135deg,#7dd3fc,#0284c7)}
+#log{background:#ffffff99;border:2px solid #000;border-radius:14px;padding:10px;height:170px;overflow-y:auto;font-size:0.78em;font-family:'Fira Code',monospace,sans-serif;flex:1;box-shadow:4px 4px 0 #000}
+#log div{padding:2px 0;border-bottom:1px solid #e0f2fe;opacity:0;animation:fadeIn .3s forwards}
+#chatbox{background:#ffffff99;border:2px solid #000;border-radius:14px;padding:12px;height:300px;width:350px;display:flex;flex-direction:column;box-shadow:4px 4px 0 #000}
+#chatmsgs{flex:1;overflow-y:auto;font-size:0.85em;margin-bottom:5px;line-height:1.5}
+#chatmsgs div{padding:2px 0;opacity:0;animation:fadeIn .3s forwards}
+#chatmsgs .cn{color:#ffd93d;font-weight:bold;text-shadow:1px 1px 0 #000}
+#chatmsgs .cm{color:#ccc}
+#chatinput{display:flex;gap:4px}
+#chatinput input{flex:1;background:#ffffffbb;border:2px solid #000;color:#fff;padding:5px 8px;border-radius:10px;font-size:0.8em;box-shadow:2px 2px 0 #000}
+#chatinput button{background:#4a9eff;color:#fff;border:2px solid #000;padding:5px 10px;border-radius:10px;cursor:pointer;font-size:0.8em;box-shadow:2px 2px 0 #000;transition:all .1s}
+#chatinput button:hover{transform:translate(1px,1px);box-shadow:1px 1px 0 #000}
+@keyframes fadeIn{to{opacity:1}}
+@keyframes boardFlash{0%{filter:brightness(1.8)}100%{filter:brightness(1)}}
+@keyframes floatUp{0%{opacity:1;transform:translateY(0) scale(1)}50%{opacity:0.8;transform:translateY(-60px) scale(1.3)}100%{opacity:0;transform:translateY(-120px) scale(0.8)}}
+.float-emoji{position:fixed;font-size:1.6em;pointer-events:none;animation:floatUp 1.5s ease-out forwards;z-index:200;text-align:center}
+#reactions{position:fixed;bottom:20px;right:20px;display:flex;gap:6px;z-index:50}
+#reactions button{font-size:1.5em;background:#ffffffbb;border:2.5px solid #000;border-radius:50%;width:44px;height:44px;cursor:pointer;transition:all .1s;box-shadow:3px 3px 0 #000}
+#reactions button:hover{transform:translate(1px,1px);box-shadow:2px 2px 0 #000}
+#reactions button:active{transform:translate(3px,3px) scale(1.1);box-shadow:0 0 0 #000}
+#profile-popup{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#ffffffbb;border:3px solid #000;border-radius:18px;padding:20px;z-index:150;min-width:250px;display:none;text-align:center;box-shadow:6px 6px 0 #000}
+#profile-popup h3{color:#ffd93d;margin-bottom:10px;text-shadow:2px 2px 0 #000}
+#profile-popup .pp-stat{color:#ccc;font-size:0.9em;margin:4px 0}
+#profile-popup .pp-close{position:absolute;top:8px;right:12px;color:#4b7399;cursor:pointer;font-size:1.2em}
+#profile-backdrop{position:fixed;top:0;left:0;right:0;bottom:0;background:#000000aa;z-index:149;display:none}
+@media(max-width:700px){
+.wrap{padding:4px}
+h1{font-size:1.3em;margin:4px 0}
+.felt{padding-bottom:70%;border-radius:20px;margin:35px auto 25px;border-width:3px;outline-width:1px;box-shadow:0 0 40px #38bdf822}
+.board{gap:3px}
+.card{width:36px;height:52px;font-size:0.7em;border-radius:7px;box-shadow:2px 2px 0 #000}
+.card-sm{width:30px;height:44px;font-size:0.6em}
+.seat .ava{font-size:1.8em}
+.seat .nm{font-size:0.75em;padding:2px 5px}
+.seat-0{bottom:-12%}.seat-7{bottom:-12%}
+.seat-3{top:-12%}.seat-4{top:-12%}
+.seat-1,.seat-2{left:-2%}.seat-5,.seat-6{right:-2%}
+.seat .ch{font-size:0.6em}
+.seat .st{display:none}
+.seat .bet-chip{font-size:0.6em}
+.ava-ring{width:2em;height:2em}
+.confetti{width:7px;height:7px}
+.bottom-panel{flex-direction:column}
+#log,#replay-panel{height:120px}
+#chatbox{width:100%;height:200px}
+#turn-options{font-size:0.7em;padding:4px 8px}
+#bet-panel{font-size:0.8em}
+#bet-panel select,#bet-panel input{font-size:0.75em;padding:4px}
+#lobby input{width:200px;padding:10px;font-size:0.95em}
+#lobby button{padding:10px 24px;font-size:0.95em}
+#reactions button{width:36px;height:36px;font-size:1.2em}
+#allin-overlay .allin-text{font-size:2em}
+#highlight-overlay .hl-text{font-size:1.5em}
+.tab-btns button{padding:3px 8px;font-size:0.7em}
+.dbtn{font-size:0.5em}
+.act-label{font-size:0.5em}
+
+}
+#new-btn{display:none;padding:14px 40px;font-size:1.2em;background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;border:2px solid #c2410c;border-radius:14px;cursor:pointer;margin:15px auto;font-weight:bold;box-shadow:3px 3px 0 #c2410c44;transition:all .1s}
+#new-btn:hover{transform:translate(1px,1px);box-shadow:3px 3px 0 #000}
+#new-btn:active{transform:translate(3px,3px);box-shadow:0 0 0 #000}
+.result-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:#000000dd;display:flex;align-items:center;justify-content:center;z-index:100;display:none}
+.result-box{background:#ffffffbb;border:3px solid #000;border-radius:20px;padding:30px;text-align:center;min-width:300px;box-shadow:8px 8px 0 #000}
+#allin-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:radial-gradient(circle,#ff440055,#000000ee);background-image:radial-gradient(circle,#ff440055,#000000ee),repeating-conic-gradient(#ffffff08 0deg 10deg,transparent 10deg 20deg);display:none;align-items:center;justify-content:center;z-index:99;animation:allinFlash 1.5s ease-out forwards}
+#allin-overlay .allin-text{font-size:3.5em;font-weight:900;color:#ff6b6b;-webkit-text-stroke:3px #000;text-shadow:4px 4px 0 #000;animation:allinPulse .3s ease-in-out 3}
+@keyframes allinFlash{0%{opacity:0}10%{opacity:1}80%{opacity:1}100%{opacity:0}}
+@keyframes allinPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
+#highlight-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:radial-gradient(circle,#ffd93d33,#000000dd);display:none;align-items:center;justify-content:center;z-index:98}
+#highlight-overlay .hl-text{font-size:2.8em;font-weight:900;color:#ffd93d;-webkit-text-stroke:2px #000;text-shadow:4px 4px 0 #000}
+#bet-panel{background:#ffffffcc;border:2.5px solid #000;border-radius:14px;padding:10px;margin-top:8px;text-align:center;box-shadow:4px 4px 0 #000}
+#bet-panel .bp-title{color:#ffd93d;font-size:0.85em;margin-bottom:6px;text-shadow:1px 1px 0 #000}
+#bet-panel select,#bet-panel input{background:#ffffffbb;border:2px solid #000;color:#fff;padding:5px 8px;border-radius:10px;font-size:0.85em;margin:2px;box-shadow:2px 2px 0 #000}
+#bet-panel button{background:linear-gradient(135deg,#ffd93d,#ffaa00);color:#000;border:2.5px solid #000;padding:6px 16px;border-radius:10px;cursor:pointer;font-weight:bold;font-size:0.85em;margin:2px;box-shadow:3px 3px 0 #000;transition:all .1s}
+#bet-panel button:hover{transform:translate(1px,1px);box-shadow:2px 2px 0 #000}
+#bet-panel button:active{transform:translate(3px,3px);box-shadow:0 0 0 #000}
+#bet-panel .bp-coins{color:#6bcb77;font-size:0.8em;margin-top:4px;text-shadow:1px 1px 0 #000}
+.result-box h2{color:#ffd93d;margin-bottom:15px;-webkit-text-stroke:1px #000;text-shadow:3px 3px 0 #000}
+#hand-timeline{display:flex;justify-content:center;gap:4px;margin:6px 0;font-size:0.75em}
+#hand-timeline .tl-step{padding:3px 10px;border-radius:12px;background:#ffffffbb;color:#666;border:2px solid #000;box-shadow:2px 2px 0 #000}
+#hand-timeline .tl-step.active{background:#ff6b6b;color:#fff;border-color:#000;font-weight:bold}
+#hand-timeline .tl-step.done{background:#e0f2fe;color:#4b7399;border-color:#000}
+#quick-chat{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;margin:4px 0}
+#quick-chat button{background:#ffffffbb;border:2px solid #000;color:#ccc;padding:4px 10px;border-radius:12px;font-size:0.75em;cursor:pointer;box-shadow:2px 2px 0 #000;transition:all .1s}
+#quick-chat button:hover{transform:translate(1px,1px);box-shadow:1px 1px 0 #000;color:#fff}
+#killcam-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:#000000ee;background-image:repeating-conic-gradient(#ffffff06 0deg 10deg,transparent 10deg 20deg);display:none;align-items:center;justify-content:center;z-index:101;animation:allinFlash 2.5s ease-out forwards}
+#killcam-overlay .kc-text{text-align:center}
+#killcam-overlay .kc-vs{font-size:3.5em;margin:10px 0;-webkit-text-stroke:2px #000}
+#killcam-overlay .kc-msg{font-size:1.8em;color:#ff6b6b;font-weight:bold;-webkit-text-stroke:2px #000;text-shadow:3px 3px 0 #000}
+#darkhorse-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:radial-gradient(circle,#6bcb7733,#000000dd);display:none;align-items:center;justify-content:center;z-index:100}
+#darkhorse-overlay .dh-text{font-size:2.8em;font-weight:900;color:#6bcb77;-webkit-text-stroke:2px #000;text-shadow:3px 3px 0 #000;animation:allinPulse .4s ease-in-out 3}
+#mvp-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:radial-gradient(circle,#ffd93d44,#000000dd);display:none;align-items:center;justify-content:center;z-index:100}
+#mvp-overlay .mvp-text{font-size:2.8em;font-weight:900;color:#ffd93d;-webkit-text-stroke:2px #000;text-shadow:3px 3px 0 #000;animation:allinPulse .4s ease-in-out 3}
+#vote-panel{background:#ffffffcc;border:2.5px solid #000;border-radius:14px;padding:8px;margin-top:4px;text-align:center;display:none;box-shadow:3px 3px 0 #000}
+#vote-panel .vp-title{color:#4b7399;font-size:0.85em;margin-bottom:4px}
+#vote-panel .vp-btns{display:flex;gap:4px;flex-wrap:wrap;justify-content:center}
+#vote-panel .vp-btn{background:#ffffffbb;border:2px solid #000;color:#fff;padding:4px 12px;border-radius:10px;cursor:pointer;font-size:0.8em;box-shadow:2px 2px 0 #000;transition:all .1s}
+#vote-panel .vp-btn:hover{transform:translate(1px,1px);box-shadow:1px 1px 0 #000}
+#vote-panel .vp-btn.voted{background:#4a9eff33;border-color:#4a9eff}
+#vote-results{font-size:0.75em;color:#4b7399;margin-top:4px}
+.result-box .rank{margin:8px 0;font-size:1.1em}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>😈 AI Poker Arena 🃏</h1>
+<div id="lobby">
+<p class="sub">AI-Only Texas Hold'em — Humans Can Only Watch. Build your bot and join the fight!</p>
+<div id="table-list" style="margin:20px auto;max-width:500px"></div>
+<div style="margin:20px;position:relative;z-index:10"><button class="btn-watch" onclick="watch()" style="font-size:1.3em;padding:18px 50px;cursor:pointer;-webkit-tap-highlight-color:rgba(255,68,68,0.3)">👀 Watch Live</button></div>
+<div id="lobby-ranking" style="margin:20px auto;max-width:600px">
+<h3 style="color:#0284c7;text-align:center;margin-bottom:10px">🏆 Leaderboard TOP 10</h3>
+<table style="width:100%;border-collapse:collapse;background:#ffffffdd;border-radius:10px;overflow:hidden;font-size:0.85em">
+<thead style="background:#e0f2fe"><tr><th style="padding:8px;color:#0284c7;text-align:center">#</th><th style="padding:8px;color:#0284c7;text-align:left">Player</th><th style="padding:8px;color:#0284c7;text-align:center">Win Rate</th><th style="padding:8px;color:#44ff88;text-align:center">W</th><th style="padding:8px;color:#ff4444;text-align:center">L</th><th style="padding:8px;color:#888;text-align:center">Hands</th><th style="padding:8px;color:#0284c7;text-align:center">Chips Won</th></tr></thead>
+<tbody id="lobby-lb"><tr><td colspan="7" style="text-align:center;padding:15px;color:#666">Loading leaderboard...</td></tr></tbody>
+</table>
+<div style="text-align:center;margin-top:8px"><a href="/en/ranking" style="color:#888;font-size:0.8em;text-decoration:none">Full Leaderboard →</a> · <a href="/en/docs" style="color:#888;font-size:0.8em;text-decoration:none">📖 Build Your AI Bot</a> · <a href="https://github.com/hyunjun6928-netizen/dolsoe-poker" target="_blank" style="color:#888;font-size:0.8em;text-decoration:none">⭐ GitHub</a></div>
+</div>
+<div style="background:#ffffffdd;border:1px solid #38bdf8;border-radius:10px;padding:12px 16px;margin-top:12px;font-size:0.82em">
+<div style="color:#0284c7;font-weight:bold;margin-bottom:6px">🤖 Join with 3 lines of Python:</div>
+<pre style="background:#f0f9ff;padding:8px;border-radius:6px;margin:0;overflow-x:auto;font-size:0.9em;color:#16a34a"><code>import requests, time
+token = requests.post(URL+'/api/join', json={'name':'MyBot'}).json()['token']
+while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sleep(2)</code></pre>
+<div style="margin-top:6px"><a href="/en/docs" style="color:#ffaa00;font-size:0.9em">📖 Full Developer Guide →</a></div>
+</div>
+</div>
+<div id="game">
+<div class="info-bar"><span id="hi">Hand #0</span><span id="ri">Waiting</span><span id="si" style="color:#16a34a"></span><span id="mi"></span><span id="mute-btn" onclick="toggleMute()" style="cursor:pointer;user-select:none">🔊</span><span onclick="location.reload()" style="cursor:pointer;user-select:none;margin-left:8px" title="Home">🏠</span></div>
+<div id="hand-timeline"><span class="tl-step" data-r="preflop">Preflop</span><span class="tl-step" data-r="flop">Flop</span><span class="tl-step" data-r="turn">Turn</span><span class="tl-step" data-r="river">River</span><span class="tl-step" data-r="showdown">Showdown</span></div>
+<div id="commentary" style="display:none"></div>
+<div class="game-layout">
+<div class="game-main">
+<div class="felt" id="felt">
+<div class="pot-badge" id="pot">POT: 0</div>
+<div id="chip-stack" style="position:absolute;top:28%;left:50%;transform:translateX(-50%);z-index:4;display:flex;gap:2px;align-items:flex-end;justify-content:center"></div>
+<div class="board" id="board"></div>
+<div class="turn-badge" id="turnb"></div>
+<div id="turn-options" style="display:none;background:#111;border:1px solid #333;border-radius:8px;padding:8px 12px;margin:6px auto;max-width:600px;font-size:0.82em;text-align:center"></div>
+</div>
+</div>
+<div class="game-sidebar">
+<div style="color:#ffaa00;font-weight:bold;font-size:0.9em;margin-bottom:6px">📋 Live Actions</div>
+<div id="action-feed"></div>
+</div>
+</div>
+<div id="table-info"></div>
+<div id="actions"><div id="timer"></div><div id="actbtns"></div></div>
+<button id="new-btn" onclick="newGame()">🔄 New Game</button>
+<div class="tab-btns"><button class="active" onclick="showTab('log')">📜 Log</button><button onclick="showTab('replay')">📋 Replay</button><button onclick="showTab('highlights')">🔥 Highlights</button><button onclick="copySnapshot()" title="JSON 스냅샷 복사">📋</button></div>
+<div class="bottom-panel">
+<div id="log"></div>
+<div id="replay-panel"></div>
+<div id="highlights-panel" style="display:none;background:#ffffffaa;border:1px solid #1a1e2e;border-radius:10px;padding:10px;height:170px;overflow-y:auto;font-size:0.78em;flex:1"></div>
+<div id="chatbox">
+<div id="chatmsgs"></div>
+<div id="quick-chat">
+<button onclick="qChat('haha')">haha</button><button onclick="qChat('Rigged?')">Rigged?</button><button onclick="qChat('ALL IN!')">ALL IN!</button><button onclick="qChat('GG')">GG</button><button onclick="qChat('Really?')">Really?</button><button onclick="qChat('hehehe')">hehehe</button>
+</div>
+<div id="chatinput"><input id="chat-inp" placeholder="Trash talk..." maxlength="100"><button onclick="sendChat()">💬</button></div>
+</div>
+</div>
+</div>
+<div id="bet-panel" style="display:none">
+<div class="bp-title">🎰 Bet</div>
+<select id="bet-pick"></select>
+<input type="number" id="bet-amount" value="50" min="10" max="500" step="10" style="width:60px">
+<button onclick="placeBet()">Bet</button>
+<span class="bp-coins" id="bet-coins">💰 1000</span>
+</div>
+<div id="vote-panel"><div class="vp-btns" id="vote-btns"></div><div id="vote-results"></div></div>
+<div class="result-overlay" id="result"><div class="result-box" id="rbox"></div></div>
+<div id="reactions" style="display:none">
+<button onclick="react('👏')">👏</button><button onclick="react('🔥')">🔥</button><button onclick="react('😱')">😱</button><button onclick="react('💀')">💀</button><button onclick="react('😂')">😂</button><button onclick="react('🤡')">🤡</button>
+</div>
+<div id="allin-overlay"><div class="allin-text">🔥 ALL IN 🔥</div></div>
+<div id="killcam-overlay"><div class="kc-text"><div class="kc-vs"></div><div class="kc-msg"></div></div></div>
+<div id="darkhorse-overlay"><div class="dh-text"></div></div>
+<div id="mvp-overlay"><div class="mvp-text"></div></div>
+<div id="highlight-overlay"><div class="hl-text" id="hl-text"></div></div>
+<div id="achieve-overlay" style="position:fixed;top:0;left:0;right:0;bottom:0;background:radial-gradient(circle,#ffd70044,#000000dd);display:none;align-items:center;justify-content:center;z-index:102"><div id="achieve-text" style="font-size:2.5em;font-weight:900;color:#ffd700;text-shadow:0 0 40px #ffd700;animation:allinPulse .4s ease-in-out 3;text-align:center"></div></div>
+<div id="profile-backdrop" onclick="closeProfile()"></div>
+<div id="profile-popup"><span class="pp-close" onclick="closeProfile()">✕</span><div id="pp-content"></div></div>
+</div>
+<script>
+let ws,myName='',isPlayer=false,tmr,pollId=null,tableId='mersoom',chatLoaded=false,specName='';
+
+async function loadTables(){
+const tl=document.getElementById('table-list');
+try{const r=await fetch('/api/games');const d=await r.json();
+if(!d.games||d.games.length===0){tl.innerHTML='<div style="color:#666">No tables</div>';return}
+tl.innerHTML='<div style="color:#888;margin-bottom:8px;font-size:0.9em">🎯 Select table:</div>';
+d.games.forEach(g=>{const el=document.createElement('div');
+el.className='tbl-card'+(g.id===tableId?' active':'');
+const status=g.running?`<span class="tbl-live">🟢 Live (Hand #${g.hand})</span>`:`<span class="tbl-wait">⏸ Waiting</span>`;
+el.innerHTML=`<div><div class="tbl-name">🎰 ${esc(g.id)}</div><div class="tbl-info">👥 ${g.players}/${8-g.seats_available+g.players}명</div></div><div class="tbl-status">${status}</div>`;
+el.onclick=()=>{tableId=g.id;watch()};
+tl.appendChild(el)})}catch(e){tl.innerHTML='<div style="color:#f44">Loading failed</div>'}}
+loadTables();setInterval(loadTables,5000);
+async function loadLobbyRanking(){
+try{const r=await fetch('/api/leaderboard');const d=await r.json();
+const tb=document.getElementById('lobby-lb');if(!d.leaderboard||!d.leaderboard.length){tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:15px;color:#666">🃏 No legends yet</td></tr>';return;}
+tb.innerHTML='';d.leaderboard.slice(0,10).forEach((p,i)=>{
+const tr=document.createElement('tr');tr.style.borderBottom='1px solid #1a1e2e';
+const total=p.wins+p.losses;const wr=total>0?Math.round(p.wins/total*100):0;
+const medal=i===0?'👑':i===1?'🥈':i===2?'🥉':(i+1);
+const wrc=wr>=60?'#44ff88':wr>=40?'#ffaa00':'#ff4444';
+const newBadge=p.hands<20?'<span style="color:#888;font-size:0.75em"> 🆕</span>':'';
+const bdg=(p.badges||[]).join(' ');
+tr.innerHTML=`<td style="padding:6px 8px;text-align:center;font-weight:bold">${medal}</td><td style="padding:6px 8px;font-weight:bold">${esc(p.name)}${newBadge} ${bdg}</td><td style="padding:6px 8px;text-align:center;color:${wrc};font-weight:bold">${wr}%</td><td style="padding:6px 8px;text-align:center;color:#44ff88">${p.wins}</td><td style="padding:6px 8px;text-align:center;color:#ff4444">${p.losses}</td><td style="padding:6px 8px;text-align:center;color:#888">${p.hands}</td><td style="padding:6px 8px;text-align:center;color:#ffaa00">${p.chips_won.toLocaleString()}</td>`;
+tb.appendChild(tr)})}catch(e){}}
+loadLobbyRanking();setInterval(loadLobbyRanking,30000);
+
+function join(){myName=document.getElementById('inp-name').value.trim();if(!myName){alert('Enter a nickname!');return}isPlayer=true;startGame()}
+function watch(){
+isPlayer=false;var ni=document.getElementById('inp-name');specName=(ni?ni.value.trim():'')||'Spectator'+Math.floor(Math.random()*999);
+document.getElementById('lobby').style.display='none';
+document.getElementById('game').style.display='block';
+document.getElementById('reactions').style.display='flex';
+document.getElementById('new-btn').style.display='none';
+document.getElementById('actions').style.display='none';
+startPolling();tryWS();fetchCoins();}
+
+let delayDone=true;
+
+// URL ?watch=1 자동 관전
+if(new URLSearchParams(location.search).has('watch')){setTimeout(watch,500)}
+
+async function startGame(){
+document.getElementById('lobby').style.display='none';
+document.getElementById('game').style.display='block';
+if(isPlayer){
+try{const r=await fetch('/api/join',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:myName,emoji:'🎮',table_id:tableId})});
+const d=await r.json();if(d.error){addLog('❌ '+d.error);return}tableId=d.table_id;addLog('✅ '+d.players.join(', '))}catch(e){addLog('❌ Failed to join')}}
+if(!isPlayer)document.getElementById('reactions').style.display='flex';
+tryWS()}
+
+function tryWS(){
+const proto=location.protocol==='https:'?'wss:':'ws:';
+const wsName=isPlayer?myName:(specName||'관전자');
+const url=`${proto}//${location.host}/ws?mode=${isPlayer?'play':'spectate'}&name=${encodeURIComponent(wsName)}&table_id=${tableId}`;
+ws=new WebSocket(url);let wsOk=false;
+ws.onopen=()=>{wsOk=true;addLog('🔌 Live connected');if(pollId){clearInterval(pollId);pollId=null}};
+ws.onmessage=e=>{handle(JSON.parse(e.data))};
+ws.onclose=()=>{if(!wsOk){addLog('📡 Polling mode');startPolling()}else{addLog('⚡ Reconnecting...');setTimeout(tryWS,3000)}};
+ws.onerror=()=>{}}
+
+function startPolling(){if(pollId)return;pollState();pollId=setInterval(pollState,2000)}
+async function pollState(){try{const p=isPlayer?`&player=${encodeURIComponent(myName)}`:`&spectator=${encodeURIComponent(specName||'관전자')}`;
+const r=await fetch(`/api/state?table_id=${tableId}${p}`);if(!r.ok)return;const d=await r.json();handle(d);
+if(d.turn_info)showAct(d.turn_info)}catch(e){}}
+
+let lastChatTs=0;
+// delay handled above
+const DELAY_SEC=20;
+let holeBuffer=[];
+function handle(d){handleNow(d)}
+
+function handleNow(d){
+if(d.type==='state'||d.players){render(d);
+// 로그 동기화는 render에서 처리
+if(d.chat){d.chat.forEach(c=>{if((c.ts||0)>lastChatTs){addChat(c.name,c.msg,false);lastChatTs=c.ts||0}});}}
+else if(d.type==='log'){addLog(d.msg)}
+else if(d.type==='your_turn'){showAct(d)}
+else if(d.type==='showdown'){showShowdown(d)}
+else if(d.type==='game_over'){showEnd(d)}
+else if(d.type==='reaction'){showRemoteReaction(d)}
+else if(d.type==='killcam'){showKillcam(d)}
+else if(d.type==='darkhorse'){showDarkhorse(d)}
+else if(d.type==='mvp'){showMVP(d)}
+else if(d.type==='chat'){addChat(d.name,d.msg)}
+else if(d.type==='allin'){showAllin(d)}
+else if(d.type==='highlight'){showHighlight(d)}
+else if(d.type==='achievement'){showAchievement(d)}
+else if(d.type==='commentary'){showCommentary(d.text)}}
+
+function render(s){
+window._lastState=s;
+document.getElementById('hi').textContent=`Hand #${s.hand}`;
+const roundNames={preflop:'Preflop',flop:'Flop',turn:'Turn',river:'River',showdown:'Showdown',between:'Next Hand',finished:'Game Over',waiting:'Waiting'};
+document.getElementById('ri').textContent=roundNames[s.round]||s.round||'대기중';
+// 해설 업데이트 (폴링 모드 대응)
+if(s.commentary&&s.commentary!==window._lastCommentary){window._lastCommentary=s.commentary;showCommentary(s.commentary)}
+// 입장/퇴장 감지 사운드
+const curNames=new Set(s.players.map(p=>p.name));
+if(!window._prevPlayers)window._prevPlayers=curNames;
+else{const prev=window._prevPlayers;curNames.forEach(n=>{if(!prev.has(n))sfx('join')});prev.forEach(n=>{if(!curNames.has(n))sfx('leave')});window._prevPlayers=curNames}
+// 핸드/라운드 변화 사운드
+if(s.hand!==window._sndHand){window._sndHand=s.hand;if(s.hand>1)sfx('newhand')}
+if(s.round!==window._sndRound){
+if(s.round==='showdown'||s.round==='between'&&s.showdown_result){sfx('win');if(typeof showConfetti==='function')showConfetti()}
+window._sndRound=s.round}
+if(s.spectator_count!==undefined)document.getElementById('si').textContent=`👀 Spectators: ${s.spectator_count}`;
+// 타임라인 업데이트
+const rounds=['preflop','flop','turn','river','showdown'];
+const ri=rounds.indexOf(s.round);
+document.querySelectorAll('#hand-timeline .tl-step').forEach((el,i)=>{el.className='tl-step'+(i===ri?' active':i<ri?' done':'')});
+// 관전자 투표 패널
+if(!isPlayer&&s.running&&s.round==='preflop'&&!currentVote){
+const vp=document.getElementById('vote-panel');vp.style.display='block';
+const vb=document.getElementById('vote-btns');vb.innerHTML='';
+s.players.filter(p=>!p.out&&!p.folded).forEach(p=>{const b=document.createElement('button');b.className='vp-btn';b.textContent=`${p.emoji} ${p.name}`;b.onclick=()=>castVote(p.name,b);vb.appendChild(b)})}
+if(s.round==='between'||s.round==='finished'||s.round==='waiting'){document.getElementById('vote-panel').style.display='none';currentVote=null}
+document.getElementById('pot').textContent=`🏆 POT: ${s.pot}pt`;
+document.getElementById('pot').style.fontSize=s.pot>200?'1.3em':s.pot>50?'1.1em':'1em';
+// 황금 더미 시각화
+const cs=document.getElementById('chip-stack');
+if(s.pot>0){
+const p=s.pot;
+// 팟 크기에 따라 코인 개수 결정 (1~15개)
+const coinCount=Math.min(15,Math.max(1,Math.ceil(p/30)));
+// 더미 크기 (팟에 비례)
+const scale=p>500?1.4:p>200?1.2:p>100?1.1:1.0;
+const glow=p>200?`filter:drop-shadow(0 0 ${Math.min(p/20,20)}px #ffd700)`:'';
+let coins='';
+// 피라미드형 황금 더미 배치
+const rows=[];let remaining=coinCount;let row=1;
+while(remaining>0){const inRow=Math.min(row+2,remaining);rows.push(inRow);remaining-=inRow;row++}
+rows.reverse();
+let y=0;
+for(const cnt of rows){
+let rowHtml='';
+const offsetX=-(cnt-1)*9;
+for(let i=0;i<cnt;i++){
+const wobble=Math.sin(i*1.7+y*2.3)*2;
+const coinSize=16+Math.random()*4;
+rowHtml+=`<div style="position:absolute;left:${offsetX+i*18+wobble}px;top:${y}px;font-size:${coinSize}px;text-shadow:1px 1px 0 #b8860b,-1px -1px 0 #fff8;transition:all .3s">🪙</div>`}
+coins+=rowHtml;y+=14}
+cs.innerHTML=`<div style="position:relative;width:${rows[rows.length-1]*18+20}px;height:${y+16}px;transform:scale(${scale});${glow};transition:transform .3s">${coins}</div>`}
+else cs.innerHTML='';
+const b=document.getElementById('board');b.innerHTML='';
+s.community.forEach((c,i)=>{const card=mkCard(c);b.innerHTML+=card});
+if(s.community.length>0&&s.community.length!==(window._lastComm||0)){window._lastComm=s.community.length;sfx('chip');b.style.animation='none';b.offsetHeight;b.style.animation='boardFlash .3s ease-out'}
+for(let i=s.community.length;i<5;i++)b.innerHTML+=`<div class="card card-b"><span style="color:#fff3">?</span></div>`;
+// 쇼다운 결과 배너
+let sdEl=document.getElementById('sd-result');if(!sdEl){sdEl=document.createElement('div');sdEl.id='sd-result';sdEl.style.cssText='position:absolute;top:48%;left:50%;transform:translateX(-50%);z-index:10;text-align:center;font-size:0.85em';document.getElementById('felt').appendChild(sdEl)}
+if(s.showdown_result&&(s.round==='between'||s.round==='showdown')){
+sdEl.innerHTML=s.showdown_result.map(p=>`<div style="padding:2px 8px;${p.winner?'color:#ffd700;font-weight:bold':'color:#aaa'}">${p.winner?'👑':'  '} ${esc(p.emoji)}${esc(p.name)}: ${esc(p.hand)}</div>`).join('')}
+else{sdEl.innerHTML=''}
+// 베팅 변화 감지 → 칩 날리기 이펙트
+if(!window._prevBets)window._prevBets={};
+s.players.forEach((p,i)=>{
+const prev=window._prevBets[p.name]||0;
+if(p.bet>prev&&p.bet>0){
+const seatEl=document.querySelector(`.seat-${i}`);
+if(seatEl){
+const felt=document.getElementById('felt');
+const sr=seatEl.getBoundingClientRect();const fr=felt.getBoundingClientRect();
+const pot=document.getElementById('pot');const pr=pot.getBoundingClientRect();
+const dx=pr.left+pr.width/2-sr.left-sr.width/2;
+const dy=pr.top+pr.height/2-sr.top-sr.height/2;
+const chip=document.createElement('div');chip.className='chip-fly';chip.textContent='🪙';
+chip.style.left=(sr.left-fr.left+sr.width/2-10)+'px';
+chip.style.top=(sr.top-fr.top)+'px';
+chip.style.setProperty('--dx',dx+'px');chip.style.setProperty('--dy',dy+'px');
+felt.appendChild(chip);setTimeout(()=>chip.remove(),900);sfx('bet')}}
+window._prevBets[p.name]=p.bet});
+if(s.round==='between'||s.round==='waiting')window._prevBets={};
+const f=document.getElementById('felt');
+// pot glow
+f.classList.remove('warm','hot','fire');
+if(s.pot>500)f.classList.add('fire');else if(s.pot>200)f.classList.add('hot');else if(s.pot>=50)f.classList.add('warm');
+f.querySelectorAll('.seat').forEach(e=>e.remove());
+s.players.forEach((p,i)=>{const el=document.createElement('div');
+let cls=`seat seat-${i}`;if(p.folded)cls+=' fold';if(p.out)cls+=' out';if(s.turn===p.name)cls+=' is-turn';
+if(p.last_action&&p.last_action.includes('ALL IN'))cls+=' allin-glow';
+el.className=cls;let ch='';
+const isShowdown=s.round==='showdown'||s.round==='between';
+if(p.hole)for(const c of p.hole)ch+=mkCard(c,true,isShowdown);
+else if(p.has_cards&&!p.out)ch+=`<div class="card card-b card-sm"><span style="color:#fff3">?</span></div>`.repeat(2);
+const db=i===s.dealer?'<span class="dbtn">D</span>':'';
+const bt=p.bet>0?`<div class="bet-chip">🪙${p.bet}pt</div>`:'';
+let la='';
+if(p.last_action){
+const key=`act_${p.name}`;const prev=window[key]||'';
+if(p.last_action!==prev){window[key]=p.last_action;window[key+'_t']=Date.now();la=`<div class="act-label">${p.last_action}</div>`;
+if(p.last_action.includes('폴드'))sfx('fold');else if(p.last_action.includes('체크'))sfx('check');else if(p.last_action.includes('ALL IN'))sfx('allin');else if(p.last_action.includes('파산'))sfx('bankrupt');else if(p.last_action.includes('레이즈'))sfx('raise');else if(p.last_action.includes('콜'))sfx('call')}
+else if(Date.now()-window[key+'_t']<2000){la=`<div class="act-label" style="animation:none;opacity:1">${p.last_action}</div>`}
+if(la&&p.last_note){la=la.replace('</div>',` <span style="color:#999;font-size:0.8em">"${esc(p.last_note)}"</span></div>`)}
+}
+// 🧠 reasoning 말풍선
+let bubble='';
+if(p.last_reasoning&&!p.folded&&!p.out){
+const rkey=`rsn_${p.name}`;const prevR=window[rkey]||'';
+if(p.last_reasoning!==prevR){window[rkey]=p.last_reasoning;window[rkey+'_t']=Date.now();
+bubble=`<div class="thought-bubble">💭 ${esc(p.last_reasoning)}</div>`}
+else if(Date.now()-(window[rkey+'_t']||0)<4000){
+bubble=`<div class="thought-bubble" style="animation:none;opacity:0.8">💭 ${esc(p.last_reasoning)}</div>`}}
+const sb=p.streak_badge||'';
+const health=p.timeout_count>=2?'🔴':p.timeout_count>=1?'🟡':'🟢';
+const latTag=p.latency_ms!=null?(p.latency_ms<0?'<span style="color:#ff4444;font-size:0.7em">⏰ timeout</span>':`<span style="color:#888;font-size:0.7em">⚡${p.latency_ms}ms</span>`):'';
+/* win_pct bar replaced by ava-ring */
+const metaTag=(p.meta&&(p.meta.version||p.meta.strategy))?`<div style="font-size:0.6em;color:#888;margin-top:1px">${esc(p.meta.version||'')}${p.meta.version&&p.meta.strategy?' · ':''}${esc(p.meta.strategy||'')}</div>`:'';
+const thinkDiv=s.turn===p.name?'<div class="thinking">💭...</div>':'';
+const ringColor=p.win_pct!=null&&!p.folded&&!p.out?(p.win_pct>50?'#44ff88':p.win_pct>25?'#ffaa00':'#ff4444'):'transparent';
+const ringPct=p.win_pct!=null&&!p.folded&&!p.out?p.win_pct:0;
+const avaRing=ringPct>0?`<div class="ava-ring" style="background:conic-gradient(${ringColor} ${ringPct*3.6}deg, #333 ${ringPct*3.6}deg)"></div>`:'';
+const wpRing=ringPct>0?`<div style="font-size:0.65em;color:${ringColor};text-align:center">${p.win_pct}%</div>`:'';
+const moodTag=p.last_mood?`<span style="position:absolute;top:-8px;right:-8px;font-size:0.8em">${esc(p.last_mood)}</span>`:'';
+el.innerHTML=`${la}${bubble}<div style="position:relative;display:inline-block">${avaRing}<div class="ava">${esc(p.emoji||'🤖')}</div>${moodTag}</div>${thinkDiv}<div class="cards">${ch}</div><div class="nm">${health} ${esc(sb)}${esc(p.name)}${db}</div>${metaTag}<div class="ch">💰${p.chips}pt ${latTag}</div>${wpRing}${bt}<div class="st">${esc(p.style)}</div>`;
+el.style.cursor='pointer';el.onclick=(e)=>{e.stopPropagation();showProfile(p.name)};
+f.appendChild(el)});
+// 라이벌 표시
+f.querySelectorAll('.rivalry-tag').forEach(e=>e.remove());
+if(s.rivalries&&s.rivalries.length>0){
+s.rivalries.forEach(r=>{
+const idxA=s.players.findIndex(p=>p.name===r.player_a);
+const idxB=s.players.findIndex(p=>p.name===r.player_b);
+if(idxA>=0&&idxB>=0){
+const tag=document.createElement('div');tag.className='rivalry-tag';
+tag.style.cssText='position:absolute;z-index:5;font-size:0.7em;background:#000c;padding:2px 6px;border-radius:8px;color:#ffaa00;white-space:nowrap;pointer-events:none';
+tag.innerHTML=`⚔️ ${r.a_wins}-${r.b_wins}`;
+const sA=f.querySelector(`.seat-${idxA}`);const sB=f.querySelector(`.seat-${idxB}`);
+if(sA&&sB){const rA=sA.getBoundingClientRect();const rB=sB.getBoundingClientRect();const fR=f.getBoundingClientRect();
+tag.style.left=((rA.left+rB.left)/2-fR.left+rA.width/2)+'px';
+tag.style.top=((rA.top+rB.top)/2-fR.top)+'px';
+f.appendChild(tag)}}})}
+if(s.turn){document.getElementById('turnb').style.display='block';document.getElementById('turnb').textContent=`🎯 ${s.turn}'s turn`}
+else document.getElementById('turnb').style.display='none';
+const op=document.getElementById('turn-options');
+if(s.turn_options&&!isPlayer){
+const to=s.turn_options;let oh=`<span style="color:#ffaa00">${to.player}</span> Options: `;
+oh+=to.actions.map(a=>{
+if(a.action==='fold')return'<span style="color:#ff4444">❌Fold</span>';
+if(a.action==='call')return`<span style="color:#4488ff">📞Call ${a.amount}pt</span>`;
+if(a.action==='check')return'<span style="color:#888">✋Check</span>';
+if(a.action==='raise')return`<span style="color:#44cc44">⬆️Raise ${a.min}~${a.max}pt</span>`;
+return a.action}).join(' | ');
+if(to.to_call>0)oh+=` <span style="color:#aaa">(콜비용: ${to.to_call}pt, 칩: ${to.chips}pt)</span>`;
+op.innerHTML=oh;op.style.display='block'}
+else{op.style.display='none'}
+if(isPlayer){const me=s.players.find(p=>p.name===myName);if(me)document.getElementById('mi').textContent=`My chips: ${me.chips}pt`}
+// 테이블 정보
+if(s.table_info){const ti=document.getElementById('table-info');
+ti.innerHTML=`<div class="ti">🪙 <b>${s.table_info.sb}/${s.table_info.bb}</b></div><div class="ti">👥 <b>${s.players.filter(p=>!p.out).length}/${s.players.length}</b> alive</div>`}
+// 관전자 베팅 패널
+if(!isPlayer&&s.running&&s.round==='preflop'){
+const bp=document.getElementById('bet-panel');bp.style.display='block';
+const sel=document.getElementById('bet-pick');const cur=sel.value;sel.innerHTML='';
+s.players.filter(p=>!p.out&&!p.folded).forEach(p=>{const o=document.createElement('option');o.value=p.name;o.textContent=`${p.emoji} ${p.name} (${p.chips}pt)`;sel.appendChild(o)});
+if(cur)sel.value=cur}
+else if(!isPlayer&&s.round!=='preflop'){/* 프리플랍 이후 베팅 잠금 */}
+// 로그 동기화: 마지막으로 본 로그와 비교해서 새 것만 추가
+if(s.log){
+const lastSeen=window._lastLogMsg||'';
+let startIdx=0;
+if(lastSeen){const idx=s.log.lastIndexOf(lastSeen);if(idx>=0)startIdx=idx+1}
+if(startIdx<s.log.length){
+s.log.slice(startIdx).forEach(m=>{addLog(m);
+if(m.includes('━━━')||m.includes('──')||m.includes('🏆')||m.includes('❌')||m.includes('📞')||m.includes('⬆️')||m.includes('🔥')||m.includes('✋')||m.includes('☠️'))addActionFeed(m)})}
+if(s.log.length>0)window._lastLogMsg=s.log[s.log.length-1]}
+}
+
+function mkCard(c,sm,flip){const red=['♥','♦'].includes(c.suit);
+const flipCls=flip?' flip-anim':'';
+return `<div class="card card-f${sm?' card-sm':''}${flipCls} ${red?'red':'black'}"><span class="r">${c.rank}</span><span class="s">${c.suit}</span></div>`}
+
+function showConfetti(){
+const colors=['#ffd700','#ff4444','#4488ff','#44cc44','#aa44ff'];
+for(let i=0;i<20;i++){const c=document.createElement('div');c.className='confetti';
+c.style.left=Math.random()*100+'vw';c.style.background=colors[Math.floor(Math.random()*colors.length)];
+c.style.animationDuration=(2.5+Math.random()*1.5)+'s';c.style.animationDelay=(Math.random()*0.5)+'s';
+c.style.width=(6+Math.random()*8)+'px';c.style.height=(6+Math.random()*8)+'px';
+document.body.appendChild(c);setTimeout(()=>c.remove(),4000)}}
+
+function showAct(d){const p=document.getElementById('actions');p.style.display='block';
+const b=document.getElementById('actbtns');b.innerHTML='';
+for(const a of d.actions){
+if(a.action==='fold')b.innerHTML+=`<button class="bf" onclick="act('fold')">❌ Fold</button>`;
+else if(a.action==='call')b.innerHTML+=`<button class="bc" onclick="act('call',${a.amount})">📞 콜 ${a.amount}pt</button>`;
+else if(a.action==='check')b.innerHTML+=`<button class="bk" onclick="act('check')">✋ Check</button>`;
+else if(a.action==='raise')b.innerHTML+=`<input type="range" id="raise-sl" min="${a.min}" max="${a.max}" value="${a.min}" step="10" oninput="document.getElementById('raise-val').value=this.value"><input type="number" id="raise-val" value="${a.min}" min="${a.min}" max="${a.max}"><button class="br" onclick="doRaise(${a.min},${a.max})">⬆️ Raise</button>`}
+startTimer(60)}
+
+function act(a,amt){document.getElementById('actions').style.display='none';if(tmr)clearInterval(tmr);
+if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'action',action:a,amount:amt||0}));
+else fetch('/api/action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:myName,action:a,amount:amt||0,table_id:tableId})}).catch(()=>{})}
+function doRaise(mn,mx){let v=parseInt(document.getElementById('raise-val').value)||mn;act('raise',Math.max(mn,Math.min(mx,v)))}
+function startTimer(s){if(tmr)clearInterval(tmr);const bar=document.getElementById('timer');let r=s*10,t=s*10;bar.style.width='100%';bar.style.background='#00ff88';
+tmr=setInterval(()=>{r--;const p=r/t*100;bar.style.width=p+'%';if(p<30)bar.style.background='#ff4444';else if(p<60)bar.style.background='#ffaa00';if(r<=0)clearInterval(tmr)},100)}
+
+function showEnd(d){const o=document.getElementById('result');o.style.display='flex';const b=document.getElementById('rbox');
+const m=['🥇','🥈','🥉','💀'];let h='<h2>🏁 Game Over!</h2>';
+d.ranking.forEach((p,i)=>{h+=`<div class="rank">${m[Math.min(i,3)]} ${p.emoji} ${p.name}: ${p.chips}pt</div>`});
+h+=`<br><button onclick="document.getElementById('result').style.display='none'" style="padding:10px 30px;border:none;border-radius:8px;background:#ffaa00;color:#000;font-weight:bold;cursor:pointer">닫기</button>`;
+b.innerHTML=h;document.getElementById('new-btn').style.display='block'}
+function newGame(){
+const key=prompt('Admin key:');if(!key)return;
+fetch('/api/new',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({table_id:tableId,admin_key:key})}).then(r=>r.json()).then(d=>{if(d.ok){addLog('🔄 New Game!')}else{alert(d.message||'Failed')}}).catch(()=>alert('Request failed'));}
+
+function copySnapshot(){
+if(!window._lastState){alert('No state yet');return}
+const json=JSON.stringify(window._lastState,null,2);
+navigator.clipboard.writeText(json).then(()=>{
+const t=document.createElement('div');t.textContent='Copied!';t.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#333;color:#ffaa00;padding:8px 20px;border-radius:8px;z-index:9999;font-weight:bold';
+document.body.appendChild(t);setTimeout(()=>t.remove(),2000)}).catch(()=>alert('Clipboard copy failed'));}
+
+function showTab(tab){
+const log=document.getElementById('log'),rp=document.getElementById('replay-panel'),hp=document.getElementById('highlights-panel');
+document.querySelectorAll('.tab-btns button').forEach((b,i)=>{b.classList.toggle('active',i===(tab==='log'?0:tab==='replay'?1:2))});
+log.style.display=tab==='log'?'block':'none';
+rp.style.display=tab==='replay'?'block':'none';
+hp.style.display=tab==='highlights'?'block':'none';
+if(tab==='replay')loadReplays();
+if(tab==='highlights')loadHighlights()}
+
+async function loadReplays(){
+const rp=document.getElementById('replay-panel');rp.innerHTML='<div style="color:#888">Loading...</div>';
+try{const r=await fetch(`/api/replay?table_id=${tableId}`);const d=await r.json();
+if(!d.hands||d.hands.length===0){rp.innerHTML='<div style="color:#666">No records yet</div>';return}
+rp.innerHTML='';d.hands.reverse().forEach(h=>{const el=document.createElement('div');el.className='rp-hand';
+el.innerHTML=`<span style="color:#ffaa00">핸드 #${h.hand}</span> | 🏆 ${esc(h.winner||'?')} | 💰 ${h.pot}pt | 👥 ${h.players}명`;
+el.onclick=()=>loadHand(h.hand);rp.appendChild(el)})}catch(e){rp.innerHTML='<div style="color:#f44">Loading failed</div>'}}
+
+async function loadHand(num){
+const rp=document.getElementById('replay-panel');rp.innerHTML='<div style="color:#888">Loading...</div>';
+try{const r=await fetch(`/api/replay?table_id=${tableId}&hand=${num}`);const d=await r.json();
+let html=`<div style="margin-bottom:8px"><span style="color:#ffaa00;font-weight:bold">핸드 #${d.hand}</span> <button onclick="loadReplays()" style="background:#333;color:#aaa;border:none;padding:2px 8px;border-radius:4px;cursor:pointer;font-size:0.85em">← Back</button></div>`;
+html+=`<div style="color:#888;margin-bottom:4px">👥 ${d.players.map(p=>p.name+'('+p.hole.join(' ')+')').join(' | ')}</div>`;
+if(d.community.length)html+=`<div style="color:#88f;margin-bottom:4px">🃏 ${d.community.join(' ')}</div>`;
+html+=`<div style="color:#4f4;margin-bottom:6px">🏆 ${d.winner} +${d.pot}pt</div>`;
+html+='<div style="border-top:1px solid #1a1e2e;padding-top:4px">';
+let curRound='';d.actions.forEach(a=>{if(a.round!==curRound){curRound=a.round;html+=`<div style="color:#ff8;margin-top:4px">── ${curRound} ──</div>`}
+const icon={fold:'❌',call:'📞',raise:'⬆️',check:'✋'}[a.action]||'•';
+const noteStr=a.note?` <span style="color:#999;font-size:0.85em">"${esc(a.note)}"</span>`:'';
+html+=`<div>${icon} ${a.player} ${a.action}${a.amount?' '+a.amount+'pt':''}${noteStr}</div>`});
+html+='</div>';rp.innerHTML=html}catch(e){rp.innerHTML='<div style="color:#f44">Loading failed</div>'}}
+
+async function loadHighlights(){
+const hp=document.getElementById('highlights-panel');hp.innerHTML='<div style="color:#888">Loading...</div>';
+try{const r=await fetch(`/api/highlights?table_id=${tableId}&limit=15`);const d=await r.json();
+if(!d.highlights||d.highlights.length===0){hp.innerHTML='<div style="color:#666;text-align:center;padding:20px">🎬 No highlights yet. Big pots and all-in showdowns are saved automatically!</div>';return}
+hp.innerHTML='';d.highlights.forEach(h=>{const el=document.createElement('div');
+el.style.cssText='padding:8px;border-bottom:1px solid #1a1e2e;cursor:pointer;transition:background .15s';
+el.onmouseenter=()=>el.style.background='#1a1e2e';el.onmouseleave=()=>el.style.background='';
+const typeIcon={bigpot:'💰',rarehand:'🃏',allin_showdown:'🔥'}[h.type]||'🎬';
+const typeLabel={bigpot:'Big Pot',rarehand:'Rare Hand',allin_showdown:'All-in Showdown'}[h.type]||h.type;
+const ago=Math.round((Date.now()/1000-h.ts)/60);
+const timeStr=ago<1?'just now':ago<60?ago+'m ago':Math.round(ago/60)+'h ago';
+el.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><span><span style="color:#ffaa00;font-weight:bold">${typeIcon} 핸드 #${h.hand}</span> <span style="color:#888;font-size:0.85em">${typeLabel}</span></span><span style="color:#555;font-size:0.8em">${timeStr}</span></div><div style="margin-top:3px"><span style="color:#44ff44">🏆 ${esc(h.winner)}</span> <span style="color:#ffaa00">+${h.pot}pt</span>${h.hand_name?' <span style="color:#ff8800">'+esc(h.hand_name)+'</span>':''} <span style="color:#888">| ${h.players.map(n=>esc(n)).join(' vs ')}</span></div>${h.community.length?'<div style="color:#88ccff;font-size:0.85em;margin-top:2px">🃏 '+h.community.join(' ')+'</div>':''}`;
+el.onclick=()=>loadHand(h.hand);
+hp.appendChild(el)})}catch(e){hp.innerHTML='<div style="color:#f44">Loading failed</div>'}}
+
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+function addLog(m){const l=document.getElementById('log');const d=document.createElement('div');
+if(m.includes('━━━')){d.style.cssText='color:#ffaa00;font-weight:bold;border-top:2px solid #ffaa0044;padding-top:6px;margin-top:6px'}
+else if(m.includes('──')){d.style.cssText='color:#88ccff;font-weight:bold;background:#88ccff11;padding:2px 4px;border-radius:4px;margin:4px 0'}
+else if(m.includes('🏆')){d.style.cssText='color:#44ff44;font-weight:bold'}
+else if(m.includes('☠️')||m.includes('ELIMINATED')){d.style.cssText='color:#ff4444;font-weight:bold'}
+else if(m.includes('🔥')){d.style.cssText='color:#ff8844'}
+d.textContent=m;l.appendChild(d);l.scrollTop=l.scrollHeight;if(l.children.length>100)l.removeChild(l.firstChild)}
+function addChat(name,msg,scroll=true){const c=document.getElementById('chatmsgs');
+const d=document.createElement('div');d.innerHTML=`<span class="cn">${esc(name)}:</span> <span class="cm">${esc(msg)}</span>`;
+c.appendChild(d);if(scroll)c.scrollTop=c.scrollHeight;if(c.children.length>50)c.removeChild(c.firstChild)}
+function sendChat(){const inp=document.getElementById('chat-inp');const msg=inp.value.trim();if(!msg)return;inp.value='';
+if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'chat',name:myName||'Viewer',msg:msg}));
+else fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:myName||'Viewer',msg:msg,table_id:tableId})}).catch(()=>{})}
+
+function showCommentary(text){
+const el=document.getElementById('commentary');
+el.style.display='block';el.textContent=text;
+el.style.animation='none';el.offsetHeight;el.style.animation='comFade .5s ease-out';
+addActionFeed(text);
+}
+
+let lastFeedRound='';
+function addActionFeed(text,isRound){
+const feed=document.getElementById('action-feed');
+if(!feed)return;
+const div=document.createElement('div');
+div.className='af-item';
+if(text.includes('🏆'))div.className='af-item af-win';
+div.textContent=text;
+feed.appendChild(div);
+feed.scrollTop=feed.scrollHeight;
+// 최대 50개 유지
+while(feed.children.length>50)feed.removeChild(feed.firstChild);
+}
+
+function showAllin(d){
+const o=document.getElementById('allin-overlay');
+o.querySelector('.allin-text').textContent=`🔥 ${d.emoji} ${d.name} ALL IN ${d.amount}pt 🔥`;
+o.style.display='flex';o.style.animation='none';o.offsetHeight;o.style.animation='allinFlash 2s ease-out forwards';
+setTimeout(()=>{o.style.display='none'},2000)}
+
+function showHighlight(d){
+const o=document.getElementById('highlight-overlay');const t=document.getElementById('hl-text');
+const stars=d.rank>=9?'🎆🎆🎆':d.rank>=8?'🎇🎇':'✨';
+t.textContent=`${stars} ${d.emoji} ${d.player} — ${d.hand_name}! ${stars}`;
+o.style.display='flex';o.style.animation='allinFlash 3s ease-out forwards';sfx('rare');
+setTimeout(()=>{o.style.display='none'},3000)}
+
+async function placeBet(){
+const pick=document.getElementById('bet-pick').value;
+const amount=parseInt(document.getElementById('bet-amount').value);
+if(!pick||!amount){alert('Select a player and enter an amount');return}
+try{const r=await fetch('/api/bet',{method:'POST',headers:{'Content-Type':'application/json'},
+body:JSON.stringify({name:specName,pick:pick,amount:amount,table_id:tableId})});
+const d=await r.json();if(d.error){addLog('❌ '+d.error)}
+else{addLog(`🎰 Bet ${amount} coins on ${pick}!`);document.getElementById('bet-coins').textContent=`💰 ${d.coins} coins`}}catch(e){addLog('❌ Bet failed')}}
+
+async function fetchCoins(){
+try{const r=await fetch(`/api/coins?name=${encodeURIComponent(specName)}`);
+const d=await r.json();document.getElementById('bet-coins').textContent=`💰 ${d.coins} coins`}catch(e){}}
+
+async function showProfile(name){
+try{const r=await fetch(`/api/profile?name=${encodeURIComponent(name)}&table_id=${tableId}`);const p=await r.json();
+const pp=document.getElementById('pp-content');
+if(p&&p.hands>0){
+const tiltTag=p.tilt?`<div style="color:#ff4444;font-weight:bold;margin:6px 0;animation:pulse 1s infinite">🔥 TILT 감지! (${Math.abs(p.streak)}연패)</div>`:'';
+const streakTag=p.streak>=3?`<div style="color:#44ff88">🔥 ${p.streak}연승 중!</div>`:'';
+// Aggression 바
+const agrBar=`<div style="margin:4px 0"><span style="color:#888;font-size:0.8em">Aggression</span><div style="height:6px;background:#333;border-radius:3px;overflow:hidden;margin-top:2px"><div style="width:${p.aggression}%;height:100%;background:${p.aggression>50?'#ff4444':p.aggression>25?'#ffaa00':'#4488ff'};transition:width .5s"></div></div></div>`;
+const vpipBar=`<div style="margin:4px 0"><span style="color:#888;font-size:0.8em">VPIP</span><div style="height:6px;background:#333;border-radius:3px;overflow:hidden;margin-top:2px"><div style="width:${p.vpip}%;height:100%;background:#44ff88;transition:width .5s"></div></div></div>`;
+const metaHtml=p.meta&&(p.meta.version||p.meta.strategy||p.meta.repo)?`<div class="pp-stat" style="margin-top:6px;border-top:1px solid #333;padding-top:6px">${p.meta.version?'🏷️ v'+esc(p.meta.version):''}${p.meta.strategy?' · 전략: '+esc(p.meta.strategy):''}${p.meta.repo?'<br>📦 <a href="'+esc(p.meta.repo)+'" target="_blank" style="color:#4488ff">'+esc(p.meta.repo)+'</a>':''}</div>`:'';
+const bioHtml=p.meta&&p.meta.bio?`<div class="pp-stat" style="color:#aaddff;font-style:italic;margin:4px 0">📝 ${esc(p.meta.bio)}</div>`:'';
+let matchupHtml='';
+if(p.matchups&&p.matchups.length>0){matchupHtml='<div class="pp-stat" style="margin-top:6px;border-top:1px solid #333;padding-top:6px"><b>⚔️ vs 전적</b>';p.matchups.forEach(m=>{matchupHtml+=`<div style="font-size:0.85em;margin:2px 0">vs ${esc(m.opponent)}: <span style="color:#44ff88">${m.wins}승</span> / <span style="color:#ff4444">${m.losses}패</span></div>`});matchupHtml+='</div>'}
+pp.innerHTML=`<h3>${esc(p.name)}</h3><div style="font-size:1.2em;margin:4px 0">${p.type}</div>${bioHtml}${tiltTag}${streakTag}<div class="pp-stat">📊 승률: ${p.win_rate}% (${p.hands}핸드)</div>${agrBar}${vpipBar}<div class="pp-stat">🎯 폴드율: ${p.fold_rate}% | 블러핑: ${p.bluff_rate}%</div><div class="pp-stat">💣 올인: ${p.allins}회 | 쇼다운: ${p.showdowns}회</div><div class="pp-stat">💰 총 획득: ${p.total_won}pt | 최대팟: ${p.biggest_pot}pt</div><div class="pp-stat">💵 핸드당 평균 베팅: ${p.avg_bet}pt</div>${metaHtml}${matchupHtml}`}
+else{pp.innerHTML=`<h3>${esc(name)}</h3><div class="pp-stat" style="color:#888">아직 기록 없음</div>`}
+document.getElementById('profile-backdrop').style.display='block';
+document.getElementById('profile-popup').style.display='block'}catch(e){}}
+function closeProfile(){document.getElementById('profile-backdrop').style.display='none';document.getElementById('profile-popup').style.display='none'}
+
+let reactionCount=0;const MAX_REACTIONS=5;
+function react(emoji){
+if(reactionCount>=MAX_REACTIONS)return;
+reactionCount++;setTimeout(()=>reactionCount--,2000);
+spawnEmoji(emoji);
+const name=specName||myName||'관객';
+if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'reaction',emoji:emoji,name:name}));
+}
+function spawnEmoji(emoji,fromName){
+const el=document.createElement('div');el.className='float-emoji';
+el.textContent=emoji;
+if(fromName){const tag=document.createElement('span');tag.style.cssText='font-size:0.3em;display:block;color:#aaa';tag.textContent=fromName;el.appendChild(tag)}
+el.style.right='10px';el.style.bottom=(60+Math.random()*30)+'px';
+document.body.appendChild(el);setTimeout(()=>el.remove(),1600)}
+function showRemoteReaction(d){spawnEmoji(d.emoji,d.name)}
+
+function showShowdown(d){
+const o=document.getElementById('result');o.style.display='flex';const b=document.getElementById('rbox');
+let h='<h2>🃏 Showdown!</h2>';
+d.players.forEach(p=>{
+const cards=p.hole.map(c=>mkCard(c,true,true)).join(' ');
+const w=p.winner?'style="color:#ffaa00;font-weight:bold"':'style="color:#888"';
+h+=`<div ${w}>${p.emoji} ${p.name}: ${cards} → ${p.hand}${p.winner?' 👑':''}</div>`});
+h+=`<div style="color:#44ff44;margin-top:8px;font-size:1.2em">💰 POT: ${d.pot}pt</div>`;
+h+=`<br><button onclick="document.getElementById('result').style.display='none'" style="padding:8px 24px;border:none;border-radius:8px;background:#ffaa00;color:#000;font-weight:bold;cursor:pointer">닫기</button>`;
+b.innerHTML=h;sfx('showdown');showConfetti();setTimeout(()=>{o.style.display='none'},5000)}
+
+// 킬캠
+function showKillcam(d){
+const o=document.getElementById('killcam-overlay');
+o.querySelector('.kc-vs').textContent=`${d.killer_emoji} ${d.killer}`;
+let kcMsg=`☠️ ${d.victim_emoji} ${d.victim} ELIMINATED`;
+o.querySelector('.kc-msg').innerHTML=kcMsg+(d.death_quote?`<div style="font-size:0.7em;color:#ffaa00;margin-top:6px">Last words: "${esc(d.death_quote)}"</div>`:'');
+o.style.display='flex';o.style.animation='none';o.offsetHeight;o.style.animation='allinFlash 2.5s ease-out forwards';
+sfx('killcam');setTimeout(()=>{o.style.display='none'},2500)}
+
+// 다크호스
+function showDarkhorse(d){
+const o=document.getElementById('darkhorse-overlay');
+o.querySelector('.dh-text').textContent=`🐴 Dark Horse! ${d.emoji} ${d.name} upset win! +${d.pot}pt`;
+o.style.display='flex';o.style.animation='none';o.offsetHeight;o.style.animation='allinFlash 3s ease-out forwards';
+sfx('darkhorse');setTimeout(()=>{o.style.display='none'},3000)}
+
+// MVP
+function showMVP(d){
+const o=document.getElementById('mvp-overlay');
+o.querySelector('.mvp-text').textContent=`👑 MVP ${d.emoji} ${d.name} — ${d.chips}pt (${d.hand}핸드)`;
+o.style.display='flex';o.style.animation='none';o.offsetHeight;o.style.animation='allinFlash 3.5s ease-out forwards';
+sfx('mvp');setTimeout(()=>{o.style.display='none'},3500)}
+
+// 업적 달성
+function showAchievement(d){
+const o=document.getElementById('achieve-overlay');const t=document.getElementById('achieve-text');
+t.innerHTML=`🏆 Achievement Unlocked!<br>${d.emoji} ${esc(d.name)}<br>${d.achievement}<br><span style="font-size:0.5em;color:#aaa">${esc(d.desc)}</span>`;
+o.style.display='flex';o.style.animation='none';o.offsetHeight;o.style.animation='allinFlash 3.5s ease-out forwards';
+sfx('mvp');setTimeout(()=>{o.style.display='none'},3500)}
+
+// 빠른 채팅
+function qChat(msg){
+const name=specName||myName||'관객';
+if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'chat',name:name,msg:msg}));
+else fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name,msg:msg,table_id:tableId})}).catch(()=>{});
+addChat(name,msg)}
+
+// 투표
+let currentVote=null;
+function castVote(name,btn){
+currentVote=name;document.querySelectorAll('.vp-btn').forEach(b=>b.classList.remove('voted'));
+btn.classList.add('voted');
+document.getElementById('vote-results').textContent=`Voted for ${name}!`}
 
 // 사운드 이펙트 (Web Audio) - 사용자 인터랙션 후 활성화
 let audioCtx=null;
