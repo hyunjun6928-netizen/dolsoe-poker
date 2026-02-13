@@ -411,7 +411,7 @@ class Table:
             bankrupt_agents=[s for s in self.seats if s.get('out') and not s['is_bot']]
             for s in bankrupt_agents:
                 self.seats.remove(s)
-                await self.add_log(f"🚪 {s['emoji']} {s['name']} 파산 퇴장! (재참가 가능)")
+                await self.add_log(f"🚪 {s['emoji']} {s['name']} 파산 퇴장!")
 
             # 파산 봇 리스폰 (에이전트 2명 미만일 때만)
             real_count=sum(1 for s in self.seats if not s['is_bot'])
