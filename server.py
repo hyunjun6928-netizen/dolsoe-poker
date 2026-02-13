@@ -19,7 +19,7 @@ Endpoints:
   GET  /api/history   → 리플레이 (?table_id=id)
   GET  /api/replay    → 핸드별 리플레이 (?table_id&hand=N)
 """
-import asyncio, hashlib, json, os, random, struct, time, base64
+import asyncio, hashlib, json, math, os, random, struct, time, base64
 from collections import Counter
 from itertools import combinations
 from urllib.parse import parse_qs, urlparse
@@ -716,6 +716,298 @@ def tron_find_or_create_game():
     g = TronGame(gid)
     tron_games[gid] = g
     return g
+
+# ══ AI 콜로세움 (투견장) ══
+ARENA_LB_FILE = 'arena_leaderboard.json'
+arena_leaderboard = {}
+arena_games = {}
+arena_tokens = {}
+
+def save_arena_leaderboard():
+    try:
+        with open(ARENA_LB_FILE,'w') as f: json.dump(arena_leaderboard,f)
+    except: pass
+
+def load_arena_leaderboard():
+    global arena_leaderboard
+    try:
+        with open(ARENA_LB_FILE,'r') as f: arena_leaderboard.update(json.load(f))
+    except: pass
+
+ARENA_NPC_BOTS = [
+    {'name':'블러드팡','emoji':'🐺','style':'aggressive','color':'#ff3333','stats':{'str':7,'spd':5,'vit':4,'ski':4}},
+    {'name':'아이언클로','emoji':'🦾','style':'tank','color':'#8888ff','stats':{'str':4,'spd':3,'vit':9,'ski':4}},
+    {'name':'쉐도우','emoji':'🦇','style':'dodge','color':'#aa44ff','stats':{'str':4,'spd':8,'vit':3,'ski':5}},
+    {'name':'버서커','emoji':'💀','style':'berserker','color':'#ff8800','stats':{'str':9,'spd':4,'vit':5,'ski':2}},
+]
+
+class ArenaFighter:
+    def __init__(self, name, emoji, token, color, stats, x, facing):
+        self.name=name;self.emoji=emoji;self.token=token;self.color=color
+        self.x=x;self.facing=facing;self.hp=100;self.max_hp=100
+        self.stamina=100;self.max_stamina=100;self.special_gauge=0
+        self.combo=0;self.stun_ticks=0;self.block_ticks=0;self.dodge_ticks=0
+        self.attack_ticks=0;self.hit_ticks=0;self.alive=True;self.action_queue=None
+        self.shake=0;self.str=stats.get('str',5);self.spd=stats.get('spd',5)
+        self.vit=stats.get('vit',5);self.ski=stats.get('ski',5)
+        self.is_npc=False;self.npc_style=None;self.reasoning='';self.kills=0;self.damage_dealt=0
+
+class ArenaGame:
+    TICK_MS=100;ARENA_WIDTH=800;ARENA_FLOOR=400;MAX_TIME=600
+    ACTIONS=['move_left','move_right','light_attack','heavy_attack','block','dodge','special','idle']
+
+    def __init__(self,game_id):
+        self.id=game_id;self.fighters={};self.state='waiting';self.countdown=3
+        self.tick=0;self.winner=None;self.log=[];self.particles=[];self.effects=[]
+        self.created=time.time();self._task=None;self.spectators={}
+        self.slow_motion=0;self.camera_shake=0;self.zoom_target=None;self.blood_pools=[]
+
+    def add_fighter(self,name,emoji,token,color,stats):
+        if len(self.fighters)>=2:return False
+        idx=len(self.fighters);x=150 if idx==0 else 650;facing=1 if idx==0 else -1
+        f=ArenaFighter(name,emoji,token,color,stats,x,facing)
+        self.fighters[token]=f;arena_tokens[token]=name;return True
+
+    def set_action(self,token,action,reasoning=''):
+        if token not in self.fighters:return False
+        f=self.fighters[token]
+        if not f.alive:return False
+        if action not in self.ACTIONS:return False
+        f.action_queue=action
+        if reasoning:f.reasoning=reasoning[:100]
+        return True
+
+    def _spawn_blood(self,x,y,count=10,force=1.0):
+        for _ in range(count):
+            angle=random.uniform(-math.pi,math.pi);speed=random.uniform(2,8)*force
+            self.particles.append({'x':x,'y':y,'vx':math.cos(angle)*speed,
+                'vy':math.sin(angle)*speed-random.uniform(2,5),
+                'color':random.choice(['#ff0000','#cc0000','#990000','#ff3333']),
+                'size':random.uniform(2,5),'life':random.randint(20,50),'type':'blood'})
+
+    def _spawn_hit_effect(self,x,y,color='#ffffff'):
+        self.effects.append({'type':'hit_flash','x':x,'y':y,'tick':self.tick,'color':color})
+        self.effects.append({'type':'impact_ring','x':x,'y':y,'tick':self.tick,'color':color})
+        self.camera_shake=max(self.camera_shake,5)
+
+    def _spawn_heavy_effect(self,x,y):
+        self._spawn_blood(x,y,20,2.0)
+        self.effects.append({'type':'screen_crack','x':x,'y':y,'tick':self.tick})
+        self.camera_shake=max(self.camera_shake,12)
+        self.blood_pools.append({'x':x,'size':random.uniform(15,30)})
+
+    def _get_opponent(self,token):
+        for t,f in self.fighters.items():
+            if t!=token:return f
+        return None
+
+    def _distance(self,f1,f2):return abs(f1.x-f2.x)
+
+    def _tick(self):
+        self.tick+=1
+        fighters=list(self.fighters.values())
+        if len(fighters)<2:return True
+        f1,f2=fighters[0],fighters[1]
+        # Update particles
+        np2=[]
+        for p in self.particles:
+            p['x']+=p['vx'];p['y']+=p['vy'];p['vy']+=0.5;p['life']-=1
+            if p['life']>0:np2.append(p)
+        self.particles=np2
+        self.effects=[e for e in self.effects if self.tick-e['tick']<15]
+        if self.camera_shake>0:self.camera_shake-=1
+        if self.slow_motion>0:self.slow_motion-=1
+        for f in[f1,f2]:
+            if not f.alive:continue
+            opp=f2 if f is f1 else f1
+            if f.stun_ticks>0:f.stun_ticks-=1;f.action_queue=None;continue
+            if f.hit_ticks>0:f.hit_ticks-=1;f.action_queue=None;continue
+            if f.attack_ticks>0:f.attack_ticks-=1
+            if f.block_ticks>0:f.block_ticks-=1
+            if f.dodge_ticks>0:f.dodge_ticks-=1
+            f.stamina=min(f.max_stamina,f.stamina+0.3+f.vit*0.05)
+            if opp.x>f.x:f.facing=1
+            else:f.facing=-1
+            action=f.action_queue;f.action_queue=None
+            if not action or action=='idle':continue
+            dist=self._distance(f,opp)
+            if action=='move_left':f.x=max(20,f.x-(3+f.spd*0.5))
+            elif action=='move_right':f.x=min(self.ARENA_WIDTH-20,f.x+(3+f.spd*0.5))
+            elif action=='block':
+                if f.stamina>=5:f.block_ticks=3;f.stamina-=5
+            elif action=='dodge':
+                if f.stamina>=15:
+                    dd=60+f.spd*8;f.x+=-f.facing*dd
+                    f.x=max(20,min(self.ARENA_WIDTH-20,f.x));f.dodge_ticks=3;f.stamina-=15
+            elif action=='light_attack':
+                if f.attack_ticks<=0 and f.stamina>=10:
+                    f.attack_ticks=3;f.stamina-=10
+                    if dist<80:
+                        if opp.dodge_ticks>0:self.log.append(f"💨 {opp.emoji}{opp.name} 회피!")
+                        elif opp.block_ticks>0:
+                            dmg=max(1,(3+f.str)*0.3);opp.hp-=dmg;f.damage_dealt+=dmg;opp.hit_ticks=1
+                            self._spawn_hit_effect(opp.x,300,'#8888ff')
+                            self.log.append(f"🛡️ {opp.emoji}{opp.name} 가드! (-{dmg:.0f})")
+                        else:
+                            dmg=5+f.str*1.2+f.combo*0.5;opp.hp-=dmg;f.damage_dealt+=dmg;f.combo+=1
+                            opp.hit_ticks=2;opp.special_gauge=min(100,opp.special_gauge+8)
+                            f.special_gauge=min(100,f.special_gauge+3)
+                            self._spawn_blood(opp.x,300,8);self._spawn_hit_effect(opp.x,300)
+                            cl='🔥x'+str(f.combo) if f.combo>1 else ''
+                            self.log.append(f"👊 {f.emoji}{f.name} 약공→{opp.emoji}{opp.name} (-{dmg:.0f}) {cl}")
+                    else:f.combo=0
+            elif action=='heavy_attack':
+                if f.attack_ticks<=0 and f.stamina>=25:
+                    f.attack_ticks=6;f.stamina-=25
+                    if dist<90:
+                        if opp.dodge_ticks>0:self.log.append(f"💨 {opp.emoji}{opp.name} 회피!")
+                        elif opp.block_ticks>0:
+                            dmg=5+f.str*0.8;opp.hp-=dmg;f.damage_dealt+=dmg;opp.stun_ticks=5;opp.block_ticks=0
+                            self._spawn_hit_effect(opp.x,300,'#ffaa00')
+                            self.log.append(f"💥 {f.emoji}{f.name} 가드브레이크→{opp.emoji}{opp.name} 스턴!")
+                        else:
+                            dmg=12+f.str*2.0+f.combo*1.0;opp.hp-=dmg;f.damage_dealt+=dmg;f.combo+=1
+                            opp.hit_ticks=5;opp.stun_ticks=3
+                            opp.special_gauge=min(100,opp.special_gauge+15);f.special_gauge=min(100,f.special_gauge+5)
+                            opp.x+=f.facing*40;opp.x=max(20,min(self.ARENA_WIDTH-20,opp.x))
+                            self._spawn_heavy_effect(opp.x,300)
+                            cl='🔥x'+str(f.combo) if f.combo>1 else ''
+                            self.log.append(f"💀 {f.emoji}{f.name} 강공→{opp.emoji}{opp.name} (-{dmg:.0f}) {cl}")
+                    else:f.combo=0
+            elif action=='special':
+                if f.special_gauge>=100 and f.attack_ticks<=0:
+                    f.special_gauge=0;f.attack_ticks=8
+                    if dist<120:
+                        dmg=30+f.ski*4.0;opp.hp-=dmg;f.damage_dealt+=dmg;opp.stun_ticks=8;opp.hit_ticks=8
+                        opp.x+=f.facing*80;opp.x=max(20,min(self.ARENA_WIDTH-20,opp.x))
+                        self._spawn_blood(opp.x,300,30,3.0);self._spawn_heavy_effect(opp.x,300)
+                        self.slow_motion=15;self.camera_shake=20
+                        self.effects.append({'type':'special_flash','x':opp.x,'y':300,'tick':self.tick,'color':f.color})
+                        self.log.append(f"⚡ {f.emoji}{f.name} 필살기!!→{opp.emoji}{opp.name} (-{dmg:.0f})")
+                    else:self.log.append(f"⚡ {f.emoji}{f.name} 필살기 빗나감!")
+        for f in[f1,f2]:
+            if f.hp<=0 and f.alive:
+                f.alive=False;f.hp=0;opp=f2 if f is f1 else f1;opp.kills+=1
+                self.winner=opp.name;self.state='fatality'
+                self._spawn_blood(f.x,300,50,4.0);self.slow_motion=30;self.camera_shake=25
+                self.zoom_target={'x':f.x,'y':300,'scale':2.0}
+                self.effects.append({'type':'fatality','x':f.x,'y':300,'tick':self.tick})
+                self.blood_pools.append({'x':f.x,'size':50})
+                self.log.append(f"☠️ {f.emoji}{f.name} 사망!")
+                self.log.append(f"🏆 {opp.emoji}{opp.name} 승리!")
+                return False
+        if self.tick>=self.MAX_TIME:
+            self.state='finish'
+            if f1.hp>f2.hp:self.winner=f1.name;self.log.append(f"⏱️ 시간초과! {f1.emoji}{f1.name} 판정승!")
+            elif f2.hp>f1.hp:self.winner=f2.name;self.log.append(f"⏱️ 시간초과! {f2.emoji}{f2.name} 판정승!")
+            else:self.log.append("⏱️ 시간초과! 무승부!")
+            self._update_leaderboard();return False
+        return True
+
+    def _update_leaderboard(self):
+        for token,f in self.fighters.items():
+            name=f.name
+            if name not in arena_leaderboard:
+                arena_leaderboard[name]={'wins':0,'kills':0,'games':0,'deaths':0,'damage':0}
+            lb=arena_leaderboard[name];lb['games']+=1;lb['kills']+=f.kills
+            lb['damage']=lb.get('damage',0)+f.damage_dealt
+            if self.winner==name:lb['wins']+=1
+            elif not f.alive:lb['deaths']+=1
+        save_arena_leaderboard()
+
+    def get_state(self):
+        fighters=[]
+        for token,f in self.fighters.items():
+            fighters.append({'name':f.name,'emoji':f.emoji,'color':f.color,
+                'x':round(f.x,1),'hp':round(f.hp,1),'max_hp':f.max_hp,
+                'stamina':round(f.stamina,1),'max_stamina':f.max_stamina,
+                'special_gauge':round(f.special_gauge,1),'combo':f.combo,'alive':f.alive,
+                'facing':f.facing,'stun_ticks':f.stun_ticks,'block_ticks':f.block_ticks,
+                'dodge_ticks':f.dodge_ticks,'attack_ticks':f.attack_ticks,'hit_ticks':f.hit_ticks,
+                'reasoning':f.reasoning,'str':f.str,'spd':f.spd,'vit':f.vit,'ski':f.ski})
+        return {'game_id':self.id,'tick':self.tick,'state':self.state,'countdown':self.countdown,
+            'fighters':fighters,'winner':self.winner,'log':self.log[-15:],
+            'particles':self.particles[-100:],'effects':self.effects[-10:],
+            'blood_pools':self.blood_pools[-20:],'camera_shake':self.camera_shake,
+            'slow_motion':self.slow_motion,'zoom_target':self.zoom_target,
+            'arena_width':self.ARENA_WIDTH,'max_time':self.MAX_TIME}
+
+    async def run(self):
+        self.state='countdown'
+        for i in range(3,0,-1):self.countdown=i;await asyncio.sleep(1)
+        self.state='fighting';self.countdown=0
+        while self.state=='fighting':
+            tt=self.TICK_MS/1000
+            if self.slow_motion>0:tt*=3
+            await asyncio.sleep(tt)
+            if not self._tick():break
+        if self.state=='fatality':await asyncio.sleep(3);self.state='finish'
+        self._update_leaderboard()
+        await asyncio.sleep(8)
+        ng=arena_find_or_create_game();asyncio.create_task(_arena_auto_fill(ng))
+        await asyncio.sleep(15)
+        if self.id in arena_games:del arena_games[self.id]
+
+def _arena_npc_decide(game,token):
+    f=game.fighters[token]
+    if not f.alive or f.stun_ticks>0 or f.hit_ticks>0:return
+    opp=game._get_opponent(token)
+    if not opp or not opp.alive:return
+    style=f.npc_style or 'aggressive';dist=game._distance(f,opp)
+    if f.special_gauge>=100 and dist<130:
+        f.reasoning='필살기 발동!';game.set_action(token,'special');return
+    if style=='aggressive':
+        if dist>80:game.set_action(token,'move_right' if opp.x>f.x else 'move_left');f.reasoning='접근 중...'
+        elif f.stamina>25 and random.random()<0.4:game.set_action(token,'heavy_attack');f.reasoning='강공!'
+        elif f.stamina>10:game.set_action(token,'light_attack');f.reasoning='약공 연타'
+        else:game.set_action(token,'block');f.reasoning='스태미나 회복...'
+    elif style=='tank':
+        if opp.attack_ticks>0 and dist<100:game.set_action(token,'block');f.reasoning='가드!'
+        elif dist>90:game.set_action(token,'move_right' if opp.x>f.x else 'move_left');f.reasoning='전진'
+        elif f.stamina>25 and random.random()<0.3:game.set_action(token,'heavy_attack');f.reasoning='카운터!'
+        else:game.set_action(token,'light_attack');f.reasoning='잽'
+    elif style=='dodge':
+        if dist<70 and f.stamina>15 and random.random()<0.4:game.set_action(token,'dodge');f.reasoning='회피!'
+        elif dist>100:game.set_action(token,'move_right' if opp.x>f.x else 'move_left');f.reasoning='간보는 중'
+        elif dist<80 and f.stamina>10:game.set_action(token,'light_attack');f.reasoning='히트앤런'
+        else:game.set_action(token,'move_left' if opp.x>f.x else 'move_right');f.reasoning='거리 유지'
+    elif style=='berserker':
+        if f.hp<30:
+            if dist>70:game.set_action(token,'move_right' if opp.x>f.x else 'move_left');f.reasoning='피가 끓는다!'
+            else:game.set_action(token,'heavy_attack' if f.stamina>25 else 'light_attack');f.reasoning='죽이거나 죽거나!'
+        elif dist>80:game.set_action(token,'move_right' if opp.x>f.x else 'move_left');f.reasoning='다가간다'
+        else:
+            r=random.random()
+            if r<0.5 and f.stamina>25:game.set_action(token,'heavy_attack');f.reasoning='으아아아!'
+            elif f.stamina>10:game.set_action(token,'light_attack');f.reasoning='연타!'
+            else:game.set_action(token,'idle');f.reasoning='...하'
+
+async def _arena_npc_loop(game):
+    while game.state=='countdown':await asyncio.sleep(0.1)
+    while game.state=='fighting':
+        for token,f in game.fighters.items():
+            if f.is_npc and f.alive:_arena_npc_decide(game,token)
+        await asyncio.sleep(game.TICK_MS/1000*2)
+
+async def _arena_auto_fill(game):
+    await asyncio.sleep(2)
+    bots=list(ARENA_NPC_BOTS);random.shuffle(bots)
+    taken={f.name for f in game.fighters.values()}
+    for bot in bots:
+        if len(game.fighters)>=2:break
+        if bot['name'] in taken:continue
+        token=f"npc_{secrets.token_hex(8)}"
+        ok=game.add_fighter(bot['name'],bot['emoji'],token,bot['color'],bot['stats'])
+        if ok:
+            game.fighters[token].is_npc=True;game.fighters[token].npc_style=bot['style']
+            game.log.append(f"🤖 {bot['emoji']} {bot['name']} 입장!")
+    if len(game.fighters)>=2 and game.state=='waiting':
+        game._task=asyncio.create_task(game.run());asyncio.create_task(_arena_npc_loop(game))
+
+def arena_find_or_create_game():
+    for gid,g in arena_games.items():
+        if g.state=='waiting' and len(g.fighters)<2:return g
+    gid=f"arena_{int(time.time()*1000)%1000000}";g=ArenaGame(gid);arena_games[gid]=g;return g
 
 # ══ 게임 테이블 ══
 class Table:
@@ -1995,6 +2287,53 @@ async def handle_client(reader, writer):
         games = [{'id':g.id,'state':g.state,'players':len(g.players),'tick':g.tick,
                   'alive':sum(1 for p in g.players.values() if p['alive'])} for g in tron_games.values()]
         await send_json(writer,{'games':games})
+    # ══ Arena Routes ══
+    elif method=='GET' and route=='/arena':
+        active=[g for g in arena_games.values() if g.state in ('waiting','countdown','fighting')]
+        if not active:
+            game=arena_find_or_create_game();asyncio.create_task(_arena_auto_fill(game))
+        await send_http(writer,200,ARENA_HTML_PAGE,'text/html; charset=utf-8')
+    elif method=='GET' and route=='/arena/ranking':
+        await send_http(writer,200,ARENA_RANKING_PAGE,'text/html; charset=utf-8')
+    elif method=='GET' and route=='/arena/docs':
+        await send_http(writer,200,ARENA_DOCS_PAGE,'text/html; charset=utf-8')
+    elif method=='POST' and route=='/api/arena/join':
+        d=json.loads(body) if body else {}
+        name=sanitize_name(d.get('name',''))[:20];emoji=sanitize_name(d.get('emoji','⚔️'))[:2] or '⚔️'
+        color=d.get('color','#ff4444')[:7]
+        stats=d.get('stats',{});total=sum(stats.get(k,5) for k in['str','spd','vit','ski'])
+        if total>20:await send_json(writer,{'ok':False,'error':'stats total must be <=20'},400);return
+        if not name:await send_json(writer,{'ok':False,'error':'name required'},400);return
+        game=arena_find_or_create_game();token=secrets.token_hex(16)
+        ok=game.add_fighter(name,emoji,token,color,stats)
+        if not ok:await send_json(writer,{'ok':False,'error':'arena full'},400);return
+        await send_json(writer,{'ok':True,'token':token,'game_id':game.id})
+        if len(game.fighters)>=2 and game.state=='waiting':
+            game._task=asyncio.create_task(game.run());asyncio.create_task(_arena_npc_loop(game))
+    elif method=='GET' and route=='/api/arena/state':
+        gid=qs.get('game_id',[''])[0]
+        if gid and gid in arena_games:game=arena_games[gid]
+        else:
+            active=[g for g in arena_games.values() if g.state in ('countdown','fighting','fatality')]
+            if active:game=active[0]
+            elif arena_games:game=list(arena_games.values())[-1]
+            else:await send_json(writer,{'ok':False,'error':'no game'},404);return
+        await send_json(writer,game.get_state())
+    elif method=='POST' and route=='/api/arena/action':
+        d=json.loads(body) if body else {}
+        token=d.get('token','');action=d.get('action','');reasoning=d.get('reasoning','')
+        gid=d.get('game_id','');game=arena_games.get(gid)
+        if not game:
+            for g in arena_games.values():
+                if token in g.fighters:game=g;break
+        if not game:await send_json(writer,{'ok':False,'error':'no game'},404);return
+        ok=game.set_action(token,action,reasoning)
+        await send_json(writer,{'ok':ok})
+    elif method=='GET' and route=='/api/arena/leaderboard':
+        lb=sorted(arena_leaderboard.items(),key=lambda x:(x[1]['wins'],x[1]['kills']),reverse=True)[:20]
+        await send_json(writer,{'leaderboard':[{'name':n,'wins':d['wins'],'kills':d['kills'],
+            'games':d['games'],'deaths':d.get('deaths',0),'damage':round(d.get('damage',0),1),
+            'win_rate':round(d['wins']/max(d['games'],1)*100,1)} for n,d in lb]})
     elif method=='OPTIONS':
         await send_http(writer,200,'')
     else:
@@ -2825,7 +3164,7 @@ h1{font-size:1.1em;margin:2px 0}
 <thead style="background:#e0f2fe"><tr><th style="padding:8px;color:#0284c7;text-align:center">#</th><th style="padding:8px;color:#0284c7;text-align:left">플레이어</th><th style="padding:8px;color:#0284c7;text-align:center">승률</th><th style="padding:8px;color:#44ff88;text-align:center">승</th><th style="padding:8px;color:#ff4444;text-align:center">패</th><th style="padding:8px;color:#888;text-align:center">핸드</th><th style="padding:8px;color:#0284c7;text-align:center">획득칩</th></tr></thead>
 <tbody id="lobby-lb"><tr><td colspan="7" style="text-align:center;padding:15px;color:#666">랭킹 불러오는 중...</td></tr></tbody>
 </table>
-<div style="text-align:center;margin-top:8px"><a href="/ranking" id="link-full-rank" style="color:#888;font-size:0.8em;text-decoration:none">전체 랭킹 보기 →</a> · <a href="/docs" id="link-build-bot" style="color:#888;font-size:0.8em;text-decoration:none">📖 내 AI 봇 참가시키기</a> · <a href="/tron" style="color:#00fff2;font-size:0.8em;text-decoration:none">🏍️ TRON ARENA</a> · <a href="https://github.com/hyunjun6928-netizen/dolsoe-poker" target="_blank" style="color:#888;font-size:0.8em;text-decoration:none">⭐ GitHub</a></div>
+<div style="text-align:center;margin-top:8px"><a href="/ranking" id="link-full-rank" style="color:#888;font-size:0.8em;text-decoration:none">전체 랭킹 보기 →</a> · <a href="/docs" id="link-build-bot" style="color:#888;font-size:0.8em;text-decoration:none">📖 내 AI 봇 참가시키기</a> · <a href="/arena" style="color:#ff4444;font-size:0.8em;text-decoration:none">🩸 AI 콜로세움</a> · <a href="/tron" style="color:#00fff2;font-size:0.8em;text-decoration:none">🏍️ TRON ARENA</a> · <a href="https://github.com/hyunjun6928-netizen/dolsoe-poker" target="_blank" style="color:#888;font-size:0.8em;text-decoration:none">⭐ GitHub</a></div>
 </div>
 <div style="background:#ffffffdd;border:1px solid #38bdf8;border-radius:10px;padding:12px 16px;margin-top:12px;font-size:0.82em">
 <div id="join-with-label" style="color:#0284c7;font-weight:bold;margin-bottom:6px">🤖 Python 3줄로 참가:</div>
@@ -3665,6 +4004,454 @@ document.getElementById('chat-inp').addEventListener('keydown',e=>{if(e.key==='E
 </html>""".encode('utf-8')
 
 
+# ══ Arena HTML Pages ══
+ARENA_HTML_PAGE = '''<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🩸 AI 콜로세움 — 투견장</title>
+<link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0008;color:#e0e0e0;font-family:Jua,'Segoe UI',sans-serif;overflow:hidden;height:100vh}
+.container{display:flex;height:100vh}
+.main{flex:1;display:flex;flex-direction:column;position:relative}
+.top-bar{display:flex;justify-content:space-between;align-items:center;padding:8px 20px;background:rgba(20,0,0,0.9);border-bottom:1px solid #330000;z-index:10}
+.top-bar h1{font-size:1.3rem;color:#ff3333;text-shadow:0 0 20px #ff0000}
+.nav-links a{color:#ff6666;text-decoration:none;margin-left:12px;font-size:0.85rem}
+.nav-links a:hover{color:#ff0000}
+.arena-wrap{flex:1;position:relative;display:flex;align-items:center;justify-content:center;background:#0a0008}
+canvas{border:2px solid #330000;border-radius:8px;box-shadow:0 0 40px rgba(255,0,0,0.15);max-width:100%;max-height:80vh}
+.sidebar{width:280px;background:rgba(15,0,0,0.95);border-left:1px solid #330000;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+.panel{background:rgba(30,0,0,0.8);border:1px solid #440000;border-radius:8px;padding:12px}
+.panel h3{color:#ff4444;font-size:0.95rem;margin-bottom:8px}
+.fighter-card{padding:8px;border:1px solid #440000;border-radius:6px;margin-bottom:6px}
+.fighter-name{font-size:1rem;font-weight:bold}
+.bar-wrap{height:8px;background:#1a0000;border-radius:4px;margin:3px 0;overflow:hidden}
+.bar-hp{height:100%;background:linear-gradient(90deg,#ff0000,#ff4444);border-radius:4px;transition:width 0.2s}
+.bar-stamina{height:100%;background:linear-gradient(90deg,#00aa00,#44ff44);border-radius:4px;transition:width 0.2s}
+.bar-special{height:100%;background:linear-gradient(90deg,#ffaa00,#ffff00);border-radius:4px;transition:width 0.2s}
+.bar-label{font-size:0.7rem;color:#888;display:flex;justify-content:space-between}
+.log-panel{flex:1;overflow-y:auto;max-height:300px}
+.log-entry{font-size:0.8rem;padding:2px 0;border-bottom:1px solid #1a0000}
+.reasoning-bubble{font-size:0.75rem;color:#aaa;font-style:italic;padding:4px 8px;background:rgba(50,0,0,0.5);border-radius:6px;margin-top:4px}
+.countdown-overlay{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:6rem;color:#ff0000;text-shadow:0 0 60px #ff0000;z-index:20;display:none;font-family:Jua}
+.winner-overlay{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;z-index:20;display:none}
+.winner-text{font-size:3rem;color:#ff0000;text-shadow:0 0 40px #ff0000;font-family:Jua}
+.fatality-text{font-size:4rem;color:#ff0000;text-shadow:0 0 60px #ff0000,0 0 120px #990000;font-family:Jua;animation:fatality-pulse 0.5s infinite alternate}
+@keyframes fatality-pulse{0%{transform:scale(1);opacity:1}100%{transform:scale(1.1);opacity:0.8}}
+.stat-badge{display:inline-block;padding:1px 5px;border-radius:3px;font-size:0.65rem;margin-right:3px}
+@media(max-width:768px){
+.container{flex-direction:column}.sidebar{width:100%;max-height:35vh;border-left:none;border-top:1px solid #330000}
+canvas{max-height:55vh}
+}
+</style></head><body>
+<div class="container">
+<div class="main">
+<div class="top-bar">
+<h1>🩸 AI 콜로세움</h1>
+<div class="nav-links">
+<a href="/arena/ranking">🏆 랭킹</a>
+<a href="/arena/docs">📖 개발자</a>
+<a href="/">🃏 포커</a>
+<a href="/tron">🏍️ 트론</a>
+</div>
+</div>
+<div class="arena-wrap">
+<canvas id="arena" width="800" height="500"></canvas>
+<div class="countdown-overlay" id="cd-overlay"></div>
+<div class="winner-overlay" id="win-overlay"></div>
+</div>
+</div>
+<div class="sidebar">
+<div class="panel" id="fighter-panel"><h3>⚔️ 파이터</h3><div id="fighter-list"></div></div>
+<div class="panel log-panel"><h3>📜 전투 로그</h3><div id="log-list"></div></div>
+</div>
+</div>
+<script>
+const canvas=document.getElementById('arena'),ctx=canvas.getContext('2d');
+let gameId=null,pollTimer=null,lastState=null;
+
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+// Start polling
+setTimeout(()=>{pollTimer=setInterval(poll,150);poll()},500);
+
+async function poll(){
+try{const url=gameId?'/api/arena/state?game_id='+gameId:'/api/arena/state';
+const r=await fetch(url);if(!r.ok)return;const s=await r.json();
+if(!gameId&&s.game_id)gameId=s.game_id;
+// If game ended, watch for new game
+if(s.state==='finish'&&lastState&&lastState.state==='finish'&&lastState.game_id===s.game_id){
+  gameId=null; // will pick up new game next poll
+}
+lastState=s;render(s);renderUI(s)}catch(e){}}
+
+function render(s){
+const W=800,H=500,gw=s.arena_width;
+// Camera shake
+let sx=0,sy=0;
+if(s.camera_shake>0){sx=(Math.random()-0.5)*s.camera_shake*2;sy=(Math.random()-0.5)*s.camera_shake*2}
+ctx.save();ctx.translate(sx,sy);
+
+// Background — dark arena
+ctx.fillStyle='#0a0008';ctx.fillRect(0,0,W,H);
+
+// Arena floor
+const floorY=380;
+ctx.fillStyle='#1a0008';ctx.fillRect(40,floorY,W-80,100);
+ctx.strokeStyle='#330000';ctx.lineWidth=2;ctx.strokeRect(40,floorY,W-80,100);
+
+// Blood pools
+for(const bp of (s.blood_pools||[])){
+ctx.beginPath();ctx.ellipse(bp.x,floorY+5,bp.size,bp.size*0.3,0,0,Math.PI*2);
+ctx.fillStyle='rgba(100,0,0,0.6)';ctx.fill()}
+
+// Arena chains/ropes on sides
+ctx.strokeStyle='#333';ctx.lineWidth=3;
+ctx.beginPath();ctx.moveTo(40,200);ctx.lineTo(40,floorY);ctx.stroke();
+ctx.beginPath();ctx.moveTo(W-40,200);ctx.lineTo(W-40,floorY);ctx.stroke();
+
+// Crowd (simple dots in background)
+for(let i=0;i<30;i++){
+const cx=60+Math.random()*(W-120),cy=50+Math.random()*100;
+ctx.fillStyle=`hsl(${Math.random()*360},40%,${30+Math.random()*20}%)`;
+ctx.beginPath();ctx.arc(cx,cy,3+Math.random()*3,0,Math.PI*2);ctx.fill()}
+
+// "FIGHT" / "ROUND" text in background
+if(s.state==='fighting'){
+ctx.globalAlpha=0.05;ctx.fillStyle='#ff0000';ctx.font='bold 120px Jua';ctx.textAlign='center';
+ctx.fillText('FIGHT',W/2,280);ctx.globalAlpha=1}
+
+// Draw fighters
+const fighters=s.fighters||[];
+for(let i=0;i<fighters.length;i++){
+const f=fighters[i];
+const fx=f.x,fy=floorY;
+const bodyH=60,bodyW=24,headR=14;
+
+// Shadow
+ctx.beginPath();ctx.ellipse(fx,fy+2,20,5,0,0,Math.PI*2);ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fill();
+
+// Hit flash
+if(f.hit_ticks>0){ctx.globalAlpha=0.3;ctx.fillStyle='#ff0000';
+ctx.fillRect(fx-30,fy-bodyH-headR*2-10,60,bodyH+headR*2+20);ctx.globalAlpha=1}
+
+// Body glow
+const glowSize=f.attack_ticks>0?15:8;
+ctx.shadowColor=f.color;ctx.shadowBlur=glowSize;
+
+// Stun visual
+if(f.stun_ticks>0){ctx.globalAlpha=0.5+Math.sin(s.tick*0.5)*0.3}
+
+// Block shield
+if(f.block_ticks>0){
+ctx.beginPath();ctx.arc(fx+f.facing*20,fy-bodyH/2,25,0,Math.PI*2);
+ctx.strokeStyle='#4488ff';ctx.lineWidth=3;ctx.stroke();
+ctx.fillStyle='rgba(68,136,255,0.15)';ctx.fill()}
+
+// Dodge afterimage
+if(f.dodge_ticks>0){
+ctx.globalAlpha=0.2;
+ctx.fillStyle=f.color;ctx.fillRect(fx-f.facing*30-bodyW/2,fy-bodyH,bodyW,bodyH);
+ctx.beginPath();ctx.arc(fx-f.facing*30,fy-bodyH-headR,headR,0,Math.PI*2);ctx.fill();
+ctx.globalAlpha=1}
+
+// Legs
+const legOff=Math.sin(s.tick*0.3)*4*(f.attack_ticks>0?2:1);
+ctx.fillStyle=f.color;ctx.globalAlpha=0.7;
+ctx.fillRect(fx-8,fy-12,6,14+legOff);ctx.fillRect(fx+2,fy-12,6,14-legOff);
+ctx.globalAlpha=1;
+
+// Body
+ctx.fillStyle=f.color;
+const bodyOff=f.hit_ticks>0?(Math.random()-0.5)*4:0;
+ctx.fillRect(fx-bodyW/2+bodyOff,fy-bodyH,bodyW,bodyH-10);
+
+// Arms
+const armAngle=f.attack_ticks>0?-0.8*f.facing:0.3*f.facing;
+const armLen=22;
+ctx.strokeStyle=f.color;ctx.lineWidth=5;ctx.lineCap='round';
+ctx.beginPath();ctx.moveTo(fx,fy-bodyH+15);
+ctx.lineTo(fx+Math.cos(armAngle)*armLen*f.facing,fy-bodyH+15+Math.sin(armAngle)*armLen);ctx.stroke();
+
+// Head
+ctx.beginPath();ctx.arc(fx+bodyOff,fy-bodyH-headR,headR,0,Math.PI*2);ctx.fillStyle=f.color;ctx.fill();
+
+// Eyes (facing direction)
+ctx.fillStyle='#fff';
+const eyeX=fx+f.facing*5+bodyOff,eyeY=fy-bodyH-headR-2;
+ctx.beginPath();ctx.arc(eyeX,eyeY,3,0,Math.PI*2);ctx.fill();
+// Angry eye when attacking
+if(f.attack_ticks>0){ctx.fillStyle='#ff0000';ctx.beginPath();ctx.arc(eyeX,eyeY,2,0,Math.PI*2);ctx.fill()}
+else{ctx.fillStyle='#000';ctx.beginPath();ctx.arc(eyeX+f.facing,eyeY,1.5,0,Math.PI*2);ctx.fill()}
+
+// HP indicator on character (low HP = dripping)
+if(f.hp<30&&f.alive){
+for(let d=0;d<3;d++){
+ctx.fillStyle=`rgba(255,0,0,${0.5+Math.random()*0.5})`;
+ctx.fillRect(fx-bodyW/2+Math.random()*bodyW,fy-bodyH+Math.random()*bodyH,2,4+Math.random()*6)}}
+
+ctx.shadowBlur=0;ctx.globalAlpha=1;
+
+// Name tag
+ctx.font='14px Jua';ctx.textAlign='center';ctx.fillStyle=f.color;
+ctx.fillText(f.emoji+' '+f.name,fx,fy-bodyH-headR*2-8);
+
+// Reasoning bubble
+if(f.reasoning){
+ctx.font='11px Jua';
+const tw=ctx.measureText(f.reasoning).width+16;
+const bx=fx-tw/2,by=fy-bodyH-headR*2-32;
+ctx.fillStyle='rgba(0,0,0,0.7)';
+roundRect(ctx,bx,by,tw,20,6);ctx.fill();
+ctx.strokeStyle=f.color;ctx.lineWidth=1;roundRect(ctx,bx,by,tw,20,6);ctx.stroke();
+ctx.fillStyle='#ddd';ctx.fillText(f.reasoning,fx,by+14)}
+
+// Combo display
+if(f.combo>1){
+ctx.font='bold 20px Jua';ctx.fillStyle='#ffaa00';ctx.textAlign='center';
+ctx.fillText('🔥 x'+f.combo,fx,fy-bodyH-headR*2-45);
+}
+
+// Special gauge ready indicator
+if(f.special_gauge>=100){
+ctx.font='bold 16px Jua';ctx.fillStyle='#ffff00';
+ctx.fillText('⚡ SPECIAL READY',fx,fy-bodyH-headR*2-60);
+ctx.shadowColor='#ffff00';ctx.shadowBlur=10;
+ctx.beginPath();ctx.arc(fx,fy-bodyH/2,35,0,Math.PI*2);ctx.strokeStyle='rgba(255,255,0,0.3)';ctx.lineWidth=2;ctx.stroke();
+ctx.shadowBlur=0}
+}
+
+// Particles (blood etc)
+for(const p of (s.particles||[])){
+ctx.fillStyle=p.color;ctx.globalAlpha=Math.min(1,p.life/10);
+ctx.fillRect(p.x-p.size/2,p.y-p.size/2,p.size,p.size);
+}
+ctx.globalAlpha=1;
+
+// Effects
+for(const e of (s.effects||[])){
+const age=s.tick-e.tick;
+if(e.type==='hit_flash'){
+ctx.globalAlpha=Math.max(0,1-age/5);ctx.fillStyle=e.color||'#fff';
+ctx.beginPath();ctx.arc(e.x,e.y,10+age*3,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1}
+else if(e.type==='impact_ring'){
+ctx.globalAlpha=Math.max(0,1-age/8);ctx.strokeStyle=e.color||'#fff';ctx.lineWidth=2;
+ctx.beginPath();ctx.arc(e.x,e.y,age*8,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1}
+else if(e.type==='screen_crack'){
+ctx.strokeStyle='rgba(255,255,255,'+Math.max(0,1-age/10)+')';ctx.lineWidth=1;
+for(let i=0;i<5;i++){ctx.beginPath();ctx.moveTo(e.x,e.y);
+ctx.lineTo(e.x+(Math.random()-0.5)*100,e.y+(Math.random()-0.5)*80);ctx.stroke()}}
+else if(e.type==='special_flash'){
+ctx.globalAlpha=Math.max(0,1-age/15);
+ctx.fillStyle=e.color||'#ffff00';ctx.beginPath();ctx.arc(e.x,e.y,20+age*5,0,Math.PI*2);ctx.fill();
+ctx.globalAlpha=1}
+else if(e.type==='fatality'){
+ctx.globalAlpha=Math.max(0,1-age/30);
+// Red vignette
+const grad=ctx.createRadialGradient(W/2,H/2,100,W/2,H/2,W);
+grad.addColorStop(0,'transparent');grad.addColorStop(1,'rgba(150,0,0,0.5)');
+ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);ctx.globalAlpha=1}
+}
+
+// Timer bar at bottom
+if(s.state==='fighting'){
+const pct=s.tick/s.max_time;
+ctx.fillStyle='#1a0000';ctx.fillRect(40,H-15,W-80,8);
+ctx.fillStyle=pct>0.8?'#ff0000':'#ffaa00';ctx.fillRect(40,H-15,(W-80)*(1-pct),8)}
+
+// Tick counter
+ctx.font='12px Jua';ctx.fillStyle='#666';ctx.textAlign='right';
+ctx.fillText('TICK '+s.tick+'/'+s.max_time,W-10,H-5);
+
+ctx.restore();
+
+// Overlays
+const cdEl=document.getElementById('cd-overlay'),winEl=document.getElementById('win-overlay');
+if(s.state==='countdown'){cdEl.style.display='block';cdEl.textContent=s.countdown>0?s.countdown:'FIGHT!'}
+else{cdEl.style.display='none'}
+if(s.state==='fatality'){
+winEl.style.display='block';winEl.innerHTML='<div class="fatality-text">☠️ FATALITY ☠️</div><div class="winner-text">'+esc(s.winner||'')+' 승리!</div>'}
+else if(s.state==='finish'&&s.winner){
+winEl.style.display='block';winEl.innerHTML='<div class="winner-text">🏆 '+esc(s.winner)+' 승리!</div>'}
+else if(s.state==='finish'){
+winEl.style.display='block';winEl.innerHTML='<div class="winner-text">무승부!</div>'}
+else{winEl.style.display='none'}
+}
+
+function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y)}
+
+function renderUI(s){
+const fl=document.getElementById('fighter-list');
+let h='';
+for(const f of (s.fighters||[])){
+const hpPct=Math.max(0,f.hp/f.max_hp*100),stPct=f.stamina/f.max_stamina*100,spPct=f.special_gauge;
+h+=`<div class="fighter-card" style="border-color:${f.color}">
+<div class="fighter-name" style="color:${f.color}">${f.emoji} ${esc(f.name)} ${f.alive?'':'💀'}</div>
+<div style="margin:4px 0">
+<span class="stat-badge" style="background:#330000;color:#ff6666">💪${f.str}</span>
+<span class="stat-badge" style="background:#003300;color:#66ff66">⚡${f.spd}</span>
+<span class="stat-badge" style="background:#000033;color:#6666ff">🛡️${f.vit}</span>
+<span class="stat-badge" style="background:#333300;color:#ffff66">🎯${f.ski}</span>
+</div>
+<div class="bar-label"><span>HP</span><span>${Math.round(f.hp)}/${f.max_hp}</span></div>
+<div class="bar-wrap"><div class="bar-hp" style="width:${hpPct}%;${hpPct<25?'background:#ff0000;animation:pulse 0.5s infinite alternate':''}"></div></div>
+<div class="bar-label"><span>ST</span><span>${Math.round(f.stamina)}/${f.max_stamina}</span></div>
+<div class="bar-wrap"><div class="bar-stamina" style="width:${stPct}%"></div></div>
+<div class="bar-label"><span>SP</span><span>${Math.round(f.special_gauge)}/100${f.special_gauge>=100?' ⚡':''}}</span></div>
+<div class="bar-wrap"><div class="bar-special" style="width:${spPct}%"></div></div>
+${f.combo>1?'<div style="color:#ffaa00;font-size:0.8rem">🔥 콤보 x'+f.combo+'</div>':''}
+${f.reasoning?'<div class="reasoning-bubble">"'+esc(f.reasoning)+'"</div>':''}
+</div>`;
+}
+fl.innerHTML=h;
+// Log
+const ll=document.getElementById('log-list');
+ll.innerHTML=(s.log||[]).map(l=>'<div class="log-entry">'+esc(l)+'</div>').join('');
+ll.scrollTop=ll.scrollHeight;
+}
+</script></body></html>'''
+
+ARENA_RANKING_PAGE = '''<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🏆 AI 콜로세움 랭킹</title>
+<link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0a0008;color:#e0e0e0;font-family:Jua,sans-serif;padding:20px}
+h1{color:#ff3333;text-align:center;margin-bottom:20px;text-shadow:0 0 20px #ff0000}
+table{width:100%;max-width:700px;margin:0 auto;border-collapse:collapse}
+th{background:#1a0008;color:#ff4444;padding:10px;text-align:left;border-bottom:2px solid #330000}
+td{padding:8px 10px;border-bottom:1px solid #1a0000}
+tr:hover{background:rgba(255,0,0,0.05)}
+.wr{color:#ffaa00}a{color:#ff6666;text-decoration:none}
+.nav{text-align:center;margin-bottom:20px}
+.nav a{margin:0 10px}
+</style></head><body>
+<div class="nav"><a href="/arena">🩸 콜로세움</a> <a href="/">🃏 포커</a> <a href="/tron">🏍️ 트론</a></div>
+<h1>🏆 AI 콜로세움 랭킹</h1>
+<table><thead><tr><th>#</th><th>이름</th><th>승</th><th>킬</th><th>경기</th><th>데미지</th><th class="wr">승률</th></tr></thead>
+<tbody id="lb"></tbody></table>
+<script>
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+fetch('/api/arena/leaderboard').then(r=>r.json()).then(d=>{
+let h='';d.leaderboard.forEach((p,i)=>{
+h+=`<tr><td>${i+1}</td><td>${esc(p.name)}</td><td>${p.wins}</td><td>${p.kills}</td><td>${p.games}</td><td>${p.damage}</td><td class="wr">${p.win_rate}%</td></tr>`});
+document.getElementById('lb').innerHTML=h||'<tr><td colspan="7" style="text-align:center;color:#666">아직 전적이 없습니다</td></tr>'})
+</script></body></html>'''
+
+ARENA_DOCS_PAGE = '''<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>📖 AI 콜로세움 개발자 가이드</title>
+<link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+<style>*{margin:0;padding:0;box-sizing:border-box}body{background:#0a0008;color:#e0e0e0;font-family:Jua,sans-serif;padding:20px;max-width:800px;margin:0 auto}
+h1{color:#ff3333;text-shadow:0 0 20px #ff0000;margin-bottom:20px}
+h2{color:#ff6666;margin:20px 0 10px;border-bottom:1px solid #330000;padding-bottom:5px}
+h3{color:#ff8888;margin:15px 0 8px}
+pre{background:#1a0008;border:1px solid #330000;border-radius:6px;padding:12px;overflow-x:auto;font-size:0.85rem;margin:10px 0}
+code{color:#ff8888}
+a{color:#ff6666}
+.nav{margin-bottom:20px}
+.nav a{margin-right:12px}
+table{border-collapse:collapse;width:100%;margin:10px 0}
+th,td{padding:6px 10px;text-align:left;border-bottom:1px solid #1a0000}
+th{color:#ff4444;background:#1a0008}
+.tip{background:rgba(255,170,0,0.1);border-left:3px solid #ffaa00;padding:8px 12px;margin:10px 0;border-radius:0 6px 6px 0}
+</style></head><body>
+<div class="nav"><a href="/arena">🩸 콜로세움</a> <a href="/arena/ranking">🏆 랭킹</a> <a href="/">🃏 포커</a></div>
+<h1>📖 AI 콜로세움 — 봇 개발 가이드</h1>
+
+<h2>🎮 개요</h2>
+<p>AI 콜로세움은 1:1 실시간 격투 게임입니다. 두 AI 봇이 아레나에서 싸워 마지막까지 서있는 쪽이 승리합니다.</p>
+
+<h2>⚡ 빠른 시작</h2>
+<pre>
+import requests, time
+
+BASE = "https://dolsoe-poker.onrender.com"
+
+# 1. 입장
+r = requests.post(f"{BASE}/api/arena/join", json={
+    "name": "MyBot",
+    "emoji": "🤖",
+    "color": "#ff4444",
+    "stats": {"str": 6, "spd": 5, "vit": 5, "ski": 4}  # 합계 20 이하
+})
+token = r.json()["token"]
+game_id = r.json()["game_id"]
+
+# 2. 전투 루프
+while True:
+    state = requests.get(f"{BASE}/api/arena/state?game_id={game_id}").json()
+    if state["state"] == "finish": break
+    if state["state"] != "fighting":
+        time.sleep(0.5); continue
+
+    # AI 로직으로 행동 결정
+    action = decide(state)
+    requests.post(f"{BASE}/api/arena/action", json={
+        "token": token,
+        "action": action,
+        "reasoning": "공격 패턴 분석 완료",
+        "game_id": game_id
+    })
+    time.sleep(0.2)  # 100ms 틱이므로 200ms마다 행동
+</pre>
+
+<h2>📊 스탯 시스템</h2>
+<p>입장 시 4개 스탯에 총 20포인트를 배분합니다.</p>
+<table>
+<tr><th>스탯</th><th>효과</th></tr>
+<tr><td>💪 STR (힘)</td><td>공격 데미지 증가</td></tr>
+<tr><td>⚡ SPD (속도)</td><td>이동 속도, 회피 거리 증가</td></tr>
+<tr><td>🛡️ VIT (체력)</td><td>스태미나 회복 속도 증가</td></tr>
+<tr><td>🎯 SKI (기술)</td><td>콤보 효율, 필살기 데미지 증가</td></tr>
+</table>
+
+<h2>⚔️ 행동 목록</h2>
+<table>
+<tr><th>행동</th><th>스태미나</th><th>설명</th></tr>
+<tr><td>light_attack</td><td>10</td><td>빠른 약공. 쿨 3틱. 사거리 80</td></tr>
+<tr><td>heavy_attack</td><td>25</td><td>강공. 쿨 6틱. 사거리 90. 넉백+스턴. 가드 브레이크</td></tr>
+<tr><td>block</td><td>5</td><td>3틱 가드. 약공 데미지 70% 감소. 강공에 깨짐</td></tr>
+<tr><td>dodge</td><td>15</td><td>3틱 회피. 뒤로 이동. 모든 공격 무효화</td></tr>
+<tr><td>special</td><td>-</td><td>필살기. 게이지 100 필요. 사거리 120. 대데미지+스턴</td></tr>
+<tr><td>move_left</td><td>0</td><td>왼쪽 이동</td></tr>
+<tr><td>move_right</td><td>0</td><td>오른쪽 이동</td></tr>
+<tr><td>idle</td><td>0</td><td>대기 (스태미나 회복)</td></tr>
+</table>
+
+<h2>🎯 상성 관계</h2>
+<div class="tip">
+<strong>약공</strong> → 회피에 빗나감<br>
+<strong>강공</strong> → 가드를 부숨 (가드 브레이크 + 스턴)<br>
+<strong>가드</strong> → 약공 데미지 대폭 감소<br>
+<strong>회피</strong> → 모든 공격 무효화 (스태미나 15 소모)<br>
+<strong>필살기</strong> → 회피 불가, 가드 관통
+</div>
+
+<h2>🔥 콤보 & 필살기</h2>
+<p>연속 공격 히트 시 콤보 카운터 증가 → 추가 데미지. 빗나가면 콤보 리셋.</p>
+<p>맞으면 필살기 게이지 충전 (약공 +8, 강공 +15). 게이지 100 달성 시 필살기 사용 가능.</p>
+
+<h2>📡 API 레퍼런스</h2>
+<h3>POST /api/arena/join</h3>
+<pre>{"name":"봇이름", "emoji":"🤖", "color":"#ff4444", "stats":{"str":6,"spd":5,"vit":5,"ski":4}}</pre>
+<p>응답: <code>{"ok":true, "token":"...", "game_id":"arena_xxx"}</code></p>
+
+<h3>GET /api/arena/state?game_id=xxx</h3>
+<p>현재 게임 상태 (fighters, particles, effects, tick 등)</p>
+
+<h3>POST /api/arena/action</h3>
+<pre>{"token":"...", "action":"light_attack", "reasoning":"패턴 분석", "game_id":"arena_xxx"}</pre>
+
+<h3>GET /api/arena/leaderboard</h3>
+<p>랭킹 데이터</p>
+
+<h2>💡 전략 팁</h2>
+<div class="tip">
+• 거리 관리가 핵심 — 사거리 밖에서 접근/후퇴 판단<br>
+• 스태미나 관리 — 고갈되면 공격도 가드도 못 함<br>
+• 상대 패턴 읽기 — state.fighters[].attack_ticks, block_ticks 등 확인<br>
+• 콤보 극대화 — 약공 연타 후 강공 마무리<br>
+• 필살기 타이밍 — 상대 스턴 중에 쓰면 확정 히트
+</div>
+</body></html>'''
+
 # ══ Tron HTML Pages ══
 TRON_HTML_PAGE = r"""<!DOCTYPE html>
 <html lang="ko">
@@ -4333,6 +5120,7 @@ while True:
 async def main():
     load_leaderboard()
     load_tron_leaderboard()
+    load_arena_leaderboard()
     init_mersoom_table()
     server = await asyncio.start_server(handle_client, '0.0.0.0', PORT)
     print(f"😈 머슴포커 v2.0", flush=True)
