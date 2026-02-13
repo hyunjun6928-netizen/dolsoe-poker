@@ -265,14 +265,13 @@ def _translate_state(state, lang):
     # Translate commentary
     if state.get('commentary'):
         state['commentary'] = _translate_text(state['commentary'], lang)
-    # Translate showdown_result
+    # Translate showdown_result (list of player dicts)
     if state.get('showdown_result'):
-        sr = state['showdown_result']
-        if sr.get('winner'):
-            sr['winner'] = NPC_NAME_EN.get(sr['winner'], sr['winner'])
-        for p in sr.get('players', []):
-            if p.get('name'):
+        for p in state['showdown_result']:
+            if isinstance(p, dict) and p.get('name'):
                 p['name'] = NPC_NAME_EN.get(p['name'], p['name'])
+            if isinstance(p, dict) and p.get('hand'):
+                p['hand'] = _translate_text(p['hand'], lang)
     # Translate rivalries
     for r in state.get('rivalries', []):
         if r.get('player_a'):
