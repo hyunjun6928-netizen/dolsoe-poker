@@ -1692,9 +1692,26 @@ h1 b{-webkit-text-fill-color:#f97316}
 .api-info code{background:#ffffffbb;padding:2px 6px;border-radius:6px;color:#6bcb77;border:1px solid #000}
 #game{display:none}
 .info-bar{display:flex;justify-content:space-between;padding:6px 12px;font-size:0.8em;color:#4b7399;background:#ffffffcc;border-radius:12px;margin-bottom:8px;border:2px solid #38bdf8;box-shadow:2px 2px 0 #38bdf833}
-.felt{position:relative;background:radial-gradient(ellipse at center,#1a6030 0%,#0d3318 60%,#091a0e 100%);
-background-image:radial-gradient(ellipse at center,#34d399 0%,#059669 50%,#047857 100%),repeating-linear-gradient(45deg,transparent,transparent 10px,#ffffff0a 10px,#ffffff0a 20px);
-border:6px solid #d4a574;outline:3px solid #a0845c;border-radius:50%;width:100%;padding-bottom:55%;box-shadow:6px 6px 0 #a0845c88,0 0 40px #34d39933;margin:40px auto 50px}
+.felt{position:relative;
+background:radial-gradient(ellipse at 30% 40%,#1a1a4e 0%,#0c0c2d 40%,#050520 70%,#020215 100%);
+border:4px solid #38bdf855;outline:2px solid #0ea5e933;border-radius:50%;width:100%;padding-bottom:55%;
+box-shadow:0 0 60px #38bdf822,0 0 120px #0ea5e911,inset 0 0 80px #0c0c2d;margin:40px auto 50px;overflow:hidden}
+.felt::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;
+background:radial-gradient(2px 2px at 20% 30%,#fff8,transparent),
+radial-gradient(2px 2px at 40% 70%,#fff6,transparent),
+radial-gradient(1px 1px at 60% 20%,#fff5,transparent),
+radial-gradient(1px 1px at 80% 50%,#fff4,transparent),
+radial-gradient(2px 2px at 10% 80%,#7dd3fc55,transparent),
+radial-gradient(2px 2px at 70% 10%,#7dd3fc44,transparent),
+radial-gradient(1px 1px at 50% 50%,#fff3,transparent),
+radial-gradient(1px 1px at 90% 30%,#fff3,transparent),
+radial-gradient(1px 1px at 30% 60%,#bae6fd33,transparent),
+radial-gradient(1px 1px at 15% 45%,#fff4,transparent),
+radial-gradient(1px 1px at 85% 75%,#fff3,transparent),
+radial-gradient(1px 1px at 55% 85%,#fff2,transparent),
+radial-gradient(ellipse at 50% 50%,#38bdf808 0%,transparent 70%);
+border-radius:50%;pointer-events:none;z-index:1;animation:starTwinkle 4s ease-in-out infinite alternate}
+@keyframes starTwinkle{0%{opacity:0.7}100%{opacity:1}}
 #table-info{display:flex;justify-content:center;gap:16px;margin:6px 0;flex-wrap:wrap}
 #table-info .ti{background:#ffffffcc;border:2px solid #000;border-radius:12px;padding:4px 12px;font-size:0.75em;color:#4b7399;box-shadow:2px 2px 0 #000}
 #table-info .ti b{color:#ffd93d;text-shadow:1px 1px 0 #000}
@@ -1766,8 +1783,8 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 @keyframes cardFlip{0%{transform:rotateY(180deg)}100%{transform:rotateY(0deg)}}
 .card.flip-anim{animation:cardFlipSimple 0.6s ease-out forwards;backface-visibility:hidden}
 @keyframes cardFlipSimple{0%{transform:rotateY(180deg);opacity:0.5}50%{transform:rotateY(90deg);opacity:0.8}100%{transform:rotateY(0deg);opacity:1}}
-.felt.warm{box-shadow:8px 8px 0 #000,0 0 30px #ffd70044}
-.felt.hot{box-shadow:8px 8px 0 #000,0 0 50px #ff880066,0 0 100px #ff660033}
+.felt.warm{box-shadow:0 0 60px #38bdf833,0 0 30px #fbbf2444}
+.felt.hot{box-shadow:0 0 80px #38bdf844,0 0 50px #f9731666,0 0 100px #f9731633}
 .felt.fire{animation:fireGlow 1.5s ease-in-out infinite}
 @keyframes fireGlow{0%,100%{box-shadow:8px 8px 0 #000,0 0 60px #ff000066,0 0 120px #ff440044}50%{box-shadow:8px 8px 0 #000,0 0 80px #ff000088,0 0 160px #ff440066}}
 .ava-ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-60%);width:3em;height:3em;border-radius:50%;z-index:-1;pointer-events:none}
@@ -1830,7 +1847,7 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 @media(max-width:700px){
 .wrap{padding:4px}
 h1{font-size:1.3em;margin:4px 0}
-.felt{padding-bottom:70%;border-radius:20px;margin:35px auto 25px;border-width:4px;outline-width:2px;box-shadow:5px 5px 0 #000}
+.felt{padding-bottom:70%;border-radius:20px;margin:35px auto 25px;border-width:3px;outline-width:1px;box-shadow:0 0 40px #38bdf822}
 .board{gap:3px}
 .card{width:36px;height:52px;font-size:0.7em;border-radius:7px;box-shadow:2px 2px 0 #000}
 .card-sm{width:30px;height:44px;font-size:0.6em}
