@@ -1342,6 +1342,11 @@ const roundNames={preflop:'프리플랍',flop:'플랍',turn:'턴',river:'리버'
 document.getElementById('ri').textContent=roundNames[s.round]||s.round||'대기중';
 // 해설 업데이트 (폴링 모드 대응)
 if(s.commentary&&s.commentary!==window._lastCommentary){window._lastCommentary=s.commentary;showCommentary(s.commentary)}
+// 핸드/라운드 변화 사운드
+if(s.hand!==window._sndHand){window._sndHand=s.hand;if(s.hand>1)sfx('newhand')}
+if(s.round!==window._sndRound){
+if(s.round==='showdown'||s.round==='between'&&s.showdown_result)sfx('win');
+window._sndRound=s.round}
 if(s.spectator_count!==undefined)document.getElementById('si').textContent=`👀 관전 ${s.spectator_count}명`;
 // 타임라인 업데이트
 const rounds=['preflop','flop','turn','river','showdown'];
@@ -1393,7 +1398,7 @@ const chip=document.createElement('div');chip.className='chip-fly';chip.textCont
 chip.style.left=(sr.left-fr.left+sr.width/2-10)+'px';
 chip.style.top=(sr.top-fr.top)+'px';
 chip.style.setProperty('--dx',dx+'px');chip.style.setProperty('--dy',dy+'px');
-felt.appendChild(chip);setTimeout(()=>chip.remove(),900)}}
+felt.appendChild(chip);setTimeout(()=>chip.remove(),900);sfx('bet')}}
 window._prevBets[p.name]=p.bet});
 if(s.round==='between'||s.round==='waiting')window._prevBets={};
 const f=document.getElementById('felt');f.querySelectorAll('.seat').forEach(e=>e.remove());
@@ -1407,7 +1412,8 @@ const bt=p.bet>0?`<div class="bet-chip">🪙${p.bet}pt</div>`:'';
 let la='';
 if(p.last_action){
 const key=`act_${p.name}`;const prev=window[key]||'';
-if(p.last_action!==prev){window[key]=p.last_action;window[key+'_t']=Date.now();la=`<div class="act-label">${p.last_action}</div>`}
+if(p.last_action!==prev){window[key]=p.last_action;window[key+'_t']=Date.now();la=`<div class="act-label">${p.last_action}</div>`;
+if(p.last_action.includes('폴드'))sfx('fold');else if(p.last_action.includes('체크'))sfx('check');else if(p.last_action.includes('ALL IN'))sfx('allin')}
 else if(Date.now()-window[key+'_t']<2000){la=`<div class="act-label" style="animation:none;opacity:1">${p.last_action}</div>`}
 }
 const sb=p.streak_badge||'';
@@ -1644,15 +1650,49 @@ function initAudio(){if(!audioCtx){audioCtx=new(window.AudioContext||window.webk
 document.addEventListener('click',initAudio,{once:false});
 function sfx(type){
 if(!audioCtx)initAudio();if(!audioCtx)return;
-try{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
-g.gain.value=0.15;
-if(type==='chip'){o.frequency.value=800;o.type='sine';g.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+0.15);o.start();o.stop(audioCtx.currentTime+0.15)}
-else if(type==='allin'){o.frequency.value=200;o.type='sawtooth';g.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+0.5);o.start();o.stop(audioCtx.currentTime+0.5)}
-else if(type==='showdown'){o.frequency.value=523;o.type='triangle';g.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+0.8);o.start();
-setTimeout(()=>{const o2=audioCtx.createOscillator();const g2=audioCtx.createGain();o2.connect(g2);g2.connect(audioCtx.destination);o2.frequency.value=659;o2.type='triangle';g2.gain.value=0.15;g2.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+0.4);o2.start();o2.stop(audioCtx.currentTime+0.4)},200);o.stop(audioCtx.currentTime+0.3)}
-else if(type==='killcam'){o.frequency.value=100;o.type='square';g.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+0.8);o.start();o.stop(audioCtx.currentTime+0.8)}
-else if(type==='darkhorse'){o.frequency.value=440;o.type='triangle';g.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+0.6);o.start();o.stop(audioCtx.currentTime+0.6)}
-else if(type==='mvp'){o.frequency.value=660;o.type='sine';g.gain.exponentialRampToValueAtTime(0.01,audioCtx.currentTime+1);o.start();o.stop(audioCtx.currentTime+1)}
+const t=audioCtx.currentTime;
+try{
+if(type==='chip'){
+// 칩 놓는 소리 — 짧은 딸깍
+const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+o.frequency.value=800;o.type='sine';g.gain.value=0.12;g.gain.exponentialRampToValueAtTime(0.01,t+0.1);o.start(t);o.stop(t+0.1)}
+else if(type==='bet'){
+// 칩 던지는 소리 — 짤랑짤랑
+[900,1100,700].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+o.frequency.value=f;o.type='sine';g.gain.value=0.1;g.gain.exponentialRampToValueAtTime(0.01,t+0.08+i*0.06);o.start(t+i*0.05);o.stop(t+0.1+i*0.06)})}
+else if(type==='fold'){
+// 카드 버리는 소리 — 스윽
+const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+o.frequency.value=300;o.frequency.exponentialRampToValueAtTime(100,t+0.15);o.type='sawtooth';g.gain.value=0.06;g.gain.exponentialRampToValueAtTime(0.01,t+0.15);o.start(t);o.stop(t+0.15)}
+else if(type==='check'){
+// 탁 — 짧은 노크
+const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+o.frequency.value=400;o.type='square';g.gain.value=0.1;g.gain.exponentialRampToValueAtTime(0.01,t+0.06);o.start(t);o.stop(t+0.06)}
+else if(type==='allin'){
+// 올인 — 웅장한 경고음
+[200,250,300,400].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+o.frequency.value=f;o.type='sawtooth';g.gain.value=0.12;g.gain.exponentialRampToValueAtTime(0.01,t+0.4+i*0.1);o.start(t+i*0.08);o.stop(t+0.5+i*0.1)})}
+else if(type==='showdown'){
+// 쇼다운 — 두둥! 드럼롤 느낌
+[523,587,659].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+o.frequency.value=f;o.type='triangle';g.gain.value=0.15;g.gain.exponentialRampToValueAtTime(0.01,t+0.5);o.start(t+i*0.15);o.stop(t+0.5+i*0.15)})}
+else if(type==='win'){
+// 승리 팡파레 — 도레미솔!
+[523,587,659,784].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+o.frequency.value=f;o.type='sine';g.gain.value=0.15;g.gain.exponentialRampToValueAtTime(0.01,t+0.3+i*0.12);o.start(t+i*0.12);o.stop(t+0.4+i*0.12)})}
+else if(type==='newhand'){
+// 새 핸드 — 카드 셔플 (노이즈 + 리듬)
+for(let i=0;i<4;i++){const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+o.frequency.value=600+Math.random()*400;o.type='sawtooth';g.gain.value=0.04;g.gain.exponentialRampToValueAtTime(0.01,t+0.05+i*0.08);o.start(t+i*0.07);o.stop(t+0.08+i*0.08)}}
+else if(type==='killcam'){
+const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+o.frequency.value=150;o.frequency.exponentialRampToValueAtTime(50,t+0.8);o.type='square';g.gain.value=0.1;g.gain.exponentialRampToValueAtTime(0.01,t+0.8);o.start(t);o.stop(t+0.8)}
+else if(type==='darkhorse'){
+const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+o.frequency.value=440;o.frequency.exponentialRampToValueAtTime(880,t+0.4);o.type='triangle';g.gain.value=0.12;g.gain.exponentialRampToValueAtTime(0.01,t+0.6);o.start(t);o.stop(t+0.6)}
+else if(type==='mvp'){
+[660,784,880,1047].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+o.frequency.value=f;o.type='sine';g.gain.value=0.12;g.gain.exponentialRampToValueAtTime(0.01,t+0.4+i*0.15);o.start(t+i*0.15);o.stop(t+0.5+i*0.15)})}
 }catch(e){}}
 
 // 기존 이벤트에 사운드 추가
