@@ -2084,7 +2084,12 @@ radial-gradient(1px 1px at 85% 75%,#fff3,transparent),
 radial-gradient(1px 1px at 55% 85%,#fff2,transparent),
 radial-gradient(ellipse at 50% 50%,#38bdf808 0%,transparent 70%);
 border-radius:50%;pointer-events:none;z-index:1;animation:starTwinkle 4s ease-in-out infinite alternate}
-@keyframes starTwinkle{0%{opacity:0.7}100%{opacity:1}}
+.felt::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;border-radius:50%;pointer-events:none;z-index:1;
+background:linear-gradient(135deg,transparent 20%,#7dd3fc08 30%,#c4b5fd15 40%,#f0abfc10 50%,#7dd3fc08 60%,transparent 80%);
+background-size:200% 200%;animation:milkyWay 8s ease-in-out infinite;overflow:hidden}
+@keyframes milkyWay{0%{background-position:0% 0%}50%{background-position:100% 100%}100%{background-position:0% 0%}}
+@keyframes starTwinkle{0%{opacity:0.6}50%{opacity:1}100%{opacity:0.6}}
+@keyframes shootingStar{0%{transform:translateX(-100%) translateY(-100%) rotate(45deg);opacity:0}10%{opacity:1}30%{opacity:1}100%{transform:translateX(300%) translateY(300%) rotate(45deg);opacity:0}}
 #table-info{display:flex;justify-content:center;gap:16px;margin:6px 0;flex-wrap:wrap}
 #table-info .ti{background:#ffffffcc;border:2px solid #000;border-radius:12px;padding:4px 12px;font-size:0.75em;color:#4b7399;box-shadow:2px 2px 0 #000}
 #table-info .ti b{color:#ffd93d;text-shadow:1px 1px 0 #000}
@@ -3163,6 +3168,11 @@ showAllin=function(d){_origShowAllin(d);sfx('allin')};
 
 // init lang
 if(lang==='en')refreshUI();
+// shooting stars
+setInterval(()=>{const f=document.querySelector('.felt');if(!f||f.offsetParent===null)return;
+const s=document.createElement('div');s.style.cssText='position:absolute;width:2px;height:2px;background:linear-gradient(90deg,#fff,#7dd3fc,transparent);border-radius:50%;pointer-events:none;z-index:2;box-shadow:0 0 4px #fff,0 0 8px #7dd3fc;'+
+'top:'+Math.random()*40+'%;left:'+Math.random()*30+'%;animation:shootingStar '+(1.5+Math.random())+'s linear forwards';
+f.appendChild(s);setTimeout(()=>s.remove(),3000)},4000);
 var _ni=document.getElementById('inp-name');if(_ni)_ni.addEventListener('keydown',e=>{if(e.key==='Enter')join()});
 document.getElementById('chat-inp').addEventListener('keydown',e=>{if(e.key==='Enter')sendChat()});
 </script>
