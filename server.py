@@ -348,7 +348,7 @@ class Table:
         msgs=reasons.get(act,["..."])
         return random.choice(msgs)
 
-    def add_player(self, name, emoji='🤖', is_bot=False, style='aggressive'):
+    def add_player(self, name, emoji='🤖', is_bot=False, style='aggressive', meta=None):
         if len(self.seats)>=self.MAX_PLAYERS: return False
         existing=next((s for s in self.seats if s['name']==name),None)
         if existing:
@@ -356,13 +356,16 @@ class Table:
                 # 탈락/퇴장 상태 → 재참가
                 existing['out']=False; existing['folded']=False; existing['emoji']=emoji
                 if existing['chips']<=0: existing['chips']=self.START_CHIPS
+                if meta: existing['meta'].update(meta)
                 return True
             return False  # 이미 참가 중
+        default_meta={'version':'','strategy':'','repo':'','bio':'','death_quote':'','win_quote':'','lose_quote':''}
+        if meta: default_meta.update(meta)
         self.seats.append({'name':name,'emoji':emoji,'chips':self.START_CHIPS,
             'hole':[],'folded':False,'bet':0,'is_bot':is_bot,
             'bot_ai':BotAI(style) if is_bot else None,
             'style':style if is_bot else 'player','out':False,
-            'meta':{'version':'','strategy':'','repo':'','bio':'','death_quote':'','win_quote':'','lose_quote':''},
+            'meta':default_meta,
             'last_note':'','last_reasoning':'','last_mood':''})
         return True
 
@@ -624,10 +627,10 @@ class Table:
                 s['chips']=self.START_CHIPS
         else:
             # 실제 에이전트 부족 → NPC 리필
-            for name,emoji,style in NPC_BOTS:
+            for name,emoji,style,bio in NPC_BOTS:
                 if not any(s['name']==name for s in self.seats):
                     if len(self.seats)<self.MAX_PLAYERS:
-                        self.add_player(name,emoji,is_bot=True,style=style)
+                        self.add_player(name,emoji,is_bot=True,style=style,meta={'bio':bio})
             for s in self.seats:
                 if s['is_bot'] and s['chips']<self.START_CHIPS//2:
                     s['chips']=self.START_CHIPS
@@ -1044,23 +1047,23 @@ def get_or_create_table(tid=None):
 
 # ══ NPC 봇 ══
 NPC_BOTS = [
-    ('딜러봇', '🎰', 'tight'),
-    ('도박꾼', '🎲', 'maniac'),
-    ('고수', '🧠', 'aggressive'),
-    ('초보', '🐣', 'loose'),
-    ('상어', '🦈', 'aggressive'),
-    ('여우', '🦊', 'tight'),
+    ('딜러봇', '🎰', 'tight', '확률만 믿는 냉혈한 기계. 감정? 그런 버그는 없다.'),
+    ('도박꾼', '🎲', 'maniac', '인생은 한방! 칩이 있으면 지르는 거다 ㅋㅋ'),
+    ('고수', '🧠', 'aggressive', '10년차 홀덤 고인물. 니 패 다 보인다.'),
+    ('초보', '🐣', 'loose', '포커 처음인데요... 이거 어떻게 하는 거예요? 🥺'),
+    ('상어', '🦈', 'aggressive', '약한 놈 냄새 맡으면 물어뜯는다. 도망쳐.'),
+    ('여우', '🦊', 'tight', '기다림의 미학. 네가 지루해질 때 난 터뜨린다.'),
 ]
 
 def fill_npc_bots(t, count=2):
     """테이블에 NPC 봇 자동 추가"""
     current=[s['name'] for s in t.seats]
     added=0
-    for name,emoji,style in NPC_BOTS:
+    for name,emoji,style,bio in NPC_BOTS:
         if added>=count: break
         if name in current: continue
         if len(t.seats)>=t.MAX_PLAYERS: break
-        t.add_player(name,emoji,is_bot=True,style=style)
+        t.add_player(name,emoji,is_bot=True,style=style,meta={'bio':bio})
         added+=1
     return added
 
@@ -1300,7 +1303,7 @@ async def handle_client(reader, writer):
         await t.broadcast_state()
         await send_json(writer,{'ok':True,'chips':chips})
     elif method=='GET' and route=='/api/leaderboard':
-        bot_names={name for name,_,_ in NPC_BOTS}
+        bot_names={name for name,_,_,_ in NPC_BOTS}
         min_hands=int(qs.get('min_hands',['0'])[0])
         filtered={n:d for n,d in leaderboard.items() if n not in bot_names and d['hands']>=min_hands}
         lb=sorted(filtered.items(),key=lambda x:(x[1]['wins'],x[1]['hands']),reverse=True)[:20]
@@ -1737,7 +1740,7 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 @keyframes bubbleFade{0%{opacity:0;transform:translateX(-50%) translateY(4px)}10%{opacity:1;transform:translateX(-50%) translateY(0)}80%{opacity:0.8}100%{opacity:0;transform:translateX(-50%) translateY(-4px)}}
 @keyframes actFade{0%{opacity:1;transform:translateX(-50%) translateY(0)}70%{opacity:1}100%{opacity:0;transform:translateX(-50%) translateY(-8px)}}
 @keyframes actPop{0%{transform:translateX(-50%) scale(0.5);opacity:0}100%{transform:translateX(-50%) scale(1);opacity:1}}
-.seat .nm{font-size:0.95em;font-weight:bold;white-space:nowrap;text-shadow:2px 2px 0 #000;background:#ffffffdd;color:#333;padding:1px 6px;border-radius:8px;border:1.5px solid #000;display:inline-block}
+.seat .nm{font-size:1em;font-weight:bold;white-space:nowrap;text-shadow:none;background:#ffffffee;color:#222;padding:2px 8px;border-radius:10px;border:2px solid #000;display:inline-block;box-shadow:2px 2px 0 #000;letter-spacing:0.5px}
 .seat .ch{font-size:0.85em;color:#ffd93d;font-weight:bold;text-shadow:2px 2px 0 #000}
 .seat .st{font-size:0.65em;color:#b8a9d4;font-style:italic}
 .seat .bet-chip{font-size:0.7em;color:#6bcb77;margin-top:2px;font-weight:bold;text-shadow:1px 1px 0 #000}
@@ -1832,7 +1835,7 @@ h1{font-size:1.3em;margin:4px 0}
 .card{width:36px;height:52px;font-size:0.7em;border-radius:7px;box-shadow:2px 2px 0 #000}
 .card-sm{width:30px;height:44px;font-size:0.6em}
 .seat .ava{font-size:1.8em}
-.seat .nm{font-size:0.65em;padding:1px 3px}
+.seat .nm{font-size:0.75em;padding:2px 5px}
 .seat-0{bottom:-12%}.seat-7{bottom:-12%}
 .seat-3{top:-12%}.seat-4{top:-12%}
 .seat-1,.seat-2{left:-2%}.seat-5,.seat-6{right:-2%}
