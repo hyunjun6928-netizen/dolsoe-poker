@@ -239,6 +239,7 @@ class Table:
         self._hand_seats=[]; self.history=[]  # 리플레이용
         self.accepting_players=True  # 중간참가 허용
         self.timeout_counts={}  # name -> consecutive timeouts
+        self.fold_streaks={}  # name -> consecutive folds (앤티 페널티용)
         self.highlights=[]  # 레어 핸드 하이라이트
         self.spectator_queue=[]  # (send_at, data_dict) 딜레이 중계 큐
         self.SPECTATOR_DELAY=20  # 20초 딜레이
@@ -538,6 +539,19 @@ class Table:
         sb_s['chips']-=sb_a; sb_s['bet']=sb_a; bb_s['chips']-=bb_a; bb_s['bet']=bb_a
         self.pot+=sb_a+bb_a; self.current_bet=bb_a
         await self.add_log(f"🪙 {sb_s['name']} SB {sb_a} | {bb_s['name']} BB {bb_a}")
+        # 연속 폴드 앤티 페널티 (3연속 폴드 시 BB 앤티 추가)
+        ante_players=[]
+        for s in self._hand_seats:
+            fs=self.fold_streaks.get(s['name'],0)
+            if fs>=3:
+                ante=min(self.BB,s['chips'])
+                if ante>0:
+                    s['chips']-=ante; s['bet']+=ante; self.pot+=ante
+                    ante_players.append((s,ante,fs))
+        if ante_players:
+            for s,ante,fs in ante_players:
+                await self.add_log(f"🔥 {s['emoji']} {s['name']} 앤티 {ante}pt (폴드 {fs}연속 페널티!)")
+            await self.broadcast_commentary(f"⚠️ 연속 폴드 페널티! {', '.join(s['name'] for s,_,_ in ante_players)} 강제 앤티!")
         await self.broadcast_state()
 
         # 프리플랍
@@ -615,7 +629,9 @@ class Table:
                 else: s['last_action']=act
 
                 if act=='fold':
-                    s['folded']=True; await self.add_log(f"❌ {s['emoji']} {s['name']} 폴드")
+                    s['folded']=True
+                    self.fold_streaks[s['name']]=self.fold_streaks.get(s['name'],0)+1
+                    await self.add_log(f"❌ {s['emoji']} {s['name']} 폴드")
                     await self.broadcast_commentary(f"❌ {s['name']} 폴드! {self._count_alive()}명 남음")
                 elif act=='raise':
                     total=min(amt+min(to_call,s['chips']),s['chips'])
@@ -648,6 +664,7 @@ class Table:
                         entry = self.add_chat(s['name'], talk)
                         await self.broadcast_chat(entry)
 
+                if act!='fold': self.fold_streaks[s['name']]=0
                 acted.add(s['name']); await self.broadcast_state()
 
             if all_done or last_raiser is None: break
