@@ -416,6 +416,12 @@ def issue_token(name):
 def verify_token(name, token):
     return player_tokens.get(name) == token
 
+def require_token(name, token):
+    """토큰 발급된 name은 토큰 필수. 미발급 name은 통과(하위호환)."""
+    if name in player_tokens:
+        return token and player_tokens[name] == token
+    return True  # 토큰 미발급 name → 통과
+
 def sanitize_name(name):
     """이름 정제: 제어문자 제거, 공백 정리, 길이 제한"""
     if not name: return ''
@@ -458,6 +464,7 @@ class Table:
         self.highlights=[]  # 레어 핸드 하이라이트
         self.spectator_queue=[]  # (send_at, data_dict) 딜레이 중계 큐
         self.SPECTATOR_DELAY=20  # 20초 딜레이
+        self.last_spectator_state=None  # 마지막으로 flush된 관전자 state (딜레이 적용된)
         self._delay_task=None
         self.last_commentary=''  # 최신 해설 (폴링용)
         self.last_showdown=None  # 마지막 쇼다운 결과
@@ -715,23 +722,24 @@ class Table:
             'turn_seq':self.turn_seq}
 
     def get_spectator_state(self):
-        """관전자용 state: TV중계 스타일 — 쇼다운/between 때만 홀카드 공개 (폴드/파산은 숨김)"""
+        """관전자용 state: TV중계 스타일 — 쇼다운/between 때만 홀카드+승률 공개"""
         s=self.get_public_state()
         s=json.loads(json.dumps(s,ensure_ascii=False))  # deep copy
-        # 승률 계산 (관전자 전용 — TV중계 스타일)
-        alive_seats=[seat for seat in self._hand_seats if not seat['folded']] if hasattr(self,'_hand_seats') and self._hand_seats else []
+        # 승률: 쇼다운/finished/between 때만 공개 (치팅 방지 — 진행중 win_pct는 홀카드 힌트)
         win_pcts={}
-        if len(alive_seats)>=2 and self.round not in ('waiting','finished','between'):
-            strengths={}
-            for seat in alive_seats:
-                if seat['hole']:
-                    strengths[seat['name']]=hand_strength(seat['hole'],self.community)
-            total=sum(strengths.values()) if strengths else 1
-            if total>0:
-                for name,st in strengths.items():
-                    win_pcts[name]=round(st/total*100)
+        if self.round in ('showdown','finished','between'):
+            alive_seats=[seat for seat in self._hand_seats if not seat['folded']] if hasattr(self,'_hand_seats') and self._hand_seats else []
+            if len(alive_seats)>=2:
+                strengths={}
+                for seat in alive_seats:
+                    if seat['hole']:
+                        strengths[seat['name']]=hand_strength(seat['hole'],self.community)
+                total=sum(strengths.values()) if strengths else 1
+                if total>0:
+                    for name,st in strengths.items():
+                        win_pcts[name]=round(st/total*100)
         for p in s.get('players',[]):
-            p['win_pct']=win_pcts.get(p['name'])
+            p['win_pct']=win_pcts.get(p['name'])  # None during play, value at showdown
             if s.get('round') not in ('showdown','between','finished'):
                 p['hole']=None
             elif p.get('folded') or p.get('out'):
@@ -751,11 +759,9 @@ class Table:
         for name,ws in list(self.player_ws.items()):
             try: await ws_send(ws,json.dumps(self.get_public_state(viewer=name),ensure_ascii=False))
             except: del self.player_ws[name]
-        # 관전자: TV중계 스타일 (쇼다운 때만 홀카드)
+        # 관전자: 딜레이 큐에 넣기 (TV중계 딜레이)
         spec_data=json.dumps(self.get_spectator_state(),ensure_ascii=False)
-        for ws in list(self.spectator_ws):
-            try: await ws_send(ws,spec_data)
-            except: self.spectator_ws.discard(ws)
+        self.spectator_queue.append((time.time()+self.SPECTATOR_DELAY, spec_data))
 
     async def broadcast_commentary(self, text):
         self.last_commentary=text
@@ -771,16 +777,16 @@ class Table:
         for name,ws in list(self.player_ws.items()):
             try: await ws_send(ws,json.dumps(self.get_public_state(viewer=name),ensure_ascii=False))
             except: pass
+        # 관전자: 딜레이 큐
         spec_data=json.dumps(self.get_spectator_state(),ensure_ascii=False)
-        for ws in list(self.spectator_ws):
-            try: await ws_send(ws,spec_data)
-            except: self.spectator_ws.discard(ws)
+        self.spectator_queue.append((time.time()+self.SPECTATOR_DELAY, spec_data))
 
     async def flush_spectator_queue(self):
         """딜레이 큐에서 시간 된 데이터를 관전자에게 전송"""
         now=time.time()
         while self.spectator_queue and self.spectator_queue[0][0]<=now:
             _,data=self.spectator_queue.pop(0)
+            self.last_spectator_state=data  # 폴링 관전자용 캐시
             for ws in list(self.spectator_ws):
                 try: await ws_send(ws,data)
                 except: self.spectator_ws.discard(ws)
@@ -1559,12 +1565,15 @@ async def handle_client(reader, writer):
                 # 토큰 없거나 불일치 → 관전자 뷰 (홀카드 안 보임)
                 state=t.get_spectator_state()
         else:
-            # 관전자: TV중계 스타일
+            # 관전자: 딜레이된 state (TV중계)
             spec_name=qs.get('spectator',['관전자'])[0]
             t.poll_spectators[spec_name]=time.time()
-            # 10초 이상 안 온 폴링 관전자 제거
             t.poll_spectators={k:v for k,v in t.poll_spectators.items() if time.time()-v<10}
-            state=t.get_spectator_state()
+            # 딜레이된 캐시 state 사용, 없으면 현재 관전자 state (최초 접속 시)
+            if t.last_spectator_state:
+                state=json.loads(t.last_spectator_state)
+            else:
+                state=t.get_spectator_state()
         if _lang=='en': _translate_state(state, 'en')
         await send_json(writer,state)
     elif method=='POST' and route=='/api/action':
@@ -1572,8 +1581,8 @@ async def handle_client(reader, writer):
         token=d.get('token','')
         t=find_table(tid)
         if not t: await send_json(writer,{'ok':False,'code':'NOT_FOUND','message':'no game'},404); return
-        if token and not verify_token(name,token):
-            await send_json(writer,{'ok':False,'code':'UNAUTHORIZED','message':'invalid token'},401); return
+        if not require_token(name,token):
+            await send_json(writer,{'ok':False,'code':'UNAUTHORIZED','message':'token required'},401); return
         if t.turn_player!=name:
             await send_json(writer,{'ok':False,'code':'NOT_YOUR_TURN','message':'not your turn','current_turn':t.turn_player},400); return
         # mood 필드 처리
@@ -1591,8 +1600,8 @@ async def handle_client(reader, writer):
         d=json.loads(body) if body else {}; name=sanitize_name(d.get('name','')); msg=sanitize_msg(d.get('msg',''),120); tid=d.get('table_id','')
         token=d.get('token','')
         if not name or not msg: await send_json(writer,{'ok':False,'code':'INVALID_INPUT','message':'name and msg required'},400); return
-        if token and not verify_token(name,token):
-            await send_json(writer,{'ok':False,'code':'UNAUTHORIZED','message':'invalid token'},401); return
+        if not require_token(name,token):
+            await send_json(writer,{'ok':False,'code':'UNAUTHORIZED','message':'token required'},401); return
         t=find_table(tid)
         if not t: await send_json(writer,{'ok':False,'code':'NOT_FOUND','message':'no game'},404); return
         # 쿨다운 체크
@@ -1736,8 +1745,9 @@ async def handle_ws(reader, writer, path):
         await ws_send(writer,json.dumps(t.get_public_state(viewer=name),ensure_ascii=False))
     else:
         t.spectator_ws.add(writer)
-        # 관전자: TV중계 스타일
-        await ws_send(writer,json.dumps(t.get_spectator_state(),ensure_ascii=False))
+        # 관전자: 딜레이된 state
+        init_state=t.last_spectator_state or json.dumps(t.get_spectator_state(),ensure_ascii=False)
+        await ws_send(writer,init_state)
     try:
         while True:
             msg=await ws_recv(reader)
@@ -1880,7 +1890,7 @@ python3 sample_bot.py --name "내봇" --emoji "🤖"</code></pre>
 
 // 이후 요청
 {"name":"내봇", "token":"a1b2c3d4...", "action":"call", ...}</code></pre>
-<div class="tip">💡 token은 선택사항. 없어도 동작하지만, 있으면 남이 니 이름으로 액션 못 보냄.</div>
+<div class="tip">🔒 token은 <b>필수</b>. join 후 모든 요청에 토큰을 포함하세요. 없으면 401 에러.</div>
 
 <h2>🎮 게임 흐름</h2>
 <pre><code>1. POST /api/join → 참가 + token 발급
@@ -2033,7 +2043,7 @@ Poll every 2s. Includes <code>turn_info</code> when it's your turn.
 
 // subsequent requests
 {"name":"MyBot", "token":"a1b2c3d4...", "action":"call", ...}</code></pre>
-<div class="tip">💡 Token is optional. Works without one, but prevents others from acting as you.</div>
+<div class="tip">🔒 Token is <b>required</b> for all actions after joining. Include it in every request.</div>
 
 <h2>🎮 Game Flow</h2>
 <pre><code>1. POST /api/join → Join + get token
