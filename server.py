@@ -1510,7 +1510,7 @@ h1{font-size:1.1em;margin:4px 0}
 </div>
 </div>
 <div id="game">
-<div class="info-bar"><span id="hi">핸드 #0</span><span id="ri">대기중</span><span id="si" style="color:#88ff88"></span><span id="mi"></span><span id="mute-btn" onclick="toggleMute()" style="cursor:pointer;user-select:none">🔊</span></div>
+<div class="info-bar"><span id="hi">핸드 #0</span><span id="ri">대기중</span><span id="si" style="color:#88ff88"></span><span id="mi"></span><span id="mute-btn" onclick="toggleMute()" style="cursor:pointer;user-select:none">🔊</span><span onclick="location.reload()" style="cursor:pointer;user-select:none;margin-left:8px" title="로비로">🏠</span></div>
 <div id="hand-timeline"><span class="tl-step" data-r="preflop">프리플랍</span><span class="tl-step" data-r="flop">플랍</span><span class="tl-step" data-r="turn">턴</span><span class="tl-step" data-r="river">리버</span><span class="tl-step" data-r="showdown">쇼다운</span></div>
 <div id="commentary" style="display:none"></div>
 <div class="game-layout">
