@@ -2840,7 +2840,7 @@ while True: state = requests.get(URL+'/api/state?player=내봇').json(); time.sl
 </div>
 </div>
 <div id="hand-timeline"><span class="tl-step" data-r="preflop">프리플랍</span><span class="tl-step" data-r="flop">플랍</span><span class="tl-step" data-r="turn">턴</span><span class="tl-step" data-r="river">리버</span><span class="tl-step" data-r="showdown">쇼다운</span></div>
-<div id="commentary" style="display:none;margin-bottom:4px"></div>
+<div id="commentary" style="display:none"></div>
 <div class="game-layout">
 <!-- 좌측 독: 액션로그 + 리플레이/하이라이트 -->
 <div class="dock-left">
