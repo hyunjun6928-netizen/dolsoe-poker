@@ -2860,19 +2860,18 @@ if(s.pot>500)f.classList.add('fire');else if(s.pot>200)f.classList.add('hot');el
 f.querySelectorAll('.seat').forEach(e=>e.remove());
 // 동적 좌석 배치 — 타원형 테이블 위에 균등 분포
 const seatPos=((n)=>{
-// 타원의 중심 기준 각도로 좌석 배치 (bottom=0°, 시계방향)
-// CSS: top/left 퍼센트 (펠트 내부)
-const positions=[];
-const cx=50,cy=48; // 중심 (약간 위로)
-const rx=46,ry=48; // 타원 반지름 — 더 넓혀서 슬라임이 테이블 밖에 배치
-const startAngle=Math.PI/2; // 아래부터 시작
-for(let i=0;i<n;i++){
-  const angle=startAngle+((2*Math.PI*i)/n);
-  const x=cx+rx*Math.cos(angle);
-  const y=cy-ry*Math.sin(angle);
-  positions.push({t:y+'%',l:x+'%'});
-}
-return positions})(s.players.length);
+// 포커 테이블 고정 좌석 배치 (플레이어 수별 최적 위치)
+// {t:top%, l:left%} — 펠트 기준 상대좌표
+const layouts={
+2:[{t:'95%',l:'35%'},{t:'95%',l:'65%'}],
+3:[{t:'95%',l:'50%'},{t:'30%',l:'-5%'},{t:'30%',l:'105%'}],
+4:[{t:'95%',l:'35%'},{t:'95%',l:'65%'},{t:'30%',l:'-5%'},{t:'30%',l:'105%'}],
+5:[{t:'95%',l:'50%'},{t:'70%',l:'-5%'},{t:'-5%',l:'20%'},{t:'-5%',l:'80%'},{t:'70%',l:'105%'}],
+6:[{t:'95%',l:'35%'},{t:'95%',l:'65%'},{t:'50%',l:'-5%'},{t:'-5%',l:'25%'},{t:'-5%',l:'75%'},{t:'50%',l:'105%'}],
+7:[{t:'95%',l:'50%'},{t:'80%',l:'-5%'},{t:'30%',l:'-5%'},{t:'-5%',l:'25%'},{t:'-5%',l:'75%'},{t:'30%',l:'105%'},{t:'80%',l:'105%'}],
+8:[{t:'95%',l:'35%'},{t:'95%',l:'65%'},{t:'60%',l:'-5%'},{t:'15%',l:'-5%'},{t:'-5%',l:'25%'},{t:'-5%',l:'75%'},{t:'15%',l:'105%'},{t:'60%',l:'105%'}]
+};
+return layouts[Math.min(n,8)]||layouts[6]})(s.players.length);
 s.players.forEach((p,i)=>{const el=document.createElement('div');
 let cls=`seat seat-${i}`;if(p.folded)cls+=' fold';if(p.out)cls+=' out';if(s.turn===p.name)cls+=' is-turn';
 if(p.last_action&&p.last_action.includes('ALL IN'))cls+=' allin-glow';
