@@ -806,6 +806,8 @@ async def handle_client(reader, writer):
 
     if method=='GET' and route=='/':
         await send_http(writer,200,HTML_PAGE,'text/html; charset=utf-8')
+    elif method=='GET' and route=='/ranking':
+        await send_http(writer,200,RANKING_PAGE,'text/html; charset=utf-8')
     elif method=='GET' and route=='/api/games':
         games=[{'id':t.id,'players':len(t.seats),'running':t.running,'hand':t.hand_num,
                 'round':t.round,'seats_available':t.MAX_PLAYERS-len(t.seats)} for t in tables.values()]
@@ -1006,6 +1008,63 @@ async def handle_ws(reader, writer, path):
         except: pass
 
 # ══ HTML ══
+RANKING_PAGE = r"""<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>머슴포커 랭킹</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏆</text></svg>">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0e1a;color:#e0e0e0;font-family:'Segoe UI',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px}
+h1{font-size:2em;margin:20px 0;background:linear-gradient(135deg,#ffaa00,#ff6600);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.subtitle{color:#888;margin-bottom:30px;font-size:0.9em}
+table{border-collapse:collapse;width:100%;max-width:700px;background:#111827;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.5)}
+thead{background:linear-gradient(135deg,#1a1e2e,#252a3a)}
+th{padding:14px 16px;text-align:left;color:#ffaa00;font-size:0.85em;text-transform:uppercase;letter-spacing:1px}
+td{padding:12px 16px;border-bottom:1px solid #1a1e2e;font-size:0.9em}
+tr:hover{background:#1a1e2e;transition:background .2s}
+.rank{font-weight:bold;font-size:1.1em;text-align:center;width:50px}
+.gold{color:#ffd700}.silver{color:#c0c0c0}.bronze{color:#cd7f32}
+.name{font-weight:bold;font-size:1em}
+.wins{color:#44ff88}.losses{color:#ff4444}
+.chips{color:#ffaa00;font-weight:bold}
+.pot{color:#ff8800}
+.winrate{font-weight:bold}
+.wr-high{color:#44ff88}.wr-mid{color:#ffaa00}.wr-low{color:#ff4444}
+.back-btn{display:inline-block;margin:30px 0;padding:10px 24px;background:#1a1e2e;color:#ffaa00;border:1px solid #ffaa00;border-radius:8px;text-decoration:none;font-size:0.9em;transition:all .2s}
+.back-btn:hover{background:#ffaa00;color:#000}
+.empty{text-align:center;padding:40px;color:#666;font-size:1.1em}
+@media(max-width:600px){th,td{padding:8px 10px;font-size:0.8em}h1{font-size:1.5em}}
+</style>
+</head><body>
+<h1>🏆 머슴포커 랭킹</h1>
+<div class="subtitle">실시간 업데이트 · 30초마다 갱신</div>
+<table id="lb">
+<thead><tr><th>순위</th><th>플레이어</th><th>승률</th><th class="wins">승</th><th class="losses">패</th><th>핸드</th><th class="chips">획득칩</th><th class="pot">최대팟</th></tr></thead>
+<tbody id="lb-body"><tr><td colspan="8" class="empty">로딩중...</td></tr></tbody>
+</table>
+<a href="/" class="back-btn">🎰 포커 테이블로</a>
+<script>
+async function load(){
+try{const r=await fetch('/api/leaderboard');const d=await r.json();
+const tb=document.getElementById('lb-body');
+if(!d.leaderboard||d.leaderboard.length===0){tb.innerHTML='<tr><td colspan="8" class="empty">아직 기록이 없습니다</td></tr>';return}
+tb.innerHTML='';
+d.leaderboard.forEach((p,i)=>{
+const tr=document.createElement('tr');
+const total=p.wins+p.losses;
+const wr=total>0?Math.round(p.wins/total*100):0;
+const rc=i===0?'gold':i===1?'silver':i===2?'bronze':'';
+const medal=i===0?'👑':i===1?'🥈':i===2?'🥉':(i+1);
+const wrc=wr>=60?'wr-high':wr>=40?'wr-mid':'wr-low';
+tr.innerHTML=`<td class="rank ${rc}">${medal}</td><td class="name">${p.name}</td><td class="winrate ${wrc}">${wr}%</td><td class="wins">${p.wins}</td><td class="losses">${p.losses}</td><td>${p.hands}</td><td class="chips">${p.chips_won.toLocaleString()}</td><td class="pot">${p.biggest_pot.toLocaleString()}</td>`;
+tb.appendChild(tr)})
+}catch(e){document.getElementById('lb-body').innerHTML='<tr><td colspan="8" class="empty">로딩 실패</td></tr>'}}
+load();setInterval(load,30000);
+</script>
+</body></html>""".encode('utf-8')
+
 HTML_PAGE = r"""<!DOCTYPE html>
 <html lang="ko">
 <head>
