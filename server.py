@@ -2420,14 +2420,14 @@ box-shadow:0 4px 0 0 #1a5a00}
 background:linear-gradient(90deg,transparent,#c4956a88,transparent);border-radius:3px}
 .felt{position:relative;
 background:linear-gradient(180deg,#2d8a4e 0%,#238b45 30%,#1a7a38 60%,#1a6b30 100%);
-border:3px solid #1a5a20;border-radius:14px;width:100%;padding-bottom:62%;
-box-shadow:inset 0 4px 12px #00000033,inset 0 -2px 8px #ffffff11;overflow:visible;image-rendering:pixelated}
+border:3px solid #1a5a20;border-radius:14px;width:100%;padding-bottom:50%;
+box-shadow:inset 0 0 60px 20px rgba(0,0,0,0.2),inset 0 4px 12px #00000033,inset 0 -2px 8px #ffffff11;overflow:visible;image-rendering:pixelated}
 .felt::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;
 background:
-radial-gradient(3px 3px at 10% 15%,#ffffff18,transparent),radial-gradient(4px 4px at 30% 60%,#ffffff12,transparent),
-radial-gradient(3px 3px at 50% 25%,#ffffff15,transparent),radial-gradient(4px 4px at 70% 70%,#ffffff12,transparent),
-radial-gradient(3px 3px at 85% 35%,#ffffff18,transparent),radial-gradient(3px 3px at 20% 80%,#ffffff12,transparent);
-border-radius:14px;pointer-events:none;z-index:1;opacity:0.5}
+repeating-linear-gradient(0deg,transparent,transparent 3px,#ffffff06 3px,#ffffff06 4px),
+repeating-linear-gradient(90deg,transparent,transparent 3px,#ffffff06 3px,#ffffff06 4px);
+border-radius:14px;pointer-events:none;z-index:1;mix-blend-mode:overlay}
+.felt::after{content:'♠ ♥ ♦ ♣';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:3em;color:#ffffff08;letter-spacing:20px;pointer-events:none;z-index:1;white-space:nowrap}
 
 .tbl-card{background:#fff4e8;border:3px solid #c4956a;border-radius:4px;padding:14px;margin:8px 0;cursor:pointer;transition:all .1s;display:flex;justify-content:space-between;align-items:center;box-shadow:0 3px 0 0 #8b6d4a}
 .tbl-card:hover{border-color:#2d8a4e;transform:translate(1px,1px);box-shadow:3px 3px 0 #8b6d4a}
@@ -2436,7 +2436,8 @@ border-radius:14px;pointer-events:none;z-index:1;opacity:0.5}
 .tbl-card .tbl-info{color:#8b7060;font-size:0.85em}
 .tbl-card .tbl-status{font-size:0.85em}
 .tbl-live{color:#10b981;text-shadow:none}.tbl-wait{color:#9ca3af}
-.pot-badge{position:absolute;top:30%;left:50%;transform:translateX(-50%);background:var(--accent-yellow);padding:8px 24px;border-radius:var(--radius);font-size:1.1em;color:var(--bg-dark);font-weight:bold;z-index:5;border:var(--border-w) solid #E8E870;box-shadow:var(--shadow-md),0 0 12px #FDFD9644;transition:font-size .3s ease;text-shadow:none;font-family:var(--font-number);letter-spacing:1px}
+@keyframes chipShimmer{0%{background-position:-200% center}100%{background-position:200% center}}
+.pot-badge{position:absolute;top:28%;left:50%;transform:translateX(-50%);background:linear-gradient(110deg,#FDFD96 30%,#FFFDE0 38%,#FFFDE0 42%,#FDFD96 50%);background-size:200% 100%;padding:8px 24px;border-radius:var(--radius);font-size:1.1em;color:var(--bg-dark);font-weight:bold;z-index:5;border:var(--border-w) solid #E8E870;box-shadow:var(--shadow-md),0 0 16px #FDFD9666;transition:font-size .3s ease;text-shadow:none;font-family:var(--font-number);letter-spacing:1px;animation:chipShimmer 3s ease-in-out infinite}
 .board{position:absolute;top:55%;left:50%;transform:translate(-50%,-50%);display:flex;gap:6px;z-index:4}
 .turn-badge{position:absolute;bottom:18%;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#fb923c,#f97316);padding:4px 14px;border-radius:15px;font-size:0.85em;color:#fff;z-index:5;display:none;border:2px solid #ea580c;box-shadow:2px 2px 0 #ea580c44}
 .card{width:58px;height:82px;border-radius:4px;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;font-size:1.05em;
@@ -2497,6 +2498,9 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 .seat.fold{opacity:0.35}.seat.out{opacity:0.25;filter:grayscale(1)}
 .seat.out .nm{text-decoration:line-through;color:#f87171}
 .seat.out::after{content:'💀 OUT';position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:0.6em;color:#ff6b6b;background:#000;padding:2px 8px;border-radius:8px;white-space:nowrap;border:2px solid #ff6b6b}
+.seat:not(.is-turn):not(.fold):not(.out){opacity:0.65;transition:opacity .3s}
+.seat.is-turn{opacity:1}
+.seat.is-turn::before{content:'';position:absolute;bottom:-12px;left:50%;transform:translateX(-50%);width:64px;height:10px;background:radial-gradient(ellipse,#FDFD9666,transparent);border-radius:50%;pointer-events:none;z-index:-1}
 .seat.is-turn .nm{color:var(--bg-dark);background:var(--accent-yellow);border-color:#E8E870;text-shadow:none;animation:pulse 1s infinite;box-shadow:0 3px 0 0 #C8C850,0 0 16px #FDFD9666}
 .seat.is-turn{animation:seatBounce 1.5s ease-in-out infinite}
 .seat.is-turn .ava{text-shadow:0 0 16px #6bcb77,0 0 32px #6bcb7744;filter:drop-shadow(0 0 8px #6bcb77)}
@@ -2512,6 +2516,8 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 @keyframes cardFlip{0%{transform:rotateY(180deg)}100%{transform:rotateY(0deg)}}
 .card.flip-anim{animation:cardFlipSimple 0.6s ease-out forwards;backface-visibility:hidden}
 @keyframes cardFlipSimple{0%{transform:rotateY(180deg);opacity:0.5}50%{transform:rotateY(90deg);opacity:0.8}100%{transform:rotateY(0deg);opacity:1}}
+@keyframes sparkleGlow{0%{opacity:0;transform:scale(0) rotate(0deg)}50%{opacity:1;transform:scale(1.3) rotate(180deg)}100%{opacity:0;transform:scale(0) rotate(360deg)}}
+.card.flip-anim::after{content:'✦';position:absolute;top:-8px;right:-8px;font-size:0.9em;color:#FDFD96;animation:sparkleGlow 0.8s ease-out forwards;pointer-events:none}
 .felt.warm{box-shadow:0 0 0 4px #5a3a1e,0 0 0 8px #4a2a10,0 8px 0 0 #3a1a0a,0 0 40px #fbbf2433}
 .felt.hot{box-shadow:0 0 0 4px #5a3a1e,0 0 0 8px #4a2a10,0 8px 0 0 #3a1a0a,0 0 60px #f9731644,0 0 30px #fbbf2444}
 .felt.fire{animation:fireGlow 1.5s ease-in-out infinite}
@@ -2537,16 +2543,16 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 #action-feed .af-round{color:var(--accent-blue);font-weight:bold;padding:6px 0 2px;font-size:0.9em;text-shadow:none}
 #action-feed .af-action{color:var(--text-secondary)}
 #action-feed .af-win{color:var(--accent-mint);font-weight:bold}
-.game-layout{display:grid;grid-template-columns:220px 1fr 240px;gap:8px;height:calc(100vh - 140px);min-height:500px}
+.game-layout{display:grid;grid-template-columns:180px 1fr 260px;gap:8px;height:calc(100vh - 160px);min-height:500px}
 .game-main{min-width:0}
 .game-sidebar{display:none}
 .dock-left,.dock-right{display:flex;flex-direction:column;gap:6px;overflow:hidden}
-.dock-panel{background:var(--bg-panel);border:var(--border-w) solid var(--frame);box-shadow:var(--shadow-md);padding:0;overflow:hidden;flex:1;display:flex;flex-direction:column}
+.dock-panel{background:var(--bg-panel);border:var(--border-w) solid var(--frame);box-shadow:var(--shadow-md),inset 0 1px 0 rgba(255,255,255,0.3),inset 0 -1px 0 rgba(0,0,0,0.08);padding:0;overflow:hidden;flex:1;display:flex;flex-direction:column}
 .dock-panel-header{background:var(--bg-dark);color:var(--text-light);padding:6px 10px;font-family:var(--font-pixel);font-size:0.8em;font-weight:bold;border-bottom:2px solid #1a1c30;letter-spacing:1px}
 .dock-panel-body{flex:1;overflow-y:auto;padding:6px;font-size:0.78em}
 #action-feed{max-height:none;flex:1;overflow-y:auto;background:transparent;border:none;border-radius:0;padding:4px;box-shadow:none;font-size:0.78em}
 .bottom-panel{display:none}
-.bottom-dock{position:fixed;bottom:0;left:0;right:0;background:var(--bg-dark);border-top:var(--border-w) solid #1a1c30;padding:6px 12px;display:flex;align-items:center;justify-content:space-between;z-index:50;font-family:var(--font-pixel)}
+.bottom-dock{position:fixed;bottom:0;left:0;right:0;background:linear-gradient(180deg,#2B2D42F0,#2B2D42);border-top:var(--border-w) solid #1a1c30;padding:4px 12px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;z-index:50;font-family:var(--font-pixel);gap:2px;backdrop-filter:blur(4px)}
 .bottom-dock .bd-commentary{flex:1;color:#fff8ee;font-size:0.85em;font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-right:12px}
 .bottom-dock .bd-reactions{display:flex;gap:4px}
 .bottom-dock .bd-reactions button{font-size:1.2em;background:#3a3c56;border:2px solid #4a4c66;border-radius:4px;width:36px;height:36px;cursor:pointer;transition:all .1s}
@@ -2561,8 +2567,10 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 .stack-call{background:var(--accent-blue);color:var(--bg-dark);border-color:#5AA8C3;box-shadow:0 3px 0 0 #4A98B3}
 .stack-raise{background:var(--accent-mint);color:var(--bg-dark);border-color:#78C6A8;box-shadow:0 3px 0 0 #58A688}
 .stack-allin{background:var(--accent-pink);color:var(--bg-dark);border-color:#E8A8B8;box-shadow:0 3px 0 0 #C888A0;animation:pulse 2s infinite}
-/* Player list */
-#player-list-panel{flex:0 0 auto;max-height:160px}
+/* Player list — 기본 접힘 */
+#player-list-panel{flex:0 0 auto;max-height:32px;overflow:hidden;transition:max-height .3s ease;cursor:pointer}
+#player-list-panel.expanded{max-height:160px;cursor:default}
+#player-list-panel .dock-panel-header{cursor:pointer}
 .pl-item{display:flex;align-items:center;gap:4px;padding:3px 4px;border-bottom:1px solid var(--frame-light)}
 .pl-item.is-turn{background:var(--accent-yellow);border-radius:var(--radius)}
 .pl-item .pl-name{font-weight:bold;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -2624,7 +2632,7 @@ h1{font-size:1.1em;margin:2px 0}
 .felt-wrap{margin:10px auto 8px}
 .felt-border{top:-8px;left:-8px;right:-8px;bottom:-8px;border-radius:12px}
 .felt-border::before{top:-6px;left:-6px;right:-6px;bottom:-6px;border-radius:16px}
-.felt{padding-bottom:80%;border-radius:8px;box-shadow:inset 0 2px 6px #00000033}
+.felt{padding-bottom:70%;border-radius:8px;box-shadow:inset 0 2px 6px #00000033}
 .board{gap:2px}
 .card{width:34px;height:50px;font-size:0.65em;border-radius:3px;box-shadow:0 3px 0 0 #000}
 .card-sm{width:28px;height:42px;font-size:0.55em}
@@ -2688,9 +2696,11 @@ h1{font-size:1.1em;margin:2px 0}
 #bet-panel .bp-coins{color:#6bcb77;font-size:0.8em;margin-top:4px;text-shadow:1px 1px 0 #000}
 .result-box h2{color:#ffd93d;margin-bottom:15px;-webkit-text-stroke:1px #000;text-shadow:3px 3px 0 #000}
 #hand-timeline{display:flex;justify-content:center;gap:4px;margin:6px 0;font-size:0.75em}
-#hand-timeline .tl-step{padding:3px 10px;border-radius:var(--radius);background:var(--bg-panel);color:var(--text-muted);border:2px solid var(--frame-light);box-shadow:var(--shadow-sm);font-family:var(--font-pixel);font-size:0.85em}
-#hand-timeline .tl-step.active{background:var(--accent-pink);color:var(--bg-dark);border-color:#E8A8B8;font-weight:bold}
+#hand-timeline{position:relative;z-index:5}
+#hand-timeline .tl-step{padding:5px 14px;border-radius:var(--radius);background:var(--bg-panel);color:var(--text-muted);border:var(--border-w) solid var(--frame-light);box-shadow:var(--shadow-sm);font-family:var(--font-pixel);font-size:0.9em;transition:all .2s}
+#hand-timeline .tl-step.active{background:var(--accent-pink);color:var(--bg-dark);border-color:#E8A8B8;font-weight:bold;transform:scale(1.08);box-shadow:0 0 12px #FFD6E066,var(--shadow-sm)}
 #hand-timeline .tl-step.done{background:var(--accent-mint);color:var(--bg-dark);border-color:#78C6A8}
+#hand-timeline .tl-step+.tl-step::before{content:'›';position:relative;left:-9px;color:var(--text-muted);font-weight:bold}
 #quick-chat{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;margin:4px 0}
 #quick-chat button{background:#e0f2fe;border:1.5px solid #4ade80;color:#075985;padding:4px 10px;border-radius:12px;font-size:0.75em;cursor:pointer;transition:all .15s}
 #quick-chat button:hover{background:#bae6fd}
@@ -2928,10 +2938,15 @@ while True: state = requests.get(URL+'/api/state?player=내봇').json(); time.sl
 </div>
 <!-- 하단 독: 실황 + 리액션 -->
 <div class="bottom-dock" id="bottom-dock">
-<span style="background:var(--accent-pink);color:var(--bg-dark);padding:2px 8px;border-radius:var(--radius);font-size:0.7em;font-weight:bold;margin-right:8px;border:2px solid #E8A8B8;white-space:nowrap">🔒 관전</span>
+<span style="background:var(--accent-pink);color:var(--bg-dark);padding:2px 8px;border-radius:var(--radius);font-size:0.7em;font-weight:bold;border:2px solid #E8A8B8;white-space:nowrap;flex-shrink:0">🔒 관전</span>
 <div class="bd-commentary" id="bd-com">🎙️ 게임 대기중...</div>
 <div class="bd-reactions">
 <button onclick="react('👏')">👏</button><button onclick="react('🔥')">🔥</button><button onclick="react('😱')">😱</button><button onclick="react('💀')">💀</button><button onclick="react('😂')">😂</button>
+</div>
+<div style="display:flex;gap:3px;flex-shrink:0">
+<button onclick="qChat('ㅋㅋ')" style="background:#3a3c56;color:#fff;border:1px solid #4a4c66;border-radius:var(--radius);padding:2px 8px;font-size:0.75em;cursor:pointer;font-family:var(--font-pixel)">ㅋㅋ</button>
+<button onclick="qChat('GG')" style="background:#3a3c56;color:#fff;border:1px solid #4a4c66;border-radius:var(--radius);padding:2px 8px;font-size:0.75em;cursor:pointer;font-family:var(--font-pixel)">GG</button>
+<button onclick="qChat('사기!')" style="background:#3a3c56;color:#fff;border:1px solid #4a4c66;border-radius:var(--radius);padding:2px 8px;font-size:0.75em;cursor:pointer;font-family:var(--font-pixel)">사기!</button>
 </div>
 </div>
 </div>
@@ -3232,12 +3247,18 @@ const gp=document.getElementById('guide-panel');if(gp)gp.style.display=tab==='gu
 // === 에이전트 패널 렌더 ===
 function renderAgentPanel(state){
 const al=document.getElementById('agent-list');if(!al)return;
+// max chips for gauge
+const maxChips=Math.max(1,...state.players.map(p=>p.chips));
 let html='';
 state.players.forEach(p=>{
 const isTurn=state.turn===p.name;
 const cls=p.out?'agent-card is-out':p.folded?'agent-card is-fold':isTurn?'agent-card is-turn':'agent-card';
 const meta=p.meta?((p.meta.version?'v'+esc(p.meta.version):'')+(p.meta.strategy?' · '+esc(p.meta.strategy):'')):'';
 const lat=p.latency_ms!=null?`<span style="color:var(--accent-blue)">⚡${p.latency_ms}ms</span>`:'';
+// mini slime
+const emo=getSlimeEmotion(p,state);
+const miniSlime=drawSlime(p.name,emo,36);
+const slimeImg=`<img src="${miniSlime.toDataURL()}" width="28" height="28" style="image-rendering:pixelated;vertical-align:middle;margin-right:4px">`;
 // action badge
 let actBadge='';
 if(p.last_action){
@@ -3250,11 +3271,16 @@ const sb=p.streak_badge||'';
 if(sb)badges+=`<span>${esc(sb)}</span>`;
 if(p.chips>800)badges+='<span>👑</span>';
 if(isTurn)badges+='<span style="color:var(--accent-yellow)">⏳</span>';
+// chip gauge bar
+const pct=Math.round(p.chips/maxChips*100);
+const gaugeColor=pct>60?'var(--accent-mint)':pct>25?'var(--accent-yellow)':'var(--accent-red)';
+const gaugeBar=`<div style="height:4px;background:var(--frame-light);border-radius:2px;margin-top:3px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${gaugeColor};transition:width .5s;border-radius:2px"></div></div>`;
 html+=`<div class="${cls}" onclick="showProfile('${esc(p.name)}')">
 <div style="display:flex;justify-content:space-between;align-items:center">
-<span class="ac-name">${isTurn?'▶ ':''}${esc(p.name)}</span>
-<span style="color:var(--accent-yellow);font-family:var(--font-number);font-size:0.85em">💰${p.chips}</span>
+<span class="ac-name">${slimeImg}${isTurn?'▶ ':''}${esc(p.name)}</span>
+<span style="color:var(--accent-yellow);font-family:var(--font-number);font-size:0.8em">💰${p.chips}</span>
 </div>
+${gaugeBar}
 <div class="ac-meta">${meta} ${lat}</div>
 ${actBadge}
 <div class="ac-badges">${badges}</div>
@@ -4178,6 +4204,8 @@ s.style.cssText=`position:absolute;width:${sz}px;height:${sz}px;background:${c};
 f.appendChild(s);setTimeout(()=>s.remove(),2500)},1800);
 // Human join removed — AI-only arena
 document.getElementById('chat-inp').addEventListener('keydown',e=>{if(e.key==='Enter')sendChat()});
+// Player list collapse toggle
+(function(){const pl=document.getElementById('player-list-panel');if(pl){const h=pl.querySelector('.dock-panel-header');if(h)h.addEventListener('click',()=>pl.classList.toggle('expanded'))}})();
 
 // === 🌿🍄 Forest Decorations ===
 (function(){
