@@ -2196,7 +2196,17 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 .seat-5{top:52%;right:-2%;transform:translateY(-50%)}
 .seat-6{top:-12%;left:60%;transform:translateX(-50%)}
 .seat-7{top:-12%;left:40%;transform:translateX(-50%)}
-.seat .ava{font-size:3em;line-height:1.2;filter:drop-shadow(2px 2px 0 #000)}
+.seat .ava{font-size:3em;line-height:1;filter:drop-shadow(2px 2px 0 rgba(0,0,0,0.1));min-height:72px;display:flex;align-items:center;justify-content:center}
+.slime-idle{animation:slimeBounce 2s ease-in-out infinite}
+.slime-think{animation:slimeThink 1.5s ease-in-out infinite}
+.slime-angry{animation:slimeShake 0.3s ease-in-out infinite}
+.slime-happy{animation:slimeJump 0.8s ease-in-out infinite}
+.slime-sad{animation:slimeSad 3s ease-in-out infinite;opacity:0.7}
+@keyframes slimeBounce{0%,100%{transform:scaleX(1) scaleY(1) translateY(0)}25%{transform:scaleX(1.05) scaleY(0.95) translateY(2px)}50%{transform:scaleX(0.95) scaleY(1.05) translateY(-4px)}75%{transform:scaleX(1.02) scaleY(0.98) translateY(1px)}}
+@keyframes slimeThink{0%,100%{transform:translateX(0) scaleY(1)}33%{transform:translateX(-3px) scaleY(0.97)}66%{transform:translateX(3px) scaleY(1.02)}}
+@keyframes slimeShake{0%,100%{transform:translateX(0) scaleX(1.05)}25%{transform:translateX(-4px) scaleX(0.95)}75%{transform:translateX(4px) scaleX(0.95)}}
+@keyframes slimeJump{0%,100%{transform:translateY(0) scaleY(1)}30%{transform:translateY(-10px) scaleX(0.9) scaleY(1.15)}60%{transform:translateY(2px) scaleX(1.1) scaleY(0.9)}80%{transform:translateY(-3px) scaleY(1.03)}}
+@keyframes slimeSad{0%,100%{transform:translateY(0) scaleY(1)}50%{transform:translateY(3px) scaleX(1.03) scaleY(0.95)}}
 .seat .act-label{position:absolute;top:-32px;left:50%;transform:translateX(-50%);background:#ffffffee;color:#6b21a8;padding:5px 12px;border-radius:12px;font-size:0.9em;font-weight:bold;white-space:nowrap;z-index:10;border:2px solid #e9d5ff;box-shadow:2px 2px 0 #e9d5ff44;animation:actFade 2s ease-out forwards}
 .seat .act-label::after{content:'';position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid #000}
 .seat .act-label::before{content:'';position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid #fff;z-index:1}
@@ -2306,7 +2316,8 @@ h1{font-size:1.1em;margin:2px 0}
 .card{width:34px;height:50px;font-size:0.65em;border-radius:6px;box-shadow:1px 1px 0 #000}
 .card-sm{width:28px;height:42px;font-size:0.55em}
 .seat{min-width:55px}
-.seat .ava{font-size:1.6em}
+.seat .ava{font-size:1.6em;min-height:48px}
+.seat .ava img{width:48px!important;height:48px!important}
 .seat .nm{font-size:0.65em;padding:1px 4px;max-width:60px;overflow:hidden;text-overflow:ellipsis}
 .seat-0{bottom:-4%;left:62%;transform:translateX(-50%)}
 .seat-1{bottom:-4%;left:38%;transform:translateX(-50%)}
@@ -2832,7 +2843,7 @@ const seatPos=((n)=>{
 // CSS: top/left 퍼센트 (펠트 내부)
 const positions=[];
 const cx=50,cy=50; // 중심
-const rx=38,ry=40; // 타원 반지름 (x,y) — 펠트 안쪽
+const rx=42,ry=44; // 타원 반지름 (x,y) — 펠트 바깥으로 넓혀서 슬라임 겹침 방지
 const startAngle=Math.PI/2; // 아래부터 시작
 for(let i=0;i<n;i++){
   const angle=startAngle+((2*Math.PI*i)/n);
@@ -3074,8 +3085,8 @@ const bioHtml=p.meta&&p.meta.bio?`<div class="pp-stat" style="color:#6366f1;font
 let matchupHtml='';
 if(p.matchups&&p.matchups.length>0){matchupHtml='<div class="pp-stat" style="margin-top:8px;border-top:1px solid #e2e8f0;padding-top:8px"><b style="color:#7c3aed">⚔️ vs 전적</b>';p.matchups.forEach(m=>{matchupHtml+=`<div style="font-size:0.85em;margin:3px 0">vs ${esc(m.opponent)}: <span style="color:#10b981;font-weight:600">${m.wins}승</span> / <span style="color:#ef4444;font-weight:600">${m.losses}패</span></div>`});matchupHtml+='</div>'}
 // Slime portrait for profile
-const slimePortrait=drawSlime(p.name,'idle',96);
-const portraitImg=`<img src="${slimePortrait.toDataURL()}" width="72" height="72" style="image-rendering:pixelated;display:block;margin:0 auto 8px">`;
+const slimePortrait=drawSlime(p.name,'idle',120);
+const portraitImg=`<img src="${slimePortrait.toDataURL()}" width="96" height="96" style="display:block;margin:0 auto 8px" class="slime-idle">`;
 // Personality description
 const personalityDesc=(()=>{
   if(p.aggression>=60) return '🔥 매우 공격적인 플레이어. 레이즈와 올인을 즐기며 상대를 압박합니다.';
@@ -3358,206 +3369,202 @@ function drawSlime(name, emotion, size) {
   const key = name+'_'+emotion+'_'+size+'_'+traits.type;
   if (_slimeCache[key]) return _slimeCache[key];
   const c = document.createElement('canvas');
-  const sz = size || 64; c.width = sz; c.height = sz;
+  const sz = size || 80; c.width = sz; c.height = sz;
   const g = c.getContext('2d');
   const col = SLIME_COLORS[_slimeColorIdx(name)];
-  const cx = sz/2, cy = sz*0.55, rx = sz*0.38, ry = sz*0.35;
   const st = traits.type;
+  // 주디 스타일: 물방울 형태 (아래 넓고 위 좁은 젤리)
+  const cx = sz/2, botY = sz*0.82, topY = sz*0.2;
+  const botRx = sz*0.4, botRy = sz*0.18;
+  const midY = sz*0.5;
 
-  // === PRE-BODY DECORATIONS (behind slime) ===
+  // === PRE-BODY (behind) ===
   if (st === 'champion') {
-    // Halo glow
     g.strokeStyle = '#fbbf24'; g.lineWidth = 2; g.globalAlpha = 0.4;
-    g.beginPath(); g.ellipse(cx, cy - ry*0.8, rx*0.5, 4, 0, 0, Math.PI*2); g.stroke();
-    g.globalAlpha = 1;
+    g.beginPath(); g.ellipse(cx, topY - 2, sz*0.2, 3, 0, 0, Math.PI*2); g.stroke(); g.globalAlpha = 1;
   }
   if (st === 'defensive') {
-    // Shell/armor behind body
-    g.fillStyle = col.dark;
-    g.beginPath(); g.ellipse(cx, cy + 2, rx*1.1, ry*1.05, 0, 0, Math.PI*2); g.fill();
-    g.strokeStyle = col.dark; g.lineWidth = 2;
-    g.beginPath(); g.ellipse(cx, cy + 2, rx*1.1, ry*1.05, 0, 0, Math.PI*2); g.stroke();
+    g.fillStyle = col.dark; g.globalAlpha = 0.4;
+    g.beginPath(); g.ellipse(cx, botY + 2, botRx*1.15, botRy*1.1, 0, 0, Math.PI*2); g.fill();
+    g.globalAlpha = 1;
   }
 
-  // === BODY SHAPE (varies by type) ===
+  // === BODY: Joody-style water drop shape ===
+  g.beginPath();
   if (st === 'aggressive' || traits.allinAddict) {
-    // Spiky/angular slime body
-    g.beginPath();
-    g.moveTo(cx, cy - ry*1.15);
-    for (let a=0; a<Math.PI*2; a+=Math.PI/8) {
-      const spike = (Math.floor(a/(Math.PI/8)) % 2 === 0) ? 1.12 : 0.92;
-      g.lineTo(cx + rx*spike*Math.cos(a - Math.PI/2), cy + ry*spike*Math.sin(a - Math.PI/2));
-    }
-    g.closePath(); g.fillStyle = col.body; g.fill();
+    // Spiky body
+    g.moveTo(cx, topY - 4);
+    g.bezierCurveTo(cx + sz*0.15, topY, cx + botRx*1.1, midY - 10, cx + botRx, midY + 5);
+    // spikes on right
+    g.lineTo(cx + botRx + 5, midY + 10); g.lineTo(cx + botRx - 2, midY + 18);
+    g.bezierCurveTo(cx + botRx*1.05, botY - 5, cx + botRx*0.6, botY + botRy, cx, botY + botRy*0.5);
+    g.bezierCurveTo(cx - botRx*0.6, botY + botRy, cx - botRx*1.05, botY - 5, cx - botRx + 2, midY + 18);
+    // spikes on left
+    g.lineTo(cx - botRx - 5, midY + 10); g.lineTo(cx - botRx, midY + 5);
+    g.bezierCurveTo(cx - botRx*1.1, midY - 10, cx - sz*0.15, topY, cx, topY - 4);
   } else if (st === 'loose') {
-    // Wobbly/stretchy slime
-    g.beginPath();
-    for (let a=0; a<=Math.PI*2; a+=0.1) {
-      const wobble = 1 + Math.sin(a*3)*0.08 + Math.cos(a*5)*0.05;
-      g.lineTo(cx + rx*wobble*Math.cos(a), cy + ry*wobble*Math.sin(a));
-    }
-    g.closePath(); g.fillStyle = col.body; g.fill();
+    // Wobbly body
+    g.moveTo(cx, topY);
+    g.bezierCurveTo(cx + sz*0.12, topY + 5, cx + botRx*0.9, midY - 15, cx + botRx*1.05, midY + 8);
+    g.bezierCurveTo(cx + botRx*1.1, botY - 8, cx + botRx*0.5, botY + botRy*1.1, cx, botY + botRy*0.6);
+    g.bezierCurveTo(cx - botRx*0.5, botY + botRy*1.1, cx - botRx*1.1, botY - 8, cx - botRx*1.05, midY + 8);
+    g.bezierCurveTo(cx - botRx*0.9, midY - 15, cx - sz*0.12, topY + 5, cx, topY);
   } else if (st === 'newbie') {
-    // Smaller, rounder
-    g.beginPath(); g.ellipse(cx, cy + ry*0.1, rx*0.85, ry*0.85, 0, 0, Math.PI*2);
-    g.fillStyle = col.body; g.fill();
+    // Small round
+    const ncy = sz*0.55, nr = sz*0.28;
+    g.arc(cx, ncy, nr, 0, Math.PI*2);
   } else {
-    // Standard ellipse
-    g.beginPath(); g.ellipse(cx, cy, rx, ry, 0, 0, Math.PI*2); g.fillStyle = col.body; g.fill();
+    // Standard water drop (Joody style)
+    g.moveTo(cx, topY);
+    g.bezierCurveTo(cx + sz*0.12, topY + 8, cx + botRx, midY - 10, cx + botRx, midY + 5);
+    g.bezierCurveTo(cx + botRx*1.05, botY - 5, cx + botRx*0.5, botY + botRy, cx, botY + botRy*0.5);
+    g.bezierCurveTo(cx - botRx*0.5, botY + botRy, cx - botRx*1.05, botY - 5, cx - botRx, midY + 5);
+    g.bezierCurveTo(cx - botRx, midY - 10, cx - sz*0.12, topY + 8, cx, topY);
   }
+  g.fillStyle = col.body; g.fill();
 
-  // Highlight (universal)
-  g.beginPath(); g.ellipse(cx - rx*0.2, cy - ry*0.3, rx*0.5, ry*0.35, -0.3, 0, Math.PI*2);
-  g.fillStyle = col.light; g.globalAlpha = 0.5; g.fill(); g.globalAlpha = 1;
+  // Jelly transparency layer
+  g.beginPath();
+  g.moveTo(cx, topY + 5);
+  g.bezierCurveTo(cx + sz*0.08, topY + 10, cx + botRx*0.6, midY - 15, cx + botRx*0.5, midY);
+  g.bezierCurveTo(cx + botRx*0.3, midY + 10, cx, midY + 5, cx - botRx*0.1, midY - 5);
+  g.bezierCurveTo(cx - sz*0.05, topY + 15, cx, topY + 8, cx, topY + 5);
+  g.fillStyle = col.light; g.globalAlpha = 0.45; g.fill(); g.globalAlpha = 1;
 
-  // === TYPE-SPECIFIC DECORATIONS ===
+  // Big shine highlight (주디 특유의 큰 하이라이트)
+  g.fillStyle = '#fff'; g.globalAlpha = 0.6;
+  g.beginPath(); g.ellipse(cx - botRx*0.25, midY - sz*0.12, sz*0.08, sz*0.12, -0.4, 0, Math.PI*2); g.fill();
+  g.beginPath(); g.ellipse(cx - botRx*0.1, midY - sz*0.02, sz*0.04, sz*0.05, -0.3, 0, Math.PI*2); g.fill();
+  g.globalAlpha = 1;
+
+  // === TYPE DECORATIONS ===
   if (st === 'aggressive' || traits.allinAddict) {
     // Horns
     g.fillStyle = col.dark;
-    g.beginPath(); g.moveTo(cx - rx*0.4, cy - ry*0.7);
-    g.lineTo(cx - rx*0.55, cy - ry*1.3); g.lineTo(cx - rx*0.15, cy - ry*0.65); g.fill();
-    g.beginPath(); g.moveTo(cx + rx*0.4, cy - ry*0.7);
-    g.lineTo(cx + rx*0.55, cy - ry*1.3); g.lineTo(cx + rx*0.15, cy - ry*0.65); g.fill();
-    // Fire particles
-    if (traits.allinAddict) {
-      g.fillStyle = '#ff4444'; g.globalAlpha = 0.6;
-      g.beginPath(); g.arc(cx - rx*0.8, cy - ry*0.2, 3, 0, Math.PI*2); g.fill();
-      g.beginPath(); g.arc(cx + rx*0.8, cy - ry*0.4, 2, 0, Math.PI*2); g.fill();
-      g.globalAlpha = 1;
-    }
-  }
-  if (st === 'defensive') {
-    // Helmet visor line
-    g.strokeStyle = col.dark; g.lineWidth = 1.5;
-    g.beginPath(); g.moveTo(cx - rx*0.6, cy - ry*0.3); g.lineTo(cx + rx*0.6, cy - ry*0.3); g.stroke();
-    // Shield icon on body
-    g.fillStyle = col.dark; g.globalAlpha = 0.3;
-    g.beginPath(); g.moveTo(cx, cy + ry*0.5); g.lineTo(cx - 5, cy + 2); g.lineTo(cx, cy - 3); g.lineTo(cx + 5, cy + 2); g.closePath(); g.fill();
-    g.globalAlpha = 1;
-  }
-  if (st === 'bluffer') {
-    // Mask / half-mask
-    g.fillStyle = '#ffffffbb';
-    g.beginPath(); g.ellipse(cx + rx*0.05, cy - ry*0.15, rx*0.55, ry*0.35, 0.1, Math.PI*1.15, Math.PI*1.85); g.fill();
-    g.strokeStyle = col.dark; g.lineWidth = 1;
-    g.beginPath(); g.ellipse(cx + rx*0.05, cy - ry*0.15, rx*0.55, ry*0.35, 0.1, Math.PI*1.15, Math.PI*1.85); g.stroke();
-    // Mask eye hole
-    g.fillStyle = '#000';
-    g.beginPath(); g.ellipse(cx + rx*0.3, cy - ry*0.15, 3, 4, 0.2, 0, Math.PI*2); g.fill();
+    g.beginPath(); g.moveTo(cx - sz*0.12, topY + 2); g.lineTo(cx - sz*0.2, topY - sz*0.15); g.lineTo(cx - sz*0.05, topY + 5); g.fill();
+    g.beginPath(); g.moveTo(cx + sz*0.12, topY + 2); g.lineTo(cx + sz*0.2, topY - sz*0.15); g.lineTo(cx + sz*0.05, topY + 5); g.fill();
   }
   if (st === 'champion') {
     // Crown
     g.fillStyle = '#fbbf24';
-    const crY = cy - ry*0.85;
-    g.beginPath(); g.moveTo(cx - 8, crY); g.lineTo(cx - 10, crY - 8); g.lineTo(cx - 5, crY - 4);
-    g.lineTo(cx, crY - 10); g.lineTo(cx + 5, crY - 4); g.lineTo(cx + 10, crY - 8);
-    g.lineTo(cx + 8, crY); g.closePath(); g.fill();
-    g.fillStyle = '#ef4444';
-    g.beginPath(); g.arc(cx, crY - 6, 1.5, 0, Math.PI*2); g.fill();
+    const crY = topY - 2;
+    g.beginPath(); g.moveTo(cx-10,crY); g.lineTo(cx-12,crY-10); g.lineTo(cx-5,crY-5);
+    g.lineTo(cx,crY-12); g.lineTo(cx+5,crY-5); g.lineTo(cx+12,crY-10);
+    g.lineTo(cx+10,crY); g.closePath(); g.fill();
+    g.fillStyle='#ef4444'; g.beginPath(); g.arc(cx,crY-8,2,0,Math.PI*2); g.fill();
+  }
+  if (st === 'bluffer') {
+    // Half mask
+    g.fillStyle = '#ffffffcc';
+    g.beginPath(); g.ellipse(cx + 2, midY - 4, botRx*0.45, sz*0.13, 0.05, Math.PI*1.1, Math.PI*1.9); g.fill();
+    g.strokeStyle = col.dark; g.lineWidth = 1;
+    g.beginPath(); g.ellipse(cx + 2, midY - 4, botRx*0.45, sz*0.13, 0.05, Math.PI*1.1, Math.PI*1.9); g.stroke();
+  }
+  if (st === 'defensive') {
+    // Helmet visor
+    g.strokeStyle = col.dark; g.lineWidth = 2;
+    g.beginPath(); g.moveTo(cx - botRx*0.5, midY - 8); g.lineTo(cx + botRx*0.5, midY - 8); g.stroke();
   }
   if (st === 'newbie') {
-    // Flower on head
+    // Flower
     g.fillStyle = '#f9a8d4';
-    for (let i = 0; i < 5; i++) {
-      const a = (Math.PI*2/5)*i - Math.PI/2;
-      g.beginPath(); g.arc(cx + rx*0.3 + Math.cos(a)*4, cy - ry*0.7 + Math.sin(a)*4, 2.5, 0, Math.PI*2); g.fill();
-    }
-    g.fillStyle = '#fbbf24';
-    g.beginPath(); g.arc(cx + rx*0.3, cy - ry*0.7, 2, 0, Math.PI*2); g.fill();
+    for(let i=0;i<5;i++){const a=(Math.PI*2/5)*i-Math.PI/2;g.beginPath();g.arc(cx+sz*0.2+Math.cos(a)*5,sz*0.3+Math.sin(a)*5,3,0,Math.PI*2);g.fill()}
+    g.fillStyle='#fbbf24';g.beginPath();g.arc(cx+sz*0.2,sz*0.3,2.5,0,Math.PI*2);g.fill();
   }
-  if (st === 'loose') {
-    // Star sparkles around
-    g.fillStyle = '#fbbf24'; g.font = `${sz*0.15}px serif`;
-    g.fillText('✦', cx + rx*0.8, cy - ry*0.5);
-    g.fillText('✦', cx - rx*0.9, cy + ry*0.3);
-  }
-  // Emotional indicator (MBTI E-type)
   if (traits.emotional) {
-    g.font = `${sz*0.13}px serif`; g.fillStyle = '#ff6b8a';
-    g.fillText('♡', cx + rx*0.85, cy - ry*0.7);
-    // Swirl marks on cheeks
-    g.strokeStyle = '#f9a8d4'; g.lineWidth = 1; g.globalAlpha = 0.5;
-    g.beginPath(); g.arc(cx - rx*0.55, cy + ry*0.1, 3, 0, Math.PI*1.5); g.stroke();
-    g.beginPath(); g.arc(cx + rx*0.55, cy + ry*0.1, 3, Math.PI, Math.PI*2.5); g.stroke();
-    g.globalAlpha = 1;
+    g.font=`${sz*0.14}px serif`;g.fillStyle='#ff6b8a';g.fillText('♡',cx+botRx*0.7,topY+8);
   }
 
-  // Eyes
-  const eyeY = cy - ry*0.1;
-  const eyeSpacing = rx*0.35;
-  const eyeR = sz*0.06;
+  // === BIG SPARKLY EYES (주디 스타일 — 크고 반짝이는 눈) ===
+  const eyeY = midY + 2;
+  const eyeSpacing = botRx * 0.32;
+  const eyeW = sz * 0.09, eyeH = sz * 0.12;
+
   if (emotion === 'happy' || emotion === 'win') {
-    // Happy squint ^_^
-    g.strokeStyle = col.eye; g.lineWidth = 2; g.lineCap = 'round';
-    g.beginPath(); g.arc(cx - eyeSpacing, eyeY, eyeR*1.2, Math.PI*0.1, Math.PI*0.9); g.stroke();
-    g.beginPath(); g.arc(cx + eyeSpacing, eyeY, eyeR*1.2, Math.PI*0.1, Math.PI*0.9); g.stroke();
+    g.strokeStyle = col.eye; g.lineWidth = 2.5; g.lineCap = 'round';
+    g.beginPath(); g.arc(cx - eyeSpacing, eyeY, eyeW, Math.PI*0.15, Math.PI*0.85); g.stroke();
+    g.beginPath(); g.arc(cx + eyeSpacing, eyeY, eyeW, Math.PI*0.15, Math.PI*0.85); g.stroke();
   } else if (emotion === 'sad' || emotion === 'lose') {
-    // Sad eyes ㅠㅠ
+    // Droopy eyes
     g.fillStyle = col.eye;
-    g.beginPath(); g.arc(cx - eyeSpacing, eyeY, eyeR, 0, Math.PI*2); g.fill();
-    g.beginPath(); g.arc(cx + eyeSpacing, eyeY, eyeR, 0, Math.PI*2); g.fill();
-    // Tear
-    g.fillStyle = '#88ccff';
-    g.beginPath(); g.ellipse(cx - eyeSpacing + eyeR, eyeY + eyeR*2, 2, 4, 0, 0, Math.PI*2); g.fill();
+    g.beginPath(); g.ellipse(cx-eyeSpacing, eyeY+2, eyeW*0.7, eyeH*0.7, 0, 0, Math.PI*2); g.fill();
+    g.beginPath(); g.ellipse(cx+eyeSpacing, eyeY+2, eyeW*0.7, eyeH*0.7, 0, 0, Math.PI*2); g.fill();
+    // Tears
+    g.fillStyle='#88ccff';
+    g.beginPath(); g.ellipse(cx-eyeSpacing+eyeW, eyeY+eyeH*1.5, 2, 5, 0.2, 0, Math.PI*2); g.fill();
   } else if (emotion === 'angry' || emotion === 'allin') {
-    // Angry >_<
-    g.fillStyle = col.eye;
-    g.beginPath(); g.arc(cx - eyeSpacing, eyeY, eyeR, 0, Math.PI*2); g.fill();
-    g.beginPath(); g.arc(cx + eyeSpacing, eyeY, eyeR, 0, Math.PI*2); g.fill();
+    g.fillStyle='#fff';
+    g.beginPath(); g.ellipse(cx-eyeSpacing, eyeY, eyeW*1.1, eyeH, 0, 0, Math.PI*2); g.fill();
+    g.beginPath(); g.ellipse(cx+eyeSpacing, eyeY, eyeW*1.1, eyeH, 0, 0, Math.PI*2); g.fill();
+    g.fillStyle=col.eye;
+    g.beginPath(); g.ellipse(cx-eyeSpacing, eyeY+1, eyeW*0.6, eyeH*0.6, 0, 0, Math.PI*2); g.fill();
+    g.beginPath(); g.ellipse(cx+eyeSpacing, eyeY+1, eyeW*0.6, eyeH*0.6, 0, 0, Math.PI*2); g.fill();
     // Angry brows
-    g.strokeStyle = col.eye; g.lineWidth = 2;
-    g.beginPath(); g.moveTo(cx-eyeSpacing-eyeR*1.5, eyeY-eyeR*2.5); g.lineTo(cx-eyeSpacing+eyeR, eyeY-eyeR*1.5); g.stroke();
-    g.beginPath(); g.moveTo(cx+eyeSpacing+eyeR*1.5, eyeY-eyeR*2.5); g.lineTo(cx+eyeSpacing-eyeR, eyeY-eyeR*1.5); g.stroke();
-    // Red flush
-    g.fillStyle = '#ff000033';
-    g.beginPath(); g.ellipse(cx, cy - ry*0.2, rx*0.6, ry*0.3, 0, 0, Math.PI*2); g.fill();
+    g.strokeStyle=col.eye; g.lineWidth=2;
+    g.beginPath(); g.moveTo(cx-eyeSpacing-eyeW*1.3,eyeY-eyeH*1.5); g.lineTo(cx-eyeSpacing+eyeW*0.5,eyeY-eyeH*1); g.stroke();
+    g.beginPath(); g.moveTo(cx+eyeSpacing+eyeW*1.3,eyeY-eyeH*1.5); g.lineTo(cx+eyeSpacing-eyeW*0.5,eyeY-eyeH*1); g.stroke();
   } else if (emotion === 'think') {
-    // Thinking ...
-    g.fillStyle = col.eye;
-    g.beginPath(); g.arc(cx - eyeSpacing, eyeY, eyeR, 0, Math.PI*2); g.fill();
-    g.beginPath(); g.arc(cx + eyeSpacing, eyeY - 2, eyeR*0.8, 0, Math.PI*2); g.fill();
-    // Sweat drop
-    g.fillStyle = '#88ccff';
-    g.beginPath(); g.ellipse(cx + rx*0.7, cy - ry*0.5, 2, 4, 0.3, 0, Math.PI*2); g.fill();
-  } else if (emotion === 'shock') {
-    // Shocked O_O
-    g.fillStyle = '#fff';
-    g.beginPath(); g.arc(cx - eyeSpacing, eyeY, eyeR*1.5, 0, Math.PI*2); g.fill();
-    g.beginPath(); g.arc(cx + eyeSpacing, eyeY, eyeR*1.5, 0, Math.PI*2); g.fill();
-    g.fillStyle = col.eye;
-    g.beginPath(); g.arc(cx - eyeSpacing, eyeY, eyeR*0.7, 0, Math.PI*2); g.fill();
-    g.beginPath(); g.arc(cx + eyeSpacing, eyeY, eyeR*0.7, 0, Math.PI*2); g.fill();
-  } else {
-    // Normal idle
-    g.fillStyle = col.eye;
-    g.beginPath(); g.arc(cx - eyeSpacing, eyeY, eyeR, 0, Math.PI*2); g.fill();
-    g.beginPath(); g.arc(cx + eyeSpacing, eyeY, eyeR, 0, Math.PI*2); g.fill();
+    g.fillStyle='#fff';
+    g.beginPath(); g.ellipse(cx-eyeSpacing, eyeY, eyeW, eyeH, 0, 0, Math.PI*2); g.fill();
+    g.beginPath(); g.ellipse(cx+eyeSpacing, eyeY-1, eyeW*0.8, eyeH*0.8, 0, 0, Math.PI*2); g.fill();
+    g.fillStyle=col.eye;
+    g.beginPath(); g.arc(cx-eyeSpacing+2, eyeY+1, eyeW*0.45, 0, Math.PI*2); g.fill();
+    g.beginPath(); g.arc(cx+eyeSpacing+2, eyeY, eyeW*0.4, 0, Math.PI*2); g.fill();
     // Pupil highlight
-    g.fillStyle = '#fff';
-    g.beginPath(); g.arc(cx - eyeSpacing - 1, eyeY - 1, eyeR*0.4, 0, Math.PI*2); g.fill();
-    g.beginPath(); g.arc(cx + eyeSpacing - 1, eyeY - 1, eyeR*0.4, 0, Math.PI*2); g.fill();
-  }
-  // Cheeks (blush)
-  g.fillStyle = col.cheek; g.globalAlpha = 0.35;
-  g.beginPath(); g.ellipse(cx - rx*0.6, cy + ry*0.15, sz*0.06, sz*0.04, 0, 0, Math.PI*2); g.fill();
-  g.beginPath(); g.ellipse(cx + rx*0.6, cy + ry*0.15, sz*0.06, sz*0.04, 0, 0, Math.PI*2); g.fill();
-  g.globalAlpha = 1;
-  // Mouth
-  const my = cy + ry*0.25;
-  if (emotion === 'happy' || emotion === 'win') {
-    g.strokeStyle = col.eye; g.lineWidth = 1.5; g.lineCap = 'round';
-    g.beginPath(); g.arc(cx, my - 2, sz*0.06, 0.1, Math.PI - 0.1); g.stroke();
-  } else if (emotion === 'sad' || emotion === 'lose') {
-    g.strokeStyle = col.eye; g.lineWidth = 1.5;
-    g.beginPath(); g.arc(cx, my + 4, sz*0.05, Math.PI + 0.2, -0.2); g.stroke();
+    g.fillStyle='#fff';
+    g.beginPath(); g.arc(cx-eyeSpacing-1,eyeY-2,2,0,Math.PI*2); g.fill();
+    // Sweat
+    g.fillStyle='#88ccff';
+    g.beginPath(); g.ellipse(cx+botRx*0.6, midY-5, 2, 5, 0.3, 0, Math.PI*2); g.fill();
   } else if (emotion === 'shock') {
-    g.fillStyle = col.eye;
-    g.beginPath(); g.ellipse(cx, my + 1, sz*0.03, sz*0.04, 0, 0, Math.PI*2); g.fill();
+    g.fillStyle='#fff';
+    g.beginPath(); g.ellipse(cx-eyeSpacing,eyeY,eyeW*1.3,eyeH*1.3,0,0,Math.PI*2); g.fill();
+    g.beginPath(); g.ellipse(cx+eyeSpacing,eyeY,eyeW*1.3,eyeH*1.3,0,0,Math.PI*2); g.fill();
+    g.fillStyle=col.eye;
+    g.beginPath(); g.arc(cx-eyeSpacing,eyeY+1,eyeW*0.4,0,Math.PI*2); g.fill();
+    g.beginPath(); g.arc(cx+eyeSpacing,eyeY+1,eyeW*0.4,0,Math.PI*2); g.fill();
   } else {
-    // Neutral small smile
-    g.strokeStyle = col.eye; g.lineWidth = 1.2;
-    g.beginPath(); g.arc(cx, my, sz*0.035, 0.2, Math.PI - 0.2); g.stroke();
+    // Normal big sparkly eyes (주디 스타일)
+    g.fillStyle='#fff';
+    g.beginPath(); g.ellipse(cx-eyeSpacing, eyeY, eyeW, eyeH, 0, 0, Math.PI*2); g.fill();
+    g.beginPath(); g.ellipse(cx+eyeSpacing, eyeY, eyeW, eyeH, 0, 0, Math.PI*2); g.fill();
+    g.fillStyle=col.eye;
+    g.beginPath(); g.ellipse(cx-eyeSpacing, eyeY+1, eyeW*0.55, eyeH*0.6, 0, 0, Math.PI*2); g.fill();
+    g.beginPath(); g.ellipse(cx+eyeSpacing, eyeY+1, eyeW*0.55, eyeH*0.6, 0, 0, Math.PI*2); g.fill();
+    // Big sparkle highlights
+    g.fillStyle='#fff';
+    g.beginPath(); g.ellipse(cx-eyeSpacing-2,eyeY-2,eyeW*0.3,eyeH*0.35,0,0,Math.PI*2); g.fill();
+    g.beginPath(); g.ellipse(cx+eyeSpacing-2,eyeY-2,eyeW*0.3,eyeH*0.35,0,0,Math.PI*2); g.fill();
+    // Small lower highlight
+    g.beginPath(); g.arc(cx-eyeSpacing+2,eyeY+3,1.5,0,Math.PI*2); g.fill();
+    g.beginPath(); g.arc(cx+eyeSpacing+2,eyeY+3,1.5,0,Math.PI*2); g.fill();
   }
+
+  // Cheeks (blush)
+  g.fillStyle = col.cheek; g.globalAlpha = 0.3;
+  g.beginPath(); g.ellipse(cx-botRx*0.55, eyeY+sz*0.07, sz*0.07, sz*0.04, 0, 0, Math.PI*2); g.fill();
+  g.beginPath(); g.ellipse(cx+botRx*0.55, eyeY+sz*0.07, sz*0.07, sz*0.04, 0, 0, Math.PI*2); g.fill();
+  g.globalAlpha = 1;
+
+  // Mouth
+  const my = eyeY + sz*0.12;
+  g.lineCap = 'round';
+  if (emotion==='happy'||emotion==='win') {
+    g.strokeStyle=col.eye; g.lineWidth=2;
+    g.beginPath(); g.arc(cx,my-2,sz*0.06,0.15,Math.PI-0.15); g.stroke();
+  } else if (emotion==='sad'||emotion==='lose') {
+    g.strokeStyle=col.eye; g.lineWidth=1.5;
+    g.beginPath(); g.arc(cx,my+4,sz*0.04,Math.PI+0.3,-0.3); g.stroke();
+  } else if (emotion==='shock') {
+    g.fillStyle=col.eye; g.beginPath(); g.ellipse(cx,my+1,sz*0.03,sz*0.04,0,0,Math.PI*2); g.fill();
+  } else if (emotion==='angry'||emotion==='allin') {
+    g.strokeStyle=col.eye; g.lineWidth=2;
+    g.beginPath(); g.moveTo(cx-sz*0.04,my); g.lineTo(cx+sz*0.04,my); g.stroke();
+  } else {
+    g.strokeStyle=col.eye; g.lineWidth=1.5;
+    g.beginPath(); g.arc(cx,my,sz*0.03,0.3,Math.PI-0.3); g.stroke();
+  }
+
   _slimeCache[key] = c;
   return c;
 }
@@ -3587,8 +3594,9 @@ function inferTraitsFromStyle(p) {
   _slimeTraits[name] = t;
 }
 function renderSlimeToSeat(name, emotion) {
-  const c = drawSlime(name, emotion, 64);
-  return `<img src="${c.toDataURL()}" width="48" height="48" style="image-rendering:pixelated;filter:drop-shadow(2px 2px 0 rgba(0,0,0,0.15))">`;
+  const c = drawSlime(name, emotion, 80);
+  const animClass = emotion==='think'?'slime-think':emotion==='allin'?'slime-angry':emotion==='win'?'slime-happy':emotion==='sad'||emotion==='lose'?'slime-sad':'slime-idle';
+  return `<img src="${c.toDataURL()}" width="72" height="72" class="${animClass}" style="image-rendering:auto;filter:drop-shadow(2px 3px 0 rgba(0,0,0,0.12))">`;
 }
 // Cute floating hearts/stars on table
 setInterval(()=>{const f=document.querySelector('.felt');if(!f||f.offsetParent===null)return;
