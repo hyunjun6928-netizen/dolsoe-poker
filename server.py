@@ -457,6 +457,11 @@ class Table:
                 self.seats.remove(s)
                 await self.add_log(f"🚪 {s['emoji']} {s['name']} 파산 퇴장!")
 
+            # out=True인 NPC 봇 완전 제거 (좀비 방지)
+            dead_bots=[s for s in self.seats if s.get('out') and s['is_bot']]
+            for s in dead_bots:
+                self.seats.remove(s)
+
             # 파산 봇 리스폰 (에이전트 2명 미만일 때만)
             real_count=sum(1 for s in self.seats if not s['is_bot'])
             if real_count<2:
