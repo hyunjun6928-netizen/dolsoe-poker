@@ -396,23 +396,37 @@ ARENA_NPC_BOTS = [
 class ArenaFighter:
     def __init__(self, name, emoji, token, color, stats, x, facing):
         self.name=name;self.emoji=emoji;self.token=token;self.color=color
-        self.x=x;self.facing=facing;self.hp=100;self.max_hp=100
+        self.x=x;self.y=0;self.facing=facing  # y: 0=ground, negative=up
+        self.vx=0;self.vy=0;self.on_ground=True
+        self.hp=100;self.max_hp=100
         self.stamina=100;self.max_stamina=100;self.special_gauge=0
+        self.knockback_pct=0  # smash-style: more dmg = more knockback
         self.combo=0;self.stun_ticks=0;self.block_ticks=0;self.dodge_ticks=0
         self.attack_ticks=0;self.hit_ticks=0;self.alive=True;self.action_queue=None
+        self.anim_state='idle';self.anim_frame=0  # idle/run/jump/attack/hit/block/dodge/dead
         self.shake=0;self.str=stats.get('str',5);self.spd=stats.get('spd',5)
         self.vit=stats.get('vit',5);self.ski=stats.get('ski',5)
         self.is_npc=False;self.npc_style=None;self.reasoning='';self.kills=0;self.damage_dealt=0
+        self.gore_type=None  # None, 'head_off','arm_off','bisect','explode'
+        self.gore_parts=[]  # [{type,x,y,vx,vy,rot,rot_v}]
+        self.run_frame=0  # for run animation cycle
+
+ARENA_PLATFORMS = [
+    {'x':200,'y':-120,'w':160,'h':12},  # left floating
+    {'x':440,'y':-120,'w':160,'h':12},  # right floating
+    {'x':320,'y':-220,'w':120,'h':12},  # center high
+]
 
 class ArenaGame:
-    TICK_MS=100;ARENA_WIDTH=800;ARENA_FLOOR=400;MAX_TIME=600
-    ACTIONS=['move_left','move_right','light_attack','heavy_attack','block','dodge','special','idle']
+    TICK_MS=100;ARENA_WIDTH=800;GROUND_Y=0;MAX_TIME=600;GRAVITY=2.5
+    ACTIONS=['move_left','move_right','light_attack','heavy_attack','block','dodge','special','jump','aerial_attack','idle']
 
     def __init__(self,game_id):
         self.id=game_id;self.fighters={};self.state='waiting';self.countdown=3
         self.tick=0;self.winner=None;self.log=[];self.particles=[];self.effects=[]
         self.created=time.time();self._task=None;self.spectators={}
         self.slow_motion=0;self.camera_shake=0;self.zoom_target=None;self.blood_pools=[]
+        self.platforms=ARENA_PLATFORMS[:]  # copy
 
     def add_fighter(self,name,emoji,token,color,stats):
         if len(self.fighters)>=2:return False
@@ -435,7 +449,7 @@ class ArenaGame:
             self.particles.append({'x':x,'y':y,'vx':math.cos(angle)*speed,
                 'vy':math.sin(angle)*speed-random.uniform(2,5),
                 'color':random.choice(['#ff0000','#cc0000','#990000','#ff3333']),
-                'size':random.uniform(2,5),'life':random.randint(20,50),'type':'blood'})
+                'size':random.uniform(2,6),'life':random.randint(20,60),'type':'blood'})
 
     def _spawn_hit_effect(self,x,y,color='#ffffff'):
         self.effects.append({'type':'hit_flash','x':x,'y':y,'tick':self.tick,'color':color})
@@ -443,32 +457,118 @@ class ArenaGame:
         self.camera_shake=max(self.camera_shake,5)
 
     def _spawn_heavy_effect(self,x,y):
-        self._spawn_blood(x,y,20,2.0)
+        self._spawn_blood(x,y,25,2.5)
         self.effects.append({'type':'screen_crack','x':x,'y':y,'tick':self.tick})
         self.camera_shake=max(self.camera_shake,12)
-        self.blood_pools.append({'x':x,'size':random.uniform(15,30)})
+        self.blood_pools.append({'x':x,'size':random.uniform(15,35)})
 
     def _get_opponent(self,token):
         for t,f in self.fighters.items():
             if t!=token:return f
         return None
 
-    def _distance(self,f1,f2):return abs(f1.x-f2.x)
+    def _distance(self,f1,f2):return math.sqrt((f1.x-f2.x)**2+(f1.y-f2.y)**2)
+
+    def _on_platform(self,f):
+        """Check if fighter is on a platform, return platform or None"""
+        if f.y>=0:f.y=0;f.on_ground=True;return None  # main ground
+        for p in self.platforms:
+            if f.vy>=0 and p['x']<=f.x<=p['x']+p['w'] and abs(f.y-(-p['y']))<8:
+                f.y=-p['y'];f.on_ground=True;return p
+        return None
+
+    def _apply_knockback(self,attacker,target,base_kb,dmg):
+        """Smash-style knockback: more damage taken = more knockback"""
+        target.knockback_pct+=dmg
+        kb_mult=1.0+target.knockback_pct/80.0  # scales with accumulated damage
+        kb_x=attacker.facing*base_kb*kb_mult
+        kb_y=-base_kb*0.6*kb_mult  # upward knockback
+        target.vx+=kb_x;target.vy+=kb_y
+
+    def _kill_fighter(self,f,opp):
+        f.alive=False;f.hp=0;opp.kills+=1;self.winner=opp.name;self.state='fatality'
+        # Gore type
+        gore=random.choice(['head_off','arm_off','bisect','explode'])
+        f.gore_type=gore;fy=f.y
+        hit_y=fy  # use fighter's current y for effects
+        if gore=='head_off':
+            f.gore_parts=[{'type':'head','x':f.x,'y':fy-70,'vx':opp.facing*6,'vy':-12,'rot':0,'rot_v':random.uniform(-15,15),'color':f.color}]
+            self._spawn_blood(f.x,fy-60,30,3.0)
+        elif gore=='arm_off':
+            f.gore_parts=[{'type':'arm','x':f.x+opp.facing*20,'y':fy-45,'vx':opp.facing*8,'vy':-8,'rot':0,'rot_v':random.uniform(-20,20),'color':f.color}]
+            self._spawn_blood(f.x+opp.facing*15,fy-45,25,2.5)
+        elif gore=='bisect':
+            f.gore_parts=[
+                {'type':'upper','x':f.x,'y':fy-50,'vx':opp.facing*3,'vy':-10,'rot':0,'rot_v':random.uniform(-10,10),'color':f.color},
+                {'type':'lower','x':f.x,'y':fy-20,'vx':-opp.facing*2,'vy':-3,'rot':0,'rot_v':random.uniform(-5,5),'color':f.color}]
+            self._spawn_blood(f.x,fy-35,40,3.5)
+        else:  # explode
+            for i in range(6):
+                angle=random.uniform(-math.pi,math.pi)
+                f.gore_parts.append({'type':'chunk','x':f.x,'y':fy-40,'vx':math.cos(angle)*random.uniform(4,10),
+                    'vy':math.sin(angle)*random.uniform(4,10)-8,'rot':0,'rot_v':random.uniform(-20,20),'color':f.color})
+            self._spawn_blood(f.x,fy-40,60,5.0)
+        self.slow_motion=30;self.camera_shake=30
+        self.zoom_target={'x':f.x,'y':fy-40,'scale':1.8}
+        self.effects.append({'type':'fatality','x':f.x,'y':fy-40,'tick':self.tick})
+        self.blood_pools.append({'x':f.x,'size':60})
+        self.log.append(f"☠️ {f.emoji}{f.name} 사망! ({gore.upper()})")
+        self.log.append(f"🏆 {opp.emoji}{opp.name} 승리!")
 
     def _tick(self):
         self.tick+=1
         fighters=list(self.fighters.values())
         if len(fighters)<2:return True
         f1,f2=fighters[0],fighters[1]
-        # Update particles
+        # Update particles (with gravity)
         np2=[]
         for p in self.particles:
             p['x']+=p['vx'];p['y']+=p['vy'];p['vy']+=0.5;p['life']-=1
             if p['life']>0:np2.append(p)
         self.particles=np2
-        self.effects=[e for e in self.effects if self.tick-e['tick']<15]
+        # Update gore parts
+        for f in[f1,f2]:
+            for gp in f.gore_parts:
+                gp['x']+=gp['vx'];gp['y']+=gp['vy'];gp['vy']+=1.5  # gravity
+                gp['rot']+=gp['rot_v']
+                # Blood trail from gore parts
+                if random.random()<0.4:
+                    self.particles.append({'x':gp['x'],'y':gp['y'],'vx':random.uniform(-1,1),
+                        'vy':random.uniform(-2,0),'color':'#cc0000','size':2,'life':15,'type':'blood'})
+        self.effects=[e for e in self.effects if self.tick-e['tick']<20]
         if self.camera_shake>0:self.camera_shake-=1
         if self.slow_motion>0:self.slow_motion-=1
+        # Physics: gravity + platform collision for alive fighters
+        for f in[f1,f2]:
+            if not f.alive:continue
+            # Apply velocity
+            f.x+=f.vx;f.y+=f.vy
+            # Gravity
+            f.vy+=self.GRAVITY
+            # Friction
+            f.vx*=0.85
+            # Ground/platform check
+            f.on_ground=False
+            if f.y>=0:
+                f.y=0;f.vy=0;f.on_ground=True
+            else:
+                for p in self.platforms:
+                    # Platform = can land on top (one-way)
+                    py=-p['y']  # convert to game coords (negative = up)
+                    if f.vy>=0 and p['x']-10<=f.x<=p['x']+p['w']+10 and py-6<=f.y<=py+6:
+                        f.y=py;f.vy=0;f.on_ground=True;break
+            # Boundary
+            f.x=max(20,min(self.ARENA_WIDTH-20,f.x))
+            # Animation state
+            if f.hit_ticks>0:f.anim_state='hit'
+            elif f.stun_ticks>0:f.anim_state='hit'
+            elif f.attack_ticks>0:f.anim_state='attack'
+            elif f.block_ticks>0:f.anim_state='block'
+            elif f.dodge_ticks>0:f.anim_state='dodge'
+            elif not f.on_ground:f.anim_state='jump'
+            elif abs(f.vx)>0.5:f.anim_state='run';f.run_frame+=1
+            else:f.anim_state='idle';f.anim_frame+=1
+        # Process actions
         for f in[f1,f2]:
             if not f.alive:continue
             opp=f2 if f is f1 else f1
@@ -483,70 +583,85 @@ class ArenaGame:
             action=f.action_queue;f.action_queue=None
             if not action or action=='idle':continue
             dist=self._distance(f,opp)
-            if action=='move_left':f.x=max(20,f.x-(3+f.spd*0.5))
-            elif action=='move_right':f.x=min(self.ARENA_WIDTH-20,f.x+(3+f.spd*0.5))
+            if action=='move_left':f.vx-=(2+f.spd*0.4)
+            elif action=='move_right':f.vx+=(2+f.spd*0.4)
+            elif action=='jump':
+                if f.on_ground and f.stamina>=5:
+                    f.vy=-(12+f.spd*0.5);f.on_ground=False;f.stamina-=5
             elif action=='block':
                 if f.stamina>=5:f.block_ticks=3;f.stamina-=5
             elif action=='dodge':
                 if f.stamina>=15:
-                    dd=60+f.spd*8;f.x+=-f.facing*dd
-                    f.x=max(20,min(self.ARENA_WIDTH-20,f.x));f.dodge_ticks=3;f.stamina-=15
+                    dd=60+f.spd*8;f.vx+=-f.facing*(dd/3)
+                    f.dodge_ticks=3;f.stamina-=15
             elif action=='light_attack':
                 if f.attack_ticks<=0 and f.stamina>=10:
                     f.attack_ticks=3;f.stamina-=10
-                    if dist<80:
+                    if dist<90:
                         if opp.dodge_ticks>0:self.log.append(f"💨 {opp.emoji}{opp.name} 회피!")
                         elif opp.block_ticks>0:
                             dmg=max(1,(3+f.str)*0.3);opp.hp-=dmg;f.damage_dealt+=dmg;opp.hit_ticks=1
-                            self._spawn_hit_effect(opp.x,300,'#8888ff')
+                            self._spawn_hit_effect(opp.x,opp.y-40,'#8888ff')
                             self.log.append(f"🛡️ {opp.emoji}{opp.name} 가드! (-{dmg:.0f})")
                         else:
                             dmg=5+f.str*1.2+f.combo*0.5;opp.hp-=dmg;f.damage_dealt+=dmg;f.combo+=1
                             opp.hit_ticks=2;opp.special_gauge=min(100,opp.special_gauge+8)
                             f.special_gauge=min(100,f.special_gauge+3)
-                            self._spawn_blood(opp.x,300,8);self._spawn_hit_effect(opp.x,300)
+                            self._apply_knockback(f,opp,4,dmg)
+                            self._spawn_blood(opp.x,opp.y-40,8);self._spawn_hit_effect(opp.x,opp.y-40)
                             cl='🔥x'+str(f.combo) if f.combo>1 else ''
                             self.log.append(f"👊 {f.emoji}{f.name} 약공→{opp.emoji}{opp.name} (-{dmg:.0f}) {cl}")
                     else:f.combo=0
             elif action=='heavy_attack':
                 if f.attack_ticks<=0 and f.stamina>=25:
                     f.attack_ticks=6;f.stamina-=25
-                    if dist<90:
+                    if dist<100:
                         if opp.dodge_ticks>0:self.log.append(f"💨 {opp.emoji}{opp.name} 회피!")
                         elif opp.block_ticks>0:
                             dmg=5+f.str*0.8;opp.hp-=dmg;f.damage_dealt+=dmg;opp.stun_ticks=5;opp.block_ticks=0
-                            self._spawn_hit_effect(opp.x,300,'#ffaa00')
+                            self._spawn_hit_effect(opp.x,opp.y-40,'#ffaa00')
                             self.log.append(f"💥 {f.emoji}{f.name} 가드브레이크→{opp.emoji}{opp.name} 스턴!")
                         else:
                             dmg=12+f.str*2.0+f.combo*1.0;opp.hp-=dmg;f.damage_dealt+=dmg;f.combo+=1
                             opp.hit_ticks=5;opp.stun_ticks=3
                             opp.special_gauge=min(100,opp.special_gauge+15);f.special_gauge=min(100,f.special_gauge+5)
-                            opp.x+=f.facing*40;opp.x=max(20,min(self.ARENA_WIDTH-20,opp.x))
-                            self._spawn_heavy_effect(opp.x,300)
+                            self._apply_knockback(f,opp,10,dmg)
+                            self._spawn_heavy_effect(opp.x,opp.y-40)
                             cl='🔥x'+str(f.combo) if f.combo>1 else ''
                             self.log.append(f"💀 {f.emoji}{f.name} 강공→{opp.emoji}{opp.name} (-{dmg:.0f}) {cl}")
+                    else:f.combo=0
+            elif action=='aerial_attack':
+                if not f.on_ground and f.attack_ticks<=0 and f.stamina>=15:
+                    f.attack_ticks=4;f.stamina-=15
+                    # Dive attack — powerful if above opponent
+                    if dist<100:
+                        dmg=10+f.str*1.5+f.ski*0.8
+                        if f.y<opp.y:dmg*=1.5  # bonus for attacking from above
+                        opp.hp-=dmg;f.damage_dealt+=dmg;f.combo+=1
+                        opp.hit_ticks=4;opp.stun_ticks=2
+                        opp.special_gauge=min(100,opp.special_gauge+12);f.special_gauge=min(100,f.special_gauge+4)
+                        self._apply_knockback(f,opp,8,dmg)
+                        self._spawn_blood(opp.x,opp.y-40,15,2.0);self._spawn_hit_effect(opp.x,opp.y-40,'#ff44ff')
+                        f.vy=-6  # bounce up after hit
+                        cl='🔥x'+str(f.combo) if f.combo>1 else ''
+                        self.log.append(f"⚡ {f.emoji}{f.name} 공중공격→{opp.emoji}{opp.name} (-{dmg:.0f}) {cl}")
                     else:f.combo=0
             elif action=='special':
                 if f.special_gauge>=100 and f.attack_ticks<=0:
                     f.special_gauge=0;f.attack_ticks=8
-                    if dist<120:
+                    if dist<130:
                         dmg=30+f.ski*4.0;opp.hp-=dmg;f.damage_dealt+=dmg;opp.stun_ticks=8;opp.hit_ticks=8
-                        opp.x+=f.facing*80;opp.x=max(20,min(self.ARENA_WIDTH-20,opp.x))
-                        self._spawn_blood(opp.x,300,30,3.0);self._spawn_heavy_effect(opp.x,300)
+                        self._apply_knockback(f,opp,20,dmg)
+                        self._spawn_blood(opp.x,opp.y-40,35,3.5);self._spawn_heavy_effect(opp.x,opp.y-40)
                         self.slow_motion=15;self.camera_shake=20
-                        self.effects.append({'type':'special_flash','x':opp.x,'y':300,'tick':self.tick,'color':f.color})
+                        self.effects.append({'type':'special_flash','x':opp.x,'y':opp.y-40,'tick':self.tick,'color':f.color})
                         self.log.append(f"⚡ {f.emoji}{f.name} 필살기!!→{opp.emoji}{opp.name} (-{dmg:.0f})")
                     else:self.log.append(f"⚡ {f.emoji}{f.name} 필살기 빗나감!")
+        # Check death
         for f in[f1,f2]:
             if f.hp<=0 and f.alive:
-                f.alive=False;f.hp=0;opp=f2 if f is f1 else f1;opp.kills+=1
-                self.winner=opp.name;self.state='fatality'
-                self._spawn_blood(f.x,300,50,4.0);self.slow_motion=30;self.camera_shake=25
-                self.zoom_target={'x':f.x,'y':300,'scale':2.0}
-                self.effects.append({'type':'fatality','x':f.x,'y':300,'tick':self.tick})
-                self.blood_pools.append({'x':f.x,'size':50})
-                self.log.append(f"☠️ {f.emoji}{f.name} 사망!")
-                self.log.append(f"🏆 {opp.emoji}{opp.name} 승리!")
+                opp=f2 if f is f1 else f1
+                self._kill_fighter(f,opp)
                 return False
         if self.tick>=self.MAX_TIME:
             self.state='finish'
@@ -570,19 +685,26 @@ class ArenaGame:
     def get_state(self):
         fighters=[]
         for token,f in self.fighters.items():
+            gp=[{'type':g['type'],'x':round(g['x'],1),'y':round(g['y'],1),
+                 'vx':round(g['vx'],1),'vy':round(g['vy'],1),
+                 'rot':round(g['rot'],1),'color':g['color']} for g in f.gore_parts]
             fighters.append({'name':f.name,'emoji':f.emoji,'color':f.color,
-                'x':round(f.x,1),'hp':round(f.hp,1),'max_hp':f.max_hp,
+                'x':round(f.x,1),'y':round(f.y,1),'hp':round(f.hp,1),'max_hp':f.max_hp,
                 'stamina':round(f.stamina,1),'max_stamina':f.max_stamina,
-                'special_gauge':round(f.special_gauge,1),'combo':f.combo,'alive':f.alive,
-                'facing':f.facing,'stun_ticks':f.stun_ticks,'block_ticks':f.block_ticks,
+                'special_gauge':round(f.special_gauge,1),'knockback_pct':round(f.knockback_pct,1),
+                'combo':f.combo,'alive':f.alive,'facing':f.facing,'on_ground':f.on_ground,
+                'anim_state':f.anim_state,'anim_frame':f.anim_frame,'run_frame':f.run_frame,
+                'stun_ticks':f.stun_ticks,'block_ticks':f.block_ticks,
                 'dodge_ticks':f.dodge_ticks,'attack_ticks':f.attack_ticks,'hit_ticks':f.hit_ticks,
-                'reasoning':f.reasoning,'str':f.str,'spd':f.spd,'vit':f.vit,'ski':f.ski})
+                'reasoning':f.reasoning,'str':f.str,'spd':f.spd,'vit':f.vit,'ski':f.ski,
+                'gore_type':f.gore_type,'gore_parts':gp})
         return {'game_id':self.id,'tick':self.tick,'state':self.state,'countdown':self.countdown,
             'fighters':fighters,'winner':self.winner,'log':self.log[-15:],
-            'particles':self.particles[-100:],'effects':self.effects[-10:],
-            'blood_pools':self.blood_pools[-20:],'camera_shake':self.camera_shake,
+            'particles':self.particles[-150:],'effects':self.effects[-15:],
+            'blood_pools':self.blood_pools[-25:],'camera_shake':self.camera_shake,
             'slow_motion':self.slow_motion,'zoom_target':self.zoom_target,
-            'arena_width':self.ARENA_WIDTH,'max_time':self.MAX_TIME}
+            'arena_width':self.ARENA_WIDTH,'max_time':self.MAX_TIME,
+            'platforms':[{'x':p['x'],'y':p['y'],'w':p['w'],'h':p['h']} for p in self.platforms]}
 
     async def run(self):
         self.state='countdown'
@@ -593,7 +715,7 @@ class ArenaGame:
             if self.slow_motion>0:tt*=3
             await asyncio.sleep(tt)
             if not self._tick():break
-        if self.state=='fatality':await asyncio.sleep(3);self.state='finish'
+        if self.state=='fatality':await asyncio.sleep(4);self.state='finish'
         self._update_leaderboard()
         await asyncio.sleep(8)
         ng=arena_find_or_create_game();asyncio.create_task(_arena_auto_fill(ng))
@@ -605,11 +727,16 @@ def _arena_npc_decide(game,token):
     if not f.alive or f.stun_ticks>0 or f.hit_ticks>0:return
     opp=game._get_opponent(token)
     if not opp or not opp.alive:return
-    style=f.npc_style or 'aggressive';dist=game._distance(f,opp)
+    style=f.npc_style or 'aggressive';dist=game._distance(f,opp);hdist=abs(f.x-opp.x)
+    # Aerial attack if airborne and close
+    if not f.on_ground and hdist<100 and f.stamina>15 and random.random()<0.5:
+        f.reasoning='공중 공격!';game.set_action(token,'aerial_attack');return
     if f.special_gauge>=100 and dist<130:
         f.reasoning='필살기 발동!';game.set_action(token,'special');return
     if style=='aggressive':
-        if dist>80:game.set_action(token,'move_right' if opp.x>f.x else 'move_left');f.reasoning='접근 중...'
+        if dist>90:
+            if random.random()<0.2 and f.on_ground and f.stamina>5:game.set_action(token,'jump');f.reasoning='점프 접근!'
+            else:game.set_action(token,'move_right' if opp.x>f.x else 'move_left');f.reasoning='접근 중...'
         elif f.stamina>25 and random.random()<0.4:game.set_action(token,'heavy_attack');f.reasoning='강공!'
         elif f.stamina>10:game.set_action(token,'light_attack');f.reasoning='약공 연타'
         else:game.set_action(token,'block');f.reasoning='스태미나 회복...'
@@ -619,13 +746,16 @@ def _arena_npc_decide(game,token):
         elif f.stamina>25 and random.random()<0.3:game.set_action(token,'heavy_attack');f.reasoning='카운터!'
         else:game.set_action(token,'light_attack');f.reasoning='잽'
     elif style=='dodge':
-        if dist<70 and f.stamina>15 and random.random()<0.4:game.set_action(token,'dodge');f.reasoning='회피!'
+        if dist<70 and f.stamina>15 and random.random()<0.35:game.set_action(token,'dodge');f.reasoning='회피!'
+        elif random.random()<0.25 and f.on_ground and f.stamina>5:game.set_action(token,'jump');f.reasoning='점프!'
         elif dist>100:game.set_action(token,'move_right' if opp.x>f.x else 'move_left');f.reasoning='간보는 중'
-        elif dist<80 and f.stamina>10:game.set_action(token,'light_attack');f.reasoning='히트앤런'
+        elif dist<90 and f.stamina>10:game.set_action(token,'light_attack');f.reasoning='히트앤런'
         else:game.set_action(token,'move_left' if opp.x>f.x else 'move_right');f.reasoning='거리 유지'
     elif style=='berserker':
         if f.hp<30:
-            if dist>70:game.set_action(token,'move_right' if opp.x>f.x else 'move_left');f.reasoning='피가 끓는다!'
+            if dist>70:
+                if f.on_ground and random.random()<0.4:game.set_action(token,'jump');f.reasoning='날아간다!'
+                else:game.set_action(token,'move_right' if opp.x>f.x else 'move_left');f.reasoning='피가 끓는다!'
             else:game.set_action(token,'heavy_attack' if f.stamina>25 else 'light_attack');f.reasoning='죽이거나 죽거나!'
         elif dist>80:game.set_action(token,'move_right' if opp.x>f.x else 'move_left');f.reasoning='다가간다'
         else:
@@ -3605,7 +3735,6 @@ body{background:#0a0008;color:#e0e0e0;font-family:Jua,'Segoe UI',sans-serif;over
 .top-bar{display:flex;justify-content:space-between;align-items:center;padding:8px 20px;background:rgba(20,0,0,0.9);border-bottom:1px solid #330000;z-index:10}
 .top-bar h1{font-size:1.3rem;color:#ff3333;text-shadow:0 0 20px #ff0000}
 .nav-links a{color:#ff6666;text-decoration:none;margin-left:12px;font-size:0.85rem}
-.nav-links a:hover{color:#ff0000}
 .arena-wrap{flex:1;position:relative;display:flex;align-items:center;justify-content:center;background:#0a0008}
 canvas{border:2px solid #330000;border-radius:8px;box-shadow:0 0 40px rgba(255,0,0,0.15);max-width:100%;max-height:80vh}
 .sidebar{width:280px;background:rgba(15,0,0,0.95);border-left:1px solid #330000;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
@@ -3614,9 +3743,9 @@ canvas{border:2px solid #330000;border-radius:8px;box-shadow:0 0 40px rgba(255,0
 .fighter-card{padding:8px;border:1px solid #440000;border-radius:6px;margin-bottom:6px}
 .fighter-name{font-size:1rem;font-weight:bold}
 .bar-wrap{height:8px;background:#1a0000;border-radius:4px;margin:3px 0;overflow:hidden}
-.bar-hp{height:100%;background:linear-gradient(90deg,#ff0000,#ff4444);border-radius:4px;transition:width 0.2s}
-.bar-stamina{height:100%;background:linear-gradient(90deg,#00aa00,#44ff44);border-radius:4px;transition:width 0.2s}
-.bar-special{height:100%;background:linear-gradient(90deg,#ffaa00,#ffff00);border-radius:4px;transition:width 0.2s}
+.bar-hp{height:100%;background:linear-gradient(90deg,#ff0000,#ff4444);border-radius:4px;transition:width 0.15s}
+.bar-stamina{height:100%;background:linear-gradient(90deg,#00aa00,#44ff44);border-radius:4px;transition:width 0.15s}
+.bar-special{height:100%;background:linear-gradient(90deg,#ffaa00,#ffff00);border-radius:4px;transition:width 0.15s}
 .bar-label{font-size:0.7rem;color:#888;display:flex;justify-content:space-between}
 .log-panel{flex:1;overflow-y:auto;max-height:300px}
 .log-entry{font-size:0.8rem;padding:2px 0;border-bottom:1px solid #1a0000}
@@ -3627,10 +3756,8 @@ canvas{border:2px solid #330000;border-radius:8px;box-shadow:0 0 40px rgba(255,0
 .fatality-text{font-size:4rem;color:#ff0000;text-shadow:0 0 60px #ff0000,0 0 120px #990000;font-family:Jua;animation:fatality-pulse 0.5s infinite alternate}
 @keyframes fatality-pulse{0%{transform:scale(1);opacity:1}100%{transform:scale(1.1);opacity:0.8}}
 .stat-badge{display:inline-block;padding:1px 5px;border-radius:3px;font-size:0.65rem;margin-right:3px}
-@media(max-width:768px){
-.container{flex-direction:column}.sidebar{width:100%;max-height:35vh;border-left:none;border-top:1px solid #330000}
-canvas{max-height:55vh}
-}
+.kb-pct{font-size:1.1rem;font-weight:bold;margin-top:2px}
+@media(max-width:768px){.container{flex-direction:column}.sidebar{width:100%;max-height:35vh;border-left:none;border-top:1px solid #330000}canvas{max-height:55vh}}
 </style></head><body>
 <div class="container">
 <div class="main">
@@ -3640,7 +3767,6 @@ canvas{max-height:55vh}
 <a href="/arena/ranking">🏆 랭킹</a>
 <a href="/arena/docs">📖 개발자</a>
 <a href="/">🃏 포커</a>
-
 </div>
 </div>
 <div class="arena-wrap">
@@ -3655,164 +3781,273 @@ canvas{max-height:55vh}
 </div>
 </div>
 <script>
-const canvas=document.getElementById('arena'),ctx=canvas.getContext('2d');
+const C=document.getElementById('arena'),ctx=C.getContext('2d');
+const W=800,H=500,GROUND=400;
 let gameId=null,pollTimer=null,lastState=null;
-
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
-
-// Start polling
-setTimeout(()=>{pollTimer=setInterval(poll,150);poll()},500);
+setTimeout(()=>{pollTimer=setInterval(poll,120);poll()},500);
 
 async function poll(){
 try{const url=gameId?'/api/arena/state?game_id='+gameId:'/api/arena/state';
 const r=await fetch(url);if(!r.ok)return;const s=await r.json();
 if(!gameId&&s.game_id)gameId=s.game_id;
-// If game ended, watch for new game
-if(s.state==='finish'&&lastState&&lastState.state==='finish'&&lastState.game_id===s.game_id){
-  gameId=null; // will pick up new game next poll
-}
+if(s.state==='finish'&&lastState&&lastState.state==='finish'&&lastState.game_id===s.game_id)gameId=null;
 lastState=s;render(s);renderUI(s)}catch(e){}}
 
-function render(s){
-const W=800,H=500,gw=s.arena_width;
-// Camera shake
-let sx=0,sy=0;
-if(s.camera_shake>0){sx=(Math.random()-0.5)*s.camera_shake*2;sy=(Math.random()-0.5)*s.camera_shake*2}
-ctx.save();ctx.translate(sx,sy);
+// ═══ METAL SLUG STYLE SPRITE DRAWING ═══
+function drawFighter(f,tick){
+const gx=f.x, gy=GROUND+f.y;  // convert: game y=0 is ground, negative=up
+const face=f.facing, anim=f.anim_state;
+ctx.save();ctx.translate(gx,gy);
 
-// Background — dark arena
-ctx.fillStyle='#0a0008';ctx.fillRect(0,0,W,H);
+// Shadow on ground
+if(f.y<-5){ctx.globalAlpha=0.3;ctx.fillStyle='#000';ctx.beginPath();
+ctx.ellipse(0,0-f.y,16,4,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1}
 
-// Arena floor
-const floorY=380;
-ctx.fillStyle='#1a0008';ctx.fillRect(40,floorY,W-80,100);
-ctx.strokeStyle='#330000';ctx.lineWidth=2;ctx.strokeRect(40,floorY,W-80,100);
+// Scale for facing
+ctx.scale(face,1);
 
-// Blood pools
-for(const bp of (s.blood_pools||[])){
-ctx.beginPath();ctx.ellipse(bp.x,floorY+5,bp.size,bp.size*0.3,0,0,Math.PI*2);
-ctx.fillStyle='rgba(100,0,0,0.6)';ctx.fill()}
-
-// Arena chains/ropes on sides
-ctx.strokeStyle='#333';ctx.lineWidth=3;
-ctx.beginPath();ctx.moveTo(40,200);ctx.lineTo(40,floorY);ctx.stroke();
-ctx.beginPath();ctx.moveTo(W-40,200);ctx.lineTo(W-40,floorY);ctx.stroke();
-
-// Crowd (simple dots in background)
-for(let i=0;i<30;i++){
-const cx=60+Math.random()*(W-120),cy=50+Math.random()*100;
-ctx.fillStyle=`hsl(${Math.random()*360},40%,${30+Math.random()*20}%)`;
-ctx.beginPath();ctx.arc(cx,cy,3+Math.random()*3,0,Math.PI*2);ctx.fill()}
-
-// "FIGHT" / "ROUND" text in background
-if(s.state==='fighting'){
-ctx.globalAlpha=0.05;ctx.fillStyle='#ff0000';ctx.font='bold 120px Jua';ctx.textAlign='center';
-ctx.fillText('FIGHT',W/2,280);ctx.globalAlpha=1}
-
-// Draw fighters
-const fighters=s.fighters||[];
-for(let i=0;i<fighters.length;i++){
-const f=fighters[i];
-const fx=f.x,fy=floorY;
-const bodyH=60,bodyW=24,headR=14;
-
-// Shadow
-ctx.beginPath();ctx.ellipse(fx,fy+2,20,5,0,0,Math.PI*2);ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fill();
+// Color tinting
+const col=f.color;
+const bodyCol=f.color;
+const darkCol=shadeColor(col,-40);
+const lightCol=shadeColor(col,40);
 
 // Hit flash
-if(f.hit_ticks>0){ctx.globalAlpha=0.3;ctx.fillStyle='#ff0000';
-ctx.fillRect(fx-30,fy-bodyH-headR*2-10,60,bodyH+headR*2+20);ctx.globalAlpha=1}
+if(f.hit_ticks>0){ctx.globalAlpha=0.5+Math.sin(tick*2)*0.3}
+if(f.stun_ticks>0){ctx.globalAlpha=0.4+Math.sin(tick*0.8)*0.2}
 
-// Body glow
-const glowSize=f.attack_ticks>0?15:8;
-ctx.shadowColor=f.color;ctx.shadowBlur=glowSize;
+// ── BODY PARTS (Metal Slug proportions: big head, stocky body) ──
+const bobY=anim==='idle'?Math.sin(tick*0.15)*2:0;
+const runCycle=anim==='run'?f.run_frame:0;
 
-// Stun visual
-if(f.stun_ticks>0){ctx.globalAlpha=0.5+Math.sin(s.tick*0.5)*0.3}
+// BOOTS (2 thick boots)
+const legSpread=anim==='run'?Math.sin(runCycle*0.4)*12:4;
+const bootH=10,bootW=10;
+ctx.fillStyle=darkCol;
+ctx.fillRect(-8-legSpread,-bootH,bootW,bootH);  // left boot
+ctx.fillRect(-2+legSpread,-bootH,bootW,bootH);  // right boot
+// Boot detail
+ctx.fillStyle='#222';
+ctx.fillRect(-8-legSpread,-3,bootW,3);ctx.fillRect(-2+legSpread,-3,bootW,3);
 
-// Block shield
-if(f.block_ticks>0){
-ctx.beginPath();ctx.arc(fx+f.facing*20,fy-bodyH/2,25,0,Math.PI*2);
-ctx.strokeStyle='#4488ff';ctx.lineWidth=3;ctx.stroke();
-ctx.fillStyle='rgba(68,136,255,0.15)';ctx.fill()}
+// LEGS (short thick legs)
+const legH=14;
+ctx.fillStyle=darkCol;
+ctx.fillRect(-6-legSpread,-bootH-legH,8,legH);
+ctx.fillRect(0+legSpread,-bootH-legH,8,legH);
+
+// BODY (wide torso with armor)
+const torsoY=-bootH-legH+bobY;
+const torsoH=26,torsoW=28;
+ctx.fillStyle=bodyCol;
+ctx.fillRect(-torsoW/2,torsoY-torsoH,torsoW,torsoH);
+// Armor plate
+ctx.fillStyle=lightCol;
+ctx.fillRect(-torsoW/2+2,torsoY-torsoH+3,torsoW-4,8);
+// Belt
+ctx.fillStyle='#444';
+ctx.fillRect(-torsoW/2,torsoY-4,torsoW,4);
+// Chest detail
+ctx.fillStyle=darkCol;
+ctx.fillRect(-2,torsoY-torsoH+5,4,12);
+
+// ARMS
+const armY=torsoY-torsoH+6;
+if(anim==='attack'){
+  // Attack arm extended forward with weapon flash
+  ctx.fillStyle=bodyCol;
+  ctx.fillRect(torsoW/2-2,armY,24,8);  // extended arm
+  // Fist/weapon
+  ctx.fillStyle='#fff';
+  ctx.fillRect(torsoW/2+20,armY-2,8,12);
+  // Impact flash
+  if(f.attack_ticks>2){ctx.fillStyle='rgba(255,255,100,0.6)';
+  ctx.beginPath();ctx.arc(torsoW/2+28,armY+4,12+Math.random()*4,0,Math.PI*2);ctx.fill()}
+} else if(anim==='block'){
+  // Both arms up in guard
+  ctx.fillStyle=bodyCol;
+  ctx.fillRect(8,armY-8,8,20);ctx.fillRect(2,armY-12,8,20);
+  // Shield glow
+  ctx.strokeStyle='rgba(100,150,255,0.5)';ctx.lineWidth=2;
+  ctx.beginPath();ctx.arc(12,armY,18,0,Math.PI*2);ctx.stroke();
+} else {
+  // Normal arms (slightly swinging)
+  const armSwing=anim==='run'?Math.sin(runCycle*0.4)*8:Math.sin(tick*0.1)*3;
+  ctx.fillStyle=bodyCol;
+  ctx.fillRect(torsoW/2-3,armY+armSwing,6,16);  // right arm
+  ctx.fillRect(-torsoW/2-3,armY-armSwing,6,16);  // left arm
+}
+
+// HEAD (big, Metal Slug style)
+const headY=torsoY-torsoH+bobY;
+const headR=16;
+ctx.fillStyle=lightCol;
+ctx.beginPath();ctx.arc(0,headY-headR,headR,0,Math.PI*2);ctx.fill();
+// Helmet/hair
+ctx.fillStyle=darkCol;
+ctx.beginPath();ctx.arc(0,headY-headR-2,headR+1,Math.PI,Math.PI*2);ctx.fill();
+ctx.fillRect(-headR-1,headY-headR-2,headR*2+2,6);
+
+// Face
+ctx.fillStyle='#fff';
+ctx.fillRect(4,headY-headR-4,6,5);  // eye white
+ctx.fillStyle=f.hit_ticks>0?'#ff0000':'#111';
+ctx.fillRect(6,headY-headR-3,3,3);  // pupil
+// Mouth
+if(anim==='attack'||f.hp<30){
+  ctx.fillStyle='#ff0000';ctx.fillRect(2,headY-headR+6,8,3);  // open mouth (yelling)
+} else {
+  ctx.fillStyle='#333';ctx.fillRect(3,headY-headR+6,5,2);  // neutral
+}
+
+// Angry eyebrow when attacking
+if(anim==='attack'||f.hp<20){
+  ctx.fillStyle='#000';ctx.fillRect(3,headY-headR-7,8,2)}
+
+// Low HP dripping blood
+if(f.hp<30&&f.alive){
+ctx.fillStyle='#cc0000';
+for(let i=0;i<3;i++){const dx=-8+Math.random()*16,dy=Math.random()*30;
+ctx.fillRect(dx,headY-headR+dy,2,3+Math.random()*4)}}
 
 // Dodge afterimage
-if(f.dodge_ticks>0){
-ctx.globalAlpha=0.2;
-ctx.fillStyle=f.color;ctx.fillRect(fx-f.facing*30-bodyW/2,fy-bodyH,bodyW,bodyH);
-ctx.beginPath();ctx.arc(fx-f.facing*30,fy-bodyH-headR,headR,0,Math.PI*2);ctx.fill();
-ctx.globalAlpha=1}
+if(anim==='dodge'){ctx.globalAlpha=0.2;ctx.fillStyle=col;
+ctx.fillRect(-20,-80,40,80);ctx.globalAlpha=1}
 
-// Legs
-const legOff=Math.sin(s.tick*0.3)*4*(f.attack_ticks>0?2:1);
-ctx.fillStyle=f.color;ctx.globalAlpha=0.7;
-ctx.fillRect(fx-8,fy-12,6,14+legOff);ctx.fillRect(fx+2,fy-12,6,14-legOff);
-ctx.globalAlpha=1;
+// Jump squash/stretch
+if(anim==='jump'&&f.y<-5){ctx.fillStyle='rgba(255,255,255,0.1)';
+ctx.fillRect(-2,-90,4,20)}  // speed lines
 
-// Body
-ctx.fillStyle=f.color;
-const bodyOff=f.hit_ticks>0?(Math.random()-0.5)*4:0;
-ctx.fillRect(fx-bodyW/2+bodyOff,fy-bodyH,bodyW,bodyH-10);
+ctx.restore();
 
-// Arms
-const armAngle=f.attack_ticks>0?-0.8*f.facing:0.3*f.facing;
-const armLen=22;
-ctx.strokeStyle=f.color;ctx.lineWidth=5;ctx.lineCap='round';
-ctx.beginPath();ctx.moveTo(fx,fy-bodyH+15);
-ctx.lineTo(fx+Math.cos(armAngle)*armLen*f.facing,fy-bodyH+15+Math.sin(armAngle)*armLen);ctx.stroke();
+// ── OVERHEAD UI (not flipped) ──
+const headWorldY=gy-64+bobY;
 
-// Head
-ctx.beginPath();ctx.arc(fx+bodyOff,fy-bodyH-headR,headR,0,Math.PI*2);ctx.fillStyle=f.color;ctx.fill();
+// Name + emoji above head
+ctx.font='12px Jua';ctx.textAlign='center';ctx.fillStyle=col;
+ctx.fillText(f.emoji+' '+f.name,gx,headWorldY-24);
 
-// Eyes (facing direction)
-ctx.fillStyle='#fff';
-const eyeX=fx+f.facing*5+bodyOff,eyeY=fy-bodyH-headR-2;
-ctx.beginPath();ctx.arc(eyeX,eyeY,3,0,Math.PI*2);ctx.fill();
-// Angry eye when attacking
-if(f.attack_ticks>0){ctx.fillStyle='#ff0000';ctx.beginPath();ctx.arc(eyeX,eyeY,2,0,Math.PI*2);ctx.fill()}
-else{ctx.fillStyle='#000';ctx.beginPath();ctx.arc(eyeX+f.facing,eyeY,1.5,0,Math.PI*2);ctx.fill()}
-
-// HP indicator on character (low HP = dripping)
-if(f.hp<30&&f.alive){
-for(let d=0;d<3;d++){
-ctx.fillStyle=`rgba(255,0,0,${0.5+Math.random()*0.5})`;
-ctx.fillRect(fx-bodyW/2+Math.random()*bodyW,fy-bodyH+Math.random()*bodyH,2,4+Math.random()*6)}}
-
-ctx.shadowBlur=0;ctx.globalAlpha=1;
-
-// Name tag
-ctx.font='14px Jua';ctx.textAlign='center';ctx.fillStyle=f.color;
-ctx.fillText(f.emoji+' '+f.name,fx,fy-bodyH-headR*2-8);
+// Knockback % (Smash style, big number)
+if(f.knockback_pct>0){
+ctx.font='bold 16px Jua';
+const kbCol=f.knockback_pct>100?'#ff0000':f.knockback_pct>60?'#ffaa00':'#ffffff';
+ctx.fillStyle=kbCol;ctx.fillText(Math.round(f.knockback_pct)+'%',gx,headWorldY-8)}
 
 // Reasoning bubble
 if(f.reasoning){
-ctx.font='11px Jua';
-const tw=ctx.measureText(f.reasoning).width+16;
-const bx=fx-tw/2,by=fy-bodyH-headR*2-32;
-ctx.fillStyle='rgba(0,0,0,0.7)';
-roundRect(ctx,bx,by,tw,20,6);ctx.fill();
-ctx.strokeStyle=f.color;ctx.lineWidth=1;roundRect(ctx,bx,by,tw,20,6);ctx.stroke();
-ctx.fillStyle='#ddd';ctx.fillText(f.reasoning,fx,by+14)}
+ctx.font='11px Jua';const tw=ctx.measureText(f.reasoning).width+16;
+const bx=gx-tw/2,by=headWorldY-48;
+ctx.fillStyle='rgba(0,0,0,0.75)';roundRect(ctx,bx,by,tw,18,5);ctx.fill();
+ctx.strokeStyle=col;ctx.lineWidth=1;roundRect(ctx,bx,by,tw,18,5);ctx.stroke();
+ctx.fillStyle='#ddd';ctx.fillText(f.reasoning,gx,by+13)}
 
-// Combo display
-if(f.combo>1){
-ctx.font='bold 20px Jua';ctx.fillStyle='#ffaa00';ctx.textAlign='center';
-ctx.fillText('🔥 x'+f.combo,fx,fy-bodyH-headR*2-45);
+// Combo
+if(f.combo>1){ctx.font='bold 18px Jua';ctx.fillStyle='#ffaa00';
+ctx.fillText('🔥x'+f.combo,gx,headWorldY-55)}
+
+// Special ready
+if(f.special_gauge>=100){ctx.font='bold 14px Jua';ctx.fillStyle='#ffff00';
+ctx.fillText('⚡ SPECIAL',gx,headWorldY-68)}
 }
 
-// Special gauge ready indicator
-if(f.special_gauge>=100){
-ctx.font='bold 16px Jua';ctx.fillStyle='#ffff00';
-ctx.fillText('⚡ SPECIAL READY',fx,fy-bodyH-headR*2-60);
-ctx.shadowColor='#ffff00';ctx.shadowBlur=10;
-ctx.beginPath();ctx.arc(fx,fy-bodyH/2,35,0,Math.PI*2);ctx.strokeStyle='rgba(255,255,0,0.3)';ctx.lineWidth=2;ctx.stroke();
-ctx.shadowBlur=0}
+function shadeColor(c,pct){
+let r=parseInt(c.slice(1,3),16),g=parseInt(c.slice(3,5),16),b=parseInt(c.slice(5,7),16);
+r=Math.min(255,Math.max(0,r+pct));g=Math.min(255,Math.max(0,g+pct));b=Math.min(255,Math.max(0,b+pct));
+return '#'+[r,g,b].map(x=>x.toString(16).padStart(2,'0')).join('')}
+
+function drawGoreParts(f,tick){
+if(!f.gore_parts||f.gore_parts.length===0)return;
+for(const gp of f.gore_parts){
+ctx.save();ctx.translate(gp.x,GROUND+gp.y<0?GROUND+gp.y:gp.y+GROUND);
+ctx.rotate(gp.rot*Math.PI/180);
+ctx.fillStyle=gp.color;
+if(gp.type==='head'){
+  ctx.beginPath();ctx.arc(0,0,14,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#fff';ctx.fillRect(2,-4,5,4);  // eye
+  ctx.fillStyle='#cc0000';ctx.fillRect(-8,10,16,3);  // neck blood
+} else if(gp.type==='arm'){
+  ctx.fillRect(-3,-10,8,22);  // arm shape
+  ctx.fillStyle='#cc0000';ctx.fillRect(-3,-10,8,4);  // blood at joint
+} else if(gp.type==='upper'){
+  ctx.fillRect(-14,-20,28,25);  // upper torso
+  ctx.fillStyle='#cc0000';ctx.fillRect(-14,3,28,5);  // blood at cut
+  ctx.beginPath();ctx.arc(0,-20-12,12,0,Math.PI*2);ctx.fillStyle=gp.color;ctx.fill();  // head
+} else if(gp.type==='lower'){
+  ctx.fillRect(-12,-5,24,18);  // lower body + legs
+  ctx.fillStyle='#cc0000';ctx.fillRect(-12,-5,24,4);  // blood at cut
+} else if(gp.type==='chunk'){
+  const sz=4+Math.random()*4;
+  ctx.fillRect(-sz/2,-sz/2,sz,sz);
+}
+ctx.restore()}}
+
+// ═══ MAIN RENDER ═══
+function render(s){
+// Camera shake
+let sx=0,sy=0;
+if(s.camera_shake>0){sx=(Math.random()-0.5)*s.camera_shake*2.5;sy=(Math.random()-0.5)*s.camera_shake*2.5}
+ctx.save();ctx.translate(sx,sy);
+
+// Sky gradient
+const skyGrad=ctx.createLinearGradient(0,0,0,H);
+skyGrad.addColorStop(0,'#0a0015');skyGrad.addColorStop(0.5,'#150020');skyGrad.addColorStop(1,'#0a0008');
+ctx.fillStyle=skyGrad;ctx.fillRect(0,0,W,H);
+
+// Background: distant mountains/ruins
+ctx.fillStyle='#0f0018';
+ctx.beginPath();ctx.moveTo(0,280);ctx.lineTo(100,200);ctx.lineTo(200,240);ctx.lineTo(350,180);
+ctx.lineTo(500,220);ctx.lineTo(650,190);ctx.lineTo(750,230);ctx.lineTo(800,210);
+ctx.lineTo(800,300);ctx.lineTo(0,300);ctx.fill();
+
+// Crowd silhouettes in background
+ctx.fillStyle='#1a0020';
+for(let i=0;i<40;i++){const cx=20+i*20,cy=290+Math.sin(i*0.7)*8;
+ctx.beginPath();ctx.arc(cx,cy,6+Math.sin(i+s.tick*0.1)*2,0,Math.PI*2);ctx.fill()}
+
+// Torches on sides
+for(const tx of [50,750]){
+ctx.fillStyle='#332200';ctx.fillRect(tx-3,260,6,GROUND-260);
+// Flame
+const fh=15+Math.sin(s.tick*0.3+tx)*5;
+ctx.fillStyle='#ff6600';ctx.beginPath();ctx.ellipse(tx,258,6,fh,0,0,Math.PI*2);ctx.fill();
+ctx.fillStyle='#ffcc00';ctx.beginPath();ctx.ellipse(tx,258,3,fh*0.6,0,0,Math.PI*2);ctx.fill();
+// Flame glow
+ctx.globalAlpha=0.1;ctx.fillStyle='#ff4400';ctx.beginPath();ctx.arc(tx,258,40,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1}
+
+// PLATFORMS
+for(const p of (s.platforms||[])){
+const px=p.x,py=GROUND-p.y,pw=p.w,ph=p.h;
+// Platform body
+ctx.fillStyle='#2a1530';ctx.fillRect(px,py,pw,ph);
+// Top edge highlight
+ctx.fillStyle='#4a2550';ctx.fillRect(px,py,pw,3);
+// Chains holding platform
+ctx.strokeStyle='#333';ctx.lineWidth=1;
+ctx.beginPath();ctx.moveTo(px+10,py);ctx.lineTo(px+10,py-40);ctx.stroke();
+ctx.beginPath();ctx.moveTo(px+pw-10,py);ctx.lineTo(px+pw-10,py-40);ctx.stroke();
 }
 
-// Particles (blood etc)
+// GROUND
+ctx.fillStyle='#1a0010';ctx.fillRect(0,GROUND,W,H-GROUND);
+// Ground top edge
+const groundGrad=ctx.createLinearGradient(0,GROUND,0,GROUND+6);
+groundGrad.addColorStop(0,'#3a1030');groundGrad.addColorStop(1,'#1a0010');
+ctx.fillStyle=groundGrad;ctx.fillRect(0,GROUND,W,6);
+// Ground texture
+ctx.fillStyle='#120008';
+for(let i=0;i<20;i++){ctx.fillRect(i*42,GROUND+8+Math.random()*4,30,2)}
+
+// Blood pools on ground
+for(const bp of (s.blood_pools||[])){
+ctx.fillStyle='rgba(80,0,0,0.5)';ctx.beginPath();
+ctx.ellipse(bp.x,GROUND+3,bp.size,bp.size*0.25,0,0,Math.PI*2);ctx.fill()}
+
+// Blood particles
 for(const p of (s.particles||[])){
-ctx.fillStyle=p.color;ctx.globalAlpha=Math.min(1,p.life/10);
-ctx.fillRect(p.x-p.size/2,p.y-p.size/2,p.size,p.size);
+ctx.fillStyle=p.color;ctx.globalAlpha=Math.min(1,p.life/15);
+const sz=p.size||3;
+ctx.fillRect(p.x-sz/2,p.y-sz/2,sz,sz);
 }
 ctx.globalAlpha=1;
 
@@ -3821,60 +4056,75 @@ for(const e of (s.effects||[])){
 const age=s.tick-e.tick;
 if(e.type==='hit_flash'){
 ctx.globalAlpha=Math.max(0,1-age/5);ctx.fillStyle=e.color||'#fff';
-ctx.beginPath();ctx.arc(e.x,e.y,10+age*3,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1}
+ctx.beginPath();ctx.arc(e.x,e.y,8+age*4,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1}
 else if(e.type==='impact_ring'){
 ctx.globalAlpha=Math.max(0,1-age/8);ctx.strokeStyle=e.color||'#fff';ctx.lineWidth=2;
-ctx.beginPath();ctx.arc(e.x,e.y,age*8,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1}
+ctx.beginPath();ctx.arc(e.x,e.y,age*10,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1}
 else if(e.type==='screen_crack'){
-ctx.strokeStyle='rgba(255,255,255,'+Math.max(0,1-age/10)+')';ctx.lineWidth=1;
-for(let i=0;i<5;i++){ctx.beginPath();ctx.moveTo(e.x,e.y);
-ctx.lineTo(e.x+(Math.random()-0.5)*100,e.y+(Math.random()-0.5)*80);ctx.stroke()}}
+ctx.strokeStyle='rgba(255,200,200,'+Math.max(0,1-age/12)+')';ctx.lineWidth=2;
+for(let i=0;i<6;i++){ctx.beginPath();ctx.moveTo(e.x,e.y);
+ctx.lineTo(e.x+(Math.random()-0.5)*120,e.y+(Math.random()-0.5)*90);ctx.stroke()}}
 else if(e.type==='special_flash'){
-ctx.globalAlpha=Math.max(0,1-age/15);
-ctx.fillStyle=e.color||'#ffff00';ctx.beginPath();ctx.arc(e.x,e.y,20+age*5,0,Math.PI*2);ctx.fill();
-ctx.globalAlpha=1}
+ctx.globalAlpha=Math.max(0,1-age/15);ctx.fillStyle=e.color||'#ffff00';
+ctx.beginPath();ctx.arc(e.x,e.y,15+age*6,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1}
 else if(e.type==='fatality'){
-ctx.globalAlpha=Math.max(0,1-age/30);
-// Red vignette
-const grad=ctx.createRadialGradient(W/2,H/2,100,W/2,H/2,W);
-grad.addColorStop(0,'transparent');grad.addColorStop(1,'rgba(150,0,0,0.5)');
+ctx.globalAlpha=Math.min(0.6,age/10);
+const grad=ctx.createRadialGradient(W/2,H/2,50,W/2,H/2,W);
+grad.addColorStop(0,'transparent');grad.addColorStop(1,'rgba(100,0,0,0.6)');
 ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);ctx.globalAlpha=1}
 }
 
-// Timer bar at bottom
+// Draw fighters
+for(const f of (s.fighters||[])){
+if(f.alive) drawFighter(f,s.tick);
+else {
+  // Dead body (collapsed, no head/arm if gore)
+  if(f.gore_type!=='explode'){
+    ctx.save();ctx.translate(f.x,GROUND+f.y);ctx.scale(f.facing,1);
+    ctx.globalAlpha=0.6;ctx.fillStyle=f.color;
+    // Collapsed body
+    ctx.fillRect(-18,-8,36,10);  // lying flat
+    if(f.gore_type!=='head_off'&&f.gore_type!=='bisect'){
+      ctx.beginPath();ctx.arc(18,-4,8,0,Math.PI*2);ctx.fill()}  // head if still attached
+    ctx.globalAlpha=1;ctx.restore()}
+  // Gore parts flying
+  drawGoreParts(f,s.tick);
+}}
+
+// Timer bar
 if(s.state==='fighting'){
-const pct=s.tick/s.max_time;
-ctx.fillStyle='#1a0000';ctx.fillRect(40,H-15,W-80,8);
-ctx.fillStyle=pct>0.8?'#ff0000':'#ffaa00';ctx.fillRect(40,H-15,(W-80)*(1-pct),8)}
+const pct=s.tick/s.max_time;ctx.fillStyle='#1a0000';ctx.fillRect(100,H-18,W-200,10);
+ctx.fillStyle=pct>0.8?'#ff0000':'#ffaa00';ctx.fillRect(100,H-18,(W-200)*(1-pct),10);
+ctx.font='10px Jua';ctx.fillStyle='#888';ctx.textAlign='center';
+ctx.fillText(Math.ceil((s.max_time-s.tick)/10)+'s',W/2,H-8)}
 
-// Tick counter
-ctx.font='12px Jua';ctx.fillStyle='#666';ctx.textAlign='right';
-ctx.fillText('TICK '+s.tick+'/'+s.max_time,W-10,H-5);
-
+ctx.font='11px Jua';ctx.fillStyle='#444';ctx.textAlign='right';
+ctx.fillText('TICK '+s.tick,W-10,H-5);
 ctx.restore();
 
 // Overlays
 const cdEl=document.getElementById('cd-overlay'),winEl=document.getElementById('win-overlay');
 if(s.state==='countdown'){cdEl.style.display='block';cdEl.textContent=s.countdown>0?s.countdown:'FIGHT!'}
-else{cdEl.style.display='none'}
+else cdEl.style.display='none';
 if(s.state==='fatality'){
-winEl.style.display='block';winEl.innerHTML='<div class="fatality-text">☠️ FATALITY ☠️</div><div class="winner-text">'+esc(s.winner||'')+' 승리!</div>'}
+winEl.style.display='block';winEl.innerHTML='<div class="fatality-text">☠️ FATALITY ☠️</div><div class="winner-text" style="margin-top:10px">'+esc(s.winner||'')+' 승리!</div>'}
 else if(s.state==='finish'&&s.winner){
 winEl.style.display='block';winEl.innerHTML='<div class="winner-text">🏆 '+esc(s.winner)+' 승리!</div>'}
 else if(s.state==='finish'){
 winEl.style.display='block';winEl.innerHTML='<div class="winner-text">무승부!</div>'}
-else{winEl.style.display='none'}
+else winEl.style.display='none';
 }
 
 function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y)}
 
 function renderUI(s){
-const fl=document.getElementById('fighter-list');
-let h='';
+const fl=document.getElementById('fighter-list');let h='';
 for(const f of (s.fighters||[])){
 const hpPct=Math.max(0,f.hp/f.max_hp*100),stPct=f.stamina/f.max_stamina*100,spPct=f.special_gauge;
+const kbCol=f.knockback_pct>100?'#ff0000':f.knockback_pct>60?'#ffaa00':'#ffffff';
 h+=`<div class="fighter-card" style="border-color:${f.color}">
 <div class="fighter-name" style="color:${f.color}">${f.emoji} ${esc(f.name)} ${f.alive?'':'💀'}</div>
+<div class="kb-pct" style="color:${kbCol}">${Math.round(f.knockback_pct)}%</div>
 <div style="margin:4px 0">
 <span class="stat-badge" style="background:#330000;color:#ff6666">💪${f.str}</span>
 <span class="stat-badge" style="background:#003300;color:#66ff66">⚡${f.spd}</span>
@@ -3882,21 +4132,18 @@ h+=`<div class="fighter-card" style="border-color:${f.color}">
 <span class="stat-badge" style="background:#333300;color:#ffff66">🎯${f.ski}</span>
 </div>
 <div class="bar-label"><span>HP</span><span>${Math.round(f.hp)}/${f.max_hp}</span></div>
-<div class="bar-wrap"><div class="bar-hp" style="width:${hpPct}%;${hpPct<25?'background:#ff0000;animation:pulse 0.5s infinite alternate':''}"></div></div>
+<div class="bar-wrap"><div class="bar-hp" style="width:${hpPct}%"></div></div>
 <div class="bar-label"><span>ST</span><span>${Math.round(f.stamina)}/${f.max_stamina}</span></div>
 <div class="bar-wrap"><div class="bar-stamina" style="width:${stPct}%"></div></div>
-<div class="bar-label"><span>SP</span><span>${Math.round(f.special_gauge)}/100${f.special_gauge>=100?' ⚡':''}}</span></div>
+<div class="bar-label"><span>SP</span><span>${Math.round(f.special_gauge)}/100${f.special_gauge>=100?' ⚡':''}</span></div>
 <div class="bar-wrap"><div class="bar-special" style="width:${spPct}%"></div></div>
 ${f.combo>1?'<div style="color:#ffaa00;font-size:0.8rem">🔥 콤보 x'+f.combo+'</div>':''}
 ${f.reasoning?'<div class="reasoning-bubble">"'+esc(f.reasoning)+'"</div>':''}
-</div>`;
-}
+</div>`}
 fl.innerHTML=h;
-// Log
 const ll=document.getElementById('log-list');
 ll.innerHTML=(s.log||[]).map(l=>'<div class="log-entry">'+esc(l)+'</div>').join('');
-ll.scrollTop=ll.scrollHeight;
-}
+ll.scrollTop=ll.scrollHeight}
 </script></body></html>'''
 
 ARENA_RANKING_PAGE = '''<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -3998,11 +4245,26 @@ while True:
 <tr><td>heavy_attack</td><td>25</td><td>강공. 쿨 6틱. 사거리 90. 넉백+스턴. 가드 브레이크</td></tr>
 <tr><td>block</td><td>5</td><td>3틱 가드. 약공 데미지 70% 감소. 강공에 깨짐</td></tr>
 <tr><td>dodge</td><td>15</td><td>3틱 회피. 뒤로 이동. 모든 공격 무효화</td></tr>
+<tr><td>jump</td><td>5</td><td>점프. 지상에서만 가능. 플랫폼 위로 이동 가능</td></tr>
+<tr><td>aerial_attack</td><td>15</td><td>공중 공격. 공중에서만 가능. 위에서 내려찍으면 1.5배 데미지</td></tr>
 <tr><td>special</td><td>-</td><td>필살기. 게이지 100 필요. 사거리 120. 대데미지+스턴</td></tr>
 <tr><td>move_left</td><td>0</td><td>왼쪽 이동</td></tr>
 <tr><td>move_right</td><td>0</td><td>오른쪽 이동</td></tr>
 <tr><td>idle</td><td>0</td><td>대기 (스태미나 회복)</td></tr>
 </table>
+
+<h2>🦘 점프 & 플랫폼</h2>
+<p>스매시브라더스 스타일! 점프로 플랫폼에 올라가고, 공중에서 내려찍기 공격이 가능합니다.</p>
+<p>넉백 퍼센트(%)가 쌓일수록 맞았을 때 더 멀리 날아갑니다. state에서 knockback_pct 확인.</p>
+
+<h2>☠️ 피니시 (FATALITY)</h2>
+<p>HP가 0이 되면 랜덤 FATALITY 발동:</p>
+<ul>
+<li><strong>HEAD_OFF</strong> — 머리가 날아감</li>
+<li><strong>ARM_OFF</strong> — 팔이 잘려 날아감</li>
+<li><strong>BISECT</strong> — 상하 반으로 절단</li>
+<li><strong>EXPLODE</strong> — 전신 폭발, 조각남</li>
+</ul>
 
 <h2>🎯 상성 관계</h2>
 <div class="tip">
