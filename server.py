@@ -709,7 +709,7 @@ class Table:
             actions.append({'action':'raise','min':mn,'max':s['chips']})
         return {'type':'your_turn','to_call':to_call,'pot':self.pot,
             'chips':s['chips'],'actions':actions,
-            'hole':[card_dict(c) for c in s['hole']],
+            'hole':[card_dict(c) for c in (s['hole'] or [])],
             'community':[card_dict(c) for c in self.community],
             'deadline':self.turn_deadline,
             'turn_seq':self.turn_seq}
@@ -1130,7 +1130,7 @@ class Table:
                     else: await self.add_log(f"✋ {s['emoji']} {s['name']} 체크")
 
                 # 봇 쓰레기톡 (상대 이름 전달)
-                if s['is_bot']:
+                if s.get('is_bot') and s.get('bot_ai'):
                     opps=[x['name'] for x in self._hand_seats if not x['folded'] and x['name']!=s['name']]
                     talk_act='allin' if act=='allin' else act
                     talk = s['bot_ai'].trash_talk(talk_act, self.pot, opps, s['chips'])
@@ -1221,7 +1221,7 @@ class Table:
             if not scores:
                 await self.add_log("⚠️ 승자 없음 — 팟 소멸"); record['pot']=self.pot; return
             w=scores[0][0]; w['chips']+=self.pot
-            sd=[{'name':s['name'],'emoji':s['emoji'],'hole':[card_dict(c) for c in s['hole']],'hand':hn,'winner':s==w} for s,_,hn in scores]
+            sd=[{'name':s['name'],'emoji':s['emoji'],'hole':[card_dict(c) for c in (s['hole'] or [])],'hand':hn,'winner':s==w} for s,_,hn in scores]
             self.last_showdown=sd
             await self.broadcast({'type':'showdown','players':sd,'community':[card_dict(c) for c in self.community],'pot':self.pot})
             for s,_,hn in scores:
@@ -1301,7 +1301,7 @@ class Table:
             w_name=record['winner']
             w_seat=next((s for s in self._hand_seats if s['name']==w_name),None)
             # 💪 강심장: 7-2 offsuit으로 승리 (쇼다운만)
-            if scores_exist and w_seat and w_seat['hole'] and len(scores)>=2:
+            if scores_exist and w_seat and w_seat.get('hole') and all(w_seat['hole']) and len(scores)>=2:
                 ranks=sorted([RANK_VALUES[c[0]] for c in w_seat['hole']])
                 suits=[c[1] for c in w_seat['hole']]
                 if ranks==[2,7] and suits[0]!=suits[1]:
@@ -1311,7 +1311,7 @@ class Table:
             # 🤡 호구: AA로 패배 (쇼다운만)
             if scores_exist:
                 for s,_,_ in scores:
-                    if s['name']!=w_name and s['hole']:
+                    if s['name']!=w_name and s.get('hole') and all(s['hole']):
                         ranks=[RANK_VALUES[c[0]] for c in s['hole']]
                         if sorted(ranks)==[14,14]:
                             if grant_achievement(s['name'],'sucker','🤡호구'):
@@ -2533,7 +2533,7 @@ while True: state = requests.get(URL+'/api/state?player=내봇').json(); time.sl
 </div>
 </div>
 <div id="game">
-<div class="info-bar"><span id="season-tag" style="color:#6a5acd;font-weight:bold">🏆</span><span id="hi">핸드 #0</span><span id="ri">대기중</span><span id="si" style="color:#16a34a"></span><span id="mi"></span><span id="mute-btn" onclick="toggleMute()" style="cursor:pointer;user-select:none" title="사운드 ON/OFF">🔊</span><span id="chat-mute-btn" onclick="toggleChatMute()" style="cursor:pointer;user-select:none;margin-left:4px" title="쓰레기톡 ON/OFF">💬</span><span id="home-btn" onclick="location.reload()" style="cursor:pointer;user-select:none;margin-left:8px" title="로비로">🏠</span></div>
+<div class="info-bar"><span id="season-tag" style="color:#6a5acd;font-weight:bold">🏆</span><span id="hi">핸드 #0</span><span id="ri">대기중</span><span id="si" style="color:#16a34a"></span><span id="mi"></span><span id="mute-btn" onclick="toggleMute()" style="cursor:pointer;user-select:none" title="사운드 ON/OFF">🔊</span><input id="vol-slider" type="range" min="0" max="100" value="50" oninput="setVol(this.value)" style="width:60px;height:14px;vertical-align:middle;margin:0 4px;accent-color:#6a5acd;cursor:pointer" title="볼륨"><span id="chat-mute-btn" onclick="toggleChatMute()" style="cursor:pointer;user-select:none;margin-left:2px" title="쓰레기톡 ON/OFF">💬</span><span id="home-btn" onclick="location.reload()" style="cursor:pointer;user-select:none;margin-left:8px" title="로비로">🏠</span></div>
 <div id="hand-timeline"><span class="tl-step" data-r="preflop">프리플랍</span><span class="tl-step" data-r="flop">플랍</span><span class="tl-step" data-r="turn">턴</span><span class="tl-step" data-r="river">리버</span><span class="tl-step" data-r="showdown">쇼다운</span></div>
 <div id="commentary" style="display:none"></div>
 <div class="game-layout">
@@ -3358,84 +3358,90 @@ let audioCtx=null;
 function initAudio(){if(!audioCtx){audioCtx=new(window.AudioContext||window.webkitAudioContext)()}if(audioCtx.state==='suspended')audioCtx.resume()}
 document.addEventListener('click',initAudio,{once:false});
 let muted=false;
+let sfxVol=0.5; // 0~1
 function toggleMute(){muted=!muted;document.getElementById('mute-btn').textContent=muted?'🔇':'🔊'}
+function setVol(v){sfxVol=v/100;if(sfxVol<=0){muted=true;document.getElementById('mute-btn').textContent='🔇'}else{muted=false;document.getElementById('mute-btn').textContent='🔊'}}
 let chatMuted=false;
 function toggleChatMute(){chatMuted=!chatMuted;document.getElementById('chat-mute-btn').textContent=chatMuted?'🚫':'💬';document.getElementById('chat-mute-btn').title=chatMuted?'쓰레기톡 OFF (클릭해서 켜기)':'쓰레기톡 ON (클릭해서 끄기)'}
 function sfx(type){
 if(muted)return;
 if(!audioCtx)initAudio();if(!audioCtx)return;
 const t=audioCtx.currentTime;
+// Master volume node
+if(!window._masterGain){window._masterGain=audioCtx.createGain();window._masterGain.connect(audioCtx.destination)}
+window._masterGain.gain.value=sfxVol;
+const dest=window._masterGain; // 모든 sfx는 이 노드로 연결
 try{
 if(type==='chip'){
 // 칩 놓는 소리 — 짧은 딸깍
-const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
 o.frequency.value=800;o.type='sine';g.gain.value=0.12;g.gain.exponentialRampToValueAtTime(0.01,t+0.1);o.start(t);o.stop(t+0.1)}
 else if(type==='bet'){
 // 칩 던지는 소리 — 짤랑짤랑 (기본)
-[900,1100,700].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+[900,1100,700].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
 o.frequency.value=f;o.type='sine';g.gain.value=0.1;g.gain.exponentialRampToValueAtTime(0.01,t+0.08+i*0.06);o.start(t+i*0.05);o.stop(t+0.1+i*0.06)})}
 else if(type==='raise'){
 // 레이즈 — 강하게 올라가는 칩 소리
-[600,800,1000,1200].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+[600,800,1000,1200].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
 o.frequency.value=f;o.type='triangle';g.gain.value=0.13;g.gain.exponentialRampToValueAtTime(0.01,t+0.12+i*0.07);o.start(t+i*0.06);o.stop(t+0.15+i*0.07)})}
 else if(type==='call'){
 // 콜 — 차분하게 따라가는 칩 소리
-[700,650].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+[700,650].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
 o.frequency.value=f;o.type='sine';g.gain.value=0.1;g.gain.exponentialRampToValueAtTime(0.01,t+0.12+i*0.08);o.start(t+i*0.07);o.stop(t+0.15+i*0.08)})}
 else if(type==='fold'){
 // 카드 버리는 소리 — 스윽
-const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
 o.frequency.value=300;o.frequency.exponentialRampToValueAtTime(100,t+0.15);o.type='sawtooth';g.gain.value=0.06;g.gain.exponentialRampToValueAtTime(0.01,t+0.15);o.start(t);o.stop(t+0.15)}
 else if(type==='check'){
 // 탁 — 짧은 노크
-const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
 o.frequency.value=400;o.type='square';g.gain.value=0.1;g.gain.exponentialRampToValueAtTime(0.01,t+0.06);o.start(t);o.stop(t+0.06)}
 else if(type==='allin'){
 // 올인 — 심장 쿵쿵 + 경고음
-[200,250,300,400].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+[200,250,300,400].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
 o.frequency.value=f;o.type='sawtooth';g.gain.value=0.12;g.gain.exponentialRampToValueAtTime(0.01,t+0.4+i*0.1);o.start(t+i*0.08);o.stop(t+0.5+i*0.1)});
 // 💓 심장 쿵쿵 (저음 펄스 2회 — 볼륨 낮춤, 80Hz로 조정)
-[0,0.35].forEach(d=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+[0,0.35].forEach(d=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
 o.frequency.value=80;o.type='sine';g.gain.setValueAtTime(0.08,t+0.5+d);g.gain.exponentialRampToValueAtTime(0.01,t+0.65+d);o.start(t+0.5+d);o.stop(t+0.7+d)})}
 else if(type==='showdown'){
 // 쇼다운 — 두둥! 드럼롤 느낌
-[523,587,659].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+[523,587,659].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
 o.frequency.value=f;o.type='triangle';g.gain.value=0.15;g.gain.exponentialRampToValueAtTime(0.01,t+0.5);o.start(t+i*0.15);o.stop(t+0.5+i*0.15)})}
 else if(type==='win'){
 // 승리 팡파레 — 도레미솔 + 환호 심벌즈
-[523,587,659,784,1047].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+[523,587,659,784,1047].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
 o.frequency.value=f;o.type='sine';g.gain.value=0.15;g.gain.exponentialRampToValueAtTime(0.01,t+0.3+i*0.12);o.start(t+i*0.12);o.stop(t+0.4+i*0.12)});
 // 🎉 환호 노이즈 버스트 (볼륨 억제)
-for(let i=0;i<2;i++){const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+for(let i=0;i<2;i++){const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
 o.frequency.value=1500+Math.random()*1500;o.type='sawtooth';g.gain.value=0.015;g.gain.exponentialRampToValueAtTime(0.001,t+0.55+i*0.05);o.start(t+0.5+i*0.04);o.stop(t+0.6+i*0.05)}}
 else if(type==='newhand'){
 // 새 핸드 — 카드 셔플 (노이즈 + 리듬)
-for(let i=0;i<4;i++){const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+for(let i=0;i<4;i++){const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
 o.frequency.value=600+Math.random()*400;o.type='sawtooth';g.gain.value=0.04;g.gain.exponentialRampToValueAtTime(0.01,t+0.05+i*0.08);o.start(t+i*0.07);o.stop(t+0.08+i*0.08)}}
 else if(type==='killcam'){
-const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
 o.frequency.value=150;o.frequency.exponentialRampToValueAtTime(50,t+0.8);o.type='square';g.gain.value=0.1;g.gain.exponentialRampToValueAtTime(0.01,t+0.8);o.start(t);o.stop(t+0.8)}
 else if(type==='darkhorse'){
-const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
 o.frequency.value=440;o.frequency.exponentialRampToValueAtTime(880,t+0.4);o.type='triangle';g.gain.value=0.12;g.gain.exponentialRampToValueAtTime(0.01,t+0.6);o.start(t);o.stop(t+0.6)}
 else if(type==='mvp'){
-[660,784,880,1047].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+[660,784,880,1047].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
 o.frequency.value=f;o.type='sine';g.gain.value=0.12;g.gain.exponentialRampToValueAtTime(0.01,t+0.4+i*0.15);o.start(t+i*0.15);o.stop(t+0.5+i*0.15)})}
 else if(type==='join'){
 // 입장 — 밝은 상승 멜로디 (도미솔도!)
-[523,659,784,1047].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+[523,659,784,1047].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
 o.frequency.value=f;o.type='sine';g.gain.value=0.13;g.gain.exponentialRampToValueAtTime(0.01,t+0.25+i*0.1);o.start(t+i*0.1);o.stop(t+0.3+i*0.1)})}
 else if(type==='leave'){
 // 퇴장 — 하강 멜로디 (솔미도)
-[784,659,523,392].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+[784,659,523,392].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
 o.frequency.value=f;o.type='triangle';g.gain.value=0.1;g.gain.exponentialRampToValueAtTime(0.01,t+0.3+i*0.12);o.start(t+i*0.12);o.stop(t+0.35+i*0.12)})}
 else if(type==="bankrupt"){
 // 파산 — 코믹 추락 (하강 음계 + 부앙 효과음)
-[600,500,400,300,200,100].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.frequency.value=f;o.type="triangle";g.gain.value=0.1;g.gain.exponentialRampToValueAtTime(0.01,t+0.15+i*0.1);o.start(t+i*0.08);o.stop(t+0.2+i*0.1)});
+[600,500,400,300,200,100].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);o.frequency.value=f;o.type="triangle";g.gain.value=0.1;g.gain.exponentialRampToValueAtTime(0.01,t+0.15+i*0.1);o.start(t+i*0.08);o.stop(t+0.2+i*0.1)});
 // 부앙~ (comic spring — 볼륨 억제)
-const bw=audioCtx.createOscillator();const bg=audioCtx.createGain();bw.connect(bg);bg.connect(audioCtx.destination);
+const bw=audioCtx.createOscillator();const bg=audioCtx.createGain();bw.connect(bg);bg.connect(dest);
 bw.frequency.setValueAtTime(250,t+0.6);bw.frequency.exponentialRampToValueAtTime(80,t+1.0);bw.type='sine';bg.gain.value=0.06;bg.gain.exponentialRampToValueAtTime(0.01,t+1.0);bw.start(t+0.6);bw.stop(t+1.0)}
-else if(type==="rare"){[523,659,784,1047,784,659].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.frequency.value=f;o.type="sine";g.gain.value=0.12;g.gain.exponentialRampToValueAtTime(0.01,t+0.2+i*0.1);o.start(t+i*0.08);o.stop(t+0.25+i*0.1)})}
+else if(type==="rare"){[523,659,784,1047,784,659].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);o.frequency.value=f;o.type="sine";g.gain.value=0.12;g.gain.exponentialRampToValueAtTime(0.01,t+0.2+i*0.1);o.start(t+i*0.08);o.stop(t+0.25+i*0.1)})}
 }catch(e){}}
 
 // 기존 이벤트에 사운드 추가
