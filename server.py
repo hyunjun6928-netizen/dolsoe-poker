@@ -2084,8 +2084,8 @@ radial-gradient(1px 1px at 55% 85%,#fff2,transparent),
 radial-gradient(ellipse at 50% 50%,#38bdf808 0%,transparent 70%);
 border-radius:50%;pointer-events:none;z-index:1;animation:starTwinkle 4s ease-in-out infinite alternate}
 .felt::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;border-radius:50%;pointer-events:none;z-index:2;
-background:linear-gradient(150deg,transparent 5%,rgba(125,211,252,0.15) 15%,rgba(129,140,248,0.3) 28%,rgba(192,132,252,0.4) 40%,rgba(240,171,252,0.35) 50%,rgba(192,132,252,0.3) 60%,rgba(129,140,248,0.2) 70%,rgba(125,211,252,0.1) 80%,transparent 90%);
-background-size:250% 250%;animation:milkyWay 10s ease-in-out infinite}
+background:linear-gradient(150deg,transparent 0%,rgba(125,211,252,0.25) 10%,rgba(129,140,248,0.5) 25%,rgba(192,132,252,0.6) 38%,rgba(240,171,252,0.55) 50%,rgba(192,132,252,0.5) 62%,rgba(129,140,248,0.35) 75%,rgba(125,211,252,0.15) 88%,transparent 100%);
+background-size:200% 200%;animation:milkyWay 8s ease-in-out infinite}
 @keyframes milkyWay{0%{background-position:0% 0%}50%{background-position:100% 100%}100%{background-position:0% 0%}}
 @keyframes starTwinkle{0%{opacity:0.6}50%{opacity:1}100%{opacity:0.6}}
 @keyframes shootingStar{0%{transform:translateX(-100%) translateY(-100%) rotate(45deg);opacity:0}10%{opacity:1}30%{opacity:1}100%{transform:translateX(300%) translateY(300%) rotate(45deg);opacity:0}}
@@ -2113,14 +2113,14 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 .card.black .r,.card.black .s{color:#111}
 .card-sm{width:46px;height:66px;font-size:0.8em;border-radius:8px}.card-sm .s{font-size:0.95em}
 .seat{position:absolute;text-align:center;z-index:10;transition:all .3s;min-width:70px}
-.seat-0{bottom:-15%;left:62%;transform:translateX(-50%)}
-.seat-1{bottom:-15%;left:30%;transform:translateX(-50%)}
-.seat-2{top:55%;left:-8%;transform:translateY(-50%)}
-.seat-3{top:15%;left:-8%;transform:translateY(-50%)}
-.seat-4{top:15%;right:-8%;transform:translateY(-50%)}
-.seat-5{top:55%;right:-8%;transform:translateY(-50%)}
-.seat-6{top:-18%;left:62%;transform:translateX(-50%)}
-.seat-7{top:-18%;left:30%;transform:translateX(-50%)}
+.seat-0{bottom:-4%;left:65%;transform:translateX(-50%)}
+.seat-1{bottom:-4%;left:30%;transform:translateX(-50%)}
+.seat-2{top:52%;left:-2%;transform:translateY(-50%)}
+.seat-3{top:15%;left:-2%;transform:translateY(-50%)}
+.seat-4{top:15%;right:-2%;transform:translateY(-50%)}
+.seat-5{top:52%;right:-2%;transform:translateY(-50%)}
+.seat-6{top:-12%;left:65%;transform:translateX(-50%)}
+.seat-7{top:-12%;left:30%;transform:translateX(-50%)}
 .seat .ava{font-size:3em;line-height:1.2;filter:drop-shadow(2px 2px 0 #000)}
 .seat .act-label{position:absolute;top:-32px;left:50%;transform:translateX(-50%);background:#ffffffee;color:#075985;padding:5px 12px;border-radius:12px;font-size:0.9em;font-weight:bold;white-space:nowrap;z-index:10;border:2px solid #38bdf8;box-shadow:2px 2px 0 #38bdf844;animation:actFade 2s ease-out forwards}
 .seat .act-label::after{content:'';position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid #000}
