@@ -2217,10 +2217,11 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 #reactions button{font-size:1.5em;background:#ffffffbb;border:2.5px solid #000;border-radius:50%;width:44px;height:44px;cursor:pointer;transition:all .1s;box-shadow:3px 3px 0 #000}
 #reactions button:hover{transform:translate(1px,1px);box-shadow:2px 2px 0 #000}
 #reactions button:active{transform:translate(3px,3px) scale(1.1);box-shadow:0 0 0 #000}
-#profile-popup{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#ffffffbb;border:3px solid #000;border-radius:18px;padding:20px;z-index:150;min-width:250px;display:none;text-align:center;box-shadow:6px 6px 0 #000}
-#profile-popup h3{color:#ffd93d;margin-bottom:10px;text-shadow:2px 2px 0 #000}
-#profile-popup .pp-stat{color:#ccc;font-size:0.9em;margin:4px 0}
-#profile-popup .pp-close{position:absolute;top:8px;right:12px;color:#4b7399;cursor:pointer;font-size:1.2em}
+#profile-popup{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border:3px solid #7c3aed;border-radius:18px;padding:24px;z-index:150;min-width:280px;max-width:400px;display:none;text-align:center;box-shadow:0 8px 32px rgba(124,58,237,0.25),0 4px 12px rgba(0,0,0,0.15)}
+#profile-popup h3{color:#7c3aed;margin-bottom:8px;font-size:1.3em}
+#profile-popup .pp-stat{color:#334155;font-size:0.9em;margin:5px 0;line-height:1.4}
+#profile-popup .pp-close{position:absolute;top:10px;right:14px;color:#94a3b8;cursor:pointer;font-size:1.3em;transition:color .15s}
+#profile-popup .pp-close:hover{color:#7c3aed}
 #profile-backdrop{position:fixed;top:0;left:0;right:0;bottom:0;background:#000000aa;z-index:149;display:none}
 @media(max-width:700px){
 *{box-sizing:border-box}
@@ -3007,14 +3008,14 @@ if(p&&p.hands>0){
 const tiltTag=p.tilt?`<div style="color:#ff4444;font-weight:bold;margin:6px 0;animation:pulse 1s infinite">${t('tilt')} (${Math.abs(p.streak)}${t('tiltLoss')})</div>`:'';
 const streakTag=p.streak>=3?`<div style="color:#44ff88">🔥 ${p.streak}${t('winStreak')}</div>`:'';
 // 공격성 바
-const agrBar=`<div style="margin:4px 0"><span style="color:#888;font-size:0.8em">공격성</span><div style="height:6px;background:#333;border-radius:3px;overflow:hidden;margin-top:2px"><div style="width:${p.aggression}%;height:100%;background:${p.aggression>50?'#ff4444':p.aggression>25?'#ffaa00':'#4488ff'};transition:width .5s"></div></div></div>`;
-const vpipBar=`<div style="margin:4px 0"><span style="color:#888;font-size:0.8em">팟 참여율</span><div style="height:6px;background:#333;border-radius:3px;overflow:hidden;margin-top:2px"><div style="width:${p.vpip}%;height:100%;background:#44ff88;transition:width .5s"></div></div></div>`;
-const metaHtml=p.meta&&(p.meta.version||p.meta.strategy||p.meta.repo)?`<div class="pp-stat" style="margin-top:6px;border-top:1px solid #333;padding-top:6px">${p.meta.version?'🏷️ v'+esc(p.meta.version):''}${p.meta.strategy?' · 전략: '+esc(p.meta.strategy):''}${p.meta.repo?'<br>📦 <a href="'+esc(p.meta.repo)+'" target="_blank" style="color:#4488ff">'+esc(p.meta.repo)+'</a>':''}</div>`:'';
-const bioHtml=p.meta&&p.meta.bio?`<div class="pp-stat" style="color:#aaddff;font-style:italic;margin:4px 0">📝 ${esc(p.meta.bio)}</div>`:'';
+const agrBar=`<div style="margin:6px 0"><span style="color:#64748b;font-size:0.8em;font-weight:600">${t('profAggr')}</span><div style="height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden;margin-top:3px"><div style="width:${p.aggression}%;height:100%;background:${p.aggression>50?'#ef4444':p.aggression>25?'#f59e0b':'#3b82f6'};transition:width .5s;border-radius:4px"></div></div></div>`;
+const vpipBar=`<div style="margin:6px 0"><span style="color:#64748b;font-size:0.8em;font-weight:600">${t('profVPIP')}</span><div style="height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden;margin-top:3px"><div style="width:${p.vpip}%;height:100%;background:#10b981;transition:width .5s;border-radius:4px"></div></div></div>`;
+const metaHtml=p.meta&&(p.meta.version||p.meta.strategy||p.meta.repo)?`<div class="pp-stat" style="margin-top:8px;border-top:1px solid #e2e8f0;padding-top:8px">${p.meta.version?'🏷️ v'+esc(p.meta.version):''}${p.meta.strategy?' · 전략: '+esc(p.meta.strategy):''}${p.meta.repo?'<br>📦 <a href="'+esc(p.meta.repo)+'" target="_blank" style="color:#7c3aed">'+esc(p.meta.repo)+'</a>':''}</div>`:'';
+const bioHtml=p.meta&&p.meta.bio?`<div class="pp-stat" style="color:#6366f1;font-style:italic;margin:6px 0;background:#f0f0ff;padding:6px 10px;border-radius:8px">📝 ${esc(p.meta.bio)}</div>`:'';
 let matchupHtml='';
-if(p.matchups&&p.matchups.length>0){matchupHtml='<div class="pp-stat" style="margin-top:6px;border-top:1px solid #333;padding-top:6px"><b>⚔️ vs 전적</b>';p.matchups.forEach(m=>{matchupHtml+=`<div style="font-size:0.85em;margin:2px 0">vs ${esc(m.opponent)}: <span style="color:#44ff88">${m.wins}승</span> / <span style="color:#ff4444">${m.losses}패</span></div>`});matchupHtml+='</div>'}
+if(p.matchups&&p.matchups.length>0){matchupHtml='<div class="pp-stat" style="margin-top:8px;border-top:1px solid #e2e8f0;padding-top:8px"><b style="color:#7c3aed">⚔️ vs 전적</b>';p.matchups.forEach(m=>{matchupHtml+=`<div style="font-size:0.85em;margin:3px 0">vs ${esc(m.opponent)}: <span style="color:#10b981;font-weight:600">${m.wins}승</span> / <span style="color:#ef4444;font-weight:600">${m.losses}패</span></div>`});matchupHtml+='</div>'}
 pp.innerHTML=`<h3>${esc(p.name)}</h3><div style="font-size:1.2em;margin:4px 0">${p.type}</div>${bioHtml}${tiltTag}${streakTag}<div class="pp-stat">📊 승률: ${p.win_rate}% (${p.hands}핸드)</div>${agrBar}${vpipBar}<div class="pp-stat">🎯 폴드율: ${p.fold_rate}% | 블러핑: ${p.bluff_rate}%</div><div class="pp-stat">💣 올인: ${p.allins}회 | 쇼다운: ${p.showdowns}회</div><div class="pp-stat">💰 총 획득: ${p.total_won}pt | 최대팟: ${p.biggest_pot}pt</div><div class="pp-stat">💵 핸드당 평균 베팅: ${p.avg_bet}pt</div>${metaHtml}${matchupHtml}`}
-else{pp.innerHTML=`<h3>${esc(name)}</h3><div class="pp-stat" style="color:#888">${t('noRecord')}</div>`}
+else{pp.innerHTML=`<h3>${esc(name)}</h3><div class="pp-stat" style="color:#94a3b8">${t('noRecord')}</div>`}
 document.getElementById('profile-backdrop').style.display='block';
 document.getElementById('profile-popup').style.display='block'}catch(e){}}
 function closeProfile(){document.getElementById('profile-backdrop').style.display='none';document.getElementById('profile-popup').style.display='none'}
