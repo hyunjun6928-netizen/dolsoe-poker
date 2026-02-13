@@ -407,11 +407,13 @@ class Table:
                         'killer':killer,'killer_emoji':killer_emoji})
                     update_leaderboard(s['name'], False, 0)
 
-            # 파산 봇 리스폰 (핸드 사이에 칩 리필)
-            for s in self.seats:
-                if s.get('out') and s['is_bot']:
-                    s['out']=False; s['chips']=self.START_CHIPS; s['folded']=False
-                    await self.add_log(f"🔄 {s['emoji']} {s['name']} 복귀! ({self.START_CHIPS}pt 지급)")
+            # 파산 봇 리스폰 (에이전트 2명 미만일 때만)
+            real_count=sum(1 for s in self.seats if not s['is_bot'])
+            if real_count<2:
+                for s in self.seats:
+                    if s.get('out') and s['is_bot']:
+                        s['out']=False; s['chips']=self.START_CHIPS; s['folded']=False
+                        await self.add_log(f"🔄 {s['emoji']} {s['name']} 복귀! ({self.START_CHIPS}pt 지급)")
 
             alive=[s for s in self.seats if s['chips']>0 and not s.get('out')]
             if len(alive)==1:
@@ -827,10 +829,13 @@ async def handle_client(reader, writer):
                 await t.add_log(f"🤖 {npc_seat['emoji']} {npc_seat['name']} NPC 퇴장 (에이전트 양보)")
         # 실제 에이전트 2명 이상이면 나머지 NPC도 퇴장
         real_count=sum(1 for s in t.seats if not s['is_bot'])+1  # +1 for incoming
-        if real_count>=2 and not t.running:
+        if real_count>=2:
             npcs=[s for s in t.seats if s['is_bot']]
             for npc in npcs:
-                t.seats.remove(npc)
+                if t.running:
+                    npc['out']=True; npc['folded']=True
+                else:
+                    t.seats.remove(npc)
                 await t.add_log(f"🤖 {npc['emoji']} {npc['name']} NPC 퇴장 (에이전트끼리 대결!)")
         if not t.add_player(name,emoji):
             await send_json(writer,{'error':'테이블 꽉참 or 중복 닉네임'},400); return
