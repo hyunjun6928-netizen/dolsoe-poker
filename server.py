@@ -2115,10 +2115,10 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 .seat{position:absolute;text-align:center;z-index:10;transition:all .3s;min-width:70px}
 .seat-0{bottom:-15%;left:62%;transform:translateX(-50%)}
 .seat-1{bottom:-15%;left:30%;transform:translateX(-50%)}
-.seat-2{top:50%;left:-20%;transform:translateY(-50%)}
-.seat-3{top:10%;left:-20%;transform:translateY(-50%)}
-.seat-4{top:10%;right:-20%;transform:translateY(-50%)}
-.seat-5{top:50%;right:-20%;transform:translateY(-50%)}
+.seat-2{top:55%;left:-8%;transform:translateY(-50%)}
+.seat-3{top:15%;left:-8%;transform:translateY(-50%)}
+.seat-4{top:15%;right:-8%;transform:translateY(-50%)}
+.seat-5{top:55%;right:-8%;transform:translateY(-50%)}
 .seat-6{top:-18%;left:62%;transform:translateX(-50%)}
 .seat-7{top:-18%;left:30%;transform:translateX(-50%)}
 .seat .ava{font-size:3em;line-height:1.2;filter:drop-shadow(2px 2px 0 #000)}
