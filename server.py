@@ -2450,7 +2450,7 @@ border-radius:14px;pointer-events:none;z-index:1;mix-blend-mode:overlay}
 .tbl-card .tbl-status{font-size:0.85em}
 .tbl-live{color:#10b981;text-shadow:none}.tbl-wait{color:#9ca3af}
 @keyframes chipShimmer{0%{background-position:-200% center}100%{background-position:200% center}}
-.pot-badge{position:absolute;top:28%;left:50%;transform:translateX(-50%);background:linear-gradient(110deg,#FDFD96 30%,#FFFDE0 38%,#FFFDE0 42%,#FDFD96 50%);background-size:200% 100%;padding:8px 24px;border-radius:var(--radius);font-size:1.1em;color:var(--bg-dark);font-weight:bold;z-index:5;border:var(--border-w) solid #E8E870;box-shadow:var(--shadow-md),0 0 16px #FDFD9666;transition:font-size .3s ease;text-shadow:none;font-family:var(--font-number);letter-spacing:1px;animation:chipShimmer 3s ease-in-out infinite}
+.pot-badge{position:absolute;top:28%;left:50%;transform:translateX(-50%);background:linear-gradient(110deg,#FDFD96 30%,#FFFDE0 38%,#FFFDE0 42%,#FDFD96 50%);background-size:200% 100%;padding:8px 24px;border-radius:var(--radius);font-size:1.2em;color:#1a1025;font-weight:bold;z-index:5;border:3px solid #d4a800;box-shadow:0 3px 0 0 #a08000,0 0 16px #FDFD9666;transition:font-size .3s ease;text-shadow:1px 1px 0 #ffd70066;font-family:var(--font-number);letter-spacing:1px;animation:chipShimmer 3s ease-in-out infinite}
 .board{position:absolute;top:55%;left:50%;transform:translate(-50%,-50%);display:flex;gap:6px;z-index:4}
 .turn-badge{position:absolute;bottom:18%;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#fb923c,#f97316);padding:4px 14px;border-radius:15px;font-size:0.85em;color:#fff;z-index:5;display:none;border:2px solid #ea580c;box-shadow:2px 2px 0 #ea580c44}
 .card{width:58px;height:82px;border-radius:4px;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;font-size:1.05em;
@@ -2489,9 +2489,9 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 @keyframes slimeAllin{0%,100%{transform:translateX(-2px) scaleX(1.08)}50%{transform:translateX(2px) scaleX(0.92)}}
 @keyframes slimeMelt{0%{transform:scaleX(1) scaleY(1);opacity:1}50%{transform:scaleX(1.4) scaleY(0.4);opacity:0.6}100%{transform:scaleX(1.8) scaleY(0.1);opacity:0.1}}
 @keyframes slimeVictory{0%{transform:translateY(0) rotate(0deg)}25%{transform:translateY(-12px) rotate(-5deg)}50%{transform:translateY(0) rotate(0deg)}75%{transform:translateY(-8px) rotate(5deg)}100%{transform:translateY(0) rotate(0deg)}}
-.seat .act-label{position:absolute;top:-36px;left:50%;transform:translateX(-50%);background:#fff8e0;color:#78350f;padding:5px 12px;border-radius:4px;font-size:0.85em;font-weight:bold;white-space:nowrap;z-index:10;border:3px solid #fbbf24;box-shadow:0 3px 0 0 #92400e;animation:actFade 2s ease-out forwards}
+.seat .act-label{position:absolute;top:-36px;left:50%;transform:translateX(-50%);background:#2B2D42;color:#fff;padding:5px 12px;border-radius:4px;font-size:0.85em;font-weight:bold;white-space:nowrap;z-index:10;border:3px solid #fbbf24;box-shadow:0 3px 0 0 #92400e;animation:actFade 2s ease-out forwards}
 .seat .act-label::after{content:'';position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid #fbbf24}
-.seat .act-label::before{content:'';position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid #fff8e0;z-index:1}
+.seat .act-label::before{content:'';position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid #2B2D42;z-index:1}
 .act-fold{background:var(--accent-red)!important;color:#fff!important;border-color:#D44A4A!important;box-shadow:0 3px 0 0 #B33A3A!important}
 .act-call{background:var(--accent-blue)!important;color:var(--bg-dark)!important;border-color:#5AA8C3!important;box-shadow:0 3px 0 0 #4A98B3!important}
 .act-raise{background:var(--accent-mint)!important;color:var(--bg-dark)!important;border-color:#78C6A8!important;box-shadow:0 3px 0 0 #58A688!important}
@@ -2502,9 +2502,9 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 @keyframes actFade{0%{opacity:1;transform:translateX(-50%) translateY(0)}70%{opacity:1}100%{opacity:0;transform:translateX(-50%) translateY(-8px)}}
 @keyframes actPop{0%{transform:translateX(-50%) scale(0.5);opacity:0}100%{transform:translateX(-50%) scale(1);opacity:1}}
 .seat .nm{font-size:0.85em;font-weight:bold;white-space:nowrap;text-shadow:none;background:var(--bg-panel);color:var(--text-primary);padding:3px 8px;border-radius:var(--radius);border:3px solid var(--frame-light);display:inline-block;box-shadow:var(--shadow-sm);letter-spacing:0.5px}
-.seat .ch{font-size:0.85em;color:#fbbf24;font-weight:bold;text-shadow:0 0 6px #fbbf2444}
+.seat .ch{font-size:0.9em;color:#fff;font-weight:bold;text-shadow:0 1px 0 #000;background:#2B2D42dd;padding:2px 6px;border-radius:4px;border:1px solid #fbbf24}
 .seat .st{font-size:0.65em;color:#6b7050;font-style:italic}
-.seat .bet-chip{font-size:0.7em;color:#16a34a;margin-top:2px;font-weight:bold;text-shadow:1px 1px 0 #fff}
+.seat .bet-chip{font-size:0.75em;color:#fff;margin-top:2px;font-weight:bold;text-shadow:0 1px 0 #000;background:#16a34add;padding:1px 5px;border-radius:3px}
 .chip-fly{position:absolute;z-index:20;font-size:1.2em;pointer-events:none;animation:chipFly .8s ease-in forwards}
 @keyframes chipFly{0%{opacity:1;transform:translate(0,0) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(0.5)}}
 .seat .cards{display:flex;gap:3px;justify-content:center;margin:4px 0}
