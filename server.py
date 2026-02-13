@@ -2045,7 +2045,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:linear-gradient(180deg,#dff6ff 0%,#e8f4fd 30%,#d4f1ff 60%,#c0ebff 100%);color:#1e3a5f;font-family:'Noto Sans KR','Segoe UI',system-ui,sans-serif;min-height:100vh}
-h1,.btn-play,.btn-watch,.pot-badge,.seat .nm,.act-label,.tab-btns button,#new-btn,.tbl-card .tbl-name,#commentary,.bp-title,.vp-title{font-family:'Jua','Noto Sans KR',system-ui,sans-serif}
+h1,.btn-play,.btn-watch,.pot-badge,.seat .nm,.act-label,.tab-btns button,#new-btn,.tbl-card .tbl-name,#commentary,.bp-title,.vp-title,#log,#replay-panel,#highlight-panel,.sidebar-label,#turn-options,#chatbox{font-family:'Jua','Noto Sans KR',system-ui,sans-serif}
 .wrap{max-width:1400px;margin:0 auto;padding:10px}
 h1{text-align:center;font-size:2em;margin:8px 0;-webkit-text-stroke:1.5px #5a3d7a;background:linear-gradient(90deg,#f97316,#38bdf8,#60a5fa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(2px 2px 0 #38bdf888)}
 h1 b{-webkit-text-fill-color:#f97316}
