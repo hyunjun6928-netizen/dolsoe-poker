@@ -2838,7 +2838,7 @@ const ringPct=p.win_pct!=null&&!p.folded&&!p.out?p.win_pct:0;
 const avaRing=ringPct>0?`<div class="ava-ring" style="background:conic-gradient(${ringColor} ${ringPct*3.6}deg, #333 ${ringPct*3.6}deg)"></div>`:'';
 const wpRing=ringPct>0?`<div style="font-size:0.65em;color:${ringColor};text-align:center">${p.win_pct}%</div>`:'';
 const moodTag=p.last_mood?`<span style="position:absolute;top:-8px;right:-8px;font-size:0.8em">${esc(p.last_mood)}</span>`:'';
-const slimeEmo=getSlimeEmotion(p,s);const slimeHtml=renderSlimeToSeat(p.name,slimeEmo);
+inferTraitsFromStyle(p);const slimeEmo=getSlimeEmotion(p,s);const slimeHtml=renderSlimeToSeat(p.name,slimeEmo);
 el.innerHTML=`${la}${bubble}<div style="position:relative;display:inline-block">${avaRing}<div class="ava">${slimeHtml}</div>${moodTag}</div>${thinkDiv}<div class="cards">${ch}</div><div class="nm">${health} ${esc(sb)}${esc(p.name)}${db}</div>${metaTag}<div class="ch">💰${p.chips}pt ${latTag}</div>${wpRing}${bt}<div class="st">${esc(p.style)}</div>`;
 el.style.cursor='pointer';el.onclick=(e)=>{e.stopPropagation();showProfile(p.name)};
 // 동적 좌석 위치 적용 (CSS class보다 우선)
@@ -3022,6 +3022,7 @@ async function fetchCoins(){}
 
 async function showProfile(name){
 try{const r=await fetch(`/api/profile?name=${encodeURIComponent(name)}&table_id=${tableId}`);const p=await r.json();
+if(p&&p.hands>0){setSlimeTraits(name,p);_slimeTraits[name]._fromProfile=true;_slimeCache={};}
 const pp=document.getElementById('pp-content');
 if(p&&p.hands>0){
 const tiltTag=p.tilt?`<div style="color:#ff4444;font-weight:bold;margin:6px 0;animation:pulse 1s infinite">${t('tilt')} (${Math.abs(p.streak)}${t('tiltLoss')})</div>`:'';
@@ -3226,19 +3227,143 @@ function _slimeColorIdx(name) {
   let h=0; for(let i=0;i<name.length;i++) h=(h*31+name.charCodeAt(i))&0xFFFF;
   return h % SLIME_COLORS.length;
 }
+// Slime trait cache per player (updated from profile data)
+const _slimeTraits = {};
+function setSlimeTraits(name, profile) {
+  if (!profile) return;
+  const t = {};
+  if (profile.aggression >= 50) t.type = 'aggressive';
+  else if (profile.fold_rate >= 40) t.type = 'defensive';
+  else if (profile.bluff_rate >= 25) t.type = 'bluffer';
+  else if (profile.vpip >= 70) t.type = 'loose';
+  else if (profile.win_rate >= 40 && profile.hands >= 10) t.type = 'champion';
+  else if (profile.hands < 10) t.type = 'newbie';
+  else t.type = 'balanced';
+  if (profile.allins >= 5) t.allinAddict = true;
+  t.aggression = profile.aggression || 0;
+  t.winRate = profile.win_rate || 0;
+  t.hands = profile.hands || 0;
+  _slimeTraits[name] = t;
+}
 function drawSlime(name, emotion, size) {
-  const key = name+'_'+emotion+'_'+size;
+  const traits = _slimeTraits[name] || {type:'balanced'};
+  const key = name+'_'+emotion+'_'+size+'_'+traits.type;
   if (_slimeCache[key]) return _slimeCache[key];
   const c = document.createElement('canvas');
   const sz = size || 64; c.width = sz; c.height = sz;
   const g = c.getContext('2d');
   const col = SLIME_COLORS[_slimeColorIdx(name)];
   const cx = sz/2, cy = sz*0.55, rx = sz*0.38, ry = sz*0.35;
-  // Body
-  g.beginPath(); g.ellipse(cx, cy, rx, ry, 0, 0, Math.PI*2); g.fillStyle = col.body; g.fill();
-  // Highlight
+  const st = traits.type;
+
+  // === PRE-BODY DECORATIONS (behind slime) ===
+  if (st === 'champion') {
+    // Halo glow
+    g.strokeStyle = '#fbbf24'; g.lineWidth = 2; g.globalAlpha = 0.4;
+    g.beginPath(); g.ellipse(cx, cy - ry*0.8, rx*0.5, 4, 0, 0, Math.PI*2); g.stroke();
+    g.globalAlpha = 1;
+  }
+  if (st === 'defensive') {
+    // Shell/armor behind body
+    g.fillStyle = col.dark;
+    g.beginPath(); g.ellipse(cx, cy + 2, rx*1.1, ry*1.05, 0, 0, Math.PI*2); g.fill();
+    g.strokeStyle = col.dark; g.lineWidth = 2;
+    g.beginPath(); g.ellipse(cx, cy + 2, rx*1.1, ry*1.05, 0, 0, Math.PI*2); g.stroke();
+  }
+
+  // === BODY SHAPE (varies by type) ===
+  if (st === 'aggressive' || traits.allinAddict) {
+    // Spiky/angular slime body
+    g.beginPath();
+    g.moveTo(cx, cy - ry*1.15);
+    for (let a=0; a<Math.PI*2; a+=Math.PI/8) {
+      const spike = (Math.floor(a/(Math.PI/8)) % 2 === 0) ? 1.12 : 0.92;
+      g.lineTo(cx + rx*spike*Math.cos(a - Math.PI/2), cy + ry*spike*Math.sin(a - Math.PI/2));
+    }
+    g.closePath(); g.fillStyle = col.body; g.fill();
+  } else if (st === 'loose') {
+    // Wobbly/stretchy slime
+    g.beginPath();
+    for (let a=0; a<=Math.PI*2; a+=0.1) {
+      const wobble = 1 + Math.sin(a*3)*0.08 + Math.cos(a*5)*0.05;
+      g.lineTo(cx + rx*wobble*Math.cos(a), cy + ry*wobble*Math.sin(a));
+    }
+    g.closePath(); g.fillStyle = col.body; g.fill();
+  } else if (st === 'newbie') {
+    // Smaller, rounder
+    g.beginPath(); g.ellipse(cx, cy + ry*0.1, rx*0.85, ry*0.85, 0, 0, Math.PI*2);
+    g.fillStyle = col.body; g.fill();
+  } else {
+    // Standard ellipse
+    g.beginPath(); g.ellipse(cx, cy, rx, ry, 0, 0, Math.PI*2); g.fillStyle = col.body; g.fill();
+  }
+
+  // Highlight (universal)
   g.beginPath(); g.ellipse(cx - rx*0.2, cy - ry*0.3, rx*0.5, ry*0.35, -0.3, 0, Math.PI*2);
   g.fillStyle = col.light; g.globalAlpha = 0.5; g.fill(); g.globalAlpha = 1;
+
+  // === TYPE-SPECIFIC DECORATIONS ===
+  if (st === 'aggressive' || traits.allinAddict) {
+    // Horns
+    g.fillStyle = col.dark;
+    g.beginPath(); g.moveTo(cx - rx*0.4, cy - ry*0.7);
+    g.lineTo(cx - rx*0.55, cy - ry*1.3); g.lineTo(cx - rx*0.15, cy - ry*0.65); g.fill();
+    g.beginPath(); g.moveTo(cx + rx*0.4, cy - ry*0.7);
+    g.lineTo(cx + rx*0.55, cy - ry*1.3); g.lineTo(cx + rx*0.15, cy - ry*0.65); g.fill();
+    // Fire particles
+    if (traits.allinAddict) {
+      g.fillStyle = '#ff4444'; g.globalAlpha = 0.6;
+      g.beginPath(); g.arc(cx - rx*0.8, cy - ry*0.2, 3, 0, Math.PI*2); g.fill();
+      g.beginPath(); g.arc(cx + rx*0.8, cy - ry*0.4, 2, 0, Math.PI*2); g.fill();
+      g.globalAlpha = 1;
+    }
+  }
+  if (st === 'defensive') {
+    // Helmet visor line
+    g.strokeStyle = col.dark; g.lineWidth = 1.5;
+    g.beginPath(); g.moveTo(cx - rx*0.6, cy - ry*0.3); g.lineTo(cx + rx*0.6, cy - ry*0.3); g.stroke();
+    // Shield icon on body
+    g.fillStyle = col.dark; g.globalAlpha = 0.3;
+    g.beginPath(); g.moveTo(cx, cy + ry*0.5); g.lineTo(cx - 5, cy + 2); g.lineTo(cx, cy - 3); g.lineTo(cx + 5, cy + 2); g.closePath(); g.fill();
+    g.globalAlpha = 1;
+  }
+  if (st === 'bluffer') {
+    // Mask / half-mask
+    g.fillStyle = '#ffffffbb';
+    g.beginPath(); g.ellipse(cx + rx*0.05, cy - ry*0.15, rx*0.55, ry*0.35, 0.1, Math.PI*1.15, Math.PI*1.85); g.fill();
+    g.strokeStyle = col.dark; g.lineWidth = 1;
+    g.beginPath(); g.ellipse(cx + rx*0.05, cy - ry*0.15, rx*0.55, ry*0.35, 0.1, Math.PI*1.15, Math.PI*1.85); g.stroke();
+    // Mask eye hole
+    g.fillStyle = '#000';
+    g.beginPath(); g.ellipse(cx + rx*0.3, cy - ry*0.15, 3, 4, 0.2, 0, Math.PI*2); g.fill();
+  }
+  if (st === 'champion') {
+    // Crown
+    g.fillStyle = '#fbbf24';
+    const crY = cy - ry*0.85;
+    g.beginPath(); g.moveTo(cx - 8, crY); g.lineTo(cx - 10, crY - 8); g.lineTo(cx - 5, crY - 4);
+    g.lineTo(cx, crY - 10); g.lineTo(cx + 5, crY - 4); g.lineTo(cx + 10, crY - 8);
+    g.lineTo(cx + 8, crY); g.closePath(); g.fill();
+    g.fillStyle = '#ef4444';
+    g.beginPath(); g.arc(cx, crY - 6, 1.5, 0, Math.PI*2); g.fill();
+  }
+  if (st === 'newbie') {
+    // Flower on head
+    g.fillStyle = '#f9a8d4';
+    for (let i = 0; i < 5; i++) {
+      const a = (Math.PI*2/5)*i - Math.PI/2;
+      g.beginPath(); g.arc(cx + rx*0.3 + Math.cos(a)*4, cy - ry*0.7 + Math.sin(a)*4, 2.5, 0, Math.PI*2); g.fill();
+    }
+    g.fillStyle = '#fbbf24';
+    g.beginPath(); g.arc(cx + rx*0.3, cy - ry*0.7, 2, 0, Math.PI*2); g.fill();
+  }
+  if (st === 'loose') {
+    // Star sparkles around
+    g.fillStyle = '#fbbf24'; g.font = `${sz*0.15}px serif`;
+    g.fillText('✦', cx + rx*0.8, cy - ry*0.5);
+    g.fillText('✦', cx - rx*0.9, cy + ry*0.3);
+  }
+
   // Eyes
   const eyeY = cy - ry*0.1;
   const eyeSpacing = rx*0.35;
@@ -3326,6 +3451,22 @@ function getSlimeEmotion(p, state) {
   if (p.last_action && (p.last_action.includes('승리') || p.last_action.includes('Win'))) return 'win';
   if (p.chips <= 30) return 'shock';
   return 'idle';
+}
+// Infer traits from player state style text
+function inferTraitsFromStyle(p) {
+  const s = (p.style || '').toLowerCase();
+  const name = p.name;
+  if (_slimeTraits[name] && _slimeTraits[name]._fromProfile) return; // already set from profile
+  const t = {type:'balanced'};
+  if (s.includes('광전사') || s.includes('berserker')) { t.type='aggressive'; t.allinAddict=true; }
+  else if (s.includes('공격') || s.includes('aggr')) t.type='aggressive';
+  else if (s.includes('수비') || s.includes('defen') || s.includes('tight')) t.type='defensive';
+  else if (s.includes('루즈') || s.includes('loose') || s.includes('call')) t.type='loose';
+  else if (s.includes('블러') || s.includes('bluff') || s.includes('tricky')) t.type='bluffer';
+  // Chip-based inference
+  if (p.chips > 800 && t.type === 'balanced') t.type = 'champion';
+  if (p.chips <= 50 && t.type === 'balanced') t.type = 'newbie';
+  _slimeTraits[name] = t;
 }
 function renderSlimeToSeat(name, emotion) {
   const c = drawSlime(name, emotion, 64);
