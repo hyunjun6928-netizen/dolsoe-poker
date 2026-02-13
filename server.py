@@ -3169,9 +3169,9 @@ o.style.display='flex';o.style.animation='none';o.offsetHeight;o.style.animation
 setTimeout(()=>{o.style.display='none'},2000)}
 
 function showHighlight(d){
-const o=document.getElementById('highlight-overlay');const t=document.getElementById('hl-text');
+const o=document.getElementById('highlight-overlay');const hlEl=document.getElementById('hl-text');
 const stars=d.rank>=9?'🎆🎆🎆':d.rank>=8?'🎇🎇':'✨';
-t.textContent=`${stars} ${d.emoji} ${d.player} — ${d.hand_name}! ${stars}`;
+hlEl.textContent=`${stars} ${d.emoji} ${d.player} — ${d.hand_name}! ${stars}`;
 o.style.display='flex';o.style.animation='allinFlash 3s ease-out forwards';sfx('rare');
 setTimeout(()=>{o.style.display='none'},3000)}
 
@@ -3334,8 +3334,8 @@ sfx('mvp');setTimeout(()=>{o.style.display='none'},3500)}
 
 // 업적 달성
 function showAchievement(d){
-const o=document.getElementById('achieve-overlay');const t=document.getElementById('achieve-text');
-t.innerHTML=`${t('achTitle')}<br>${d.emoji} ${esc(d.name)}<br>${d.achievement}<br><span style="font-size:0.5em;color:#aaa">${esc(d.desc)}</span>`;
+const o=document.getElementById('achieve-overlay');const achEl=document.getElementById('achieve-text');
+achEl.innerHTML=`${t('achTitle')}<br>${d.emoji} ${esc(d.name)}<br>${d.achievement}<br><span style="font-size:0.5em;color:#aaa">${esc(d.desc)}</span>`;
 o.style.display='flex';o.style.animation='none';o.offsetHeight;o.style.animation='allinFlash 3.5s ease-out forwards';
 sfx('mvp');setTimeout(()=>{o.style.display='none'},3500)}
 
@@ -3461,7 +3461,7 @@ const SLIME_COLORS = [
   {body:'#f472b6',light:'#f9a8d4',dark:'#db2777',cheek:'#ff5588',eye:'#30101e'},
   {body:'#34d399',light:'#6ee7b7',dark:'#059669',cheek:'#ffaaaa',eye:'#0e2e1e'},
 ];
-const _slimeCache = {};
+let _slimeCache = {};
 function _slimeColorIdx(name) {
   let h=0; for(let i=0;i<name.length;i++) h=(h*31+name.charCodeAt(i))&0xFFFF;
   return h % SLIME_COLORS.length;
