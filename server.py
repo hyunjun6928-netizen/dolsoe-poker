@@ -1429,6 +1429,52 @@ async def ws_recv(reader):
 def ws_accept(key):
     return base64.b64encode(hashlib.sha1((key+"258EAFA5-E914-47DA-95CA-5AB5A0F3CEBC").encode()).digest()).decode()
 
+# ══ 스텔스 방문자 추적 시스템 ══
+_visitor_log = []  # [{ip, ua, route, referer, ts, count}]
+_visitor_map = {}  # ip -> {ua, routes, first_seen, last_seen, hits, referer}
+_VISITOR_MAX = 200
+
+def _track_visitor(ip, ua, route, referer=''):
+    if not ip or ip.startswith('10.') or ip=='127.0.0.1': return
+    now = time.time()
+    if ip in _visitor_map:
+        v = _visitor_map[ip]
+        v['last_seen'] = now
+        v['hits'] += 1
+        v['ua'] = ua
+        if route not in v['routes']: v['routes'].append(route)
+        if referer and not v.get('referer'): v['referer'] = referer
+    else:
+        _visitor_map[ip] = {'ua': ua, 'routes': [route], 'first_seen': now, 'last_seen': now, 'hits': 1, 'referer': referer}
+    # 로그 (최근 200개)
+    _visitor_log.append({'ip': ip, 'ua': ua[:100], 'route': route, 'ts': now, 'referer': referer[:200] if referer else ''})
+    if len(_visitor_log) > _VISITOR_MAX: _visitor_log.pop(0)
+
+def _get_visitor_stats():
+    now = time.time()
+    # 최근 1시간 활성 방문자
+    active = {ip: v for ip, v in _visitor_map.items() if now - v['last_seen'] < 3600}
+    # 최근 24시간
+    daily = {ip: v for ip, v in _visitor_map.items() if now - v['last_seen'] < 86400}
+    return {
+        'active_1h': len(active),
+        'active_24h': len(daily),
+        'total_unique': len(_visitor_map),
+        'visitors': [
+            {
+                'ip': ip, 'ua': v['ua'][:80],
+                'routes': v['routes'],
+                'hits': v['hits'],
+                'first_seen': v['first_seen'],
+                'last_seen': v['last_seen'],
+                'ago_min': round((now - v['last_seen']) / 60, 1),
+                'referer': v.get('referer', '')
+            }
+            for ip, v in sorted(_visitor_map.items(), key=lambda x: x[1]['last_seen'], reverse=True)
+        ],
+        'recent_log': _visitor_log[-30:]
+    }
+
 # ══ HTTP + WS 서버 ══
 async def handle_client(reader, writer):
     try: req_line=await asyncio.wait_for(reader.readline(),timeout=10)
@@ -1453,6 +1499,12 @@ async def handle_client(reader, writer):
     body=b''; cl=int(headers.get('content-length',0))
     if cl>0: body=await reader.readexactly(cl)
     parsed=urlparse(path); route=parsed.path; qs=parse_qs(parsed.query)
+
+    # ═══ 스텔스 방문자 추적 ═══
+    _visitor_ip = headers.get('x-forwarded-for','').split(',')[0].strip() or headers.get('x-real-ip','')
+    _visitor_ua = headers.get('user-agent','')[:200]
+    if route in ('/', '/battle', '/ranking', '/docs') or (route=='/api/state' and not qs.get('player')):
+        _track_visitor(_visitor_ip, _visitor_ua, route, headers.get('referer',''))
 
     def find_table(tid=''):
         t=tables.get(tid) if tid else tables.get('mersoom')
@@ -1700,6 +1752,11 @@ async def handle_client(reader, writer):
             profiles=[t.get_profile(n) for n in t.player_stats if t.player_stats[n]['hands']>0]
             profiles.sort(key=lambda x:x['hands'],reverse=True)
             await send_json(writer,{'profiles':profiles})
+    elif method=='GET' and route=='/api/_v':
+        # 스텔스 방문자 통계 (비공개 — URL 모르면 접근 불가)
+        k=qs.get('k',[''])[0]
+        if k!='dolsoe_peek_2026': await send_json(writer,{'error':'not found'},404); return
+        await send_json(writer,_get_visitor_stats())
     elif method=='GET' and route=='/api/highlights':
         tid=qs.get('table_id',[''])[0]; limit=int(qs.get('limit',['10'])[0])
         t=find_table(tid)
