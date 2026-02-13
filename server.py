@@ -2375,13 +2375,6 @@ while True: state = requests.get(URL+'/api/state?player=내봇').json(); time.sl
 </div>
 </div>
 </div>
-<div id="bet-panel" style="display:none">
-<div class="bp-title">🎰 베팅</div>
-<select id="bet-pick"></select>
-<input type="number" id="bet-amount" value="50" min="10" max="500" step="10" style="width:60px">
-<button onclick="placeBet()">베팅</button>
-<span class="bp-coins" id="bet-coins">💰 1000</span>
-</div>
 <div id="vote-panel"><div class="vp-btns" id="vote-btns"></div><div id="vote-results"></div></div>
 <div class="result-overlay" id="result"><div class="result-box" id="rbox"></div></div>
 <div id="reactions" style="display:none">
@@ -2564,7 +2557,7 @@ function refreshUI(){
   if(qcs.length>=6){qcs[0].textContent=t('qc1');qcs[0].onclick=()=>qChat(t('qc1'));qcs[1].textContent=t('qcL2');qcs[1].onclick=()=>qChat(t('qc2'));qcs[2].textContent=t('qcL3');qcs[2].onclick=()=>qChat(t('qc3'));qcs[3].textContent=t('qc4');qcs[3].onclick=()=>qChat(t('qc4'));qcs[4].textContent=t('qc5');qcs[4].onclick=()=>qChat(t('qc5'));qcs[5].textContent=t('qc6');qcs[5].onclick=()=>qChat(t('qc6'))}
   // bet panel
   document.querySelector('#bet-panel .bp-title').textContent=t('betTitle');
-  document.querySelector('#bet-panel button[onclick]').textContent=t('betBtn');
+  // bet panel removed
   // new game btn
   document.getElementById('new-btn').textContent=t('newGame');
   // sidebar label
@@ -2831,13 +2824,7 @@ if(isPlayer){const me=s.players.find(p=>p.name===myName);if(me)document.getEleme
 // 테이블 정보
 if(s.table_info){const ti=document.getElementById('table-info');
 ti.innerHTML=`<div class="ti">🪙 <b>${s.table_info.sb}/${s.table_info.bb}</b></div><div class="ti">👥 <b>${s.players.filter(p=>!p.out).length}/${s.players.length}</b> ${t('alive')}</div>`}
-// 관전자 베팅 패널
-if(!isPlayer&&s.running&&s.round==='preflop'){
-const bp=document.getElementById('bet-panel');bp.style.display='block';
-const sel=document.getElementById('bet-pick');const cur=sel.value;sel.innerHTML='';
-s.players.filter(p=>!p.out&&!p.folded).forEach(p=>{const o=document.createElement('option');o.value=p.name;o.textContent=`${p.emoji} ${p.name} (${p.chips}pt)`;sel.appendChild(o)});
-if(cur)sel.value=cur}
-else if(!isPlayer&&s.round!=='preflop'){/* 프리플랍 이후 베팅 잠금 */}
+// bet panel removed
 // 로그 동기화: 마지막으로 본 로그와 비교해서 새 것만 추가
 if(s.log){
 const lastSeen=window._lastLogMsg||'';
@@ -2988,18 +2975,8 @@ t.textContent=`${stars} ${d.emoji} ${d.player} — ${d.hand_name}! ${stars}`;
 o.style.display='flex';o.style.animation='allinFlash 3s ease-out forwards';sfx('rare');
 setTimeout(()=>{o.style.display='none'},3000)}
 
-async function placeBet(){
-const pick=document.getElementById('bet-pick').value;
-const amount=parseInt(document.getElementById('bet-amount').value);
-if(!pick||!amount){alert(t('selectAmount'));return}
-try{const r=await fetch('/api/bet',{method:'POST',headers:{'Content-Type':'application/json'},
-body:JSON.stringify({name:specName,pick:pick,amount:amount,table_id:tableId})});
-const d=await r.json();if(d.error){addLog('❌ '+d.error)}
-else{addLog(`🎰 ${pick} ${amount} ${t('betDone')}`);document.getElementById('bet-coins').textContent=`💰 ${d.coins} 코인`}}catch(e){addLog(t('betFail'))}}
-
-async function fetchCoins(){
-try{const r=await fetch(`/api/coins?name=${encodeURIComponent(specName)}`);
-const d=await r.json();document.getElementById('bet-coins').textContent=`💰 ${d.coins} 코인`}catch(e){}}
+async function placeBet(){}
+async function fetchCoins(){}
 
 async function showProfile(name){
 try{const r=await fetch(`/api/profile?name=${encodeURIComponent(name)}&table_id=${tableId}`);const p=await r.json();
