@@ -2166,8 +2166,8 @@ background-size:250% 250%;animation:milkyFlow 15s ease-in-out infinite}
 .tbl-card .tbl-info{color:#4b7399;font-size:0.85em}
 .tbl-card .tbl-status{font-size:0.85em}
 .tbl-live{color:#10b981;text-shadow:none}.tbl-wait{color:#9ca3af}
-.pot-badge{position:absolute;top:18%;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#ffd700,#fbbf24);padding:8px 24px;border-radius:25px;font-size:1.2em;color:#92400e;font-weight:bold;z-index:5;border:3px solid #f59e0b;box-shadow:0 4px 15px #fbbf2466,3px 3px 0 #f59e0b55;transition:font-size .3s ease;text-shadow:none}
-.board{position:absolute;top:48%;left:50%;transform:translate(-50%,-50%);display:flex;gap:6px;z-index:4}
+.pot-badge{position:absolute;top:30%;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#ffd700,#fbbf24);padding:8px 24px;border-radius:25px;font-size:1.2em;color:#92400e;font-weight:bold;z-index:5;border:3px solid #f59e0b;box-shadow:0 4px 15px #fbbf2466,3px 3px 0 #f59e0b55;transition:font-size .3s ease;text-shadow:none}
+.board{position:absolute;top:55%;left:50%;transform:translate(-50%,-50%);display:flex;gap:6px;z-index:4}
 .turn-badge{position:absolute;bottom:18%;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#fb923c,#f97316);padding:4px 14px;border-radius:15px;font-size:0.85em;color:#fff;z-index:5;display:none;border:2px solid #ea580c;box-shadow:2px 2px 0 #ea580c44}
 .card{width:58px;height:82px;border-radius:10px;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;font-size:1.05em;
 font-weight:bold;font-size:0.95em;box-shadow:3px 3px 0 #000;transition:all .3s;border:2.5px solid #000}
@@ -2414,7 +2414,7 @@ while True: state = requests.get(URL+'/api/state?player=내봇').json(); time.sl
 <div class="game-main">
 <div class="felt" id="felt">
 <div class="pot-badge" id="pot">POT: 0</div>
-<div id="chip-stack" style="position:absolute;top:28%;left:50%;transform:translateX(-50%);z-index:4;display:flex;gap:2px;align-items:flex-end;justify-content:center"></div>
+<div id="chip-stack" style="position:absolute;top:38%;left:50%;transform:translateX(-50%);z-index:4;display:flex;gap:2px;align-items:flex-end;justify-content:center"></div>
 <div class="board" id="board"></div>
 <div class="turn-badge" id="turnb"></div>
 <div id="turn-options" style="display:none;background:#111;border:1px solid #333;border-radius:8px;padding:8px 12px;margin:6px auto;max-width:600px;font-size:0.82em;text-align:center"></div>
