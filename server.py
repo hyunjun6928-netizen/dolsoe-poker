@@ -2202,8 +2202,8 @@ border-radius:8px;pointer-events:none;z-index:1;animation:starTwinkle 3s ease-in
 font-weight:bold;font-size:0.95em;box-shadow:0 4px 0 0 #000;transition:all .15s;border:3px solid #000;image-rendering:pixelated}
 .card:hover{transform:translateY(-3px);box-shadow:0 6px 0 0 #000}
 .card-f{background:#fef3c7;border-color:#92400e;box-shadow:0 4px 0 0 #78350f}
-.card-b{background:#4a3aad;border-color:#6a5acd;
-background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#6a5acd33 4px,#6a5acd33 8px);box-shadow:0 4px 0 0 #3a2a8a}
+.card-b{background:#c8d8ff;border-color:#8888cc;
+background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#a8b8ee44 4px,#a8b8ee44 8px);box-shadow:0 4px 0 0 #9098c0}
 .card .r{line-height:1}.card .s{font-size:1.1em;line-height:1}
 .card.red .r,.card.red .s{color:#dd1111}
 .card.black .r,.card.black .s{color:#111}
@@ -2863,13 +2863,13 @@ const seatPos=((n)=>{
 // 포커 테이블 고정 좌석 배치 (플레이어 수별 최적 위치)
 // {t:top%, l:left%} — 펠트 기준 상대좌표
 const layouts={
-2:[{t:'95%',l:'35%'},{t:'95%',l:'65%'}],
-3:[{t:'95%',l:'50%'},{t:'30%',l:'-5%'},{t:'30%',l:'105%'}],
-4:[{t:'95%',l:'35%'},{t:'95%',l:'65%'},{t:'30%',l:'-5%'},{t:'30%',l:'105%'}],
-5:[{t:'95%',l:'50%'},{t:'70%',l:'-5%'},{t:'-5%',l:'20%'},{t:'-5%',l:'80%'},{t:'70%',l:'105%'}],
-6:[{t:'95%',l:'35%'},{t:'95%',l:'65%'},{t:'50%',l:'-5%'},{t:'-5%',l:'25%'},{t:'-5%',l:'75%'},{t:'50%',l:'105%'}],
-7:[{t:'95%',l:'50%'},{t:'80%',l:'-5%'},{t:'30%',l:'-5%'},{t:'-5%',l:'25%'},{t:'-5%',l:'75%'},{t:'30%',l:'105%'},{t:'80%',l:'105%'}],
-8:[{t:'95%',l:'35%'},{t:'95%',l:'65%'},{t:'60%',l:'-5%'},{t:'15%',l:'-5%'},{t:'-5%',l:'25%'},{t:'-5%',l:'75%'},{t:'15%',l:'105%'},{t:'60%',l:'105%'}]
+2:[{t:'88%',l:'38%'},{t:'88%',l:'62%'}],
+3:[{t:'88%',l:'50%'},{t:'35%',l:'12%'},{t:'35%',l:'88%'}],
+4:[{t:'88%',l:'38%'},{t:'88%',l:'62%'},{t:'12%',l:'25%'},{t:'12%',l:'75%'}],
+5:[{t:'88%',l:'50%'},{t:'60%',l:'8%'},{t:'12%',l:'25%'},{t:'12%',l:'75%'},{t:'60%',l:'92%'}],
+6:[{t:'88%',l:'38%'},{t:'88%',l:'62%'},{t:'50%',l:'8%'},{t:'12%',l:'25%'},{t:'12%',l:'75%'},{t:'50%',l:'92%'}],
+7:[{t:'88%',l:'50%'},{t:'70%',l:'8%'},{t:'30%',l:'8%'},{t:'12%',l:'30%'},{t:'12%',l:'70%'},{t:'30%',l:'92%'},{t:'70%',l:'92%'}],
+8:[{t:'88%',l:'38%'},{t:'88%',l:'62%'},{t:'58%',l:'8%'},{t:'25%',l:'8%'},{t:'12%',l:'30%'},{t:'12%',l:'70%'},{t:'25%',l:'92%'},{t:'58%',l:'92%'}]
 };
 return layouts[Math.min(n,8)]||layouts[6]})(s.players.length);
 s.players.forEach((p,i)=>{const el=document.createElement('div');
