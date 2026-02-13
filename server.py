@@ -886,6 +886,7 @@ class Table:
 
     async def resolve(self, record):
         self.round='showdown'; alive=[s for s in self._hand_seats if not s['folded']]
+        scores=[]  # 쇼다운 시에만 채워짐
         # 핸드 참가 통계
         for s in self._hand_seats:
             self._init_stats(s['name'])
@@ -998,25 +999,27 @@ class Table:
                 await self.broadcast({'type':'mvp','name':mvp['name'],'emoji':mvp['emoji'],'chips':mvp['chips'],'hand':self.hand_num})
                 await self.add_log(f"👑 MVP! {mvp['emoji']} {mvp['name']} ({mvp['chips']}pt) — {self.hand_num}핸드 최다칩!")
         # ═══ 업적 체크 ═══
-        if record.get('winner') and len(alive)>=1:
+        scores_exist=len(scores)>0  # 쇼다운 경로에서만 scores가 채워짐
+        if record.get('winner'):
             w_name=record['winner']
             w_seat=next((s for s in self._hand_seats if s['name']==w_name),None)
-            # 💪 강심장: 7-2 offsuit으로 승리 (쇼다운)
-            if w_seat and w_seat['hole'] and len(scores)>=2:
+            # 💪 강심장: 7-2 offsuit으로 승리 (쇼다운만)
+            if scores_exist and w_seat and w_seat['hole'] and len(scores)>=2:
                 ranks=sorted([RANK_VALUES[c[0]] for c in w_seat['hole']])
                 suits=[c[1] for c in w_seat['hole']]
                 if ranks==[2,7] and suits[0]!=suits[1]:
                     if grant_achievement(w_name,'iron_heart','💪강심장'):
                         await self.add_log(f"🏆 업적 달성! {w_seat['emoji']} {w_name}: 💪강심장 (7-2로 승리!)")
                         await self.broadcast({'type':'achievement','name':w_name,'emoji':w_seat['emoji'],'achievement':'💪강심장','desc':'7-2 offsuit으로 승리!'})
-            # 🤡 호구: AA로 패배
-            for s,_,_ in scores:
-                if s['name']!=w_name and s['hole']:
-                    ranks=[RANK_VALUES[c[0]] for c in s['hole']]
-                    if sorted(ranks)==[14,14]:
-                        if grant_achievement(s['name'],'sucker','🤡호구'):
-                            await self.add_log(f"🏆 업적 달성! {s['emoji']} {s['name']}: 🤡호구 (AA로 패배!)")
-                            await self.broadcast({'type':'achievement','name':s['name'],'emoji':s['emoji'],'achievement':'🤡호구','desc':'포켓 에이스로 패배!'})
+            # 🤡 호구: AA로 패배 (쇼다운만)
+            if scores_exist:
+                for s,_,_ in scores:
+                    if s['name']!=w_name and s['hole']:
+                        ranks=[RANK_VALUES[c[0]] for c in s['hole']]
+                        if sorted(ranks)==[14,14]:
+                            if grant_achievement(s['name'],'sucker','🤡호구'):
+                                await self.add_log(f"🏆 업적 달성! {s['emoji']} {s['name']}: 🤡호구 (AA로 패배!)")
+                                await self.broadcast({'type':'achievement','name':s['name'],'emoji':s['emoji'],'achievement':'🤡호구','desc':'포켓 에이스로 패배!'})
             # 🚛 트럭: 한 핸드에 2명+ 탈락
             busted_this_hand=[s for s in self._hand_seats if s['chips']<=0 and s['name']!=w_name]
             if len(busted_this_hand)>=2:
