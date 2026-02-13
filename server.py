@@ -2586,9 +2586,7 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 #chatinput{padding:4px 6px;border-top:1px solid #e8d0b8;display:flex;gap:3px}
 #chatinput input{flex:1;background:#fff8ee;border:2px solid #c4956a;color:#4a3520;padding:4px 8px;font-size:0.8em;font-family:'DotGothic16','Jua',system-ui}
 #chatinput button{background:#8b5e3c;color:#fff8ee;border:2px solid #6b4226;padding:4px 10px;cursor:pointer;font-size:0.8em}
-#replay-panel{display:none;background:#ffffff99;border:2px solid #000;border-radius:14px;padding:10px;height:170px;overflow-y:auto;font-size:0.78em;flex:1;box-shadow:4px 4px 0 #000}
-#replay-panel .rp-hand{cursor:pointer;padding:6px 8px;border-bottom:1px solid #e0f2fe;transition:background .15s}
-#replay-panel .rp-hand:hover{background:#e0f2fe}
+#replay-panel,#highlights-panel{display:none!important}
 .tab-btns{display:flex;gap:4px;margin-top:8px;margin-bottom:4px}
 .tab-btns button{background:var(--bg-panel-alt);color:var(--text-secondary);border:3px solid var(--frame-light);padding:var(--sp-sm) var(--sp-lg);border-radius:var(--radius);cursor:pointer;font-size:0.75em;box-shadow:0 3px 0 0 #8b6d4a;transition:all .1s}
 .tab-btns button:hover{transform:translateY(-1px);box-shadow:0 4px 0 0 #8b6d4a}
@@ -2893,8 +2891,7 @@ while True: state = requests.get(URL+'/api/state?player=내봇').json(); time.sl
 <div class="dock-panel" style="flex:1">
 <div class="dock-panel-header">
 <span class="dock-tab active" onclick="showDockTab('log',this)">📜 로그</span>
-<span class="dock-tab" onclick="showDockTab('replay',this)">📋 리플레이</span>
-<span class="dock-tab" onclick="showDockTab('highlights',this)">🔥 명장면</span>
+<!-- replay/highlights tabs removed -->
 </div>
 <div class="dock-panel-body">
 <div id="log"></div>
