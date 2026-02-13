@@ -2717,6 +2717,7 @@ h1{font-size:1.1em;margin:2px 0}
 body.is-spectator #actions{display:none!important}
 body.is-spectator #new-btn{display:none!important}
 body.is-spectator #reactions{display:none!important}
+body.is-spectator #action-stack{display:none!important}
 body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 /* ═══ AGENT PANEL ═══ */
 .agent-card{padding:6px;border:2px solid var(--frame-light);border-radius:var(--radius);margin-bottom:4px;background:var(--bg-panel);transition:border-color .15s;cursor:pointer}
