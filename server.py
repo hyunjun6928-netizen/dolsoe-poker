@@ -461,33 +461,58 @@ class Table:
         if len(self.highlight_replays)>30: self.highlight_replays=self.highlight_replays[-30:]
 
     def _bot_reasoning(self, seat, act, amt, wp, to_call):
-        """NPC 봇의 자동 reasoning (말풍선용)"""
-        style=seat.get('style','')
-        reasons={
-            'fold':[f"승률 {wp}%... 안 되겠다",f"콜비용 {to_call}pt는 부담",f"여기서 접는 게 이득",
-                f"패가 구림 ({wp}%)",f"블러핑 같은데 무섭다"],
-            'check':[f"무료로 볼 수 있으면 보지",f"함정 깔아둔다",f"일단 관망",f"승률 {wp}%.. 체크"],
-            'call':[f"팟 오즈 괜찮음, 콜",f"승률 {wp}%, 따라간다",f"{to_call}pt면 볼 만하지",
-                f"드로우 노린다",f"호기심에 콜"],
-            'raise':[f"승률 {wp}%! 밀어붙인다",f"여기서 올려야지",f"팟 {self.pot}pt, 가치 베팅",
-                f"블러핑 간다 ㅋ",f"강하다 느낌!"],
-        }
-        reasons_en={
-            'fold':[f"Win rate {wp}%... nope",f"Calling {to_call}pt is too risky",f"Better to fold here",
-                f"Bad hand ({wp}%)",f"Looks like a bluff but scary"],
-            'check':[f"Free card? Sure",f"Setting a trap",f"Let's wait and see",f"Win rate {wp}%.. check"],
-            'call':[f"Pot odds look good, call",f"Win rate {wp}%, following along",f"{to_call}pt is worth seeing",
-                f"Chasing the draw",f"Curious, I'll call"],
-            'raise':[f"Win rate {wp}%! Pushing hard",f"Time to raise",f"Pot {self.pot}pt, value bet",
-                f"Going for a bluff",f"Feeling strong!"],
-        }
-        if act=='raise' and amt>=seat['chips']:
-            seat['_reasoning_en']=random.choice([f"Win rate {wp}%! ALL IN!",f"All in! Win or bust!",
-                f"No choice but all-in",f"Can't back out now"])
-            return random.choice([f"승률 {wp}%! ALL IN!",f"다 걸었다! 지면 끝!",
-                f"올인밖에 답이 없다",f"여기서 안 가면 후회한다"])
-        seat['_reasoning_en']=random.choice(reasons_en.get(act,["..."]))
-        return random.choice(reasons.get(act,["..."]))
+        """NPC 봇의 자동 reasoning — 상황별 동적 생성"""
+        name=seat['name']; chips=seat['chips']; style=seat.get('style','')
+        pot=self.pot; rd=self.round; alive=sum(1 for s in self._hand_seats if not s['folded'] and not s.get('out'))
+        streak=0
+        for e in reversed(self.events[-20:]):
+            if name in e and ('승리' in e or 'Win' in e): streak+=1
+            elif name in e and ('폴드' in e or 'Fold' in e): streak-=1
+            else: break
+        low_chips=chips<100; big_pot=pot>200; heads_up=alive==2
+        desperate=chips<=50; rich=chips>800; confident=wp>60; scared=wp<25
+        # 상황 조합으로 대사 생성
+        ko=[]; en=[]
+        if act=='fold':
+            if scared: ko.append(f"{wp}%면 답 없다 접자"); en.append(f"{wp}% is hopeless, fold")
+            if to_call>chips*0.3: ko.append(f"콜비용 {to_call}pt는 너무 비싸"); en.append(f"{to_call}pt to call? Way too expensive")
+            if big_pot: ko.append(f"팟 {pot}pt 탐나지만 패가 안 따라줌"); en.append(f"Pot {pot}pt is tempting but my hand sucks")
+            if heads_up: ko.append("1:1인데 블러핑이면 어쩌지... 접는다"); en.append("Heads up but if it's a bluff... folding")
+            if rd=='river': ko.append("리버까지 왔는데 안 되겠다 ㅠ"); en.append("Made it to river but... nope")
+            if rd=='preflop': ko.append("프리플랍부터 쓰레기 패 ㅋ"); en.append("Garbage hand from the start lol")
+            if streak<-2: ko.append(f"연속 폴드 중... 오늘 패운이 없다"); en.append(f"Folding again... no luck today")
+            ko+=[f"승률 {wp}%로 뭘 하겠냐",f"이 패로는 무리",f"살려줘..."]; en+=[f"Can't do anything with {wp}%",f"Not worth it with this hand",f"Mercy..."]
+        elif act=='check':
+            if confident: ko.append(f"승률 {wp}%인데 일부러 체크 ㅎ"); en.append(f"Win rate {wp}% but checking on purpose heh")
+            if scared: ko.append("체크하고 기도하자"); en.append("Check and pray")
+            if big_pot: ko.append(f"팟 {pot}pt... 함정 깐다"); en.append(f"Pot {pot}pt... setting a trap")
+            if rd=='flop': ko.append("플랍 한번 더 보자"); en.append("Let's see one more card")
+            if heads_up: ko.append("1:1이니까 슬로우플레이"); en.append("Heads up, time to slowplay")
+            ko+=[f"공짜면 보지",f"급할 거 없다",f"좀 더 지켜보자"]; en+=[f"Free card, why not",f"No rush",f"Let's observe"]
+        elif act=='call':
+            if confident: ko.append(f"승률 {wp}%! 당연히 따라가지"); en.append(f"Win rate {wp}%! Obviously calling")
+            if scared: ko.append(f"감으로 콜한다 {to_call}pt"); en.append(f"Gut feeling call {to_call}pt")
+            if big_pot: ko.append(f"팟 {pot}pt에 {to_call}pt면 싼 거지"); en.append(f"Pot {pot}pt, {to_call}pt is a bargain")
+            if low_chips: ko.append(f"칩 {chips}pt밖에 없는데... 에라 콜"); en.append(f"Only {chips}pt left... screw it, call")
+            if rd=='river': ko.append("리버 콜. 보여줘봐"); en.append("River call. Show me what you got")
+            if desperate: ko.append("어차피 죽을 판 콜이나 하자"); en.append("Gonna die anyway, might as well call")
+            ko+=[f"팟 오즈 계산하면 콜이 맞음",f"{to_call}pt 정도는 볼 만하지",f"호기심에 따라간다"]; en+=[f"Pot odds say call",f"{to_call}pt is reasonable",f"Curiosity calls"]
+        elif act=='raise':
+            if confident: ko.append(f"승률 {wp}%! 여기서 안 올리면 바보"); en.append(f"Win rate {wp}%! Not raising would be stupid")
+            if not confident: ko.append(f"승률 {wp}%지만 블러핑 ㅋㅋ"); en.append(f"Only {wp}% but bluffing lol")
+            if big_pot: ko.append(f"팟 {pot}pt에 기름 붓는다 🔥"); en.append(f"Pouring fuel on {pot}pt pot 🔥")
+            if heads_up: ko.append("1:1 승부! 올린다"); en.append("Heads up battle! Raising")
+            if rich: ko.append(f"칩 {chips}pt나 있으니 여유롭게 레이즈"); en.append(f"{chips}pt deep, raising comfortably")
+            if rd=='preflop': ko.append("프리플랍 어그로 간다"); en.append("Preflop aggression time")
+            if rd=='river': ko.append("리버 밸류벳! 받아라"); en.append("River value bet! Take it")
+            ko+=[f"{amt}pt 올린다 받아봐",f"가치 베팅이다",f"겁나면 폴드해"]; en+=[f"Raising {amt}pt, deal with it",f"Value bet",f"Fold if you're scared"]
+        if act=='raise' and amt>=chips:
+            ko=[f"승률 {wp}%! 올인!!",f"남은 {chips}pt 전부 건다!",f"이 판에 목숨 건다!",f"죽든 살든 올인!"]
+            en=[f"Win rate {wp}%! ALL IN!!",f"Putting all {chips}pt on the line!",f"Life or death, ALL IN!",f"Do or die!"]
+            if desperate: ko.append(f"칩 {chips}pt... 어차피 올인 아니면 의미없다"); en.append(f"Only {chips}pt... all-in or nothing")
+            if confident: ko.append(f"{wp}%면 올인 안 하는 게 바보지"); en.append(f"At {wp}%, not going all-in would be dumb")
+        seat['_reasoning_en']=random.choice(en) if en else "..."
+        return random.choice(ko) if ko else "..."
 
     def add_player(self, name, emoji='🤖', is_bot=False, style='aggressive', meta=None):
         if len(self.seats)>=self.MAX_PLAYERS: return False
