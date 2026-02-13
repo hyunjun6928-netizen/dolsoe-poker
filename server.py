@@ -678,6 +678,8 @@ class Table:
             for s in alive:
                 sc=evaluate_hand(s['hole']+self.community); scores.append((s,sc,hand_name(sc)))
             scores.sort(key=lambda x:x[1],reverse=True)
+            if not scores:
+                await self.add_log("⚠️ 승자 없음 — 팟 소멸"); record['pot']=self.pot; return
             w=scores[0][0]; w['chips']+=self.pot
             sd=[{'name':s['name'],'emoji':s['emoji'],'hole':[card_dict(c) for c in s['hole']],'hand':hn,'winner':s==w} for s,_,hn in scores]
             self.last_showdown=sd
