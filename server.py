@@ -246,6 +246,55 @@ class Table:
         self._delay_task=None
         self.last_commentary=''  # 최신 해설 (폴링용)
         self.last_showdown=None  # 마지막 쇼다운 결과
+        # 봇 성격 프로필 (액션 통계)
+        self.player_stats={}  # name -> {folds,calls,raises,checks,allins,bluffs,wins,hands,total_bet,total_won,biggest_pot,showdowns}
+        # 리플레이 하이라이트 (빅팟/올인/레어핸드)
+        self.highlight_replays=[]  # [{hand,type,players,pot,community,winner,hand_name,actions,ts}]
+
+    def _init_stats(self, name):
+        if name not in self.player_stats:
+            self.player_stats[name]={'folds':0,'calls':0,'raises':0,'checks':0,'allins':0,
+                'bluffs':0,'wins':0,'hands':0,'total_bet':0,'total_won':0,'biggest_pot':0,'showdowns':0}
+
+    def get_profile(self, name):
+        """봇 성격 프로필 계산"""
+        self._init_stats(name)
+        s=self.player_stats[name]; h=max(s['hands'],1)
+        total_actions=s['folds']+s['calls']+s['raises']+s['checks']
+        ta=max(total_actions,1)
+        aggression=round((s['raises']+s['allins'])/ta*100)  # 공격성
+        fold_rate=round(s['folds']/ta*100)  # 폴드율
+        vpip=round((s['calls']+s['raises'])/ta*100)  # 팟 참여율
+        bluff_rate=round(s['bluffs']/max(s['raises'],1)*100) if s['raises']>0 else 0  # 블러핑율
+        win_rate=round(s['wins']/h*100)  # 승률
+        avg_bet=round(s['total_bet']/h) if h>0 else 0
+        # 성격 유형 분류
+        if aggression>=50: ptype='🔥 광전사'
+        elif aggression>=30 and fold_rate<25: ptype='🗡️ 공격형'
+        elif fold_rate>=40: ptype='🛡️ 수비형'
+        elif vpip>=70: ptype='🎲 루즈'
+        else: ptype='🧠 밸런스'
+        # 틸트 감지 (최근 5핸드 중 3패 이상)
+        seat=next((x for x in self.seats if x['name']==name),None)
+        streak=leaderboard.get(name,{}).get('streak',0)
+        tilt=streak<=-3
+        return {'name':name,'type':ptype,'aggression':aggression,'fold_rate':fold_rate,
+            'vpip':vpip,'bluff_rate':bluff_rate,'win_rate':win_rate,
+            'wins':s['wins'],'hands':h,'allins':s['allins'],
+            'biggest_pot':s['biggest_pot'],'avg_bet':avg_bet,
+            'showdowns':s['showdowns'],'tilt':tilt,'streak':streak,
+            'total_won':s['total_won']}
+
+    def _save_highlight(self, record, hl_type, hand_name_str=''):
+        """하이라이트 저장"""
+        hl={'hand':record['hand'],'type':hl_type,
+            'players':[p['name'] for p in record['players']],
+            'pot':record['pot'],'community':record.get('community',[]),
+            'winner':record.get('winner',''),'hand_name':hand_name_str,
+            'actions':record.get('actions',[])[-8:],  # 마지막 8액션만
+            'ts':time.time()}
+        self.highlight_replays.append(hl)
+        if len(self.highlight_replays)>30: self.highlight_replays=self.highlight_replays[-30:]
 
     def add_player(self, name, emoji='🤖', is_bot=False, style='aggressive'):
         if len(self.seats)>=self.MAX_PLAYERS: return False
@@ -653,6 +702,20 @@ class Table:
                     _total=sum(_strengths.values()) or 1
                     _wp=round(_strengths.get(s['name'],0)/_total*100)
 
+                # 프로필 통계 기록
+                self._init_stats(s['name'])
+                ps=self.player_stats[s['name']]
+                if act=='fold': ps['folds']+=1
+                elif act=='check': ps['checks']+=1
+                elif act=='call': ps['calls']+=1
+                elif act=='raise':
+                    ps['raises']+=1
+                    total_r=min(amt+min(to_call,s['chips']),s['chips'])
+                    ps['total_bet']+=total_r
+                    if s['chips']<=total_r: ps['allins']+=1
+                    # 블러핑 감지: 승률 30% 미만인데 레이즈
+                    if _wp<30 and _wp>0: ps['bluffs']+=1
+
                 if act=='fold':
                     s['folded']=True
                     self.fold_streaks[s['name']]=self.fold_streaks.get(s['name'],0)+1
@@ -745,11 +808,23 @@ class Table:
 
     async def resolve(self, record):
         self.round='showdown'; alive=[s for s in self._hand_seats if not s['folded']]
+        # 핸드 참가 통계
+        for s in self._hand_seats:
+            self._init_stats(s['name'])
+            self.player_stats[s['name']]['hands']+=1
+
         if len(alive)==1:
             w=alive[0]; w['chips']+=self.pot
             await self.add_log(f"🏆 {w['emoji']} {w['name']} +{self.pot}pt (상대 폴드)")
             await self.broadcast_commentary(f"🏆 {w['name']} 승리! +{self.pot}pt 획득 (상대 전원 폴드)")
             record['winner']=w['name']; record['pot']=self.pot
+            # 프로필 통계
+            self._init_stats(w['name'])
+            self.player_stats[w['name']]['wins']+=1
+            self.player_stats[w['name']]['total_won']+=self.pot
+            self.player_stats[w['name']]['biggest_pot']=max(self.player_stats[w['name']]['biggest_pot'],self.pot)
+            # 빅팟 하이라이트 (200pt 이상)
+            if self.pot>=200: self._save_highlight(record,'bigpot')
             update_leaderboard(w['name'], True, self.pot, self.pot)
             for s in self._hand_seats:
                 if s!=w: update_leaderboard(s['name'], False, 0)
@@ -769,6 +844,14 @@ class Table:
                 await self.add_log(f"🃏 {s['emoji']}{s['name']}: {card_str(s['hole'][0])} {card_str(s['hole'][1])} → {hn}{mark}")
             await self.add_log(f"🏆 {w['emoji']} {w['name']} +{self.pot}pt ({scores[0][2]})")
             await self.broadcast_commentary(f"🏆 {w['name']} 승리! {scores[0][2]}로 +{self.pot}pt 획득!")
+            # 프로필 통계
+            self._init_stats(w['name'])
+            self.player_stats[w['name']]['wins']+=1
+            self.player_stats[w['name']]['total_won']+=self.pot
+            self.player_stats[w['name']]['biggest_pot']=max(self.player_stats[w['name']]['biggest_pot'],self.pot)
+            for s,_,_ in scores:
+                self._init_stats(s['name'])
+                self.player_stats[s['name']]['showdowns']+=1
             # 레어 핸드 하이라이트
             best_rank=scores[0][1][0]
             if best_rank>=7:  # 풀하우스 이상
@@ -778,6 +861,13 @@ class Table:
                 if best_rank>=9: await self.add_log(f"🎆🎆🎆 {scores[0][2]}!! 역사적인 핸드!! 🎆🎆🎆")
                 elif best_rank==8: await self.add_log(f"🎇🎇 포카드! 대박! 🎇🎇")
                 else: await self.add_log(f"✨ {scores[0][2]}! 좋은 핸드! ✨")
+                self._save_highlight(record,'rarehand',scores[0][2])
+            # 빅팟 하이라이트 (200pt 이상) 또는 올인 쇼다운
+            elif self.pot>=200:
+                self._save_highlight(record,'bigpot')
+            # 올인 쇼다운이면 항상 저장
+            if any(s['chips']==0 for s in alive):
+                self._save_highlight(record,'allin_showdown',scores[0][2])
             record['winner']=w['name']; record['pot']=self.pot
             update_leaderboard(w['name'], True, self.pot, self.pot)
             for s,_,_ in scores:
@@ -1096,6 +1186,25 @@ async def handle_client(reader, writer):
         tid=qs.get('table_id',[''])[0]; t=find_table(tid)
         if not t: await send_json(writer,{'error':'no game'},404); return
         await send_json(writer,{'history':t.history[-10:]})
+    elif method=='GET' and route=='/api/profile':
+        tid=qs.get('table_id',[''])[0]; name=qs.get('name',[''])[0]
+        t=find_table(tid)
+        if not t: await send_json(writer,{'ok':False,'code':'NOT_FOUND','message':'no game'},404); return
+        if name:
+            profile=t.get_profile(name)
+            await send_json(writer,profile)
+        else:
+            # 전체 프로필 목록
+            profiles=[t.get_profile(n) for n in t.player_stats if t.player_stats[n]['hands']>0]
+            profiles.sort(key=lambda x:x['hands'],reverse=True)
+            await send_json(writer,{'profiles':profiles})
+    elif method=='GET' and route=='/api/highlights':
+        tid=qs.get('table_id',[''])[0]; limit=int(qs.get('limit',['10'])[0])
+        t=find_table(tid)
+        if not t: await send_json(writer,{'ok':False,'code':'NOT_FOUND','message':'no game'},404); return
+        hls=t.highlight_replays[-limit:]
+        hls.reverse()  # 최신순
+        await send_json(writer,{'highlights':hls})
     elif method=='GET' and route=='/api/replay':
         tid=qs.get('table_id',[''])[0]; hand_num=qs.get('hand',[''])[0]
         t=find_table(tid)
@@ -1637,10 +1746,11 @@ while True: state = requests.get(URL+'/api/state?player=내봇').json(); time.sl
 <div id="table-info"></div>
 <div id="actions"><div id="timer"></div><div id="actbtns"></div></div>
 <button id="new-btn" onclick="newGame()">🔄 새 게임</button>
-<div class="tab-btns"><button class="active" onclick="showTab('log')">📜 로그</button><button onclick="showTab('replay')">📋 리플레이</button></div>
+<div class="tab-btns"><button class="active" onclick="showTab('log')">📜 로그</button><button onclick="showTab('replay')">📋 리플레이</button><button onclick="showTab('highlights')">🔥 명장면</button></div>
 <div class="bottom-panel">
 <div id="log"></div>
 <div id="replay-panel"></div>
+<div id="highlights-panel" style="display:none;background:#080b15;border:1px solid #1a1e2e;border-radius:10px;padding:10px;height:170px;overflow-y:auto;font-size:0.78em;flex:1"></div>
 <div id="chatbox">
 <div id="chatmsgs"></div>
 <div id="quick-chat">
@@ -1915,10 +2025,13 @@ b.innerHTML=h;document.getElementById('new-btn').style.display='block'}
 function newGame(){if(!isPlayer)return;if(ws)ws.send(JSON.stringify({type:'new_game'}))}
 
 function showTab(tab){
-const log=document.getElementById('log'),rp=document.getElementById('replay-panel');
-document.querySelectorAll('.tab-btns button').forEach((b,i)=>{b.classList.toggle('active',i===(tab==='log'?0:1))});
-if(tab==='log'){log.style.display='block';rp.style.display='none'}
-else{log.style.display='none';rp.style.display='block';loadReplays()}}
+const log=document.getElementById('log'),rp=document.getElementById('replay-panel'),hp=document.getElementById('highlights-panel');
+document.querySelectorAll('.tab-btns button').forEach((b,i)=>{b.classList.toggle('active',i===(tab==='log'?0:tab==='replay'?1:2))});
+log.style.display=tab==='log'?'block':'none';
+rp.style.display=tab==='replay'?'block':'none';
+hp.style.display=tab==='highlights'?'block':'none';
+if(tab==='replay')loadReplays();
+if(tab==='highlights')loadHighlights()}
 
 async function loadReplays(){
 const rp=document.getElementById('replay-panel');rp.innerHTML='<div style="color:#888">로딩...</div>';
@@ -1940,6 +2053,21 @@ let curRound='';d.actions.forEach(a=>{if(a.round!==curRound){curRound=a.round;ht
 const icon={fold:'❌',call:'📞',raise:'⬆️',check:'✋'}[a.action]||'•';
 html+=`<div>${icon} ${a.player} ${a.action}${a.amount?' '+a.amount+'pt':''}</div>`});
 html+='</div>';rp.innerHTML=html}catch(e){rp.innerHTML='<div style="color:#f44">로딩 실패</div>'}}
+
+async function loadHighlights(){
+const hp=document.getElementById('highlights-panel');hp.innerHTML='<div style="color:#888">로딩...</div>';
+try{const r=await fetch(`/api/highlights?table_id=${tableId}&limit=15`);const d=await r.json();
+if(!d.highlights||d.highlights.length===0){hp.innerHTML='<div style="color:#666;text-align:center;padding:20px">🎬 아직 명장면이 없다. 빅팟이나 올인 쇼다운이 터지면 자동 저장됨!</div>';return}
+hp.innerHTML='';d.highlights.forEach(h=>{const el=document.createElement('div');
+el.style.cssText='padding:8px;border-bottom:1px solid #1a1e2e;cursor:pointer;transition:background .15s';
+el.onmouseenter=()=>el.style.background='#1a1e2e';el.onmouseleave=()=>el.style.background='';
+const typeIcon={bigpot:'💰',rarehand:'🃏',allin_showdown:'🔥'}[h.type]||'🎬';
+const typeLabel={bigpot:'빅팟',rarehand:'레어핸드',allin_showdown:'올인 쇼다운'}[h.type]||h.type;
+const ago=Math.round((Date.now()/1000-h.ts)/60);
+const timeStr=ago<1?'방금':ago<60?ago+'분 전':Math.round(ago/60)+'시간 전';
+el.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><span><span style="color:#ffaa00;font-weight:bold">${typeIcon} 핸드 #${h.hand}</span> <span style="color:#888;font-size:0.85em">${typeLabel}</span></span><span style="color:#555;font-size:0.8em">${timeStr}</span></div><div style="margin-top:3px"><span style="color:#44ff44">🏆 ${esc(h.winner)}</span> <span style="color:#ffaa00">+${h.pot}pt</span>${h.hand_name?' <span style="color:#ff8800">'+esc(h.hand_name)+'</span>':''} <span style="color:#888">| ${h.players.map(n=>esc(n)).join(' vs ')}</span></div>${h.community.length?'<div style="color:#88ccff;font-size:0.85em;margin-top:2px">🃏 '+h.community.join(' ')+'</div>':''}`;
+el.onclick=()=>loadHand(h.hand);
+hp.appendChild(el)})}catch(e){hp.innerHTML='<div style="color:#f44">로딩 실패</div>'}}
 
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 function addLog(m){const l=document.getElementById('log');const d=document.createElement('div');
@@ -2004,12 +2132,16 @@ try{const r=await fetch(`/api/coins?name=${encodeURIComponent(specName)}`);
 const d=await r.json();document.getElementById('bet-coins').textContent=`💰 ${d.coins} 코인`}catch(e){}}
 
 async function showProfile(name){
-try{const r=await fetch(`/api/leaderboard`);const d=await r.json();
-const p=d.leaderboard.find(x=>x.name===name);
+try{const r=await fetch(`/api/profile?name=${encodeURIComponent(name)}&table_id=${tableId}`);const p=await r.json();
 const pp=document.getElementById('pp-content');
-if(p){const wr=p.hands>0?Math.round(p.wins/p.hands*100):0;
-pp.innerHTML=`<h3>${name}</h3><div class="pp-stat">🏆 승리: ${p.wins} | 💀 패배: ${p.losses}</div><div class="pp-stat">📊 승률: ${wr}% (${p.hands}핸드)</div><div class="pp-stat">💰 획득: ${p.chips_won}pt</div><div class="pp-stat">🔥 최대팟: ${p.biggest_pot}pt</div>`}
-else{pp.innerHTML=`<h3>${name}</h3><div class="pp-stat" style="color:#888">아직 기록 없음</div>`}
+if(p&&p.hands>0){
+const tiltTag=p.tilt?`<div style="color:#ff4444;font-weight:bold;margin:6px 0;animation:pulse 1s infinite">🔥 TILT 감지! (${Math.abs(p.streak)}연패)</div>`:'';
+const streakTag=p.streak>=3?`<div style="color:#44ff88">🔥 ${p.streak}연승 중!</div>`:'';
+// 공격성 바
+const agrBar=`<div style="margin:4px 0"><span style="color:#888;font-size:0.8em">공격성</span><div style="height:6px;background:#333;border-radius:3px;overflow:hidden;margin-top:2px"><div style="width:${p.aggression}%;height:100%;background:${p.aggression>50?'#ff4444':p.aggression>25?'#ffaa00':'#4488ff'};transition:width .5s"></div></div></div>`;
+const vpipBar=`<div style="margin:4px 0"><span style="color:#888;font-size:0.8em">팟 참여율</span><div style="height:6px;background:#333;border-radius:3px;overflow:hidden;margin-top:2px"><div style="width:${p.vpip}%;height:100%;background:#44ff88;transition:width .5s"></div></div></div>`;
+pp.innerHTML=`<h3>${esc(p.name)}</h3><div style="font-size:1.2em;margin:4px 0">${p.type}</div>${tiltTag}${streakTag}<div class="pp-stat">📊 승률: ${p.win_rate}% (${p.hands}핸드)</div>${agrBar}${vpipBar}<div class="pp-stat">🎯 폴드율: ${p.fold_rate}% | 블러핑: ${p.bluff_rate}%</div><div class="pp-stat">💣 올인: ${p.allins}회 | 쇼다운: ${p.showdowns}회</div><div class="pp-stat">💰 총 획득: ${p.total_won}pt | 최대팟: ${p.biggest_pot}pt</div><div class="pp-stat">💵 핸드당 평균 베팅: ${p.avg_bet}pt</div>`}
+else{pp.innerHTML=`<h3>${esc(name)}</h3><div class="pp-stat" style="color:#888">아직 기록 없음</div>`}
 document.getElementById('profile-backdrop').style.display='block';
 document.getElementById('profile-popup').style.display='block'}catch(e){}}
 function closeProfile(){document.getElementById('profile-backdrop').style.display='none';document.getElementById('profile-popup').style.display='none'}
