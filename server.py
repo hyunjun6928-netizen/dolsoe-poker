@@ -2218,36 +2218,48 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 #profile-popup .pp-close{position:absolute;top:8px;right:12px;color:#4b7399;cursor:pointer;font-size:1.2em}
 #profile-backdrop{position:fixed;top:0;left:0;right:0;bottom:0;background:#000000aa;z-index:149;display:none}
 @media(max-width:700px){
-.wrap{padding:4px}
-h1{font-size:1.3em;margin:4px 0}
-.felt{padding-bottom:70%;border-radius:20px;margin:35px auto 25px;border-width:3px;outline-width:1px;box-shadow:0 0 40px #38bdf822}
-.board{gap:3px}
-.card{width:36px;height:52px;font-size:0.7em;border-radius:7px;box-shadow:2px 2px 0 #000}
-.card-sm{width:30px;height:44px;font-size:0.6em}
-.seat .ava{font-size:1.8em}
-.seat .nm{font-size:0.75em;padding:2px 5px}
-.seat-0{bottom:-12%}.seat-7{bottom:-12%}
-.seat-3{top:-12%}.seat-4{top:-12%}
-.seat-1,.seat-2{left:-2%}.seat-5,.seat-6{right:-2%}
-.seat .ch{font-size:0.6em}
+*{box-sizing:border-box}
+body{overflow-x:hidden}
+.wrap{padding:2px;max-width:100vw;overflow-x:hidden}
+h1{font-size:1.1em;margin:2px 0}
+.felt{padding-bottom:80%;border-radius:16px;margin:20px auto 15px;border-width:2px;outline-width:1px;box-shadow:0 0 30px #38bdf822}
+.board{gap:2px}
+.card{width:34px;height:50px;font-size:0.65em;border-radius:6px;box-shadow:1px 1px 0 #000}
+.card-sm{width:28px;height:42px;font-size:0.55em}
+.seat{min-width:55px}
+.seat .ava{font-size:1.6em}
+.seat .nm{font-size:0.65em;padding:1px 4px;max-width:60px;overflow:hidden;text-overflow:ellipsis}
+.seat-0{bottom:-14%}.seat-7{bottom:-14%}
+.seat-3{top:-14%}.seat-4{top:-14%}
+.seat-1,.seat-2{left:-3%}.seat-5,.seat-6{right:-3%}
+.seat .ch{font-size:0.55em;padding:1px 3px}
 .seat .st{display:none}
-.seat .bet-chip{font-size:0.6em}
-.ava-ring{width:2em;height:2em}
-.confetti{width:7px;height:7px}
+.seat .bet-chip{font-size:0.55em}
+.thought-bubble{display:none}
+.ava-ring{width:1.8em;height:1.8em}
+.confetti{width:6px;height:6px}
+#commentary{font-size:0.8em;padding:6px 10px;margin:0 0 4px;min-height:20px;border-radius:10px}
+#actions{padding:8px;margin:4px 0;display:none;flex-direction:column;align-items:center}
+#actions button{padding:8px 18px;margin:3px;font-size:0.85em}
 .bottom-panel{flex-direction:column}
-#log,#replay-panel{height:120px}
-#chatbox{width:100%;height:200px}
-#turn-options{font-size:0.7em;padding:4px 8px}
-#bet-panel{font-size:0.8em}
-#bet-panel select,#bet-panel input{font-size:0.75em;padding:4px}
-#lobby input{width:200px;padding:10px;font-size:0.95em}
-#lobby button{padding:10px 24px;font-size:0.95em}
-#reactions button{width:36px;height:36px;font-size:1.2em}
-#allin-overlay .allin-text{font-size:2em}
-#highlight-overlay .hl-text{font-size:1.5em}
-.tab-btns button{padding:3px 8px;font-size:0.7em}
-.dbtn{font-size:0.5em}
-.act-label{font-size:0.5em}
+#log,#replay-panel{height:100px}
+#chatbox{width:100%;height:150px}
+#turn-options{font-size:0.65em;padding:3px 6px}
+#bet-panel{font-size:0.75em;padding:6px;margin-top:4px}
+#bet-panel select,#bet-panel input{font-size:0.7em;padding:3px}
+#bet-panel button{padding:4px 12px;font-size:0.75em}
+#lobby input{width:200px;padding:8px;font-size:0.9em}
+#lobby button{padding:8px 20px;font-size:0.9em}
+#reactions button{width:34px;height:34px;font-size:1.1em}
+#allin-overlay .allin-text{font-size:1.8em}
+#highlight-overlay .hl-text{font-size:1.3em}
+.tab-btns button{padding:2px 6px;font-size:0.65em}
+.dbtn{font-size:0.45em}
+.act-label{font-size:0.45em}
+#profile-popup{width:90vw;min-width:unset;max-height:80vh;overflow-y:auto;padding:12px;font-size:0.85em}
+#profile-popup h3{font-size:1em;margin-bottom:6px}
+#profile-popup .pp-stat{font-size:0.8em;margin:2px 0}
+.result-box{padding:16px;min-width:unset;width:85vw;border-radius:14px}
 
 }
 #new-btn{display:none;padding:14px 40px;font-size:1.2em;background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;border:2px solid #c2410c;border-radius:14px;cursor:pointer;margin:15px auto;font-weight:bold;box-shadow:3px 3px 0 #c2410c44;transition:all .1s}
