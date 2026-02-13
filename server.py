@@ -470,19 +470,19 @@ class Table:
                 self.seats.remove(s)
                 await self.add_log(f"🚪 {s['emoji']} {s['name']} 파산 퇴장!")
 
-            # out=True인 NPC 봇 완전 제거 (좀비 방지)
-            dead_bots=[s for s in self.seats if s.get('out') and s['is_bot']]
-            for s in dead_bots:
-                self.seats.remove(s)
-
-            # 파산 봇 리스폰 (에이전트 2명 미만일 때만)
-            real_count=sum(1 for s in self.seats if not s['is_bot'])
+            # 파산 봇 리스폰 (에이전트 2명 미만일 때만) — 제거 전에 먼저 처리
+            real_count=sum(1 for s in self.seats if not s['is_bot'] and not s.get('out'))
             if real_count<2:
                 for s in self.seats:
                     if s.get('out') and s['is_bot']:
                         respawn_chips=self.START_CHIPS//2
                         s['out']=False; s['chips']=respawn_chips; s['folded']=False
                         await self.add_log(f"🔄 {s['emoji']} {s['name']} 복귀! ({respawn_chips}pt 지급 — 패널티)")
+
+            # out=True인 NPC 봇 완전 제거 (좀비 방지 — 리스폰 안 된 것만)
+            dead_bots=[s for s in self.seats if s.get('out') and s['is_bot']]
+            for s in dead_bots:
+                self.seats.remove(s)
 
             alive=[s for s in self.seats if s['chips']>0 and not s.get('out')]
             if len(alive)==1:
@@ -503,9 +503,9 @@ class Table:
         if len(real_players)>=2:
             # 실제 에이전트 2명 이상 → NPC 불필요, 제거
             self.seats=[s for s in self.seats if not s['is_bot']]
-            # 실제 에이전트 칩 리셋
+            # 실제 에이전트 칩 전원 리셋 (공평한 새 게임)
             for s in self.seats:
-                if s['chips']<self.START_CHIPS//2: s['chips']=self.START_CHIPS
+                s['chips']=self.START_CHIPS
         else:
             # 실제 에이전트 부족 → NPC 리필
             for name,emoji,style in NPC_BOTS:
@@ -966,8 +966,8 @@ async def handle_client(reader, writer):
                 await t.add_log(f"🤖 {npc['emoji']} {npc['name']} NPC 퇴장 (에이전트끼리 대결!)")
         if not t.add_player(name,emoji):
             await send_json(writer,{'error':'테이블 꽉참 or 중복 닉네임'},400); return
-        # 에이전트 2명 이상 → NPC 퇴장 시점에 전원 칩 리셋 (공평한 출발)
-        if real_count>=2:
+        # NPC→에이전트 전환 시점에만 전원 칩 리셋 (정확히 2명이 될 때만)
+        if real_count==2:
             for s in t.seats:
                 if not s['is_bot']:
                     s['chips']=t.START_CHIPS
