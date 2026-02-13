@@ -1413,7 +1413,7 @@ let la='';
 if(p.last_action){
 const key=`act_${p.name}`;const prev=window[key]||'';
 if(p.last_action!==prev){window[key]=p.last_action;window[key+'_t']=Date.now();la=`<div class="act-label">${p.last_action}</div>`;
-if(p.last_action.includes('폴드'))sfx('fold');else if(p.last_action.includes('체크'))sfx('check');else if(p.last_action.includes('ALL IN'))sfx('allin');else if(p.last_action.includes('파산'))sfx('bankrupt')}
+if(p.last_action.includes('폴드'))sfx('fold');else if(p.last_action.includes('체크'))sfx('check');else if(p.last_action.includes('ALL IN'))sfx('allin');else if(p.last_action.includes('파산'))sfx('bankrupt');else if(p.last_action.includes('레이즈'))sfx('raise');else if(p.last_action.includes('콜'))sfx('call')}
 else if(Date.now()-window[key+'_t']<2000){la=`<div class="act-label" style="animation:none;opacity:1">${p.last_action}</div>`}
 }
 const sb=p.streak_badge||'';
@@ -1660,9 +1660,17 @@ if(type==='chip'){
 const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
 o.frequency.value=800;o.type='sine';g.gain.value=0.12;g.gain.exponentialRampToValueAtTime(0.01,t+0.1);o.start(t);o.stop(t+0.1)}
 else if(type==='bet'){
-// 칩 던지는 소리 — 짤랑짤랑
+// 칩 던지는 소리 — 짤랑짤랑 (기본)
 [900,1100,700].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
 o.frequency.value=f;o.type='sine';g.gain.value=0.1;g.gain.exponentialRampToValueAtTime(0.01,t+0.08+i*0.06);o.start(t+i*0.05);o.stop(t+0.1+i*0.06)})}
+else if(type==='raise'){
+// 레이즈 — 강하게 올라가는 칩 소리
+[600,800,1000,1200].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+o.frequency.value=f;o.type='triangle';g.gain.value=0.13;g.gain.exponentialRampToValueAtTime(0.01,t+0.12+i*0.07);o.start(t+i*0.06);o.stop(t+0.15+i*0.07)})}
+else if(type==='call'){
+// 콜 — 차분하게 따라가는 칩 소리
+[700,650].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
+o.frequency.value=f;o.type='sine';g.gain.value=0.1;g.gain.exponentialRampToValueAtTime(0.01,t+0.12+i*0.08);o.start(t+i*0.07);o.stop(t+0.15+i*0.08)})}
 else if(type==='fold'){
 // 카드 버리는 소리 — 스윽
 const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
