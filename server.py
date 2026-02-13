@@ -3795,190 +3795,332 @@ if(s.state==='finish'&&lastState&&lastState.state==='finish'&&lastState.game_id=
 lastState=s;render(s);renderUI(s)}catch(e){}}
 
 // ═══ METAL SLUG STYLE SPRITE DRAWING ═══
+// ═══ PIXEL SPRITE SYSTEM (Metal Slug style) ═══
+// Sprite data: each row is a string, chars map to color indices
+// Colors: 0=transparent, 1=main, 2=dark, 3=light, 4=skin, 5=black, 6=white, 7=red, 8=metal, 9=boot
+const SPRITE_IDLE=[
+'000000111100000000',
+'000011133110000000',
+'000013333311000000',
+'000113333331000000',
+'000115533351000000',  // helmet+visor
+'000044644440000000',  // face: skin+eye
+'000044464440000000',  // face: skin+mouth area
+'000004444400000000',  // chin
+'000002222200000000',  // neck/collar
+'000011111110000000',  // shoulders
+'002211111112200000',  // arms+torso
+'002211111112200000',
+'002211831112200000',  // chest plate detail
+'000211111112000000',
+'000021111120000000',  // waist
+'000022222220000000',  // belt
+'000021100120000000',  // hip
+'000021100120000000',
+'000022000220000000',  // upper legs
+'000022000220000000',
+'000099000990000000',  // boots
+'000099000990000000',
+'000099900990000000',  // boot soles
+];
+const SPRITE_RUN1=[
+'000000111100000000',
+'000011133110000000',
+'000013333311000000',
+'000113333331000000',
+'000115533351000000',
+'000044644440000000',
+'000044464440000000',
+'000004444400000000',
+'000002222200000000',
+'000011111110000000',
+'000211111111200000',  // arm forward
+'002211111110020000',
+'002211831112000000',
+'000211111120000000',
+'000021111120000000',
+'000022222220000000',
+'000022000022000000',  // legs spread
+'000022000002200000',
+'000099000000990000',
+'000099000000990000',
+'000099900000099000',
+];
+const SPRITE_RUN2=[
+'000000111100000000',
+'000011133110000000',
+'000013333311000000',
+'000113333331000000',
+'000115533351000000',
+'000044644440000000',
+'000044464440000000',
+'000004444400000000',
+'000002222200000000',
+'000011111110000000',
+'002011111112000000',  // arm back
+'020011111112200000',
+'000211831112200000',
+'000211111120000000',
+'000021111120000000',
+'000022222220000000',
+'000002200220000000',  // legs together
+'000002200220000000',
+'000009900990000000',
+'000009900990000000',
+'000009990990000000',
+];
+const SPRITE_JUMP=[
+'000000111100000000',
+'000011133110000000',
+'000013333311000000',
+'000113333331000000',
+'000115533351000000',
+'000044644440000000',
+'000044464440000000',
+'000004444400000000',
+'000002222200000000',
+'002211111112200000',  // arms up
+'220011111110022000',
+'000011831110000000',
+'000211111112000000',
+'000021111120000000',
+'000022222220000000',
+'000022222220000000',  // legs tucked
+'000099999990000000',
+'000099009900000000',
+];
+const SPRITE_ATTACK=[
+'000000111100000000',
+'000011133110000000',
+'000013333311000000',
+'000113333331000000',
+'000115533351000000',
+'000044644440000000',
+'000044774440000000',  // mouth open (yelling)
+'000004444400000000',
+'000002222200000000',
+'000011111110000000',
+'000011111111188800',  // arm punching far + fist
+'000011111111188800',
+'000011831110077700',  // impact sparks
+'000211111112000000',
+'000021111120000000',
+'000022222220000000',
+'000021100120000000',
+'000022000220000000',
+'000099000990000000',
+'000099000990000000',
+'000099900990000000',
+];
+const SPRITE_BLOCK=[
+'000000111100000000',
+'000011133110000000',
+'000013333311000000',
+'000113333331000000',
+'000115533351000000',
+'000044644440000000',
+'000044444440000000',
+'000004444400000000',
+'000002222200000000',
+'000881111188000000',  // arms crossed in front
+'008881111188800000',
+'008881111188800000',
+'000881831188000000',
+'000211111112000000',
+'000021111120000000',
+'000022222220000000',
+'000021100120000000',
+'000022000220000000',
+'000099000990000000',
+'000099000990000000',
+'000099900990000000',
+];
+const SPRITE_HIT=[
+'000000000011110000',  // leaning back
+'000000001113311000',
+'000000013333311000',
+'000000113333331000',
+'000000115533351000',
+'000000044644440000',
+'000000044764440000',  // pain mouth
+'000000004444400000',
+'000000002222200000',
+'000000011111110000',
+'000002211111112000',
+'000022111111100000',  // arms flailing
+'000002118311100000',
+'000000211111120000',
+'000000021111120000',
+'000000022222220000',
+'000000021100120000',
+'000000022000220000',
+'000000099000990000',
+'000000099000990000',
+'000000099900990000',
+];
+const SPRITES={idle:SPRITE_IDLE,run1:SPRITE_RUN1,run2:SPRITE_RUN2,jump:SPRITE_JUMP,
+attack:SPRITE_ATTACK,block:SPRITE_BLOCK,hit:SPRITE_HIT,dodge:SPRITE_JUMP};
+const PX=3;  // pixel scale (each sprite pixel = 3 screen pixels)
+
+// Cache colored sprites
+const spriteCache={};
+function getColoredSprite(name,baseColor){
+const key=name+'_'+baseColor;
+if(spriteCache[key])return spriteCache[key];
+const sprite=SPRITES[name]||SPRITES.idle;
+const r=parseInt(baseColor.slice(1,3),16),g=parseInt(baseColor.slice(3,5),16),b=parseInt(baseColor.slice(5,7),16);
+const colors={
+'0':null,  // transparent
+'1':`rgb(${r},${g},${b})`,  // main
+'2':`rgb(${Math.max(0,r-60)},${Math.max(0,g-60)},${Math.max(0,b-60)})`,  // dark
+'3':`rgb(${Math.min(255,r+50)},${Math.min(255,g+50)},${Math.min(255,b+50)})`,  // light
+'4':'#e8c090',  // skin
+'5':'#111111',  // black
+'6':'#ffffff',  // white
+'7':'#ee2222',  // red (mouth/blood)
+'8':'#aaaacc',  // metal (armor)
+'9':'#443322',  // boot brown
+};
+spriteCache[key]={data:sprite,colors};
+return spriteCache[key]}
+
+function drawSprite(x,y,spriteName,baseColor,facing,alpha){
+const sp=getColoredSprite(spriteName,baseColor);
+ctx.globalAlpha=alpha||1;
+const rows=sp.data,cols=sp.colors;
+const h=rows.length,w=rows[0].length;
+const startX=facing>0?x-w*PX/2:x+w*PX/2;
+for(let r=0;r<h;r++){
+for(let c=0;c<w;c++){
+const ch=rows[r][c];
+const col=cols[ch];
+if(!col)continue;
+ctx.fillStyle=col;
+const px=facing>0?startX+c*PX:startX-c*PX-PX;
+ctx.fillRect(px,y-h*PX+r*PX,PX,PX);
+}}
+ctx.globalAlpha=1}
+
 function drawFighter(f,tick){
-const gx=f.x, gy=GROUND+f.y;  // convert: game y=0 is ground, negative=up
+const gx=f.x, gy=GROUND+f.y;
 const face=f.facing, anim=f.anim_state;
-ctx.save();ctx.translate(gx,gy);
+// Choose sprite based on anim state
+let spriteName='idle';
+if(anim==='run')spriteName=(Math.floor(f.run_frame/4)%2===0)?'run1':'run2';
+else if(anim==='jump'||anim==='dodge')spriteName='jump';
+else if(anim==='attack')spriteName='attack';
+else if(anim==='block')spriteName='block';
+else if(anim==='hit')spriteName='hit';
 
-// Shadow on ground
+// Idle bob
+const bobY=anim==='idle'?Math.sin(tick*0.15)*1.5:0;
+
+// Shadow
 if(f.y<-5){ctx.globalAlpha=0.3;ctx.fillStyle='#000';ctx.beginPath();
-ctx.ellipse(0,0-f.y,16,4,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1}
+ctx.ellipse(gx,GROUND+2,18,5,0,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1}
 
-// Scale for facing
-ctx.scale(face,1);
+// Alpha for hit/stun
+let alpha=1;
+if(f.hit_ticks>0)alpha=0.5+Math.sin(tick*2)*0.3;
+if(f.stun_ticks>0)alpha=0.4+Math.sin(tick*0.8)*0.2;
 
-// Color tinting
-const col=f.color;
-const bodyCol=f.color;
-const darkCol=shadeColor(col,-40);
-const lightCol=shadeColor(col,40);
+// Draw the sprite
+drawSprite(gx,gy+bobY,spriteName,f.color,face,alpha);
 
-// Hit flash
-if(f.hit_ticks>0){ctx.globalAlpha=0.5+Math.sin(tick*2)*0.3}
-if(f.stun_ticks>0){ctx.globalAlpha=0.4+Math.sin(tick*0.8)*0.2}
+// Attack impact flash
+if(anim==='attack'&&f.attack_ticks>2){
+ctx.globalAlpha=0.7;ctx.fillStyle='#ffff44';
+const fx=gx+face*35,fy=gy+bobY-35;
+ctx.beginPath();ctx.arc(fx,fy,8+Math.random()*5,0,Math.PI*2);ctx.fill();
+ctx.globalAlpha=1}
 
-// ── BODY PARTS (Metal Slug proportions: big head, stocky body) ──
-const bobY=anim==='idle'?Math.sin(tick*0.15)*2:0;
-const runCycle=anim==='run'?f.run_frame:0;
-
-// BOOTS (2 thick boots)
-const legSpread=anim==='run'?Math.sin(runCycle*0.4)*12:4;
-const bootH=10,bootW=10;
-ctx.fillStyle=darkCol;
-ctx.fillRect(-8-legSpread,-bootH,bootW,bootH);  // left boot
-ctx.fillRect(-2+legSpread,-bootH,bootW,bootH);  // right boot
-// Boot detail
-ctx.fillStyle='#222';
-ctx.fillRect(-8-legSpread,-3,bootW,3);ctx.fillRect(-2+legSpread,-3,bootW,3);
-
-// LEGS (short thick legs)
-const legH=14;
-ctx.fillStyle=darkCol;
-ctx.fillRect(-6-legSpread,-bootH-legH,8,legH);
-ctx.fillRect(0+legSpread,-bootH-legH,8,legH);
-
-// BODY (wide torso with armor)
-const torsoY=-bootH-legH+bobY;
-const torsoH=26,torsoW=28;
-ctx.fillStyle=bodyCol;
-ctx.fillRect(-torsoW/2,torsoY-torsoH,torsoW,torsoH);
-// Armor plate
-ctx.fillStyle=lightCol;
-ctx.fillRect(-torsoW/2+2,torsoY-torsoH+3,torsoW-4,8);
-// Belt
-ctx.fillStyle='#444';
-ctx.fillRect(-torsoW/2,torsoY-4,torsoW,4);
-// Chest detail
-ctx.fillStyle=darkCol;
-ctx.fillRect(-2,torsoY-torsoH+5,4,12);
-
-// ARMS
-const armY=torsoY-torsoH+6;
-if(anim==='attack'){
-  // Attack arm extended forward with weapon flash
-  ctx.fillStyle=bodyCol;
-  ctx.fillRect(torsoW/2-2,armY,24,8);  // extended arm
-  // Fist/weapon
-  ctx.fillStyle='#fff';
-  ctx.fillRect(torsoW/2+20,armY-2,8,12);
-  // Impact flash
-  if(f.attack_ticks>2){ctx.fillStyle='rgba(255,255,100,0.6)';
-  ctx.beginPath();ctx.arc(torsoW/2+28,armY+4,12+Math.random()*4,0,Math.PI*2);ctx.fill()}
-} else if(anim==='block'){
-  // Both arms up in guard
-  ctx.fillStyle=bodyCol;
-  ctx.fillRect(8,armY-8,8,20);ctx.fillRect(2,armY-12,8,20);
-  // Shield glow
-  ctx.strokeStyle='rgba(100,150,255,0.5)';ctx.lineWidth=2;
-  ctx.beginPath();ctx.arc(12,armY,18,0,Math.PI*2);ctx.stroke();
-} else {
-  // Normal arms (slightly swinging)
-  const armSwing=anim==='run'?Math.sin(runCycle*0.4)*8:Math.sin(tick*0.1)*3;
-  ctx.fillStyle=bodyCol;
-  ctx.fillRect(torsoW/2-3,armY+armSwing,6,16);  // right arm
-  ctx.fillRect(-torsoW/2-3,armY-armSwing,6,16);  // left arm
-}
-
-// HEAD (big, Metal Slug style)
-const headY=torsoY-torsoH+bobY;
-const headR=16;
-ctx.fillStyle=lightCol;
-ctx.beginPath();ctx.arc(0,headY-headR,headR,0,Math.PI*2);ctx.fill();
-// Helmet/hair
-ctx.fillStyle=darkCol;
-ctx.beginPath();ctx.arc(0,headY-headR-2,headR+1,Math.PI,Math.PI*2);ctx.fill();
-ctx.fillRect(-headR-1,headY-headR-2,headR*2+2,6);
-
-// Face
-ctx.fillStyle='#fff';
-ctx.fillRect(4,headY-headR-4,6,5);  // eye white
-ctx.fillStyle=f.hit_ticks>0?'#ff0000':'#111';
-ctx.fillRect(6,headY-headR-3,3,3);  // pupil
-// Mouth
-if(anim==='attack'||f.hp<30){
-  ctx.fillStyle='#ff0000';ctx.fillRect(2,headY-headR+6,8,3);  // open mouth (yelling)
-} else {
-  ctx.fillStyle='#333';ctx.fillRect(3,headY-headR+6,5,2);  // neutral
-}
-
-// Angry eyebrow when attacking
-if(anim==='attack'||f.hp<20){
-  ctx.fillStyle='#000';ctx.fillRect(3,headY-headR-7,8,2)}
-
-// Low HP dripping blood
-if(f.hp<30&&f.alive){
-ctx.fillStyle='#cc0000';
-for(let i=0;i<3;i++){const dx=-8+Math.random()*16,dy=Math.random()*30;
-ctx.fillRect(dx,headY-headR+dy,2,3+Math.random()*4)}}
+// Block shield glow
+if(anim==='block'){
+ctx.strokeStyle='rgba(100,180,255,0.4)';ctx.lineWidth=2;
+ctx.beginPath();ctx.arc(gx+face*8,gy+bobY-35,22,0,Math.PI*2);ctx.stroke()}
 
 // Dodge afterimage
-if(anim==='dodge'){ctx.globalAlpha=0.2;ctx.fillStyle=col;
-ctx.fillRect(-20,-80,40,80);ctx.globalAlpha=1}
+if(anim==='dodge'){drawSprite(gx-face*25,gy+bobY,'jump',f.color,face,0.15)}
 
-// Jump squash/stretch
-if(anim==='jump'&&f.y<-5){ctx.fillStyle='rgba(255,255,255,0.1)';
-ctx.fillRect(-2,-90,4,20)}  // speed lines
+// Low HP blood drip
+if(f.hp<30&&f.alive){ctx.fillStyle='#cc0000';
+for(let i=0;i<3;i++){ctx.fillRect(gx-8+Math.random()*16,gy-50+Math.random()*40,PX,PX*2)}}
 
-ctx.restore();
+// ── OVERHEAD UI ──
+const headWorldY=gy-75+bobY;
+const col=f.color;
 
-// ── OVERHEAD UI (not flipped) ──
-const headWorldY=gy-64+bobY;
-
-// Name + emoji above head
 ctx.font='12px Jua';ctx.textAlign='center';ctx.fillStyle=col;
-ctx.fillText(f.emoji+' '+f.name,gx,headWorldY-24);
+ctx.fillText(f.emoji+' '+f.name,gx,headWorldY-16);
 
-// Knockback % (Smash style, big number)
 if(f.knockback_pct>0){
 ctx.font='bold 16px Jua';
 const kbCol=f.knockback_pct>100?'#ff0000':f.knockback_pct>60?'#ffaa00':'#ffffff';
-ctx.fillStyle=kbCol;ctx.fillText(Math.round(f.knockback_pct)+'%',gx,headWorldY-8)}
+ctx.fillStyle=kbCol;ctx.fillText(Math.round(f.knockback_pct)+'%',gx,headWorldY)}
 
-// Reasoning bubble
 if(f.reasoning){
 ctx.font='11px Jua';const tw=ctx.measureText(f.reasoning).width+16;
-const bx=gx-tw/2,by=headWorldY-48;
+const bx=gx-tw/2,by=headWorldY-40;
 ctx.fillStyle='rgba(0,0,0,0.75)';roundRect(ctx,bx,by,tw,18,5);ctx.fill();
 ctx.strokeStyle=col;ctx.lineWidth=1;roundRect(ctx,bx,by,tw,18,5);ctx.stroke();
 ctx.fillStyle='#ddd';ctx.fillText(f.reasoning,gx,by+13)}
 
-// Combo
 if(f.combo>1){ctx.font='bold 18px Jua';ctx.fillStyle='#ffaa00';
-ctx.fillText('🔥x'+f.combo,gx,headWorldY-55)}
+ctx.fillText('🔥x'+f.combo,gx,headWorldY-48)}
 
-// Special ready
 if(f.special_gauge>=100){ctx.font='bold 14px Jua';ctx.fillStyle='#ffff00';
-ctx.fillText('⚡ SPECIAL',gx,headWorldY-68)}
+ctx.fillText('⚡ SPECIAL',gx,headWorldY-60)}
 }
-
-function shadeColor(c,pct){
-let r=parseInt(c.slice(1,3),16),g=parseInt(c.slice(3,5),16),b=parseInt(c.slice(5,7),16);
-r=Math.min(255,Math.max(0,r+pct));g=Math.min(255,Math.max(0,g+pct));b=Math.min(255,Math.max(0,b+pct));
-return '#'+[r,g,b].map(x=>x.toString(16).padStart(2,'0')).join('')}
 
 function drawGoreParts(f,tick){
 if(!f.gore_parts||f.gore_parts.length===0)return;
+const P=PX;  // pixel size
 for(const gp of f.gore_parts){
-ctx.save();ctx.translate(gp.x,GROUND+gp.y<0?GROUND+gp.y:gp.y+GROUND);
+ctx.save();
+const gpY=gp.y<0?GROUND+gp.y:GROUND+gp.y;
+ctx.translate(gp.x,gpY);
 ctx.rotate(gp.rot*Math.PI/180);
-ctx.fillStyle=gp.color;
+const c=gp.color;
+const r=parseInt(c.slice(1,3),16),g=parseInt(c.slice(3,5),16),b=parseInt(c.slice(5,7),16);
+const dk=`rgb(${Math.max(0,r-60)},${Math.max(0,g-60)},${Math.max(0,b-60)})`;
 if(gp.type==='head'){
-  ctx.beginPath();ctx.arc(0,0,14,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle='#fff';ctx.fillRect(2,-4,5,4);  // eye
-  ctx.fillStyle='#cc0000';ctx.fillRect(-8,10,16,3);  // neck blood
+  // Pixel art head with helmet
+  ctx.fillStyle=c;
+  for(let py=-5;py<5;py++)for(let px=-4;px<4;px++){
+    if(py<-2){ctx.fillStyle=dk}  // helmet top
+    else if(py<2){ctx.fillStyle='#e8c090'}  // face
+    else{ctx.fillStyle=c}
+    ctx.fillRect(px*P,py*P,P,P)}
+  ctx.fillStyle='#fff';ctx.fillRect(P,-P,P,P);  // eye
+  ctx.fillStyle='#111';ctx.fillRect(P+1,-P+1,P-1,P-1);  // pupil
+  ctx.fillStyle='#cc0000';ctx.fillRect(-3*P,4*P,6*P,2*P);  // neck blood drip
 } else if(gp.type==='arm'){
-  ctx.fillRect(-3,-10,8,22);  // arm shape
-  ctx.fillStyle='#cc0000';ctx.fillRect(-3,-10,8,4);  // blood at joint
+  ctx.fillStyle=c;
+  for(let py=-4;py<4;py++){ctx.fillRect(-P,py*P,3*P,P)}
+  ctx.fillStyle='#e8c090';ctx.fillRect(-P,3*P,3*P,2*P);  // hand
+  ctx.fillStyle='#cc0000';ctx.fillRect(-P,-4*P,3*P,2*P);  // blood at joint
 } else if(gp.type==='upper'){
-  ctx.fillRect(-14,-20,28,25);  // upper torso
-  ctx.fillStyle='#cc0000';ctx.fillRect(-14,3,28,5);  // blood at cut
-  ctx.beginPath();ctx.arc(0,-20-12,12,0,Math.PI*2);ctx.fillStyle=gp.color;ctx.fill();  // head
+  // Upper body with head
+  ctx.fillStyle=c;
+  for(let py=-8;py<2;py++)for(let px=-4;px<4;px++){
+    if(py<-4)ctx.fillStyle='#e8c090';  // head/face area
+    else ctx.fillStyle=c;
+    ctx.fillRect(px*P,py*P,P,P)}
+  ctx.fillStyle=dk;ctx.fillRect(-4*P,-10*P,8*P,2*P);  // helmet
+  ctx.fillStyle='#cc0000';ctx.fillRect(-4*P,P,8*P,2*P);  // blood at cut
 } else if(gp.type==='lower'){
-  ctx.fillRect(-12,-5,24,18);  // lower body + legs
-  ctx.fillStyle='#cc0000';ctx.fillRect(-12,-5,24,4);  // blood at cut
+  ctx.fillStyle=dk;
+  for(let py=0;py<6;py++)for(let px=-3;px<3;px++){
+    if(py>3)ctx.fillStyle='#443322';  // boots
+    else ctx.fillStyle=dk;
+    ctx.fillRect(px*P,py*P,P,P)}
+  ctx.fillStyle='#cc0000';ctx.fillRect(-3*P,-P,6*P,2*P);  // blood at cut
 } else if(gp.type==='chunk'){
-  const sz=4+Math.random()*4;
-  ctx.fillRect(-sz/2,-sz/2,sz,sz);
+  ctx.fillStyle=c;
+  const sz=2+Math.floor(Math.random()*3);
+  for(let py=0;py<sz;py++)for(let px=0;px<sz;px++){
+    ctx.fillStyle=Math.random()>0.5?c:'#cc0000';
+    ctx.fillRect(px*P-sz*P/2,py*P-sz*P/2,P,P)}
 }
 ctx.restore()}}
 
@@ -4078,15 +4220,21 @@ ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);ctx.globalAlpha=1}
 for(const f of (s.fighters||[])){
 if(f.alive) drawFighter(f,s.tick);
 else {
-  // Dead body (collapsed, no head/arm if gore)
+  // Dead body (collapsed pixel art)
   if(f.gore_type!=='explode'){
-    ctx.save();ctx.translate(f.x,GROUND+f.y);ctx.scale(f.facing,1);
+    const dx=f.x,dy=GROUND+f.y;
     ctx.globalAlpha=0.6;ctx.fillStyle=f.color;
-    // Collapsed body
-    ctx.fillRect(-18,-8,36,10);  // lying flat
+    // Collapsed body — horizontal pixel chunks
+    for(let i=-6;i<6;i++){ctx.fillRect(dx+i*PX,dy-PX*2,PX,PX*2)}
+    ctx.fillStyle='#443322';  // boots
+    for(let i=-6;i<-3;i++){ctx.fillRect(dx+i*PX,dy-PX,PX,PX)}
     if(f.gore_type!=='head_off'&&f.gore_type!=='bisect'){
-      ctx.beginPath();ctx.arc(18,-4,8,0,Math.PI*2);ctx.fill()}  // head if still attached
-    ctx.globalAlpha=1;ctx.restore()}
+      ctx.fillStyle='#e8c090';  // head
+      for(let py=-2;py<2;py++)for(let px=5;px<9;px++){ctx.fillRect(dx+px*PX,dy+py*PX-PX*3,PX,PX)}}
+    // Blood pool under body
+    ctx.fillStyle='rgba(120,0,0,0.5)';ctx.beginPath();
+    ctx.ellipse(dx,dy+2,25,6,0,0,Math.PI*2);ctx.fill();
+    ctx.globalAlpha=1}
   // Gore parts flying
   drawGoreParts(f,s.tick);
 }}
