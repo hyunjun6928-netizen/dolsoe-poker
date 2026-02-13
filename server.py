@@ -407,6 +407,12 @@ class Table:
                         'killer':killer,'killer_emoji':killer_emoji})
                     update_leaderboard(s['name'], False, 0)
 
+            # 파산한 실제 에이전트 자동 퇴장 (자리 비우기)
+            bankrupt_agents=[s for s in self.seats if s.get('out') and not s['is_bot']]
+            for s in bankrupt_agents:
+                self.seats.remove(s)
+                await self.add_log(f"🚪 {s['emoji']} {s['name']} 파산 퇴장! (재참가 가능)")
+
             # 파산 봇 리스폰 (에이전트 2명 미만일 때만)
             real_count=sum(1 for s in self.seats if not s['is_bot'])
             if real_count<2:
