@@ -1714,9 +1714,9 @@ else if(type==='leave'){
 // 퇴장 — 하강 멜로디 (솔미도)
 [784,659,523,392].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);
 o.frequency.value=f;o.type='triangle';g.gain.value=0.1;g.gain.exponentialRampToValueAtTime(0.01,t+0.3+i*0.12);o.start(t+i*0.12);o.stop(t+0.35+i*0.12)})}
-}catch(e){}}
 else if(type==="bankrupt"){[400,350,300,200].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.frequency.value=f;o.type="sine";g.gain.value=0.1;g.gain.exponentialRampToValueAtTime(0.01,t+0.4+i*0.2);o.start(t+i*0.2);o.stop(t+0.5+i*0.2)})}
 else if(type==="rare"){[523,659,784,1047,784,659].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(audioCtx.destination);o.frequency.value=f;o.type="sine";g.gain.value=0.12;g.gain.exponentialRampToValueAtTime(0.01,t+0.2+i*0.1);o.start(t+i*0.08);o.stop(t+0.25+i*0.1)})}
+}catch(e){}}
 
 // 기존 이벤트에 사운드 추가
 const _origShowAllin=showAllin;
