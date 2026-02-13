@@ -2069,40 +2069,55 @@ background:radial-gradient(ellipse at 30% 40%,#1a1a4e 0%,#0c0c2d 40%,#050520 70%
 border:4px solid #38bdf855;outline:2px solid #0ea5e933;border-radius:50%;width:100%;padding-bottom:55%;
 box-shadow:0 0 60px #38bdf822,0 0 120px #0ea5e911,inset 0 0 80px #0c0c2d;margin:40px auto 50px;overflow:visible}
 .felt::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;
-background:radial-gradient(2px 2px at 20% 30%,#fff8,transparent),
-radial-gradient(2px 2px at 40% 70%,#fff6,transparent),
-radial-gradient(1px 1px at 60% 20%,#fff5,transparent),
-radial-gradient(1px 1px at 80% 50%,#fff4,transparent),
-radial-gradient(2px 2px at 10% 80%,#7dd3fc55,transparent),
-radial-gradient(2px 2px at 70% 10%,#7dd3fc44,transparent),
-radial-gradient(1px 1px at 50% 50%,#fff3,transparent),
-radial-gradient(1px 1px at 90% 30%,#fff3,transparent),
-radial-gradient(1px 1px at 30% 60%,#bae6fd33,transparent),
-radial-gradient(1px 1px at 15% 45%,#fff4,transparent),
-radial-gradient(1px 1px at 85% 75%,#fff3,transparent),
-radial-gradient(1px 1px at 55% 85%,#fff2,transparent),
-radial-gradient(ellipse at 50% 50%,#38bdf808 0%,transparent 70%);
-border-radius:50%;pointer-events:none;z-index:1;animation:starTwinkle 4s ease-in-out infinite alternate}
+background:
+radial-gradient(2px 2px at 5% 15%,#fff,transparent),
+radial-gradient(3px 3px at 12% 40%,#e0e7ff,transparent),
+radial-gradient(1px 1px at 18% 70%,#fff,transparent),
+radial-gradient(2px 2px at 25% 25%,#c7d2fe,transparent),
+radial-gradient(1px 1px at 30% 55%,#fff,transparent),
+radial-gradient(3px 3px at 35% 80%,#e0e7ff,transparent),
+radial-gradient(2px 2px at 42% 10%,#fff,transparent),
+radial-gradient(1px 1px at 48% 45%,#ddd6fe,transparent),
+radial-gradient(2px 2px at 55% 65%,#fff,transparent),
+radial-gradient(3px 3px at 60% 30%,#c7d2fe,transparent),
+radial-gradient(1px 1px at 65% 85%,#fff,transparent),
+radial-gradient(2px 2px at 72% 20%,#e0e7ff,transparent),
+radial-gradient(1px 1px at 78% 50%,#fff,transparent),
+radial-gradient(3px 3px at 85% 70%,#ddd6fe,transparent),
+radial-gradient(2px 2px at 90% 35%,#fff,transparent),
+radial-gradient(1px 1px at 95% 60%,#c7d2fe,transparent),
+radial-gradient(2px 2px at 8% 88%,#fff,transparent),
+radial-gradient(1px 1px at 22% 5%,#e0e7ff,transparent),
+radial-gradient(3px 3px at 38% 35%,#fff,transparent),
+radial-gradient(1px 1px at 52% 90%,#ddd6fe,transparent),
+radial-gradient(2px 2px at 68% 8%,#fff,transparent),
+radial-gradient(1px 1px at 82% 92%,#c7d2fe,transparent),
+radial-gradient(2px 2px at 15% 52%,#fff,transparent),
+radial-gradient(1px 1px at 45% 78%,#e0e7ff,transparent),
+radial-gradient(3px 3px at 75% 42%,#fff,transparent);
+border-radius:50%;pointer-events:none;z-index:1;animation:starTwinkle 3s ease-in-out infinite alternate}
 .felt::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;border-radius:50%;pointer-events:none;z-index:2;
-background:radial-gradient(1px 1px at 10% 20%,#fff,transparent),
-radial-gradient(1.5px 1.5px at 25% 55%,#fff,transparent),
-radial-gradient(1px 1px at 40% 15%,#ffe,transparent),
-radial-gradient(2px 2px at 55% 70%,#fff,transparent),
-radial-gradient(1px 1px at 70% 35%,#ffe,transparent),
-radial-gradient(1.5px 1.5px at 85% 60%,#fff,transparent),
-radial-gradient(1px 1px at 15% 75%,#fff,transparent),
-radial-gradient(2px 2px at 45% 40%,#ffe,transparent),
-radial-gradient(1px 1px at 60% 85%,#fff,transparent),
-radial-gradient(1.5px 1.5px at 80% 20%,#fff,transparent),
-radial-gradient(1px 1px at 30% 90%,#ffe,transparent),
-radial-gradient(1px 1px at 90% 45%,#fff,transparent),
-radial-gradient(2px 2px at 5% 50%,#fff,transparent),
-radial-gradient(1px 1px at 50% 10%,#ffe,transparent),
-radial-gradient(1.5px 1.5px at 75% 80%,#fff,transparent);
-background-size:200% 200%;animation:starFlow 6s linear infinite}
-@keyframes starFlow{0%{background-position:0% 0%}100%{background-position:200% 200%}}
-@keyframes starTwinkle{0%{opacity:0.6}50%{opacity:1}100%{opacity:0.6}}
-@keyframes shootingStar{0%{transform:translateX(-100%) translateY(-100%) rotate(45deg);opacity:0}10%{opacity:1}30%{opacity:1}100%{transform:translateX(300%) translateY(300%) rotate(45deg);opacity:0}}
+background:
+linear-gradient(155deg,transparent 15%,rgba(99,102,241,0.08) 25%,rgba(139,92,246,0.2) 32%,rgba(192,132,252,0.35) 40%,rgba(232,121,249,0.3) 48%,rgba(192,132,252,0.35) 55%,rgba(139,92,246,0.2) 63%,rgba(99,102,241,0.08) 72%,transparent 82%),
+radial-gradient(2px 2px at 30% 35%,#fff,transparent),
+radial-gradient(3px 3px at 40% 42%,#e9d5ff,transparent),
+radial-gradient(2px 2px at 50% 38%,#fff,transparent),
+radial-gradient(1px 1px at 35% 50%,#fff,transparent),
+radial-gradient(3px 3px at 45% 55%,#c4b5fd,transparent),
+radial-gradient(2px 2px at 55% 45%,#fff,transparent),
+radial-gradient(1px 1px at 60% 52%,#e9d5ff,transparent),
+radial-gradient(2px 2px at 38% 58%,#fff,transparent),
+radial-gradient(3px 3px at 52% 48%,#fff,transparent),
+radial-gradient(1px 1px at 42% 62%,#c4b5fd,transparent),
+radial-gradient(2px 2px at 58% 35%,#fff,transparent),
+radial-gradient(1px 1px at 33% 45%,#e9d5ff,transparent),
+radial-gradient(2px 2px at 48% 58%,#fff,transparent),
+radial-gradient(3px 3px at 62% 42%,#c4b5fd,transparent);
+background-size:250% 250%;animation:milkyFlow 15s ease-in-out infinite}
+@keyframes milkyFlow{0%{background-position:0% 0%;opacity:0.7}25%{opacity:1}50%{background-position:100% 100%;opacity:0.8}75%{opacity:1}100%{background-position:0% 0%;opacity:0.7}}
+@keyframes starTwinkle{0%{opacity:0.5}50%{opacity:1}100%{opacity:0.5}}
+@keyframes shootingStar{0%{transform:translateX(-50px) translateY(-50px) rotate(215deg);opacity:0}5%{opacity:1}40%{opacity:0.8}100%{transform:translateX(400px) translateY(400px) rotate(215deg);opacity:0}}
+@keyframes sparkle{0%{transform:scale(0);opacity:0}30%{transform:scale(1.5);opacity:1}60%{transform:scale(1);opacity:0.8}100%{transform:scale(0);opacity:0}}
 #table-info{display:flex;justify-content:center;gap:16px;margin:6px 0;flex-wrap:wrap}
 #table-info .ti{background:#ffffffcc;border:2px solid #000;border-radius:12px;padding:4px 12px;font-size:0.75em;color:#4b7399;box-shadow:2px 2px 0 #000}
 #table-info .ti b{color:#ffd93d;text-shadow:1px 1px 0 #000}
@@ -3149,9 +3164,14 @@ showAllin=function(d){_origShowAllin(d);sfx('allin')};
 if(lang==='en')refreshUI();
 // shooting stars
 setInterval(()=>{const f=document.querySelector('.felt');if(!f||f.offsetParent===null)return;
-const s=document.createElement('div');s.style.cssText='position:absolute;width:2px;height:2px;background:linear-gradient(90deg,#fff,#7dd3fc,transparent);border-radius:50%;pointer-events:none;z-index:2;box-shadow:0 0 4px #fff,0 0 8px #7dd3fc;'+
-'top:'+Math.random()*40+'%;left:'+Math.random()*30+'%;animation:shootingStar '+(1.5+Math.random())+'s linear forwards';
-f.appendChild(s);setTimeout(()=>s.remove(),3000)},4000);
+const len=30+Math.random()*50;
+const s=document.createElement('div');s.style.cssText=`position:absolute;width:${len}px;height:2px;background:linear-gradient(90deg,#fff,#c4b5fd,#7dd3fc,transparent);border-radius:2px;pointer-events:none;z-index:3;box-shadow:0 0 6px #fff,0 0 12px #c4b5fd,0 0 20px #7dd3fc44;top:${Math.random()*50}%;left:${Math.random()*40}%;animation:shootingStar ${1+Math.random()*1.5}s linear forwards;opacity:0`;
+f.appendChild(s);setTimeout(()=>s.remove(),3000)},2500);
+// sparkle particles
+setInterval(()=>{const f=document.querySelector('.felt');if(!f||f.offsetParent===null)return;
+const s=document.createElement('div');const size=2+Math.random()*3;
+s.style.cssText=`position:absolute;width:${size}px;height:${size}px;background:#fff;border-radius:50%;pointer-events:none;z-index:3;box-shadow:0 0 ${size*2}px #fff,0 0 ${size*4}px #c4b5fd;top:${15+Math.random()*70}%;left:${15+Math.random()*70}%;animation:sparkle ${1+Math.random()}s ease-out forwards`;
+f.appendChild(s);setTimeout(()=>s.remove(),2000)},800);
 var _ni=document.getElementById('inp-name');if(_ni)_ni.addEventListener('keydown',e=>{if(e.key==='Enter')join()});
 document.getElementById('chat-inp').addEventListener('keydown',e=>{if(e.key==='Enter')sendChat()});
 </script>
