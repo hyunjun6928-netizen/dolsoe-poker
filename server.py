@@ -331,7 +331,20 @@ class Table:
         """관전자용 state: TV중계 스타일 — 쇼다운/between 때만 홀카드 공개 (폴드/파산은 숨김)"""
         s=self.get_public_state()
         s=json.loads(json.dumps(s,ensure_ascii=False))  # deep copy
+        # 승률 계산 (관전자 전용 — TV중계 스타일)
+        alive_seats=[seat for seat in self._hand_seats if not seat['folded']] if hasattr(self,'_hand_seats') and self._hand_seats else []
+        win_pcts={}
+        if len(alive_seats)>=2 and self.round not in ('waiting','finished','between'):
+            strengths={}
+            for seat in alive_seats:
+                if seat['hole']:
+                    strengths[seat['name']]=hand_strength(seat['hole'],self.community)
+            total=sum(strengths.values()) if strengths else 1
+            if total>0:
+                for name,st in strengths.items():
+                    win_pcts[name]=round(st/total*100)
         for p in s.get('players',[]):
+            p['win_pct']=win_pcts.get(p['name'])
             if s.get('round') not in ('showdown','between','finished'):
                 p['hole']=None
             elif p.get('folded') or p.get('out'):
@@ -633,11 +646,20 @@ class Table:
                     total=min(amt+min(to_call,s['chips']),s['chips']); s['last_action']=f'⬆️ 레이즈 {total}pt' if s['chips']>total else f'🔥 ALL IN {total}pt'
                 else: s['last_action']=act
 
+                # 승률 계산 (해설용)
+                _wp=0
+                if s['hole']:
+                    _strengths={x['name']:hand_strength(x['hole'],self.community) for x in self._hand_seats if not x['folded'] and x['hole']}
+                    _total=sum(_strengths.values()) or 1
+                    _wp=round(_strengths.get(s['name'],0)/_total*100)
+
                 if act=='fold':
                     s['folded']=True
                     self.fold_streaks[s['name']]=self.fold_streaks.get(s['name'],0)+1
                     await self.add_log(f"❌ {s['emoji']} {s['name']} 폴드")
-                    await self.broadcast_commentary(f"❌ {s['name']} 폴드! {self._count_alive()}명 남음")
+                    cmt=f"❌ {s['name']} 폴드! {self._count_alive()}명 남음"
+                    if _wp>40: cmt=f"😱 {s['name']} 승률 {_wp}%인데 폴드?! 무슨 판단이지?"
+                    await self.broadcast_commentary(cmt)
                 elif act=='raise':
                     total=min(amt+min(to_call,s['chips']),s['chips'])
                     s['chips']-=total; s['bet']+=total; self.pot+=total
@@ -645,10 +667,16 @@ class Table:
                     if s['chips']==0:
                         await self.add_log(f"🔥🔥🔥 {s['emoji']} {s['name']} ALL IN {total}pt!! 🔥🔥🔥")
                         await self.broadcast({'type':'allin','name':s['name'],'emoji':s['emoji'],'amount':total,'pot':self.pot})
-                        await self.broadcast_commentary(f"🔥 {s['name']} ALL IN {total}pt!! 팟 {self.pot}pt 폭발!")
+                        allin_cmt=f"🔥 {s['name']} ALL IN {total}pt!! 팟 {self.pot}pt 폭발!"
+                        if _wp<30: allin_cmt=f"🤯 {s['name']} 승률 {_wp}%에서 ALL IN {total}pt?! 미친 블러핑인가?!"
+                        elif _wp>70: allin_cmt=f"💪 {s['name']} 승률 {_wp}%! 자신만만 ALL IN {total}pt!"
+                        await self.broadcast_commentary(allin_cmt)
                     else:
                         await self.add_log(f"⬆️ {s['emoji']} {s['name']} 레이즈 {total}pt (팟:{self.pot})")
-                        await self.broadcast_commentary(f"⬆️ {s['name']} {total}pt 레이즈! 팟 {self.pot}pt")
+                        raise_cmt=f"⬆️ {s['name']} {total}pt 레이즈! 팟 {self.pot}pt"
+                        if _wp<25: raise_cmt=f"🎭 {s['name']} 승률 {_wp}%인데 {total}pt 레이즈?! 블러핑 냄새..."
+                        elif _wp>65 and total>self.pot//2: raise_cmt=f"💎 {s['name']} 승률 {_wp}%! {total}pt 강하게 밀어붙인다!"
+                        await self.broadcast_commentary(raise_cmt)
                 elif act=='check':
                     await self.add_log(f"✋ {s['emoji']} {s['name']} 체크")
                 else:
@@ -656,10 +684,14 @@ class Table:
                     if s['chips']==0 and ca>0:
                         await self.add_log(f"🔥🔥🔥 {s['emoji']} {s['name']} ALL IN 콜 {ca}pt!! 🔥🔥🔥")
                         await self.broadcast({'type':'allin','name':s['name'],'emoji':s['emoji'],'amount':ca,'pot':self.pot})
-                        await self.broadcast_commentary(f"🔥 {s['name']} ALL IN 콜 {ca}pt!! 승부수!")
+                        call_ai_cmt=f"🔥 {s['name']} ALL IN 콜 {ca}pt!! 승부수!"
+                        if _wp<25: call_ai_cmt=f"😤 {s['name']} 승률 {_wp}%에서 ALL IN 콜?! 배짱인가 자살인가!"
+                        await self.broadcast_commentary(call_ai_cmt)
                     elif ca>0:
                         await self.add_log(f"📞 {s['emoji']} {s['name']} 콜 {ca}pt")
-                        await self.broadcast_commentary(f"📞 {s['name']} 콜 {ca}pt — 팟 {self.pot}pt")
+                        call_cmt=f"📞 {s['name']} 콜 {ca}pt — 팟 {self.pot}pt"
+                        if _wp<20 and ca>self.BB*3: call_cmt=f"🤔 {s['name']} 승률 {_wp}%인데 {ca}pt 콜? 뭘 노리는 거지..."
+                        await self.broadcast_commentary(call_cmt)
                     else: await self.add_log(f"✋ {s['emoji']} {s['name']} 체크")
 
                 # 봇 쓰레기톡
@@ -1810,7 +1842,8 @@ else if(Date.now()-window[key+'_t']<2000){la=`<div class="act-label" style="anim
 const sb=p.streak_badge||'';
 const health=p.timeout_count>=2?'🔴':p.timeout_count>=1?'🟡':'🟢';
 const latTag=p.latency_ms!=null?(p.latency_ms<0?'<span style="color:#ff4444;font-size:0.7em">⏰ timeout</span>':`<span style="color:#888;font-size:0.7em">⚡${p.latency_ms}ms</span>`):'';
-el.innerHTML=`${la}<div class="ava">${esc(p.emoji||'🤖')}</div><div class="cards">${ch}</div><div class="nm">${health} ${esc(sb)}${esc(p.name)}${db}</div><div class="ch">💰${p.chips}pt ${latTag}</div>${bt}<div class="st">${esc(p.style)}</div>`;
+const wpBar=p.win_pct!=null&&!p.folded&&!p.out?`<div style="margin-top:2px;height:4px;background:#333;border-radius:2px;overflow:hidden"><div style="width:${p.win_pct}%;height:100%;background:${p.win_pct>50?'#44ff88':p.win_pct>25?'#ffaa00':'#ff4444'};transition:width .5s"></div></div><div style="font-size:0.65em;color:${p.win_pct>50?'#44ff88':p.win_pct>25?'#ffaa00':'#ff4444'};text-align:center">${p.win_pct}%</div>`:'';
+el.innerHTML=`${la}<div class="ava">${esc(p.emoji||'🤖')}</div><div class="cards">${ch}</div><div class="nm">${health} ${esc(sb)}${esc(p.name)}${db}</div><div class="ch">💰${p.chips}pt ${latTag}</div>${wpBar}${bt}<div class="st">${esc(p.style)}</div>`;
 el.style.cursor='pointer';el.onclick=(e)=>{e.stopPropagation();showProfile(p.name)};
 f.appendChild(el)});
 if(s.turn){document.getElementById('turnb').style.display='block';document.getElementById('turnb').textContent=`🎯 ${s.turn}의 차례`}
