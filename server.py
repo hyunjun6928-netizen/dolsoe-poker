@@ -2288,7 +2288,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
 <link href="https://fonts.googleapis.com/css2?family=Jua&family=DotGothic16&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#f5d8b8;color:#1a1a2e;font-family:'DotGothic16','Jua',system-ui,sans-serif;min-height:100vh;overflow-x:hidden;image-rendering:pixelated}
+body{background:#f5d8b8;color:#1a1a2e;font-family:'DotGothic16','Jua',system-ui,sans-serif;min-height:100vh;overflow-x:hidden;image-rendering:pixelated;padding-bottom:50px}
 body::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;
 background:
 radial-gradient(80px 80px at 3% 85%,#8b6b3a44,transparent),
@@ -2325,7 +2325,7 @@ h1 b{-webkit-text-fill-color:#2d8a4e}
 .api-info h3{color:#ffd93d;margin-bottom:10px;text-shadow:1px 1px 0 #000}
 .api-info code{background:#ffffffbb;padding:2px 6px;border-radius:6px;color:#6bcb77;border:1px solid #000}
 #game{display:none}
-.info-bar{display:flex;justify-content:space-between;padding:6px 12px;font-size:0.8em;color:#6b5040;background:#ffeedd;border-radius:4px;margin-bottom:8px;border:3px solid #c4956a;box-shadow:0 4px 0 0 #8b6d4a}
+.info-bar{position:sticky;top:0;z-index:40;display:flex;justify-content:space-between;align-items:center;padding:6px 16px;font-size:0.8em;color:#fff8ee;background:#8b5e3c;border-bottom:4px solid #6b4226;box-shadow:0 4px 0 0 #5a3a1e}
 .felt-wrap{position:relative;margin:20px auto 30px}
 .felt-border{position:absolute;top:-20px;left:-20px;right:-20px;bottom:-20px;
 background:linear-gradient(180deg,#a07848 0%,#8b6538 50%,#7a5528 100%);
@@ -2340,7 +2340,7 @@ box-shadow:0 4px 0 0 #1a5a00}
 background:linear-gradient(90deg,transparent,#c4956a88,transparent);border-radius:3px}
 .felt{position:relative;
 background:linear-gradient(180deg,#2d8a4e 0%,#238b45 30%,#1a7a38 60%,#1a6b30 100%);
-border:3px solid #1a5a20;border-radius:14px;width:100%;padding-bottom:55%;
+border:3px solid #1a5a20;border-radius:14px;width:100%;padding-bottom:62%;
 box-shadow:inset 0 4px 12px #00000033,inset 0 -2px 8px #ffffff11;overflow:visible;image-rendering:pixelated}
 .felt::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;
 background:
@@ -2457,11 +2457,31 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#8b
 #action-feed .af-round{color:#2d8a4e;font-weight:bold;padding:6px 0 2px;font-size:0.9em;text-shadow:none}
 #action-feed .af-action{color:#475569}
 #action-feed .af-win{color:#16a34a;font-weight:bold}
-.game-layout{display:block}
-.game-main{width:100%}
-.game-sidebar{margin-top:8px}
-#action-feed{max-height:150px}
-.bottom-panel{display:flex;gap:8px;margin-top:8px}
+.game-layout{display:grid;grid-template-columns:220px 1fr 240px;gap:8px;height:calc(100vh - 140px);min-height:500px}
+.game-main{min-width:0}
+.game-sidebar{display:none}
+.dock-left,.dock-right{display:flex;flex-direction:column;gap:6px;overflow:hidden}
+.dock-panel{background:#fff8ee;border:4px solid #8b5e3c;box-shadow:0 4px 0 0 #6b4226;padding:0;overflow:hidden;flex:1;display:flex;flex-direction:column}
+.dock-panel-header{background:#8b5e3c;color:#fff8ee;padding:5px 10px;font-family:'DotGothic16','Jua',system-ui;font-size:0.8em;font-weight:bold;border-bottom:2px solid #6b4226}
+.dock-panel-body{flex:1;overflow-y:auto;padding:6px;font-size:0.78em}
+#action-feed{max-height:none;flex:1;overflow-y:auto;background:transparent;border:none;border-radius:0;padding:4px;box-shadow:none;font-size:0.78em}
+.bottom-panel{display:none}
+.bottom-dock{position:fixed;bottom:0;left:0;right:0;background:#8b5e3c;border-top:4px solid #6b4226;padding:6px 12px;display:flex;align-items:center;justify-content:space-between;z-index:50;font-family:'DotGothic16','Jua',system-ui}
+.bottom-dock .bd-commentary{flex:1;color:#fff8ee;font-size:0.85em;font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-right:12px}
+.bottom-dock .bd-reactions{display:flex;gap:4px}
+.bottom-dock .bd-reactions button{font-size:1.2em;background:#6b4226;border:2px solid #5a3a1e;border-radius:4px;width:36px;height:36px;cursor:pointer;transition:all .1s}
+.bottom-dock .bd-reactions button:hover{transform:translateY(-2px);background:#8b5e3c}
+.bottom-dock .bd-reactions button:active{transform:translateY(2px)}
+.dock-tab{cursor:pointer;padding:2px 6px;margin-right:4px;opacity:0.6;font-size:0.9em}
+.dock-tab.active{opacity:1;border-bottom:2px solid #fff8ee}
+.dock-tab:hover{opacity:0.9}
+#chatmsgs{flex:1;overflow-y:auto;font-size:0.82em;padding:6px;line-height:1.5}
+#quick-chat{padding:4px 6px;display:flex;gap:3px;flex-wrap:wrap;border-top:1px solid #e8d0b8}
+#quick-chat button{background:#fff8ee;border:2px solid #c4956a;border-radius:2px;padding:2px 8px;font-size:0.75em;cursor:pointer;font-family:'DotGothic16','Jua',system-ui}
+#quick-chat button:hover{background:#ffb347;color:#fff}
+#chatinput{padding:4px 6px;border-top:1px solid #e8d0b8;display:flex;gap:3px}
+#chatinput input{flex:1;background:#fff8ee;border:2px solid #c4956a;color:#4a3520;padding:4px 8px;font-size:0.8em;font-family:'DotGothic16','Jua',system-ui}
+#chatinput button{background:#8b5e3c;color:#fff8ee;border:2px solid #6b4226;padding:4px 10px;cursor:pointer;font-size:0.8em}
 #replay-panel{display:none;background:#ffffff99;border:2px solid #000;border-radius:14px;padding:10px;height:170px;overflow-y:auto;font-size:0.78em;flex:1;box-shadow:4px 4px 0 #000}
 #replay-panel .rp-hand{cursor:pointer;padding:6px 8px;border-bottom:1px solid #e0f2fe;transition:background .15s}
 #replay-panel .rp-hand:hover{background:#e0f2fe}
@@ -2469,9 +2489,9 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#8b
 .tab-btns button{background:#ffeedd;color:#6b5040;border:3px solid #c4956a;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:0.75em;box-shadow:0 3px 0 0 #8b6d4a;transition:all .1s}
 .tab-btns button:hover{transform:translateY(-1px);box-shadow:0 4px 0 0 #8b6d4a}
 .tab-btns button.active{color:#4a3520;border-color:#fbbf24;background:#fbbf24;box-shadow:0 3px 0 0 #92400e}
-#log{background:#fff4e8;border:3px solid #c4956a;border-radius:4px;padding:10px;height:170px;overflow-y:auto;font-size:0.78em;font-family:'DotGothic16','Jua',system-ui,sans-serif;flex:1;box-shadow:0 3px 0 0 #8b6d4a;color:#6b5040}
+#log{background:transparent;border:none;border-radius:0;padding:4px;height:auto;overflow-y:auto;font-size:0.78em;font-family:'DotGothic16','Jua',system-ui,sans-serif;flex:1;box-shadow:none;color:#6b5040}
 #log div{padding:2px 0;border-bottom:1px solid #e8d0b8;opacity:0;animation:fadeIn .3s forwards}
-#chatbox{background:#fff4e8;border:3px solid #c4956a;border-radius:4px;padding:12px;height:300px;width:350px;display:flex;flex-direction:column;box-shadow:0 3px 0 0 #8b6d4a}
+#chatbox{background:transparent;border:none;border-radius:0;padding:0;height:auto;width:auto;display:flex;flex-direction:column;box-shadow:none;flex:1}
 #chatmsgs{flex:1;overflow-y:auto;font-size:0.85em;margin-bottom:5px;line-height:1.5}
 #chatmsgs div{padding:2px 0;opacity:0;animation:fadeIn .3s forwards}
 #chatmsgs .cn{color:#2d8a4e;font-weight:bold;text-shadow:none}
@@ -2501,6 +2521,10 @@ body::after{display:none}
 .forest-top,.forest-deco{display:none!important}
 .wrap{padding:2px;max-width:100vw;overflow-x:hidden}
 h1{font-size:1.1em;margin:2px 0}
+.game-layout{display:block;height:auto}
+.dock-left,.dock-right{display:none}
+.bottom-dock{position:fixed;bottom:0;left:0;right:0;padding:4px 8px}
+.bottom-dock .bd-reactions button{width:28px;height:28px;font-size:0.9em}
 .felt-wrap{margin:10px auto 8px}
 .felt-border{top:-8px;left:-8px;right:-8px;bottom:-8px;border-radius:12px}
 .felt-border::before{top:-6px;left:-6px;right:-6px;bottom:-6px;border-radius:16px}
@@ -2622,35 +2646,61 @@ while True: state = requests.get(URL+'/api/state?player=내봇').json(); time.sl
 <div id="hand-timeline"><span class="tl-step" data-r="preflop">프리플랍</span><span class="tl-step" data-r="flop">플랍</span><span class="tl-step" data-r="turn">턴</span><span class="tl-step" data-r="river">리버</span><span class="tl-step" data-r="showdown">쇼다운</span></div>
 <div id="commentary" style="display:none"></div>
 <div class="game-layout">
+<!-- 좌측 독: 액션로그 + 리플레이/하이라이트 -->
+<div class="dock-left">
+<div class="dock-panel" style="flex:2">
+<div class="dock-panel-header">📋 액션 로그</div>
+<div class="dock-panel-body" id="action-feed"></div>
+</div>
+<div class="dock-panel" style="flex:1">
+<div class="dock-panel-header">
+<span class="dock-tab active" onclick="showDockTab('log',this)">📜 로그</span>
+<span class="dock-tab" onclick="showDockTab('replay',this)">📋 리플레이</span>
+<span class="dock-tab" onclick="showDockTab('highlights',this)">🔥 명장면</span>
+</div>
+<div class="dock-panel-body">
+<div id="log"></div>
+<div id="replay-panel" style="display:none"></div>
+<div id="highlights-panel" style="display:none;font-size:0.78em"></div>
+</div>
+</div>
+</div>
+<!-- 중앙: 테이블 -->
 <div class="game-main">
 <div class="felt-wrap"><div class="felt-border"></div><div class="felt" id="felt">
 <div class="pot-badge" id="pot">POT: 0</div>
 <div id="chip-stack" style="position:absolute;top:38%;left:50%;transform:translateX(-50%);z-index:4;display:flex;gap:2px;align-items:flex-end;justify-content:center"></div>
 <div class="board" id="board"></div>
 <div class="turn-badge" id="turnb"></div>
-<div id="turn-options" style="display:none;background:#111;border:1px solid #333;border-radius:8px;padding:8px 12px;margin:6px auto;max-width:600px;font-size:0.82em;text-align:center"></div>
+<div id="turn-options" style="display:none;background:#fff8ee;border:2px solid #8b5e3c;border-radius:4px;padding:8px 12px;margin:6px auto;max-width:600px;font-size:0.82em;text-align:center;color:#4a3520"></div>
 </div>
-</div>
-</div>
-<div class="game-sidebar">
-<div id="sidebar-label" style="color:#ffaa00;font-weight:bold;font-size:0.9em;margin-bottom:6px">📋 실시간 액션</div>
-<div id="action-feed"></div>
 </div>
 </div>
 <div id="table-info"></div>
 <div id="actions"><div id="timer"></div><div id="actbtns"></div></div>
 <button id="new-btn" onclick="newGame()">🔄 새 게임</button>
-<div class="tab-btns"><button class="active" onclick="showTab('log')">📜 로그</button><button onclick="showTab('replay')">📋 리플레이</button><button onclick="showTab('highlights')">🔥 명장면</button><button onclick="copySnapshot()" title="JSON 스냅샷 복사">📋</button></div>
-<div class="bottom-panel">
-<div id="log"></div>
-<div id="replay-panel"></div>
-<div id="highlights-panel" style="display:none;background:#ffffffaa;border:1px solid #1a1e2e;border-radius:10px;padding:10px;height:170px;overflow-y:auto;font-size:0.78em;flex:1"></div>
+</div>
+<!-- 우측 독: 채팅 -->
+<div class="dock-right">
+<div class="dock-panel" style="flex:1">
+<div class="dock-panel-header">💬 채팅</div>
+<div class="dock-panel-body" style="padding:0;display:flex;flex-direction:column">
 <div id="chatbox">
 <div id="chatmsgs"></div>
 <div id="quick-chat">
-<button onclick="qChat('ㅋㅋㅋ')">ㅋㅋㅋ</button><button onclick="qChat('사기아님?')">사기?</button><button onclick="qChat('올인가자!')">올인!</button><button onclick="qChat('GG')">GG</button><button onclick="qChat('ㄹㅇ?')">ㄹㅇ?</button><button onclick="qChat('낄낄')">낄낄</button>
+<button onclick="qChat('ㅋㅋㅋ')">ㅋㅋㅋ</button><button onclick="qChat('사기?')">사기?</button><button onclick="qChat('올인!')">올인!</button><button onclick="qChat('GG')">GG</button><button onclick="qChat('낄낄')">낄낄</button>
 </div>
 <div id="chatinput"><input id="chat-inp" placeholder="쓰레기톡..." maxlength="100"><button onclick="sendChat()">💬</button></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- 하단 독: 실황 + 리액션 -->
+<div class="bottom-dock" id="bottom-dock">
+<div class="bd-commentary" id="bd-com">🎙️ 게임 대기중...</div>
+<div class="bd-reactions">
+<button onclick="react('👏')">👏</button><button onclick="react('🔥')">🔥</button><button onclick="react('😱')">😱</button><button onclick="react('💀')">💀</button><button onclick="react('😂')">😂</button>
 </div>
 </div>
 </div>
@@ -3166,9 +3216,11 @@ navigator.clipboard.writeText(json).then(()=>{
 const _tip=document.createElement('div');_tip.textContent=t('copied');_tip.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#333;color:#ffaa00;padding:8px 20px;border-radius:8px;z-index:9999;font-weight:bold';
 document.body.appendChild(_tip);setTimeout(()=>_tip.remove(),2000)}).catch(()=>alert(t('clipFail')));}
 
-function showTab(tab){
+function showTab(tab){showDockTab(tab)}
+function showDockTab(tab,el){
 const log=document.getElementById('log'),rp=document.getElementById('replay-panel'),hp=document.getElementById('highlights-panel');
-document.querySelectorAll('.tab-btns button').forEach((b,i)=>{b.classList.toggle('active',i===(tab==='log'?0:tab==='replay'?1:2))});
+document.querySelectorAll('.dock-tab').forEach(t=>t.classList.remove('active'));
+if(el)el.classList.add('active');
 log.style.display=tab==='log'?'block':'none';
 rp.style.display=tab==='replay'?'block':'none';
 hp.style.display=tab==='highlights'?'block':'none';
@@ -3243,6 +3295,9 @@ const el=document.getElementById('commentary');
 el.style.display='block';el.textContent=text;
 el.style.animation='none';el.offsetHeight;el.style.animation='comFade .5s ease-out';
 addActionFeed(text);
+// 하단 독 동기화
+const bd=document.getElementById('bd-com');
+if(bd)bd.textContent='🎙️ '+text;
 }
 
 let lastFeedRound='';
