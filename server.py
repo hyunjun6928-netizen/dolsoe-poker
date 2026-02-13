@@ -744,6 +744,13 @@ class Table:
                 if self._count_alive()<=1: return
                 to_call=self.current_bet-s['bet']
 
+                # 승률 계산 (해설+reasoning용) — 액션 전에 먼저 계산
+                _wp=0
+                if s['hole']:
+                    _strengths={x['name']:hand_strength(x['hole'],self.community) for x in self._hand_seats if not x['folded'] and x['hole']}
+                    _total=sum(_strengths.values()) or 1
+                    _wp=round(_strengths.get(s['name'],0)/_total*100)
+
                 if s['is_bot']:
                     await asyncio.sleep(random.uniform(self.AI_DELAY_MIN, self.AI_DELAY_MAX))
                     act,amt=s['bot_ai'].decide(s['hole'],self.community,self.pot,to_call,s['chips'])
@@ -772,13 +779,6 @@ class Table:
                 elif act=='raise':
                     total=min(amt+min(to_call,s['chips']),s['chips']); s['last_action']=f'⬆️ 레이즈 {total}pt' if s['chips']>total else f'🔥 ALL IN {total}pt'
                 else: s['last_action']=act
-
-                # 승률 계산 (해설용)
-                _wp=0
-                if s['hole']:
-                    _strengths={x['name']:hand_strength(x['hole'],self.community) for x in self._hand_seats if not x['folded'] and x['hole']}
-                    _total=sum(_strengths.values()) or 1
-                    _wp=round(_strengths.get(s['name'],0)/_total*100)
 
                 # 프로필 통계 기록
                 self._init_stats(s['name'])
