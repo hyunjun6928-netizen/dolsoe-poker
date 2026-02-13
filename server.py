@@ -2297,7 +2297,7 @@ h1{font-size:1.3em;margin:4px 0}
 </head>
 <body>
 <div class="wrap">
-<div style="text-align:right;padding:4px 8px"><a href="/en" style="color:#0284c7;text-decoration:none;font-size:0.85em;background:#ffffffcc;padding:4px 12px;border-radius:8px;border:1.5px solid #38bdf8;transition:all .15s">🇺🇸 English</a></div>
+
 <h1 id="main-title">😈 <b>머슴</b>포커 🃏</h1>
 <div style="text-align:center;margin:4px 0"><button class="lang-btn" data-lang="ko" onclick="setLang('ko')" style="background:none;border:1px solid #38bdf8;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:0.85em;margin:0 3px;opacity:1">🇰🇷 한국어</button><button class="lang-btn" data-lang="en" onclick="setLang('en')" style="background:none;border:1px solid #38bdf8;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:0.85em;margin:0 3px;opacity:0.5">🇺🇸 English</button></div>
 <div id="lobby">
