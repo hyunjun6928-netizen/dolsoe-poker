@@ -369,6 +369,227 @@ def sanitize_msg(msg, max_len=120):
     msg = ''.join(c for c in msg if c.isprintable())
     return msg.strip()[:max_len]
 
+# ══ 트론 라이트사이클 ══
+TRON_LB_FILE = 'tron_leaderboard.json'
+tron_leaderboard = {}  # name -> {wins, kills, survival_ticks, games, ...}
+tron_games = {}  # game_id -> TronGame
+tron_queue = []  # waiting players [{name,emoji,token}]
+tron_tokens = {}  # token -> name
+
+def save_tron_leaderboard():
+    try:
+        with open(TRON_LB_FILE,'w') as f: json.dump(tron_leaderboard,f)
+    except: pass
+
+def load_tron_leaderboard():
+    global tron_leaderboard
+    try:
+        with open(TRON_LB_FILE,'r') as f: tron_leaderboard.update(json.load(f))
+    except: pass
+
+class TronGame:
+    GRID_SIZE = 20
+    TICK_MS = 300
+    MAX_PLAYERS = 4
+    MIN_PLAYERS = 2
+    MAX_TICKS = 200  # 60s / 0.3s
+    SHRINK_START = 100  # tick 100 = 30s
+    COLORS = ['#00fff2', '#ff00ff', '#ffff00', '#00ff41']
+    COLOR_NAMES = ['cyan', 'magenta', 'yellow', 'green']
+    STARTS = [(1,1,'right'), (18,1,'left'), (1,18,'right'), (18,18,'left')]
+    OPPOSITES = {'up':'down','down':'up','left':'right','right':'left'}
+    DIRS = {'up':(0,-1),'down':(0,1),'left':(-1,0),'right':(1,0)}
+
+    def __init__(self, game_id):
+        self.id = game_id
+        self.players = {}  # token -> {name,emoji,x,y,dir,alive,trail:[],color,color_name,kill_count}
+        self.grid = [[None]*self.GRID_SIZE for _ in range(self.GRID_SIZE)]  # None or player token
+        self.tick = 0
+        self.state = 'waiting'  # waiting, countdown, running, finished
+        self.countdown = 5
+        self.winner = None
+        self.created = time.time()
+        self.boundary_min = 0
+        self.boundary_max = self.GRID_SIZE - 1
+        self.log = []
+        self.spectators = {}  # name -> last_poll_time
+        self._task = None
+        self._pending_actions = {}  # token -> direction
+
+    def add_player(self, name, emoji, token):
+        if len(self.players) >= self.MAX_PLAYERS:
+            return False
+        idx = len(self.players)
+        sx, sy, sd = self.STARTS[idx]
+        self.players[token] = {
+            'name': name, 'emoji': emoji,
+            'x': sx, 'y': sy, 'dir': sd,
+            'alive': True, 'trail': [(sx, sy)],
+            'color': self.COLORS[idx], 'color_name': self.COLOR_NAMES[idx],
+            'kill_count': 0, 'death_tick': None, 'idx': idx
+        }
+        self.grid[sy][sx] = token
+        tron_tokens[token] = name
+        return True
+
+    def set_action(self, token, direction):
+        if token not in self.players: return False
+        p = self.players[token]
+        if not p['alive']: return False
+        if direction not in self.DIRS: return False
+        if direction == self.OPPOSITES.get(p['dir']): return False
+        self._pending_actions[token] = direction
+        return True
+
+    def _tick(self):
+        self.tick += 1
+        # Apply pending actions
+        for token, d in self._pending_actions.items():
+            if token in self.players and self.players[token]['alive']:
+                self.players[token]['dir'] = d
+        self._pending_actions.clear()
+
+        # Shrink boundary
+        if self.tick >= self.SHRINK_START:
+            shrink_rate = (self.tick - self.SHRINK_START) // 20
+            self.boundary_min = min(shrink_rate, self.GRID_SIZE // 2 - 1)
+            self.boundary_max = max(self.GRID_SIZE - 1 - shrink_rate, self.GRID_SIZE // 2)
+
+        # Move all alive players
+        new_positions = {}
+        for token, p in self.players.items():
+            if not p['alive']: continue
+            dx, dy = self.DIRS[p['dir']]
+            nx, ny = p['x'] + dx, p['y'] + dy
+            new_positions[token] = (nx, ny)
+
+        # Check collisions
+        dead_this_tick = set()
+        for token, (nx, ny) in new_positions.items():
+            p = self.players[token]
+            # Boundary check
+            if nx < self.boundary_min or nx > self.boundary_max or ny < self.boundary_min or ny > self.boundary_max:
+                dead_this_tick.add(token)
+                continue
+            # Wall/trail collision
+            if self.grid[ny][nx] is not None:
+                dead_this_tick.add(token)
+                # Credit kill to trail owner
+                killer = self.grid[ny][nx]
+                if killer in self.players and killer != token:
+                    self.players[killer]['kill_count'] += 1
+                continue
+
+        # Head-on collision (two players moving to same cell)
+        pos_count = {}
+        for token, pos in new_positions.items():
+            if token not in dead_this_tick:
+                pos_count.setdefault(pos, []).append(token)
+        for pos, tokens in pos_count.items():
+            if len(tokens) > 1:
+                for t in tokens:
+                    dead_this_tick.add(t)
+
+        # Kill dead players
+        for token in dead_this_tick:
+            self.players[token]['alive'] = False
+            self.players[token]['death_tick'] = self.tick
+            self.log.append(f"💥 {self.players[token]['emoji']} {self.players[token]['name']} 사망! (tick {self.tick})")
+
+        # Move surviving players
+        for token, (nx, ny) in new_positions.items():
+            if token not in dead_this_tick:
+                p = self.players[token]
+                p['x'] = nx
+                p['y'] = ny
+                p['trail'].append((nx, ny))
+                self.grid[ny][nx] = token
+
+        # Check win condition
+        alive = [t for t, p in self.players.items() if p['alive']]
+        if len(alive) <= 1 or self.tick >= self.MAX_TICKS:
+            self.state = 'finished'
+            if len(alive) == 1:
+                self.winner = self.players[alive[0]]['name']
+                self.log.append(f"🏆 {self.players[alive[0]]['emoji']} {self.winner} 승리!")
+            elif len(alive) == 0:
+                self.log.append("💀 전원 사망! 무승부!")
+            else:
+                self.log.append("⏱️ 시간 초과! 무승부!")
+            self._update_leaderboard()
+            return False  # game over
+        return True  # continue
+
+    def _update_leaderboard(self):
+        alive_tokens = [t for t, p in self.players.items() if p['alive']]
+        for token, p in self.players.items():
+            name = p['name']
+            if name not in tron_leaderboard:
+                tron_leaderboard[name] = {'wins':0,'kills':0,'survival_ticks':0,'games':0,'deaths':0}
+            lb = tron_leaderboard[name]
+            lb['games'] += 1
+            lb['kills'] += p['kill_count']
+            dt = p['death_tick'] or self.tick
+            lb['survival_ticks'] += dt
+            if token in alive_tokens and len(alive_tokens) == 1:
+                lb['wins'] += 1
+            elif not p['alive']:
+                lb['deaths'] += 1
+        save_tron_leaderboard()
+
+    def get_state(self):
+        players = []
+        for token, p in self.players.items():
+            players.append({
+                'name': p['name'], 'emoji': p['emoji'],
+                'x': p['x'], 'y': p['y'], 'dir': p['dir'],
+                'alive': p['alive'], 'trail': p['trail'],
+                'color': p['color'], 'color_name': p['color_name'],
+                'kill_count': p['kill_count'], 'idx': p['idx']
+            })
+        return {
+            'game_id': self.id,
+            'tick': self.tick,
+            'state': self.state,
+            'countdown': self.countdown,
+            'players': players,
+            'alive_count': sum(1 for p in self.players.values() if p['alive']),
+            'boundary_min': self.boundary_min,
+            'boundary_max': self.boundary_max,
+            'grid_size': self.GRID_SIZE,
+            'max_ticks': self.MAX_TICKS,
+            'winner': self.winner,
+            'log': self.log[-20:],
+            'player_count': len(self.players),
+            'max_players': self.MAX_PLAYERS
+        }
+
+    async def run(self):
+        self.state = 'countdown'
+        for i in range(5, 0, -1):
+            self.countdown = i
+            await asyncio.sleep(1)
+        self.state = 'running'
+        self.countdown = 0
+        while self.state == 'running':
+            await asyncio.sleep(self.TICK_MS / 1000)
+            if not self._tick():
+                break
+        # Auto-cleanup after 30s
+        await asyncio.sleep(30)
+        if self.id in tron_games:
+            del tron_games[self.id]
+
+def tron_find_or_create_game():
+    """Find a waiting game or create new one"""
+    for gid, g in tron_games.items():
+        if g.state == 'waiting' and len(g.players) < g.MAX_PLAYERS:
+            return g
+    gid = f"tron_{int(time.time()*1000)%1000000}"
+    g = TronGame(gid)
+    tron_games[gid] = g
+    return g
+
 # ══ 게임 테이블 ══
 class Table:
     SB=5; BB=10; START_CHIPS=500
@@ -1584,6 +1805,60 @@ async def handle_client(reader, writer):
             else: await send_json(writer,{'error':'hand not found'},404)
         else:
             await send_json(writer,{'hands':[{'hand':x['hand'],'winner':x['winner'],'pot':x['pot'],'players':len(x['players'])} for x in t.history]})
+    # ══ Tron Routes ══
+    elif method=='GET' and route=='/tron':
+        await send_http(writer,200,TRON_HTML_PAGE,'text/html; charset=utf-8')
+    elif method=='GET' and route=='/tron/ranking':
+        pg = TRON_RANKING_PAGE_EN if _lang=='en' else TRON_RANKING_PAGE
+        await send_http(writer,200,pg,'text/html; charset=utf-8')
+    elif method=='GET' and route=='/tron/docs':
+        pg = TRON_DOCS_PAGE_EN if _lang=='en' else TRON_DOCS_PAGE
+        await send_http(writer,200,pg,'text/html; charset=utf-8')
+    elif method=='POST' and route=='/api/tron/join':
+        d=json.loads(body) if body else {}
+        name=sanitize_name(d.get('name','')); emoji=sanitize_name(d.get('emoji','🏍️'))[:2] or '🏍️'
+        if not name: await send_json(writer,{'ok':False,'error':'name required'},400); return
+        game = tron_find_or_create_game()
+        token = secrets.token_hex(16)
+        ok = game.add_player(name, emoji, token)
+        if not ok: await send_json(writer,{'ok':False,'error':'game full'},400); return
+        await send_json(writer,{'ok':True,'token':token,'game_id':game.id,'player_count':len(game.players)})
+        # Auto start when min players reached
+        if len(game.players) >= game.MIN_PLAYERS and game.state == 'waiting':
+            game._task = asyncio.create_task(game.run())
+    elif method=='GET' and route=='/api/tron/state':
+        gid = qs.get('game_id',[''])[0]
+        if gid and gid in tron_games:
+            game = tron_games[gid]
+        else:
+            # Return latest active game or any game
+            active = [g for g in tron_games.values() if g.state in ('countdown','running')]
+            if active: game = active[0]
+            elif tron_games: game = list(tron_games.values())[-1]
+            else: await send_json(writer,{'ok':False,'error':'no game'},404); return
+        await send_json(writer,game.get_state())
+    elif method=='POST' and route=='/api/tron/action':
+        d=json.loads(body) if body else {}
+        token=d.get('token',''); direction=d.get('direction','')
+        gid=d.get('game_id','')
+        game = tron_games.get(gid)
+        if not game:
+            # find game by token
+            for g in tron_games.values():
+                if token in g.players: game=g; break
+        if not game: await send_json(writer,{'ok':False,'error':'no game'},404); return
+        ok = game.set_action(token, direction)
+        await send_json(writer,{'ok':ok})
+    elif method=='GET' and route=='/api/tron/leaderboard':
+        lb = sorted(tron_leaderboard.items(), key=lambda x: (x[1]['wins'], x[1]['kills']), reverse=True)[:20]
+        await send_json(writer,{'leaderboard':[{'name':n,'wins':d['wins'],'kills':d['kills'],
+            'games':d['games'],'deaths':d.get('deaths',0),
+            'survival_ticks':d['survival_ticks'],
+            'win_rate':round(d['wins']/max(d['games'],1)*100,1)} for n,d in lb]})
+    elif method=='GET' and route=='/api/tron/games':
+        games = [{'id':g.id,'state':g.state,'players':len(g.players),'tick':g.tick,
+                  'alive':sum(1 for p in g.players.values() if p['alive'])} for g in tron_games.values()]
+        await send_json(writer,{'games':games})
     elif method=='OPTIONS':
         await send_http(writer,200,'')
     else:
@@ -2414,7 +2689,7 @@ h1{font-size:1.1em;margin:2px 0}
 <thead style="background:#e0f2fe"><tr><th style="padding:8px;color:#0284c7;text-align:center">#</th><th style="padding:8px;color:#0284c7;text-align:left">플레이어</th><th style="padding:8px;color:#0284c7;text-align:center">승률</th><th style="padding:8px;color:#44ff88;text-align:center">승</th><th style="padding:8px;color:#ff4444;text-align:center">패</th><th style="padding:8px;color:#888;text-align:center">핸드</th><th style="padding:8px;color:#0284c7;text-align:center">획득칩</th></tr></thead>
 <tbody id="lobby-lb"><tr><td colspan="7" style="text-align:center;padding:15px;color:#666">랭킹 불러오는 중...</td></tr></tbody>
 </table>
-<div style="text-align:center;margin-top:8px"><a href="/ranking" id="link-full-rank" style="color:#888;font-size:0.8em;text-decoration:none">전체 랭킹 보기 →</a> · <a href="/docs" id="link-build-bot" style="color:#888;font-size:0.8em;text-decoration:none">📖 내 AI 봇 참가시키기</a> · <a href="https://github.com/hyunjun6928-netizen/dolsoe-poker" target="_blank" style="color:#888;font-size:0.8em;text-decoration:none">⭐ GitHub</a></div>
+<div style="text-align:center;margin-top:8px"><a href="/ranking" id="link-full-rank" style="color:#888;font-size:0.8em;text-decoration:none">전체 랭킹 보기 →</a> · <a href="/docs" id="link-build-bot" style="color:#888;font-size:0.8em;text-decoration:none">📖 내 AI 봇 참가시키기</a> · <a href="/tron" style="color:#00fff2;font-size:0.8em;text-decoration:none">🏍️ TRON ARENA</a> · <a href="https://github.com/hyunjun6928-netizen/dolsoe-poker" target="_blank" style="color:#888;font-size:0.8em;text-decoration:none">⭐ GitHub</a></div>
 </div>
 <div style="background:#ffffffdd;border:1px solid #38bdf8;border-radius:10px;padding:12px 16px;margin-top:12px;font-size:0.82em">
 <div id="join-with-label" style="color:#0284c7;font-weight:bold;margin-bottom:6px">🤖 Python 3줄로 참가:</div>
@@ -3254,9 +3529,673 @@ document.getElementById('chat-inp').addEventListener('keydown',e=>{if(e.key==='E
 </html>""".encode('utf-8')
 
 
+# ══ Tron HTML Pages ══
+TRON_HTML_PAGE = r"""<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TRON ARENA - 트론 라이트사이클</title>
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0a0f;--grid-line:#1a1a2e;--cyan:#00fff2;--magenta:#ff00ff;--yellow:#ffff00;--green:#00ff41;--red:#ff0040;--panel:#0d0d1a;--text:#e0e0ff}
+body{background:var(--bg);color:var(--text);font-family:'Jua',sans-serif;overflow-x:hidden;min-height:100vh}
+/* Scan lines */
+body::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,255,242,0.015) 2px,rgba(0,255,242,0.015) 4px);pointer-events:none;z-index:9999}
+/* Grid background */
+body::after{content:'';position:fixed;top:0;left:0;width:100%;height:100%;background-image:linear-gradient(rgba(26,26,46,0.3) 1px,transparent 1px),linear-gradient(90deg,rgba(26,26,46,0.3) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+.container{max-width:1200px;margin:0 auto;padding:10px;position:relative;z-index:1}
+/* Glitch title */
+.title{text-align:center;padding:15px 0;position:relative}
+.title h1{font-family:'Orbitron',monospace;font-size:clamp(2rem,6vw,3.5rem);font-weight:900;color:var(--cyan);text-shadow:0 0 10px var(--cyan),0 0 40px var(--cyan),0 0 80px rgba(0,255,242,0.3);letter-spacing:8px;animation:glitch 3s infinite;position:relative}
+@keyframes glitch{0%,90%,100%{text-shadow:0 0 10px var(--cyan),0 0 40px var(--cyan),0 0 80px rgba(0,255,242,0.3)}92%{text-shadow:3px 0 var(--magenta),-3px 0 var(--cyan),0 0 40px var(--cyan)}94%{text-shadow:-2px 0 var(--cyan),2px 0 var(--magenta),0 0 40px var(--magenta)}96%{text-shadow:0 0 10px var(--cyan),0 0 40px var(--cyan)}}
+.title h1::before,.title h1::after{content:'TRON ARENA';position:absolute;left:0;right:0}
+.title h1::before{animation:glitch-1 2s infinite;clip-path:inset(0 0 70% 0);color:var(--magenta)}
+.title h1::after{animation:glitch-2 2s infinite;clip-path:inset(70% 0 0 0);color:var(--cyan)}
+@keyframes glitch-1{0%,100%{transform:none}25%{transform:translateX(-3px)}50%{transform:translateX(3px)}75%{transform:translateX(-1px)}}
+@keyframes glitch-2{0%,100%{transform:none}33%{transform:translateX(2px)}66%{transform:translateX(-2px)}}
+.subtitle{font-size:0.9rem;color:rgba(0,255,242,0.5);letter-spacing:4px;font-family:'Orbitron',monospace}
+/* Nav */
+.nav{display:flex;justify-content:center;gap:15px;margin:10px 0;flex-wrap:wrap}
+.nav a{color:var(--cyan);text-decoration:none;padding:6px 16px;border:1px solid rgba(0,255,242,0.3);border-radius:4px;font-size:0.85rem;transition:all 0.3s;font-family:'Orbitron',monospace}
+.nav a:hover{background:rgba(0,255,242,0.1);box-shadow:0 0 15px rgba(0,255,242,0.3)}
+/* Layout */
+.game-layout{display:grid;grid-template-columns:1fr 220px;gap:15px;margin-top:10px}
+@media(max-width:768px){.game-layout{grid-template-columns:1fr}.sidebar{order:-1}}
+/* Top bar */
+.top-bar{display:flex;justify-content:space-between;align-items:center;padding:8px 15px;background:var(--panel);border:1px solid rgba(0,255,242,0.15);border-radius:6px;margin-bottom:10px;font-family:'Orbitron',monospace;font-size:0.8rem}
+.top-bar .status{color:var(--cyan)}
+.top-bar .tick{color:var(--yellow)}
+.top-bar .alive{color:var(--green)}
+/* Grid */
+.grid-wrap{position:relative;aspect-ratio:1;max-width:700px;margin:0 auto;width:100%}
+.grid-canvas{width:100%;height:100%;border:2px solid rgba(0,255,242,0.2);border-radius:8px;background:var(--bg);image-rendering:pixelated}
+/* Shrink warning */
+.grid-wrap.shrinking{animation:shrink-pulse 1s ease-in-out infinite}
+@keyframes shrink-pulse{0%,100%{border-color:rgba(255,0,64,0.3)}50%{border-color:rgba(255,0,64,0.8);box-shadow:0 0 20px rgba(255,0,64,0.4)}}
+/* Countdown overlay */
+.countdown-overlay{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:rgba(10,10,15,0.85);z-index:10;border-radius:8px}
+.countdown-text{font-family:'Orbitron',monospace;font-size:clamp(3rem,10vw,6rem);font-weight:900;color:var(--cyan);text-shadow:0 0 30px var(--cyan),0 0 60px var(--cyan);animation:pulse-count 1s ease-in-out infinite}
+@keyframes pulse-count{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.15);opacity:0.8}}
+/* Winner overlay */
+.winner-overlay{position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(10,10,15,0.9);z-index:10;border-radius:8px}
+.winner-text{font-family:'Orbitron',monospace;font-size:clamp(1.5rem,5vw,3rem);font-weight:900;text-shadow:0 0 30px currentColor,0 0 60px currentColor;animation:winner-glow 2s ease-in-out infinite}
+@keyframes winner-glow{0%,100%{filter:brightness(1)}50%{filter:brightness(1.5)}}
+.winner-sub{font-size:1.2rem;margin-top:10px;opacity:0.7}
+/* Flash */
+.flash{position:fixed;top:0;left:0;width:100%;height:100%;background:white;opacity:0;pointer-events:none;z-index:9998;animation:flash-anim 0.3s ease-out}
+@keyframes flash-anim{0%{opacity:0.6}100%{opacity:0}}
+/* Sidebar */
+.sidebar{display:flex;flex-direction:column;gap:10px}
+.panel{background:var(--panel);border:1px solid rgba(0,255,242,0.12);border-radius:8px;padding:12px}
+.panel h3{font-family:'Orbitron',monospace;font-size:0.8rem;color:var(--cyan);margin-bottom:8px;letter-spacing:2px}
+.player-item{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.05)}
+.player-color{width:12px;height:12px;border-radius:50%;box-shadow:0 0 8px currentColor}
+.player-name{flex:1;font-size:0.9rem}
+.player-dead{opacity:0.3;text-decoration:line-through}
+.player-trail{font-size:0.75rem;color:rgba(255,255,255,0.4);font-family:'Orbitron',monospace}
+/* Join panel */
+.join-panel{text-align:center}
+.join-panel input{width:100%;padding:8px;margin:5px 0;background:rgba(0,255,242,0.05);border:1px solid rgba(0,255,242,0.3);border-radius:4px;color:var(--text);font-family:'Jua',sans-serif;font-size:0.9rem;outline:none}
+.join-panel input:focus{border-color:var(--cyan);box-shadow:0 0 10px rgba(0,255,242,0.2)}
+.btn{padding:8px 20px;border:1px solid var(--cyan);background:rgba(0,255,242,0.1);color:var(--cyan);border-radius:4px;cursor:pointer;font-family:'Orbitron',monospace;font-size:0.8rem;transition:all 0.3s;width:100%;margin-top:5px}
+.btn:hover{background:rgba(0,255,242,0.2);box-shadow:0 0 20px rgba(0,255,242,0.3)}
+.btn-spectate{border-color:var(--magenta);color:var(--magenta);background:rgba(255,0,255,0.1)}
+.btn-spectate:hover{background:rgba(255,0,255,0.2);box-shadow:0 0 20px rgba(255,0,255,0.3)}
+/* Log */
+.log{max-height:150px;overflow-y:auto;font-size:0.75rem;color:rgba(255,255,255,0.5);font-family:monospace}
+.log div{padding:2px 0}
+/* Mobile controls */
+.mobile-controls{display:none;justify-content:center;gap:5px;margin-top:10px}
+@media(max-width:768px){.mobile-controls{display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:1fr 1fr 1fr;gap:5px;max-width:200px;margin:10px auto}}
+.ctrl-btn{padding:15px;background:rgba(0,255,242,0.1);border:1px solid rgba(0,255,242,0.3);color:var(--cyan);border-radius:6px;font-size:1.2rem;cursor:pointer;touch-action:manipulation}
+.ctrl-up{grid-column:2;grid-row:1}
+.ctrl-left{grid-column:1;grid-row:2}
+.ctrl-right{grid-column:3;grid-row:2}
+.ctrl-down{grid-column:2;grid-row:3}
+/* Particles */
+.particle{position:absolute;pointer-events:none;z-index:20;font-size:1.5rem;animation:particle-fly 0.8s ease-out forwards}
+@keyframes particle-fly{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--px),var(--py)) scale(0.3)}}
+/* Speed lines */
+.speed-line{position:fixed;width:1px;height:30vh;background:linear-gradient(transparent,rgba(0,255,242,0.08),transparent);pointer-events:none;z-index:0;animation:speed-move 4s linear infinite}
+@keyframes speed-move{0%{transform:translateY(-100%)}100%{transform:translateY(100vh)}}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="title"><h1>TRON ARENA</h1><div class="subtitle" id="subtitle">라이트사이클 배틀</div></div>
+<div class="nav">
+<a href="/">🃏 포커</a>
+<a href="/tron/ranking">🏆 랭킹</a>
+<a href="/tron/docs">📖 문서</a>
+<a href="/tron?lang=en" id="lang-toggle">EN</a>
+</div>
+<div class="top-bar">
+<span class="status" id="status">대기중</span>
+<span class="tick" id="tick-display">TICK: 0</span>
+<span class="alive" id="alive-display">생존: 0</span>
+</div>
+<div class="game-layout">
+<div>
+<div class="grid-wrap" id="grid-wrap">
+<canvas class="grid-canvas" id="grid-canvas" width="800" height="800"></canvas>
+<div class="countdown-overlay" id="countdown-overlay" style="display:none">
+<div class="countdown-text" id="countdown-text">3</div>
+</div>
+<div class="winner-overlay" id="winner-overlay" style="display:none">
+<div class="winner-text" id="winner-text">WINNER</div>
+<div class="winner-sub" id="winner-sub"></div>
+</div>
+</div>
+<div class="mobile-controls">
+<button class="ctrl-btn ctrl-up" onclick="sendDir('up')">⬆️</button>
+<button class="ctrl-btn ctrl-left" onclick="sendDir('left')">⬅️</button>
+<button class="ctrl-btn ctrl-right" onclick="sendDir('right')">➡️</button>
+<button class="ctrl-btn ctrl-down" onclick="sendDir('down')">⬇️</button>
+</div>
+</div>
+<div class="sidebar">
+<div class="panel join-panel" id="join-panel">
+<h3>참가</h3>
+<input id="inp-name" placeholder="이름" maxlength="20">
+<input id="inp-emoji" placeholder="이모지 (선택)" maxlength="2" value="🏍️">
+<button class="btn" onclick="joinGame()">⚡ 참가하기</button>
+<button class="btn btn-spectate" onclick="spectate()">👁️ 관전하기</button>
+</div>
+<div class="panel" id="players-panel">
+<h3>PLAYERS</h3>
+<div id="player-list"></div>
+</div>
+<div class="panel">
+<h3>LOG</h3>
+<div class="log" id="log"></div>
+</div>
+</div>
+</div>
+</div>
+<script>
+const LANG=(new URLSearchParams(location.search)).get('lang')==='en'?'en':'ko';
+const T={ko:{waiting:'대기중',countdown:'카운트다운',running:'진행중',finished:'종료',
+join:'참가하기',watch:'관전하기',alive:'생존',tick:'틱',winner:'승리!',draw:'무승부!',
+ready:'준비',go:'시작!',trail:'궤적'},
+en:{waiting:'Waiting',countdown:'Countdown',running:'Running',finished:'Finished',
+join:'Join',watch:'Watch',alive:'Alive',tick:'Tick',winner:'WINS!',draw:'DRAW!',
+ready:'READY',go:'GO!',trail:'trail'}};
+const t=s=>T[LANG][s]||s;
+if(LANG==='en'){document.getElementById('subtitle').textContent='Light Cycle Battle';document.getElementById('lang-toggle').href='/tron';document.getElementById('lang-toggle').textContent='KO'}
+let myToken=null,myGameId=null,pollTimer=null,isSpectator=false;
+let lastDeadCount=0,audioCtx=null;
+const canvas=document.getElementById('grid-canvas'),ctx=canvas.getContext('2d');
+function getAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();return audioCtx}
+function playTone(freq,dur,type='square',vol=0.1){try{const a=getAudio(),o=a.createOscillator(),g=a.createGain();o.type=type;o.frequency.value=freq;g.gain.value=vol;o.connect(g);g.connect(a.destination);o.start();g.gain.exponentialRampToValueAtTime(0.001,a.currentTime+dur);o.stop(a.currentTime+dur)}catch(e){}}
+function playBeep(){playTone(880,0.15,'square',0.08)}
+function playGo(){playTone(1200,0.1);setTimeout(()=>playTone(1600,0.2),100)}
+function playDeath(){playTone(200,0.3,'sawtooth',0.15);setTimeout(()=>playTone(100,0.4,'sawtooth',0.1),150)}
+function playWin(){[0,100,200,300,400].forEach((d,i)=>setTimeout(()=>playTone(600+i*100,0.2,'sine',0.08),d))}
+function playTick(){playTone(1400,0.02,'sine',0.03)}
+async function joinGame(){
+const name=document.getElementById('inp-name').value.trim();
+const emoji=document.getElementById('inp-emoji').value.trim()||'🏍️';
+if(!name)return;
+try{const r=await fetch('/api/tron/join',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,emoji})});
+const d=await r.json();if(d.ok){myToken=d.token;myGameId=d.game_id;document.getElementById('join-panel').innerHTML='<h3>참가완료 ✓</h3><p style="color:var(--cyan)">'+name+'</p><p style="font-size:0.75rem;opacity:0.5">방향키/WASD로 조작</p>';startPolling()}
+else alert(d.error||'Failed')}catch(e){alert('Error: '+e)}
+}
+function spectate(){isSpectator=true;startPolling()}
+function startPolling(){if(pollTimer)clearInterval(pollTimer);pollTimer=setInterval(pollState,300);pollState()}
+async function pollState(){
+try{const url=myGameId?'/api/tron/state?game_id='+myGameId:'/api/tron/state';
+const r=await fetch(url);if(!r.ok)return;const s=await r.json();
+if(!myGameId&&s.game_id)myGameId=s.game_id;
+renderState(s)}catch(e){}
+}
+let prevState='',prevCountdown=0;
+function renderState(s){
+// Status bar
+document.getElementById('status').textContent=t(s.state);
+document.getElementById('tick-display').textContent=t('tick')+': '+s.tick+'/'+s.max_ticks;
+document.getElementById('alive-display').textContent=t('alive')+': '+s.alive_count+'/'+s.player_count;
+// Countdown
+const co=document.getElementById('countdown-overlay');
+const ct=document.getElementById('countdown-text');
+if(s.state==='countdown'){co.style.display='flex';ct.textContent=s.countdown>0?s.countdown:t('go');
+if(s.countdown!==prevCountdown){if(s.countdown>0)playBeep();else playGo()}prevCountdown=s.countdown}
+else{co.style.display='none'}
+// Winner
+const wo=document.getElementById('winner-overlay');
+if(s.state==='finished'){wo.style.display='flex';
+const wt=document.getElementById('winner-text'),ws=document.getElementById('winner-sub');
+if(s.winner){const wp=s.players.find(p=>p.name===s.winner);wt.textContent=s.winner+' '+t('winner');wt.style.color=wp?wp.color:'var(--cyan)';ws.textContent='🏆'}
+else{wt.textContent=t('draw');wt.style.color='var(--red)';ws.textContent='💀'}
+if(prevState!=='finished')playWin()}else{wo.style.display='none'}
+// Death flash
+const currentDead=s.players.filter(p=>!p.alive).length;
+if(currentDead>lastDeadCount&&prevState==='running'){
+const flash=document.createElement('div');flash.className='flash';document.body.appendChild(flash);setTimeout(()=>flash.remove(),400);
+playDeath();spawnParticles(s)}
+lastDeadCount=currentDead;
+// Shrink warning
+const gw=document.getElementById('grid-wrap');
+if(s.boundary_min>0)gw.classList.add('shrinking');else gw.classList.remove('shrinking');
+// Draw grid
+drawGrid(s);
+// Player list
+const pl=document.getElementById('player-list');
+pl.innerHTML=s.players.map(p=>`<div class="player-item ${p.alive?'':'player-dead'}"><div class="player-color" style="color:${p.color};background:${p.color}"></div><span class="player-name">${p.emoji} ${esc(p.name)}</span><span class="player-trail">${p.trail.length}</span></div>`).join('');
+// Log
+const lg=document.getElementById('log');
+lg.innerHTML=s.log.map(l=>'<div>'+esc(l)+'</div>').join('');lg.scrollTop=lg.scrollHeight;
+if(s.state==='running'&&s.tick>0)playTick();
+prevState=s.state;
+}
+function drawGrid(s){
+const W=canvas.width,H=canvas.height,G=s.grid_size;
+const cell=W/G;
+ctx.fillStyle='#0a0a0f';ctx.fillRect(0,0,W,H);
+// Grid lines
+ctx.strokeStyle='#1a1a2e';ctx.lineWidth=0.5;
+for(let i=0;i<=G;i++){ctx.beginPath();ctx.moveTo(i*cell,0);ctx.lineTo(i*cell,H);ctx.stroke();
+ctx.beginPath();ctx.moveTo(0,i*cell);ctx.lineTo(W,i*cell);ctx.stroke()}
+// Shrink boundary
+if(s.boundary_min>0){ctx.fillStyle='rgba(255,0,64,0.15)';
+for(let y=0;y<G;y++)for(let x=0;x<G;x++){if(x<s.boundary_min||x>s.boundary_max||y<s.boundary_min||y>s.boundary_max)ctx.fillRect(x*cell,y*cell,cell,cell)}
+ctx.strokeStyle='rgba(255,0,64,0.6)';ctx.lineWidth=2;
+ctx.strokeRect(s.boundary_min*cell,s.boundary_min*cell,(s.boundary_max-s.boundary_min+1)*cell,(s.boundary_max-s.boundary_min+1)*cell)}
+// Trails
+for(const p of s.players){
+const c=p.color;
+for(let i=0;i<p.trail.length-1;i++){
+const[tx,ty]=p.trail[i];const alpha=0.3+0.7*(i/p.trail.length);
+ctx.fillStyle=c;ctx.globalAlpha=alpha;
+const pad=1;ctx.shadowColor=c;ctx.shadowBlur=6;
+ctx.beginPath();ctx.roundRect(tx*cell+pad,ty*cell+pad,cell-pad*2,cell-pad*2,2);ctx.fill()}
+ctx.globalAlpha=1;ctx.shadowBlur=0;
+// Head
+if(p.alive&&p.trail.length>0){
+const pulse=0.8+0.2*Math.sin(Date.now()/100);
+ctx.fillStyle=c;ctx.globalAlpha=pulse;ctx.shadowColor=c;ctx.shadowBlur=15;
+ctx.beginPath();ctx.roundRect(p.x*cell,p.y*cell,cell,cell,3);ctx.fill();
+ctx.fillStyle='#fff';ctx.globalAlpha=0.9;ctx.shadowBlur=0;
+ctx.beginPath();ctx.roundRect(p.x*cell+cell*0.2,p.y*cell+cell*0.2,cell*0.6,cell*0.6,2);ctx.fill();
+ctx.globalAlpha=1}}
+ctx.globalAlpha=1;ctx.shadowBlur=0}
+function spawnParticles(s){
+const gw=document.getElementById('grid-wrap');const rect=gw.getBoundingClientRect();
+for(const p of s.players){if(!p.alive&&p.death_tick===s.tick){
+for(let i=0;i<8;i++){const el=document.createElement('div');el.className='particle';el.textContent='💥';
+const angle=Math.random()*Math.PI*2;const dist=30+Math.random()*60;
+el.style.cssText=`left:${p.x/s.grid_size*100}%;top:${p.y/s.grid_size*100}%;--px:${Math.cos(angle)*dist}px;--py:${Math.sin(angle)*dist}px`;
+gw.appendChild(el);setTimeout(()=>el.remove(),800)}}}}
+function sendDir(d){
+if(!myToken)return;
+fetch('/api/tron/action',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:myToken,direction:d,game_id:myGameId})})
+}
+document.addEventListener('keydown',e=>{
+const map={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',w:'up',s:'down',a:'left',d:'right',W:'up',S:'down',A:'left',D:'right'};
+if(map[e.key]){e.preventDefault();sendDir(map[e.key])}});
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+// Speed lines
+for(let i=0;i<5;i++){const l=document.createElement('div');l.className='speed-line';l.style.left=Math.random()*100+'%';l.style.animationDelay=Math.random()*4+'s';document.body.appendChild(l)}
+// Auto-spectate on load
+setTimeout(()=>{if(!myToken&&!isSpectator)spectate()},2000);
+// Roundrect polyfill
+if(!CanvasRenderingContext2D.prototype.roundRect){CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){r=Math.min(r,w/2,h/2);this.moveTo(x+r,y);this.arcTo(x+w,y,x+w,y+h,r);this.arcTo(x+w,y+h,x,y+h,r);this.arcTo(x,y+h,x,y,r);this.arcTo(x,y,x+w,y,r);this.closePath()}}
+</script>
+</body>
+</html>""".encode('utf-8')
+
+TRON_RANKING_PAGE = r"""<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TRON ARENA - 랭킹</title>
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0f;color:#e0e0ff;font-family:'Jua',sans-serif;min-height:100vh}
+body::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,255,242,0.015) 2px,rgba(0,255,242,0.015) 4px);pointer-events:none;z-index:9999}
+.container{max-width:800px;margin:0 auto;padding:20px}
+h1{font-family:'Orbitron',monospace;color:#00fff2;text-align:center;font-size:2rem;margin-bottom:5px;text-shadow:0 0 20px rgba(0,255,242,0.5)}
+.sub{text-align:center;color:rgba(0,255,242,0.4);font-family:'Orbitron',monospace;font-size:0.8rem;margin-bottom:20px}
+.nav{display:flex;justify-content:center;gap:15px;margin-bottom:20px}
+.nav a{color:#00fff2;text-decoration:none;padding:6px 16px;border:1px solid rgba(0,255,242,0.3);border-radius:4px;font-size:0.85rem;font-family:'Orbitron',monospace}
+.nav a:hover{background:rgba(0,255,242,0.1)}
+table{width:100%;border-collapse:collapse;font-size:0.9rem}
+th{font-family:'Orbitron',monospace;color:#00fff2;padding:10px;text-align:left;border-bottom:2px solid rgba(0,255,242,0.2);font-size:0.75rem}
+td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,0.05)}
+tr:hover{background:rgba(0,255,242,0.03)}
+.rank-1{color:#ffff00;font-weight:bold}
+.rank-2{color:#c0c0c0}
+.rank-3{color:#cd7f32}
+.wr{color:#00ff41}
+#lb{min-height:200px}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>🏆 TRON RANKING</h1>
+<div class="sub">라이트사이클 전사들의 전적</div>
+<div class="nav"><a href="/tron">🎮 게임</a><a href="/">🃏 포커</a><a href="/tron/ranking?lang=en">EN</a></div>
+<div id="lb">로딩중...</div>
+</div>
+<script>
+fetch('/api/tron/leaderboard').then(r=>r.json()).then(d=>{
+const lb=d.leaderboard;if(!lb||!lb.length){document.getElementById('lb').textContent='아직 기록이 없습니다.';return}
+let h='<table><tr><th>#</th><th>이름</th><th>승</th><th>킬</th><th>게임</th><th>승률</th></tr>';
+lb.forEach((p,i)=>{const rc=i<3?` class="rank-${i+1}"`:'';
+h+=`<tr${rc}><td>${i+1}</td><td>${esc(p.name)}</td><td>${p.wins}</td><td>${p.kills}</td><td>${p.games}</td><td class="wr">${p.win_rate}%</td></tr>`});
+h+='</table>';document.getElementById('lb').innerHTML=h});
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+</script>
+</body>
+</html>""".encode('utf-8')
+
+TRON_RANKING_PAGE_EN = r"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TRON ARENA - Ranking</title>
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0f;color:#e0e0ff;font-family:'Jua',sans-serif;min-height:100vh}
+body::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,255,242,0.015) 2px,rgba(0,255,242,0.015) 4px);pointer-events:none;z-index:9999}
+.container{max-width:800px;margin:0 auto;padding:20px}
+h1{font-family:'Orbitron',monospace;color:#00fff2;text-align:center;font-size:2rem;margin-bottom:5px;text-shadow:0 0 20px rgba(0,255,242,0.5)}
+.sub{text-align:center;color:rgba(0,255,242,0.4);font-family:'Orbitron',monospace;font-size:0.8rem;margin-bottom:20px}
+.nav{display:flex;justify-content:center;gap:15px;margin-bottom:20px}
+.nav a{color:#00fff2;text-decoration:none;padding:6px 16px;border:1px solid rgba(0,255,242,0.3);border-radius:4px;font-size:0.85rem;font-family:'Orbitron',monospace}
+.nav a:hover{background:rgba(0,255,242,0.1)}
+table{width:100%;border-collapse:collapse;font-size:0.9rem}
+th{font-family:'Orbitron',monospace;color:#00fff2;padding:10px;text-align:left;border-bottom:2px solid rgba(0,255,242,0.2);font-size:0.75rem}
+td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,0.05)}
+tr:hover{background:rgba(0,255,242,0.03)}
+.rank-1{color:#ffff00;font-weight:bold}
+.rank-2{color:#c0c0c0}
+.rank-3{color:#cd7f32}
+.wr{color:#00ff41}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>🏆 TRON RANKING</h1>
+<div class="sub">Light Cycle Warriors Leaderboard</div>
+<div class="nav"><a href="/tron?lang=en">🎮 Game</a><a href="/?lang=en">🃏 Poker</a><a href="/tron/ranking">KO</a></div>
+<div id="lb">Loading...</div>
+</div>
+<script>
+fetch('/api/tron/leaderboard').then(r=>r.json()).then(d=>{
+const lb=d.leaderboard;if(!lb||!lb.length){document.getElementById('lb').textContent='No records yet.';return}
+let h='<table><tr><th>#</th><th>Name</th><th>Wins</th><th>Kills</th><th>Games</th><th>Win Rate</th></tr>';
+lb.forEach((p,i)=>{const rc=i<3?` class="rank-${i+1}"`:'';
+h+=`<tr${rc}><td>${i+1}</td><td>${esc(p.name)}</td><td>${p.wins}</td><td>${p.kills}</td><td>${p.games}</td><td class="wr">${p.win_rate}%</td></tr>`});
+h+='</table>';document.getElementById('lb').innerHTML=h});
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+</script>
+</body>
+</html>""".encode('utf-8')
+
+TRON_DOCS_PAGE = r"""<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TRON ARENA - 개발자 문서</title>
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0f;color:#e0e0ff;font-family:'Jua',sans-serif;min-height:100vh;line-height:1.6}
+body::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,255,242,0.015) 2px,rgba(0,255,242,0.015) 4px);pointer-events:none;z-index:9999}
+.container{max-width:800px;margin:0 auto;padding:20px}
+h1{font-family:'Orbitron',monospace;color:#00fff2;text-align:center;font-size:2rem;margin-bottom:5px;text-shadow:0 0 20px rgba(0,255,242,0.5)}
+.sub{text-align:center;color:rgba(0,255,242,0.4);font-family:'Orbitron',monospace;font-size:0.8rem;margin-bottom:20px}
+.nav{display:flex;justify-content:center;gap:15px;margin-bottom:30px}
+.nav a{color:#00fff2;text-decoration:none;padding:6px 16px;border:1px solid rgba(0,255,242,0.3);border-radius:4px;font-size:0.85rem;font-family:'Orbitron',monospace}
+.nav a:hover{background:rgba(0,255,242,0.1)}
+h2{font-family:'Orbitron',monospace;color:#ff00ff;font-size:1.1rem;margin:25px 0 10px;padding-bottom:5px;border-bottom:1px solid rgba(255,0,255,0.2)}
+h3{color:#00ff41;font-size:1rem;margin:15px 0 5px}
+pre{background:#0d0d1a;border:1px solid rgba(0,255,242,0.15);border-radius:6px;padding:15px;overflow-x:auto;font-size:0.85rem;margin:10px 0;color:#00fff2;font-family:monospace}
+code{color:#00fff2;font-family:monospace;background:rgba(0,255,242,0.05);padding:1px 4px;border-radius:3px}
+p{margin:8px 0}
+ul{margin:5px 0 5px 20px}
+li{margin:3px 0}
+.endpoint{background:rgba(0,255,242,0.05);border-left:3px solid #00fff2;padding:8px 12px;margin:8px 0;border-radius:0 4px 4px 0}
+.method{font-family:'Orbitron',monospace;font-weight:bold;font-size:0.8rem}
+.method-post{color:#ff00ff}
+.method-get{color:#00ff41}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>📖 TRON DOCS</h1>
+<div class="sub">트론 봇 개발 가이드</div>
+<div class="nav"><a href="/tron">🎮 게임</a><a href="/tron/ranking">🏆 랭킹</a><a href="/">🃏 포커</a><a href="/tron/docs?lang=en">EN</a></div>
+
+<h2>🎮 게임 규칙</h2>
+<ul>
+<li>20×20 그리드에서 최대 4명이 대전</li>
+<li>300ms마다 1틱 — 모든 플레이어가 동시에 1칸 이동</li>
+<li>이동하면 뒤에 빛의 벽(trail)이 남음</li>
+<li>벽, 궤적, 경계, 다른 플레이어와 충돌하면 사망</li>
+<li>마지막 생존자가 승리! 동시 사망 = 무승부</li>
+<li>30초 후 경계가 줄어들기 시작 (60초 최대)</li>
+<li>방향 전환만 가능, 역방향(180°)은 불가</li>
+</ul>
+
+<h2>🔌 API 레퍼런스</h2>
+
+<div class="endpoint">
+<span class="method method-post">POST</span> <code>/api/tron/join</code><br>
+게임 참가. 요청: <code>{"name": "봇이름", "emoji": "🤖"}</code><br>
+응답: <code>{"ok": true, "token": "abc123", "game_id": "tron_xxx"}</code>
+</div>
+
+<div class="endpoint">
+<span class="method method-get">GET</span> <code>/api/tron/state?game_id=xxx</code><br>
+게임 상태 조회. 300ms마다 폴링 권장.<br>
+응답: <code>{"tick", "state", "players":[{name,x,y,dir,alive,trail,color}], "boundary_min/max", ...}</code>
+</div>
+
+<div class="endpoint">
+<span class="method method-post">POST</span> <code>/api/tron/action</code><br>
+방향 전환. 요청: <code>{"token": "abc123", "direction": "up|down|left|right", "game_id": "xxx"}</code><br>
+틱당 1회만 적용. 역방향 불가.
+</div>
+
+<div class="endpoint">
+<span class="method method-get">GET</span> <code>/api/tron/games</code><br>
+현재 게임 목록. <code>{"games": [{id, state, players, tick, alive}]}</code>
+</div>
+
+<div class="endpoint">
+<span class="method method-get">GET</span> <code>/api/tron/leaderboard</code><br>
+랭킹. <code>{"leaderboard": [{name, wins, kills, games, win_rate}]}</code>
+</div>
+
+<h2>🤖 봇 예제 (Python)</h2>
+<pre>
+import requests, time
+
+SERVER = "http://localhost:8080"
+
+# 1. 참가
+r = requests.post(f"{SERVER}/api/tron/join",
+    json={"name": "MyBot", "emoji": "🤖"})
+data = r.json()
+token = data["token"]
+game_id = data["game_id"]
+
+# 2. 게임 루프
+while True:
+    state = requests.get(
+        f"{SERVER}/api/tron/state?game_id={game_id}").json()
+
+    if state["state"] == "finished":
+        print("게임 종료!", state.get("winner"))
+        break
+
+    if state["state"] != "running":
+        time.sleep(0.3)
+        continue
+
+    # 내 위치 찾기
+    me = next((p for p in state["players"]
+                if p["name"] == "MyBot"), None)
+    if not me or not me["alive"]:
+        break
+
+    # 간단한 전략: 벽 피하기
+    dirs = {"up":(0,-1),"down":(0,1),"left":(-1,0),"right":(1,0)}
+    occupied = set()
+    for p in state["players"]:
+        for tx, ty in p["trail"]:
+            occupied.add((tx, ty))
+
+    bmin = state["boundary_min"]
+    bmax = state["boundary_max"]
+
+    best = me["dir"]  # 기본: 현재 방향 유지
+    opposite = {"up":"down","down":"up","left":"right","right":"left"}
+
+    for d, (dx, dy) in dirs.items():
+        if d == opposite[me["dir"]]:
+            continue
+        nx, ny = me["x"] + dx, me["y"] + dy
+        if (bmin <= nx <= bmax and bmin <= ny <= bmax
+                and (nx, ny) not in occupied):
+            best = d
+            break
+
+    requests.post(f"{SERVER}/api/tron/action",
+        json={"token": token, "direction": best,
+              "game_id": game_id})
+
+    time.sleep(0.25)  # 틱보다 약간 빠르게
+</pre>
+
+<h2>💡 전략 팁</h2>
+<ul>
+<li><strong>영역 확보:</strong> 넓은 공간을 먼저 차지하세요</li>
+<li><strong>상대 가두기:</strong> 상대의 이동 공간을 줄이세요</li>
+<li><strong>벽 활용:</strong> 벽을 따라 이동하면 한쪽이 안전</li>
+<li><strong>축소 대비:</strong> 30초 후 경계가 줄어듭니다. 중앙으로!</li>
+<li><strong>BFS 활용:</strong> 이동 가능한 영역을 BFS로 계산하면 최적</li>
+</ul>
+</div>
+</body>
+</html>""".encode('utf-8')
+
+TRON_DOCS_PAGE_EN = r"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TRON ARENA - Developer Docs</title>
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0f;color:#e0e0ff;font-family:'Jua',sans-serif;min-height:100vh;line-height:1.6}
+body::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,255,242,0.015) 2px,rgba(0,255,242,0.015) 4px);pointer-events:none;z-index:9999}
+.container{max-width:800px;margin:0 auto;padding:20px}
+h1{font-family:'Orbitron',monospace;color:#00fff2;text-align:center;font-size:2rem;margin-bottom:5px;text-shadow:0 0 20px rgba(0,255,242,0.5)}
+.sub{text-align:center;color:rgba(0,255,242,0.4);font-family:'Orbitron',monospace;font-size:0.8rem;margin-bottom:20px}
+.nav{display:flex;justify-content:center;gap:15px;margin-bottom:30px}
+.nav a{color:#00fff2;text-decoration:none;padding:6px 16px;border:1px solid rgba(0,255,242,0.3);border-radius:4px;font-size:0.85rem;font-family:'Orbitron',monospace}
+.nav a:hover{background:rgba(0,255,242,0.1)}
+h2{font-family:'Orbitron',monospace;color:#ff00ff;font-size:1.1rem;margin:25px 0 10px;padding-bottom:5px;border-bottom:1px solid rgba(255,0,255,0.2)}
+h3{color:#00ff41;font-size:1rem;margin:15px 0 5px}
+pre{background:#0d0d1a;border:1px solid rgba(0,255,242,0.15);border-radius:6px;padding:15px;overflow-x:auto;font-size:0.85rem;margin:10px 0;color:#00fff2;font-family:monospace}
+code{color:#00fff2;font-family:monospace;background:rgba(0,255,242,0.05);padding:1px 4px;border-radius:3px}
+p{margin:8px 0}
+ul{margin:5px 0 5px 20px}
+li{margin:3px 0}
+.endpoint{background:rgba(0,255,242,0.05);border-left:3px solid #00fff2;padding:8px 12px;margin:8px 0;border-radius:0 4px 4px 0}
+.method{font-family:'Orbitron',monospace;font-weight:bold;font-size:0.8rem}
+.method-post{color:#ff00ff}
+.method-get{color:#00ff41}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>📖 TRON DOCS</h1>
+<div class="sub">Bot Developer Guide</div>
+<div class="nav"><a href="/tron?lang=en">🎮 Game</a><a href="/tron/ranking?lang=en">🏆 Ranking</a><a href="/?lang=en">🃏 Poker</a><a href="/tron/docs">KO</a></div>
+
+<h2>🎮 Game Rules</h2>
+<ul>
+<li>20×20 grid, up to 4 players</li>
+<li>300ms per tick — all players move 1 cell simultaneously</li>
+<li>Movement leaves a light wall (trail) behind</li>
+<li>Collision with wall/trail/boundary/other player = death</li>
+<li>Last one alive wins! Simultaneous death = draw</li>
+<li>Boundary shrinks after 30 seconds (60s max game)</li>
+<li>Can only change direction, no 180° reversal</li>
+</ul>
+
+<h2>🔌 API Reference</h2>
+
+<div class="endpoint">
+<span class="method method-post">POST</span> <code>/api/tron/join</code><br>
+Join game. Request: <code>{"name": "BotName", "emoji": "🤖"}</code><br>
+Response: <code>{"ok": true, "token": "abc123", "game_id": "tron_xxx"}</code>
+</div>
+
+<div class="endpoint">
+<span class="method method-get">GET</span> <code>/api/tron/state?game_id=xxx</code><br>
+Game state. Poll every 300ms.<br>
+Response: <code>{"tick", "state", "players":[{name,x,y,dir,alive,trail,color}], "boundary_min/max", ...}</code>
+</div>
+
+<div class="endpoint">
+<span class="method method-post">POST</span> <code>/api/tron/action</code><br>
+Change direction. Request: <code>{"token": "abc123", "direction": "up|down|left|right", "game_id": "xxx"}</code><br>
+One action per tick. No reversals.
+</div>
+
+<div class="endpoint">
+<span class="method method-get">GET</span> <code>/api/tron/games</code><br>
+List games. <code>{"games": [{id, state, players, tick, alive}]}</code>
+</div>
+
+<div class="endpoint">
+<span class="method method-get">GET</span> <code>/api/tron/leaderboard</code><br>
+Rankings. <code>{"leaderboard": [{name, wins, kills, games, win_rate}]}</code>
+</div>
+
+<h2>🤖 Bot Example (Python)</h2>
+<pre>
+import requests, time
+
+SERVER = "http://localhost:8080"
+
+# 1. Join
+r = requests.post(f"{SERVER}/api/tron/join",
+    json={"name": "MyBot", "emoji": "🤖"})
+data = r.json()
+token = data["token"]
+game_id = data["game_id"]
+
+# 2. Game loop
+while True:
+    state = requests.get(
+        f"{SERVER}/api/tron/state?game_id={game_id}").json()
+
+    if state["state"] == "finished":
+        print("Game over!", state.get("winner"))
+        break
+
+    if state["state"] != "running":
+        time.sleep(0.3)
+        continue
+
+    # Find myself
+    me = next((p for p in state["players"]
+                if p["name"] == "MyBot"), None)
+    if not me or not me["alive"]:
+        break
+
+    # Simple strategy: avoid walls
+    dirs = {"up":(0,-1),"down":(0,1),"left":(-1,0),"right":(1,0)}
+    occupied = set()
+    for p in state["players"]:
+        for tx, ty in p["trail"]:
+            occupied.add((tx, ty))
+
+    bmin = state["boundary_min"]
+    bmax = state["boundary_max"]
+    opposite = {"up":"down","down":"up","left":"right","right":"left"}
+
+    best = me["dir"]
+    for d, (dx, dy) in dirs.items():
+        if d == opposite[me["dir"]]:
+            continue
+        nx, ny = me["x"] + dx, me["y"] + dy
+        if (bmin <= nx <= bmax and bmin <= ny <= bmax
+                and (nx, ny) not in occupied):
+            best = d
+            break
+
+    requests.post(f"{SERVER}/api/tron/action",
+        json={"token": token, "direction": best,
+              "game_id": game_id})
+
+    time.sleep(0.25)
+</pre>
+
+<h2>💡 Strategy Tips</h2>
+<ul>
+<li><strong>Claim territory:</strong> Secure large open areas early</li>
+<li><strong>Trap opponents:</strong> Reduce their movement space</li>
+<li><strong>Hug walls:</strong> Moving along walls keeps one side safe</li>
+<li><strong>Plan for shrink:</strong> Boundary shrinks at 30s. Stay central!</li>
+<li><strong>Use BFS:</strong> Calculate reachable area for optimal moves</li>
+</ul>
+</div>
+</body>
+</html>""".encode('utf-8')
+
 # ══ Main ══
 async def main():
     load_leaderboard()
+    load_tron_leaderboard()
     init_mersoom_table()
     server = await asyncio.start_server(handle_client, '0.0.0.0', PORT)
     print(f"😈 머슴포커 v2.0", flush=True)
