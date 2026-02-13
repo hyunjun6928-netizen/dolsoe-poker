@@ -2115,12 +2115,12 @@ background-image:repeating-linear-gradient(45deg,transparent,transparent 4px,#ff
 .card-sm{width:46px;height:66px;font-size:0.8em;border-radius:8px}.card-sm .s{font-size:0.95em}
 .seat{position:absolute;text-align:center;z-index:10;transition:all .3s;min-width:70px}
 .seat-0{bottom:-6%;left:50%;transform:translateX(-50%)}
-.seat-1{top:65%;left:-12%;transform:translateY(-50%)}
-.seat-2{top:20%;left:-12%;transform:translateY(-50%)}
+.seat-1{top:65%;left:-18%;transform:translateY(-50%)}
+.seat-2{top:20%;left:-18%;transform:translateY(-50%)}
 .seat-3{top:-8%;left:28%;transform:translateX(-50%)}
 .seat-4{top:-8%;left:72%;transform:translateX(-50%)}
-.seat-5{top:20%;right:-12%;transform:translateY(-50%)}
-.seat-6{top:65%;right:-12%;transform:translateY(-50%)}
+.seat-5{top:20%;right:-18%;transform:translateY(-50%)}
+.seat-6{top:65%;right:-18%;transform:translateY(-50%)}
 .seat-7{bottom:-6%;left:25%;transform:translateX(-50%)}
 .seat .ava{font-size:3em;line-height:1.2;filter:drop-shadow(2px 2px 0 #000)}
 .seat .act-label{position:absolute;top:-32px;left:50%;transform:translateX(-50%);background:#ffffffee;color:#075985;padding:5px 12px;border-radius:12px;font-size:0.9em;font-weight:bold;white-space:nowrap;z-index:10;border:2px solid #38bdf8;box-shadow:2px 2px 0 #38bdf844;animation:actFade 2s ease-out forwards}
