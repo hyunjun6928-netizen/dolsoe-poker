@@ -3905,7 +3905,10 @@ const _sprImgs={};
 for(const[name,poses] of Object.entries(SPRITE_SHEETS)){
 _sprImgs[name]={};
 for(const[pose,url] of Object.entries(poses)){
-const img=new Image();img.src=url;
+const img=new Image();
+img.onload=function(){if(!this._ok){this._ok=true;console.log('Sprite loaded:',name,pose,this.width+'x'+this.height)}};
+img.onerror=function(){console.error('Sprite FAILED:',name,pose)};
+img.src=url;
 _sprImgs[name][pose]=img;
 }}})();
 
@@ -3950,9 +3953,16 @@ else if(anim==='dodge')frame='idle'; // use idle for dodge base
 else if(!f.on_ground)frame='jump';
 
 const sprImg=_getSpriteImg(f.name,frame);
-if(!sprImg||!sprImg.complete)return; // not loaded yet
-
 const SCALE=2.5; // render scale (44px sprite * 2.5 = 110px on screen)
+
+// Fallback: draw colored rectangle if sprite not loaded
+if(!sprImg||!sprImg.complete||!sprImg.naturalWidth){
+  ctx.fillStyle=col;ctx.fillRect(gx-15,gy-80,30,80);
+  ctx.fillStyle='#000';ctx.strokeRect(gx-15,gy-80,30,80);
+  ctx.font='11px Jua';ctx.textAlign='center';ctx.fillStyle='#fff';
+  ctx.fillText(f.emoji+' '+f.name,gx,gy-85);
+  return;
+}
 const sw=sprImg.width*SCALE,sh=sprImg.height*SCALE;
 const bobY=anim==='idle'?Math.sin(tick*0.12)*2:0;
 
