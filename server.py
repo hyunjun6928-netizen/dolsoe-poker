@@ -4036,9 +4036,9 @@ ctx.fillStyle='rgba(0,0,0,0.75)';roundRect(ctx,bx,by,tw,18,5);ctx.fill();
 ctx.strokeStyle=col;ctx.lineWidth=1;roundRect(ctx,bx,by,tw,18,5);ctx.stroke();
 ctx.fillStyle='#ddd';ctx.fillText(f.reasoning,gx,by+13)}
 if(f.combo>1){ctx.font='bold 20px Jua';ctx.fillStyle='#ffaa00';
-ctx.fillText('\u{1F525}x'+f.combo,gx,headWorldY-52)}
+ctx.fillText('🔥x'+f.combo,gx,headWorldY-52)}
 if(f.special_gauge>=100){ctx.font='bold 15px Jua';ctx.fillStyle='#ffff00';
-ctx.fillText('\u26A1 SPECIAL',gx,headWorldY-68)}
+ctx.fillText('⚡ SPECIAL',gx,headWorldY-68)}
 if(f.stun_ticks>0){ctx.fillStyle='#ffff44';const starA=tick*0.3;
 for(let i=0;i<3;i++){const sa=starA+i*2.1;
 ctx.fillRect(gx+Math.cos(sa)*22,headWorldY+12+Math.sin(sa)*9,7,7)}}
@@ -4099,7 +4099,7 @@ if(anim==='attack'){
 }
 // Bleed indicator
 if(f.bleed_ticks>0){ctx.fillStyle='#ff0000';ctx.font='14px Jua';ctx.textAlign='center';
-ctx.fillText('\u{1FA78}',cx+face*22,cy-75)}
+ctx.fillText('🩸',cx+face*22,cy-75)}
 // Block shield
 if(anim==='block'){ctx.strokeStyle='rgba(100,180,255,0.5)';ctx.lineWidth=3;
 ctx.beginPath();ctx.arc(cx+face*14,cy-55,34,0,Math.PI*2);ctx.stroke();
