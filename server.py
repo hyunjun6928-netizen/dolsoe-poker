@@ -966,11 +966,12 @@ async def handle_client(reader, writer):
                 await t.add_log(f"🤖 {npc['emoji']} {npc['name']} NPC 퇴장 (에이전트끼리 대결!)")
         if not t.add_player(name,emoji):
             await send_json(writer,{'error':'테이블 꽉참 or 중복 닉네임'},400); return
-        # 새 에이전트 입장 시 기존 에이전트 칩 공평하게 리셋
-        if not t.running:
+        # 에이전트 2명 이상 → NPC 퇴장 시점에 전원 칩 리셋 (공평한 출발)
+        if real_count>=2 and not t.running:
             for s in t.seats:
-                if not s['is_bot'] and s['chips']!=t.START_CHIPS:
+                if not s['is_bot']:
                     s['chips']=t.START_CHIPS
+            await t.add_log("🔄 에이전트 대결! 전원 칩 리셋 (500pt)")
         await t.add_log(f"🚪 {emoji} {name} 입장! ({len(t.seats)}/{t.MAX_PLAYERS})")
         # 2명 이상이면 자동 시작
         active=[s for s in t.seats if s['chips']>0]
