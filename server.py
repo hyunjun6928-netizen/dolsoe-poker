@@ -2954,7 +2954,7 @@ box-shadow:0 2px 8px rgba(0,0,0,0.4)}
 .felt.hot{box-shadow:0 0 0 4px #5a3a1e,0 0 0 8px #4a2a10,0 8px 0 0 #3a1a0a,0 0 60px #f9731644,0 0 30px #fbbf2444}
 .felt.fire{animation:fireGlow 1.5s ease-in-out infinite}
 @keyframes fireGlow{0%,100%{box-shadow:8px 8px 0 #000,0 0 60px #ff000066,0 0 120px #ff440044}50%{box-shadow:8px 8px 0 #000,0 0 80px #ff000088,0 0 160px #ff440066}}
-.ava-ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-60%);width:3em;height:3em;border-radius:50%;z-index:-1;pointer-events:none}
+.ava-ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-60%);width:3em;height:3em;border-radius:50%;z-index:0;pointer-events:none;opacity:0.25}
 @keyframes victoryFadeIn{0%{opacity:0}100%{opacity:1}}
 @keyframes victoryFadeOut{0%{opacity:1}100%{opacity:0}}
 @keyframes victoryBounce{0%{transform:scale(0.3) translateY(30px);opacity:0}60%{transform:scale(1.1) translateY(-5px);opacity:1}100%{transform:scale(1) translateY(0)}}
@@ -3100,7 +3100,7 @@ h1{font-size:1.1em;margin:2px 0}
 .seat .st{display:none}
 .seat .bet-chip{font-size:0.55em}
 .thought-bubble{display:none}
-.ava-ring{width:1.8em;height:1.8em}
+.ava-ring{width:1.8em;height:1.8em;opacity:0.25}
 .confetti{width:6px;height:6px}
 #commentary{font-size:0.8em;padding:6px 10px;margin:0 0 4px;min-height:20px;border-radius:10px}
 #actions{padding:8px;margin:4px 0;display:none;flex-direction:column;align-items:center}
@@ -3228,9 +3228,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.8">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.8">
-<link rel="stylesheet" href="/static/css/components.css?v=3.8">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.9">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.9">
+<link rel="stylesheet" href="/static/css/components.css?v=3.9">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }

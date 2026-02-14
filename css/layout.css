@@ -176,10 +176,10 @@ h1 b { color: var(--accent-gold); }
 
 .felt, .felt#felt {
   position: relative;
-  /* Deep emerald felt gradient */
+  /* Dark casino felt — pixel art table */
   background:
-    radial-gradient(ellipse 70% 60% at 50% 45%, var(--felt-spot), transparent),
-    linear-gradient(180deg, var(--felt-light) 0%, var(--felt-mid) 35%, var(--felt-dark) 70%, var(--felt-shadow) 100%);
+    url('/static/slimes/table_felt.png') center/cover no-repeat,
+    linear-gradient(180deg, #1a1e2a 0%, #0d1018 100%);
   border: 1px solid #0D3F1C;
   border-radius: 18px;
   width: 100%;

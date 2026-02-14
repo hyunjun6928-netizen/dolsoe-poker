@@ -17,10 +17,10 @@
 
 /* ===== 2. COLOR — FELT & TABLE ===== */
 :root {
-  --felt-light:    #1E7A4A;        /* 펠트 하이라이트 */
-  --felt-mid:      #166034;        /* 펠트 중간톤 */
-  --felt-dark:     #0E4A22;        /* 펠트 딥 */
-  --felt-shadow:   #0A3318;        /* 펠트 비네팅 */
+  --felt-light:    #1a1e2a;        /* 다크 카지노 펠트 */
+  --felt-mid:      #141822;        /* 펠트 중간톤 */
+  --felt-dark:     #0d1018;        /* 펠트 딥 */
+  --felt-shadow:   #080b10;        /* 펠트 비네팅 */
   --felt-spot:     rgba(255,248,220,0.04); /* 스포트라이트 */
   --rail-brass:    #8B7355;        /* 브라스 레일 */
   --rail-light:    #A8956E;        /* 레일 하이라이트 */
