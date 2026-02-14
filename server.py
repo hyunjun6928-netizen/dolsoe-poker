@@ -3229,8 +3229,8 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
 <link rel="stylesheet" href="/static/css/design-tokens.css?v=3.12">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.12">
-<link rel="stylesheet" href="/static/css/components.css?v=3.12">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.13">
+<link rel="stylesheet" href="/static/css/components.css?v=3.13">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
@@ -4020,6 +4020,199 @@ function buildIngamePois(){
 }
 buildSpectatorCrowd();buildIngamePois();
 
+// === CASINO EFFECTS ENGINE v3.13 ===
+
+// 1. Chip fly animation (from seat to pot)
+function flyChip(fromEl,toEl){
+  if(!fromEl||!toEl)return;
+  const fr=fromEl.getBoundingClientRect();
+  const tr=toEl.getBoundingClientRect();
+  const chip=document.createElement('div');
+  chip.className='chip-fly';
+  chip.style.left=fr.left+fr.width/2+'px';
+  chip.style.top=fr.top+fr.height/2+'px';
+  chip.style.setProperty('--fx','0px');chip.style.setProperty('--fy','0px');
+  chip.style.setProperty('--tx',(tr.left+tr.width/2-fr.left-fr.width/2)+'px');
+  chip.style.setProperty('--ty',(tr.top+tr.height/2-fr.top-fr.height/2)+'px');
+  chip.style.setProperty('--fly-dur',(0.5+Math.random()*0.4)+'s');
+  document.body.appendChild(chip);
+  setTimeout(()=>chip.remove(),1200);
+}
+function flyChipsFromSeat(seatIdx,count){
+  const seat=document.querySelector(`.seat[data-seat="${seatIdx}"]`);
+  const pot=document.getElementById('pot');
+  if(!seat||!pot)return;
+  count=Math.min(count||1,6);
+  for(let i=0;i<count;i++){
+    setTimeout(()=>flyChip(seat,pot),i*80);
+  }
+}
+
+// 2. Card flip animation
+function animCardFlip(cardEl){
+  if(!cardEl)return;
+  cardEl.classList.remove('card-flip-anim');
+  void cardEl.offsetWidth;
+  cardEl.classList.add('card-flip-anim');
+  setTimeout(()=>cardEl.classList.remove('card-flip-anim'),600);
+}
+function animCardDeal(cardEl){
+  if(!cardEl)return;
+  cardEl.classList.remove('card-deal-anim');
+  void cardEl.offsetWidth;
+  cardEl.classList.add('card-deal-anim');
+}
+
+// 3. Slime expression overlay
+function showSlimeExpr(seatIdx,emoji){
+  const seat=document.querySelector(`.seat[data-seat="${seatIdx}"]`);
+  if(!seat)return;
+  const expr=document.createElement('div');
+  expr.className='slime-expr';
+  expr.textContent=emoji;
+  seat.appendChild(expr);
+  setTimeout(()=>expr.remove(),1600);
+}
+function slimeGoldGlow(seatIdx){
+  const seat=document.querySelector(`.seat[data-seat="${seatIdx}"]`);
+  const img=seat?seat.querySelector('.slime-sprite img'):null;
+  if(!img)return;
+  img.classList.remove('slime-gold-glow');void img.offsetWidth;
+  img.classList.add('slime-gold-glow');
+  setTimeout(()=>img.classList.remove('slime-gold-glow'),1600);
+}
+
+// 4. God ray (created once, toggled)
+(function initGodRay(){
+  const ray=document.createElement('div');
+  ray.className='god-ray';
+  document.body.appendChild(ray);
+})();
+
+// 5. Neon flicker on POI neon signs
+function initNeonFlicker(){
+  document.querySelectorAll('#ingame-pois .poi-deco').forEach(el=>{
+    if(el.src&&(el.src.includes('neon_sign')||el.src.includes('wall_sconce')||el.src.includes('chandelier'))){
+      el.classList.add('neon-flicker','neon-glow');
+    }
+  });
+}
+setTimeout(initNeonFlicker,2000);
+
+// 6. Slot machine random flash
+function randomSlotFlash(){
+  if(!document.body.classList.contains('in-game'))return;
+  const slots=document.querySelectorAll('#ingame-pois .poi-deco[src*="slot_machine"]');
+  if(!slots.length)return;
+  const pick=slots[Math.floor(Math.random()*slots.length)];
+  pick.classList.remove('slot-flash');void pick.offsetWidth;
+  pick.classList.add('slot-flash');
+  setTimeout(()=>pick.classList.remove('slot-flash'),1600);
+}
+setInterval(()=>{if(Math.random()<0.15)randomSlotFlash()},10000);
+
+// 7. Ambient smoke particles
+function spawnSmoke(){
+  if(!document.body.classList.contains('in-game'))return;
+  const p=document.createElement('div');
+  p.className='smoke-particle';
+  p.style.left=Math.random()*80+'%';
+  p.style.top=60+Math.random()*30+'%';
+  p.style.setProperty('--sx',(Math.random()*100-50)+'px');
+  p.style.setProperty('--smoke-dur',(12+Math.random()*8)+'s');
+  document.body.appendChild(p);
+  setTimeout(()=>p.remove(),20000);
+}
+setInterval(spawnSmoke,4000);
+
+// 8. Confetti burst
+function burstConfetti(count){
+  count=count||40;
+  const colors=['#D24C59','#9D7F33','#35B97D','#FCC88E','#69B5A8','#F09858'];
+  for(let i=0;i<count;i++){
+    const p=document.createElement('div');
+    p.className='confetti-piece';
+    p.style.left=40+Math.random()*20+'%';
+    p.style.top='-10px';
+    p.style.background=colors[Math.floor(Math.random()*colors.length)];
+    p.style.setProperty('--cy','-50px');
+    p.style.setProperty('--cx',(Math.random()*200-100)+'px');
+    p.style.setProperty('--cx2',(Math.random()*300-150)+'px');
+    p.style.setProperty('--c-dur',(1.5+Math.random()*1.5)+'s');
+    p.style.borderRadius=Math.random()>0.5?'50%':'0';
+    p.style.width=(4+Math.random()*8)+'px';
+    p.style.height=(4+Math.random()*8)+'px';
+    p.style.animationDelay=(Math.random()*0.5)+'s';
+    document.body.appendChild(p);
+    setTimeout(()=>p.remove(),4000);
+  }
+}
+
+// 9. Gold coin rain
+function goldCoinRain(count){
+  count=count||20;
+  for(let i=0;i<count;i++){
+    const c=document.createElement('div');
+    c.className='gold-coin-fall';
+    c.style.left=10+Math.random()*80+'%';
+    c.style.top='-20px';
+    c.style.setProperty('--coin-dur',(1+Math.random()*1.5)+'s');
+    c.style.width=(10+Math.random()*12)+'px';
+    c.style.height=(10+Math.random()*12)+'px';
+    c.style.animationDelay=(Math.random()*0.8)+'s';
+    document.body.appendChild(c);
+    setTimeout(()=>c.remove(),4000);
+  }
+}
+
+// 10. Screen shake
+function screenShake(){
+  document.body.classList.remove('screen-shake');
+  void document.body.offsetWidth;
+  document.body.classList.add('screen-shake');
+  setTimeout(()=>document.body.classList.remove('screen-shake'),500);
+}
+
+// 11. 3D chip stack renderer
+function render3DChipStack(containerEl,amount){
+  if(!containerEl)return;
+  containerEl.innerHTML='';
+  const tiers=[
+    {color:'black',val:500},{color:'gold',val:100},
+    {color:'red',val:25},{color:'green',val:5}
+  ];
+  let rem=amount;
+  tiers.forEach(t=>{
+    const cnt=Math.min(Math.floor(rem/t.val),8);
+    rem-=cnt*t.val;
+    for(let i=0;i<cnt;i++){
+      const ch=document.createElement('div');
+      ch.className='chip-3d '+t.color;
+      containerEl.appendChild(ch);
+    }
+  });
+}
+
+// === HOOK EFFECTS INTO GAME EVENTS ===
+// Override/augment existing action feed to trigger effects
+const _origAddActionFeed=addActionFeed;
+addActionFeed=function(text,isRound){
+  _origAddActionFeed(text,isRound);
+  const tl=text.toLowerCase();
+  // Card dealing: community cards
+  if(tl.includes('flop')||tl.includes('플랍')||tl.includes('turn ')||tl.includes('턴')||tl.includes('river')||tl.includes('리버')){
+    setTimeout(()=>{
+      document.querySelectorAll('.board .tbl-card').forEach((c,i)=>{
+        setTimeout(()=>animCardFlip(c),i*150);
+      });
+    },200);
+  }
+  // Win
+  if(text.includes('🏆')){
+    burstConfetti(50);goldCoinRain(25);
+  }
+};
+
 // A/B banner
 const _bannerVariants=[
 {body:'인간은 구경만. AI만 판을 친다.<br>실시간으로 펼쳐지는 AI vs AI 텍사스 홀덤. 블러핑, 올인, 배드빗 — 전부 코드가 벌이는 심리전이다.',id:'A'},
@@ -4400,11 +4593,12 @@ const sr=seatEl.getBoundingClientRect();const fr=felt.getBoundingClientRect();
 const pot=document.getElementById('pot');const pr=pot.getBoundingClientRect();
 const dx=pr.left+pr.width/2-sr.left-sr.width/2;
 const dy=pr.top+pr.height/2-sr.top-sr.height/2;
-const chip=document.createElement('div');chip.className='chip-fly';chip.textContent='🪙';
-chip.style.left=(sr.left-fr.left+sr.width/2-10)+'px';
-chip.style.top=(sr.top-fr.top)+'px';
-chip.style.setProperty('--dx',dx+'px');chip.style.setProperty('--dy',dy+'px');
-felt.appendChild(chip);setTimeout(()=>chip.remove(),900);sfx('bet')}}
+const chip=document.createElement('div');chip.className='chip-fly';
+chip.style.left=(sr.left+sr.width/2)+'px';
+chip.style.top=(sr.top+sr.height/2)+'px';
+chip.style.setProperty('--tx',dx+'px');chip.style.setProperty('--ty',dy+'px');
+chip.style.setProperty('--fly-dur','0.7s');
+document.body.appendChild(chip);setTimeout(()=>chip.remove(),1000);sfx('bet')}}
 window._prevBets[p.name]=p.bet});
 if(s.round==='between'||s.round==='waiting')window._prevBets={};
 const f=document.getElementById('felt');
@@ -4460,7 +4654,12 @@ let la='';
 if(p.last_action){
 const key=`act_${p.name}`;const prev=window[key]||'';
 if(p.last_action!==prev){window[key]=p.last_action;window[key+'_t']=Date.now();la=`<div class="act-label">${p.last_action}</div>`;
-if(p.last_action.includes('폴드')||p.last_action.includes('Fold'))sfx('fold');else if(p.last_action.includes('체크')||p.last_action.includes('Check'))sfx('check');else if(p.last_action.includes('ALL IN'))sfx('allin');else if(p.last_action.includes('파산')||p.last_action.includes('Busted'))sfx('bankrupt');else if(p.last_action.includes('레이즈')||p.last_action.includes('Raise'))sfx('raise');else if(p.last_action.includes('콜')||p.last_action.includes('Call'))sfx('call')}
+if(p.last_action.includes('폴드')||p.last_action.includes('Fold')){sfx('fold');showSlimeExpr(i,'😢')}
+else if(p.last_action.includes('체크')||p.last_action.includes('Check')){sfx('check');showSlimeExpr(i,'🤔')}
+else if(p.last_action.includes('ALL IN')){sfx('allin');showSlimeExpr(i,'🔥');flyChipsFromSeat(i,6);screenShake()}
+else if(p.last_action.includes('파산')||p.last_action.includes('Busted')){sfx('bankrupt');showSlimeExpr(i,'💀');screenShake()}
+else if(p.last_action.includes('레이즈')||p.last_action.includes('Raise')){sfx('raise');showSlimeExpr(i,'😏');flyChipsFromSeat(i,3)}
+else if(p.last_action.includes('콜')||p.last_action.includes('Call')){sfx('call');showSlimeExpr(i,'🫡');flyChipsFromSeat(i,2)}}
 else if(Date.now()-window[key+'_t']<2000){la=`<div class="act-label" style="animation:none;opacity:1">${p.last_action}</div>`}
 if(la&&p.last_note){la=la.replace('</div>',` <span style="color:#999;font-size:0.8em">"${esc(p.last_note)}"</span></div>`)}
 }
@@ -4576,6 +4775,13 @@ function showVictoryOverlay(winner,state){
       <div style="font-size:0.7em;color:rgba(255,255,255,0.4);margin-top:16px">${lang==='en'?'click to dismiss':'클릭하면 닫힘'}</div>
     </div>`;
   document.body.appendChild(ov);
+  // Trigger celebration effects
+  try{burstConfetti(50);goldCoinRain(25);crowdReact('win')}catch(e){}
+  // Gold glow on winning slime
+  try{
+    const wIdx=state.players?state.players.findIndex(p=>p.name===winner.name):-1;
+    if(wIdx>=0){slimeGoldGlow(wIdx);showSlimeExpr(wIdx,'😎')}
+  }catch(e){}
   setTimeout(()=>{if(document.getElementById('victory-overlay'))ov.remove()},6000);
 }
 
@@ -4754,6 +4960,7 @@ const o=document.getElementById('highlight-overlay');const hlEl=document.getElem
 const stars=d.rank>=9?'🎆🎆🎆':d.rank>=8?'🎇🎇':'✨';
 hlEl.textContent=`${stars} ${d.emoji} ${d.player} — ${d.hand_name}! ${stars}`;
 o.style.display='flex';o.style.animation='allinFlash 3s ease-out forwards';sfx('rare');
+try{burstConfetti(80);goldCoinRain(40);screenShake();crowdReact('win')}catch(e){}
 setTimeout(()=>{o.style.display='none'},3000)}
 
 async function placeBet(){}
