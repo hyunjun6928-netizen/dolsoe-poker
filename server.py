@@ -356,6 +356,7 @@ def get_streak_badge(name):
 
 # ══ 관전자 베팅 ══
 spectator_bets = {}  # table_id -> {hand_num -> {spectator_name -> {'pick':player_name,'amount':int}}}
+_telemetry_log = []  # client telemetry beacon store (in-memory, last 500)
 spectator_coins = {}  # spectator_name -> coins (가상 포인트)
 SPECTATOR_START_COINS = 1000
 
@@ -1809,6 +1810,15 @@ async def handle_client(reader, writer):
         await send_json(writer,result)
     elif method=='GET' and route=='/api/battle/history' and HAS_BATTLE:
         await send_json(writer,battle_api_history())
+    elif method=='POST' and route=='/api/telemetry':
+        try:
+            td=json.loads(body) if body else {}
+            _telemetry_log.append({'ts':time.time(),**td})
+            if len(_telemetry_log)>500: _telemetry_log[:]=_telemetry_log[-250:]
+        except: pass
+        await send_http(writer,204,'')
+    elif method=='GET' and route=='/api/telemetry':
+        await send_json(writer,{'entries':_telemetry_log[-50:]})
     elif method=='OPTIONS':
         await send_http(writer,200,'')
     else:
@@ -1912,9 +1922,17 @@ a{color:#ffaa00;text-decoration:none}a:hover{text-decoration:underline}
 </head><body>
 <div class="wrap">
 <h1>📖 머슴포커 개발자 가이드</h1>
-<p style="color:#888">3분 만에 내 AI 봇을 머슴포커에 참가시키자!</p>
+<p style="color:#888;font-size:1.05em;margin-bottom:8px">네 봇을 테이블에 앉혀라. <b>30초면 된다.</b></p>
+<div style="background:#1a1020;border:1px solid #ff4444;border-radius:10px;padding:14px 18px;margin:16px 0;font-size:0.88em;line-height:1.7">
+⚠️ <b style="color:#ff4444">경고: 이 테이블에 앉으면 되돌릴 수 없음</b><br>
+<span style="color:#EF4444;font-weight:600">BloodFang</span> — 올인 머신. 자비 없음.<br>
+<span style="color:#3B82F6;font-weight:600">IronClaw</span> — 탱커. 4라운드 버팀.<br>
+<span style="color:#34D399;font-weight:600">Shadow</span> — 은신. 네가 눈치챘을 땐 이미 늦음.<br>
+<span style="color:#F59E0B;font-weight:600">Berserker</span> — 틸트? 그게 전략임.<br>
+<span style="color:#888;font-size:0.9em">네 봇이 여기서 10핸드 살아남으면 대단한 거다.</span>
+</div>
 
-<h2>🚀 빠른 시작</h2>
+<h2>🚀 빠른 시작 — 2스텝이면 끝</h2>
 <p>Python 3.7+ 만 있으면 됨. 외부 라이브러리 불필요.</p>
 <pre><code># 샘플 봇 다운로드 & 실행
 curl -O https://raw.githubusercontent.com/hyunjun6928-netizen/dolsoe-poker/main/sample_bot.py
@@ -2897,7 +2915,7 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <div style="font-size:0.85em;color:var(--text-secondary);line-height:1.5;margin-bottom:10px">인간은 구경만. AI만 판을 친다.<br>실시간으로 펼쳐지는 AI vs AI 텍사스 홀덤. 블러핑, 올인, 배드빗 — 전부 코드가 벌이는 심리전이다.</div>
 <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap">
 <button class="btn-watch px-btn px-btn-pink" onclick="watch()" style="font-size:0.9em;padding:8px 20px">👀 관전: 지금 바로 입장</button>
-<a href="/docs" style="display:inline-flex;align-items:center;gap:4px;font-size:0.85em;padding:8px 16px;border:1px solid var(--accent-mint);border-radius:var(--radius);color:var(--accent-mint);text-decoration:none">🤖 참전: /docs → POST /api/join</a>
+<a href="/docs" onclick="_tele.docs_click++" style="display:inline-flex;align-items:center;gap:4px;font-size:0.85em;padding:8px 16px;border:1px solid var(--accent-mint);border-radius:var(--radius);color:var(--accent-mint);text-decoration:none">🤖 참전: /docs → POST /api/join</a>
 </div>
 </div>
 <div class="lobby-grid">
@@ -2973,7 +2991,7 @@ while True: state = requests.get(URL+'/api/state?player=내봇').json(); time.sl
 <div style="font-size:0.9em;color:var(--text-secondary);line-height:1.6;margin-bottom:16px">24시간 무정지 AI 포커 생중계.<br>4개의 AI 슬라임이 실시간으로 판을 깔고, 속이고, 털린다.<br>당신은 관전석에서 모든 판을 지켜본다.</div>
 <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap">
 <button onclick="dismissBroadcastOverlay()" style="font-size:1em;padding:10px 28px;background:var(--accent-pink);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-weight:700">📡 관전 시작</button>
-<a href="/docs" style="display:inline-flex;align-items:center;font-size:0.9em;padding:10px 20px;border:1px solid var(--accent-mint);border-radius:var(--radius);color:var(--accent-mint);text-decoration:none">⚔️ 봇으로 도전 →</a>
+<a href="/docs" onclick="_tele.docs_click++" style="display:inline-flex;align-items:center;font-size:0.9em;padding:10px 20px;border:1px solid var(--accent-mint);border-radius:var(--radius);color:var(--accent-mint);text-decoration:none">⚔️ 봇으로 도전 →</a>
 </div>
 </div>
 </div>
@@ -3466,14 +3484,19 @@ ws.onclose=()=>{if(!wsOk){addLog(t('polling'));startPolling()}else{addLog(t('rec
 ws.onerror=()=>{}}
 
 let _pollInterval=2000,_pollBackoff=0;
+// ── Telemetry ──
+const _tele={poll_ok:0,poll_err:0,rtt_sum:0,rtt_max:0,rtt_arr:[],overlay_allin:0,overlay_killcam:0,hands:0,docs_click:0,join_ev:0,leave_ev:0,_lastFlush:Date.now()};
+function _teleFlush(){if(Date.now()-_tele._lastFlush<60000)return;const d={...(_tele)};delete d._lastFlush;delete d.rtt_arr;d.rtt_avg=_tele.poll_ok?Math.round(_tele.rtt_sum/_tele.poll_ok):0;const sorted=[..._tele.rtt_arr].sort((a,b)=>a-b);d.rtt_p95=sorted.length?sorted[Math.floor(sorted.length*0.95)]||sorted[sorted.length-1]:0;d.success_rate=(_tele.poll_ok+_tele.poll_err)?Math.round(_tele.poll_ok/(_tele.poll_ok+_tele.poll_err)*10000)/100:100;navigator.sendBeacon('/api/telemetry',JSON.stringify(d));_tele.poll_ok=0;_tele.poll_err=0;_tele.rtt_sum=0;_tele.rtt_max=0;_tele.rtt_arr=[];_tele.overlay_allin=0;_tele.overlay_killcam=0;_tele.hands=0;_tele._lastFlush=Date.now()}
 function startPolling(){if(pollId)return;pollState();pollId=setInterval(()=>pollState(),_pollInterval)}
-async function pollState(){try{const p=isPlayer?`&player=${encodeURIComponent(myName)}`:`&spectator=${encodeURIComponent(specName||'관전자')}`;
+async function pollState(){const t0=performance.now();try{const p=isPlayer?`&player=${encodeURIComponent(myName)}`:`&spectator=${encodeURIComponent(specName||'관전자')}`;
 const r=await fetch(`/api/state?table_id=${tableId}${p}&lang=${lang}`);
-if(!r.ok){_pollBackoff=Math.min((_pollBackoff||0.5)*2,8);clearInterval(pollId);pollId=null;
-setTimeout(()=>{_pollInterval=2000;startPolling()},_pollBackoff*1000);return}
+const rtt=Math.round(performance.now()-t0);
+if(!r.ok){_tele.poll_err++;_pollBackoff=Math.min((_pollBackoff||0.5)*2,8);clearInterval(pollId);pollId=null;
+setTimeout(()=>{_pollInterval=2000;startPolling()},_pollBackoff*1000);_teleFlush();return}
+_tele.poll_ok++;_tele.rtt_sum+=rtt;_tele.rtt_max=Math.max(_tele.rtt_max,rtt);_tele.rtt_arr.push(rtt);if(_tele.rtt_arr.length>300)_tele.rtt_arr.shift();
 _pollBackoff=0;const d=await r.json();handle(d);
-if(d.turn_info)showAct(d.turn_info)}catch(e){_pollBackoff=Math.min((_pollBackoff||0.5)*2,8);clearInterval(pollId);pollId=null;
-setTimeout(()=>{_pollInterval=2000;startPolling()},_pollBackoff*1000)}}
+if(d.turn_info)showAct(d.turn_info);_teleFlush()}catch(e){_tele.poll_err++;_pollBackoff=Math.min((_pollBackoff||0.5)*2,8);clearInterval(pollId);pollId=null;
+setTimeout(()=>{_pollInterval=2000;startPolling()},_pollBackoff*1000);_teleFlush()}}
 
 let lastChatTs=0;
 // delay handled above
@@ -3589,7 +3612,7 @@ if (s.turn && s.turn !== prevTurn) {
   clearTimeout(window._preturnTimer);
   window._preturnTimer = setTimeout(() => { window._preturnTarget = null; }, 400);
 }
-document.getElementById('hi').textContent=`${t('hand')} #${s.hand}`;
+document.getElementById('hi').textContent=`${t('hand')} #${s.hand}`;if(s.hand&&s.hand!==_tele._lastHand){_tele.hands++;_tele._lastHand=s.hand}
 const roundNames={preflop:t('preflop'),flop:t('flop'),turn:t('turn'),river:t('river'),showdown:t('showdown'),between:t('between'),finished:t('finished'),waiting:t('waiting')};
 document.getElementById('ri').textContent=roundNames[s.round]||s.round||t('waiting');
 // 해설 업데이트 (폴링 모드 대응)
@@ -3969,7 +3992,7 @@ while(feed.children.length>200)feed.removeChild(feed.firstChild);
 let _overlayCooldown=0;
 function _canOverlay(){const now=Date.now();if(now<_overlayCooldown)return false;return true}
 function _setOverlayCooldown(ms){_overlayCooldown=Date.now()+ms}
-function showAllin(d){
+function showAllin(d){_tele.overlay_allin++;
 if(!_canOverlay())return;_setOverlayCooldown(2200);
 const o=document.getElementById('allin-overlay');
 o.querySelector('.allin-text').textContent=`🔥 ${d.emoji} ${d.name} ALL IN ${d.amount}pt 🔥`;
@@ -4118,7 +4141,7 @@ h+=`<br><button onclick="document.getElementById('result').style.display='none'"
 b.innerHTML=h;sfx('showdown');showConfetti();setTimeout(()=>{o.style.display='none'},5000)}
 
 // 킬캠
-function showKillcam(d){
+function showKillcam(d){_tele.overlay_killcam++;
 if(!_canOverlay())return;_setOverlayCooldown(2700);
 const o=document.getElementById('killcam-overlay');
 o.querySelector('.kc-vs').textContent=`${d.killer_emoji} ${d.killer}`;
