@@ -3239,9 +3239,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.14">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.14">
-<link rel="stylesheet" href="/static/css/components.css?v=3.14">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.15">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.15">
+<link rel="stylesheet" href="/static/css/components.css?v=3.15">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
@@ -4705,7 +4705,7 @@ if(s.round==='between'||s.round==='finished'||s.round==='waiting'){document.getE
 {const potEl=document.getElementById('pot');
 potEl.style.fontSize=s.pot>200?'1.3em':s.pot>50?'1.1em':'1em';
 const prev=parseInt(potEl._rollVal||'0')||0;
-if(prev!==s.pot){const from=prev;potEl._rollVal=s.pot;rollPot(potEl,from,s.pot)}}
+if(prev!==s.pot){const from=prev;potEl._rollVal=s.pot;rollPot(potEl,from,s.pot);potEl.classList.add('pot-pulse');setTimeout(()=>potEl.classList.remove('pot-pulse'),700)}}
 // 황금 더미 시각화
 const cs=document.getElementById('chip-stack');
 if(s.pot>0){

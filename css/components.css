@@ -90,26 +90,38 @@
 }
 .btn-watch:hover { transform: translateY(-2px); box-shadow: var(--glow-mint), var(--shadow-lg); }
 
-/* ===== 3. POT BADGE (v3.14: compact, top-aligned) ===== */
+/* ===== 3. POT BADGE (v3.15: gold glow center anchor) ===== */
 .pot-badge, #pot {
   position: absolute;
   top: 18%;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(12,15,20,0.82);
+  background: rgba(12,15,20,0.85);
   backdrop-filter: var(--glass-blur-sm);
   -webkit-backdrop-filter: var(--glass-blur-sm);
-  padding: var(--sp-xs) var(--sp-xl);
+  padding: var(--sp-sm) var(--sp-2xl);
   border-radius: var(--radius);
-  font-size: var(--fs-base);
+  font-size: calc(var(--fs-base) * 1.15);
   color: var(--accent-gold);
-  font-weight: var(--fw-bold);
+  font-weight: var(--fw-black);
   font-family: var(--font-number);
-  letter-spacing: 1px;
+  letter-spacing: 1.5px;
   z-index: var(--z-badge);
-  border: 1px solid rgba(157,127,51,0.25);
-  box-shadow: var(--shadow-md);
-  transition: font-size var(--dur-slow) var(--ease-out);
+  border: 1px solid rgba(157,127,51,0.35);
+  box-shadow:
+    var(--shadow-md),
+    0 0 20px rgba(245,197,66,0.12),
+    0 0 40px rgba(245,197,66,0.06);
+  transition: font-size var(--dur-slow) var(--ease-out), box-shadow 0.3s;
+}
+/* Pot pulse when value changes */
+.pot-badge.pot-pulse, #pot.pot-pulse {
+  animation: potGlow 0.6s ease-out;
+}
+@keyframes potGlow {
+  0% { box-shadow: var(--shadow-md), 0 0 20px rgba(245,197,66,0.12); }
+  50% { box-shadow: var(--shadow-md), 0 0 40px rgba(245,197,66,0.35), 0 0 80px rgba(245,197,66,0.15); }
+  100% { box-shadow: var(--shadow-md), 0 0 20px rgba(245,197,66,0.12); }
 }
 
 /* ===== 4. CHIP STACK (v3.14: compact — height not count) ===== */
@@ -235,12 +247,22 @@
    Tier 5: .act-label, .thought-bubble — z: 5 (말풍선)
    ═══════════════════════════════════════════ */
 
+/* v3.15: Seat = unified component (avatar+name+stack+status) */
 .seat {
   position: absolute;
   text-align: center;
   z-index: var(--z-seat);
   transition: all var(--dur-slow) var(--ease-out);
-  min-width: 70px;
+  min-width: 80px;
+  /* Component backing plate */
+  background: rgba(10,13,20,0.5);
+  border-radius: 8px;
+  border: 1px solid rgba(157,127,51,0.12);
+  padding: 4px 6px 6px;
+}
+.seat:hover {
+  border-color: rgba(157,127,51,0.3);
+  background: rgba(10,13,20,0.65);
 }
 
 /* Seat positions */
@@ -356,12 +378,12 @@
 .seat .ch {
   position: relative;
   z-index: 3;
-  font-size: var(--fs-base);
+  font-size: calc(var(--fs-base) * 1.1);
   color: var(--accent-gold);
-  font-weight: var(--fw-semi);
+  font-weight: var(--fw-bold);
   font-family: var(--font-number);
-  background: rgba(12,15,20,0.8);
-  padding: 2px var(--sp-md);
+  background: rgba(12,15,20,0.85);
+  padding: 3px var(--sp-md);
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-gold);
 }

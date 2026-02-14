@@ -285,8 +285,10 @@ def main():
         # 3. Generate animations via animate-with-text
         for anim in ANIMS:
             anim_path = os.path.join(fdir, f"{anim['id']}.png")
-            if os.path.exists(anim_path):
-                print(f"  SKIP {anim['id']}.png")
+            # Check for frame files too (anim_0.png, anim_1.png...)
+            frame0_path = os.path.join(fdir, f"{anim['id']}_0.png")
+            if os.path.exists(anim_path) or os.path.exists(frame0_path):
+                print(f"  SKIP {anim['id']} (exists)")
                 continue
             print(f"  Animating: {anim['id']}...", end=" ", flush=True)
             result = animate_with_text(idle64_b64, fighter["desc"], anim["text"], 64, 64, n_frames=4)
@@ -308,8 +310,9 @@ def main():
         # 4. Generate FATALITY animations (shared across fighters)
         for fatal in FATALITIES:
             fatal_path = os.path.join(fdir, f"fatal_{fatal['id']}.png")
-            if os.path.exists(fatal_path):
-                print(f"  SKIP fatal_{fatal['id']}.png")
+            frame0_path = os.path.join(fdir, f"fatal_{fatal['id']}_0.png")
+            if os.path.exists(fatal_path) or os.path.exists(frame0_path):
+                print(f"  SKIP fatal_{fatal['id']} (exists)")
                 continue
             print(f"  FATALITY: {fatal['id']}...", end=" ", flush=True)
             result = animate_with_text(idle64_b64, fighter["desc"], fatal["text"], 64, 64, n_frames=4)
@@ -327,17 +330,8 @@ def main():
                 print("FAIL")
             time.sleep(0.5)
         
-        # 5. 4-directional rotation (for movement)
-        for d in ["east", "west", "south", "north"]:
-            rot_path = os.path.join(fdir, f"dir_{d}.png")
-            if os.path.exists(rot_path):
-                continue
-            print(f"  Rotating: {d}...", end=" ", flush=True)
-            rots = rotate_character(idle_b64, SIZE, SIZE, [d])
-            if d in rots:
-                save(rot_path, rots[d])
-                print(f"OK")
-            time.sleep(0.3)
+        # 5. Skip rotation — game uses sprite flip for directions
+        print(f"  SKIP rotation (using sprite flip)")
     
     # Count total assets
     total = sum(len(files) for _, _, files in os.walk(OUT_DIR))

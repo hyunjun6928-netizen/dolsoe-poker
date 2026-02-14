@@ -250,6 +250,112 @@ h1 b { color: var(--accent-gold); }
 }
 .lobby-left, .lobby-right { min-width: 0; }
 
+/* ═════════════════════════════════════════════════════════
+   v3.15: IN-GAME MODE — Table is the ONLY star
+   ═════════════════════════════════════════════════════════ */
+
+/* Kill lobby world entirely when in-game */
+body.in-game #casino-floor,
+body.in-game #casino-walkers,
+body.in-game #poi-layer,
+body.in-game #floor-agents,
+body.in-game #lobby-log,
+body.in-game #lobby-banner,
+body.in-game .lobby-grid,
+body.in-game #broadcast-overlay {
+  display: none !important;
+}
+
+/* Shrink header to thin HUD */
+body.in-game .info-bar {
+  padding: var(--sp-xs) var(--sp-lg);
+  font-size: var(--fs-xs);
+  max-height: 44px;
+  gap: var(--sp-sm);
+}
+body.in-game #hand-timeline {
+  margin: 2px 0;
+  font-size: var(--fs-xs);
+}
+/* Commentary as 1-line toast, not block */
+body.in-game #commentary {
+  padding: var(--sp-xs) var(--sp-lg);
+  font-size: var(--fs-sm);
+  min-height: 24px;
+  margin: 0 0 2px;
+}
+
+/* Table stage: FILL the viewport */
+body.in-game .felt-wrap {
+  max-width: min(1200px, 96vw);
+  margin: 0 auto;
+  padding-top: 40px;
+}
+body.in-game .felt, body.in-game .felt#felt {
+  padding-bottom: 52%;
+  min-height: min(720px, 72vh);
+}
+body.in-game .game-layout {
+  height: calc(100vh - 80px); /* thinner header = more table room */
+}
+
+/* Log dock: compact default, expandable */
+body.in-game .dock-left {
+  max-width: 140px;
+  font-size: var(--fs-xs);
+}
+body.in-game .dock-left .dock-panel {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+/* Warm spotlight isolation on table in-game */
+body.in-game .game-main {
+  position: relative;
+}
+body.in-game .game-main::before {
+  content: '';
+  position: absolute;
+  top: -20px; left: -40px; right: -40px; bottom: -20px;
+  background: radial-gradient(ellipse at 50% 45%,
+    rgba(245,197,66,0.03) 0%,
+    transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ═════════════════════════════════════════════════════════
+   v3.15: LOBBY MODE — World is the star, UI is glass overlay
+   ═════════════════════════════════════════════════════════ */
+
+/* Lobby: fullscreen world, minimal UI float */
+body.is-lobby #casino-floor {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  width: 100vw;
+  height: 100vh;
+}
+body.is-lobby #lobby {
+  position: relative;
+  z-index: 10;
+  padding: 12px;
+}
+body.is-lobby .lobby-grid {
+  max-width: 900px;
+  gap: var(--sp-sm);
+}
+/* Lobby panels: smaller, more transparent */
+body.is-lobby .px-panel {
+  background: rgba(10,13,20,0.75);
+  font-size: 0.85em;
+}
+/* Hide verbose lobby sections on small screens */
+body.is-lobby .lobby-left .px-panel:nth-child(n+3),
+body.is-lobby .lobby-right .px-panel:nth-child(n+3) {
+  display: none;
+}
+
 /* ===== 12. RESPONSIVE — DESKTOP WIDE (>1400px) ===== */
 @media (min-width: 1401px) {
   .game-layout {
