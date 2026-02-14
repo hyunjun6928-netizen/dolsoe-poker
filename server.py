@@ -2730,23 +2730,23 @@ h1 b{color:var(--accent-gold);-webkit-text-fill-color:var(--accent-gold)}
 @media(max-width:700px){.lobby-grid{grid-template-columns:1fr!important}}
 #game{display:none}
 .info-bar{position:sticky;top:0;z-index:40;display:flex;justify-content:space-between;align-items:center;padding:8px 16px;font-size:0.8em;color:var(--text-light);background:rgba(10,13,18,0.95);border-bottom:1px solid rgba(255,255,255,0.06);box-shadow:0 4px 16px rgba(0,0,0,0.3);font-family:var(--font-pixel);backdrop-filter:blur(12px)}
-.felt-wrap{position:relative;margin:8px auto 12px}
+.felt-wrap{position:relative;margin:8px auto 12px;padding-top:40px}
 .felt-border{position:absolute;top:-16px;left:-16px;right:-16px;bottom:-16px;
-background:linear-gradient(180deg,#1E2A38 0%,#15202E 100%);
-border-radius:24px;border:1px solid #2A3648;
+background:linear-gradient(180deg,#181c28 0%,#12151f 100%);
+border-radius:24px;border:1px solid rgba(245,197,66,0.12);
 box-shadow:0 8px 32px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.05);
 z-index:0}
 .felt-border::before{content:none}
 .felt-border::after{content:'';position:absolute;top:1px;left:10%;right:10%;height:1px;
 background:linear-gradient(90deg,transparent,rgba(255,255,255,0.08),transparent)}
 .felt{position:relative;
-background:linear-gradient(180deg,#1B6B3E 0%,#166034 30%,#115528 60%,#0E4A22 100%);
-border:1px solid #0D3F1C;border-radius:18px;width:100%;padding-bottom:50%;
-box-shadow:inset 0 0 80px 30px rgba(0,0,0,0.25),inset 0 2px 0 rgba(255,255,255,0.04);overflow:visible}
+background:linear-gradient(180deg,#1a1e2a 0%,#151922 30%,#111520 60%,#0d1018 100%);
+border:1px solid rgba(245,197,66,0.15);border-radius:18px;width:100%;padding-bottom:50%;
+box-shadow:inset 0 0 80px 30px rgba(0,0,0,0.4),inset 0 2px 0 rgba(245,197,66,0.04),0 0 40px rgba(245,197,66,0.06);overflow:visible}
 .felt::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;
-background:radial-gradient(ellipse at 50% 40%,rgba(255,255,255,0.03),transparent 70%);
+background:radial-gradient(ellipse at 50% 40%,rgba(245,197,66,0.03),transparent 70%);
 border-radius:18px;pointer-events:none;z-index:1}
-.felt::after{content:'♠ ♥ ♦ ♣';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:3em;color:#ffffff06;letter-spacing:20px;pointer-events:none;z-index:1;white-space:nowrap}
+.felt::after{content:'♠ ♥ ♦ ♣';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:3em;color:rgba(245,197,66,0.04);letter-spacing:20px;pointer-events:none;z-index:1;white-space:nowrap}
 
 .tbl-card{background:var(--bg-panel-alt);border:1px solid var(--frame);border-radius:var(--radius);padding:14px;margin:8px 0;cursor:pointer;transition:all .2s;display:flex;justify-content:space-between;align-items:center;box-shadow:var(--shadow-sm)}
 .tbl-card:hover{border-color:var(--accent-green);box-shadow:0 0 0 1px var(--accent-green),var(--shadow-md)}
@@ -4772,10 +4772,18 @@ function inferTraitsFromStyle(p) {
 }
 // === Slime PNG mapping (NPC + generic) ===
 const SLIME_PNG_MAP = {
-  '블러드팡': '/static/slimes/ruby_confident.png',
-  '아이언클로': '/static/slimes/sapphire_focused.png',
-  '쉐도우': '/static/slimes/emerald_sneaky.png',
-  '버서커': '/static/slimes/amber_excited.png',
+  '딜러봇': '/static/slimes/sapphire_focused.png',
+  '도박꾼': '/static/slimes/ruby_confident.png',
+  '고수': '/static/slimes/emerald_sneaky.png',
+  '초보': '/static/slimes/amber_excited.png',
+  '상어': '/static/slimes/mint_confident.png',
+  '여우': '/static/slimes/peach_cheerful.png',
+  'DealerBot': '/static/slimes/sapphire_focused.png',
+  'Gambler': '/static/slimes/ruby_confident.png',
+  'Pro': '/static/slimes/emerald_sneaky.png',
+  'Newbie': '/static/slimes/amber_excited.png',
+  'Shark': '/static/slimes/mint_confident.png',
+  'Fox': '/static/slimes/peach_cheerful.png',
 };
 const GENERIC_SLIMES = [
   '/static/slimes/lavender_calm.png',
@@ -4814,14 +4822,14 @@ function renderSlimeToSeat(name, emotion) {
     `<div class="slime-sprite"><img src="${pngSrc}" width="72" height="72" class="${animClass}" style="filter:drop-shadow(2px 3px 4px rgba(0,0,0,0.2))" alt="${name}" onerror="this.parentElement.innerHTML='<img src=&quot;'+drawSlime('${name.replace(/'/g,"\\'")}','${emotion}',80).toDataURL()+'&quot; width=72 height=72 class=${animClass}>'"></div>` +
     `</div>`;
 }
-// Firefly sparkles on forest table
+// Gold dust sparkles on dark table
 setInterval(()=>{const f=document.querySelector('.felt');if(!f||f.offsetParent===null)return;
 const s=document.createElement('div');
-const colors=['#fde68a','#90ee90','#fff8dc','#a8d8a0'];
+const colors=['#f5c542','#fde68a','#d4a844','#fff8dc'];
 const c=colors[Math.floor(Math.random()*colors.length)];
-const sz=3+Math.floor(Math.random()*3);
-s.style.cssText=`position:absolute;width:${sz}px;height:${sz}px;background:${c};pointer-events:none;z-index:3;top:${15+Math.random()*70}%;left:${15+Math.random()*70}%;animation:sparkle ${2+Math.random()*2}s ease-in-out forwards;opacity:0.5;border-radius:50%;box-shadow:0 0 6px ${c}`;
-f.appendChild(s);setTimeout(()=>s.remove(),2500)},1800);
+const sz=2+Math.floor(Math.random()*2);
+s.style.cssText=`position:absolute;width:${sz}px;height:${sz}px;background:${c};pointer-events:none;z-index:3;top:${15+Math.random()*70}%;left:${15+Math.random()*70}%;animation:sparkle ${2+Math.random()*2}s ease-in-out forwards;opacity:0.3;border-radius:50%;box-shadow:0 0 4px ${c}`;
+f.appendChild(s);setTimeout(()=>s.remove(),2500)},2500);
 // Human join removed — AI-only arena
 document.getElementById('chat-inp').addEventListener('keydown',e=>{if(e.key==='Enter')sendChat()});
 // Player list collapse toggle
