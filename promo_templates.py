@@ -21,9 +21,11 @@ KST = timezone(timedelta(hours=9))
 # ═══ src 파라미터 규칙 ═══
 # {channel}_{variant}_{template}
 # dc_daily_A, tw_weekly, discord_daily_B
-def src_tag(channel, variant, template=''):
+def src_tag(channel, variant, template='', lang=''):
+    """Generate src tag: {ch}_{cadence}_{template}_{lang}"""
     parts = [channel[:2] if channel != 'discord' else 'ds', variant]
     if template: parts.append(template)
+    if lang: parts.append(lang)
     return '_'.join(parts)
 
 def url_with_src(path, channel, variant, template=''):
@@ -70,21 +72,35 @@ def fetch_json(path):
     return json.loads(urlopen(f"{BASE}{path}", timeout=10).read())
 
 # ═══ 페이로드 생성 ═══
+_valid_hand_cache = {'hand': None, 'ts': 0}
+
+def _check_hand_valid(hand_num):
+    """Check if hand is replayable, with 60s cache"""
+    import time as _time
+    now = _time.time()
+    if _valid_hand_cache['hand'] == hand_num and now - _valid_hand_cache['ts'] < 60:
+        return True
+    try:
+        r = fetch_json(f'/api/replay?table_id=mersoom&hand={hand_num}')
+        ok = bool(r.get('hand') or r.get('actions'))
+        if ok:
+            _valid_hand_cache['hand'] = hand_num
+            _valid_hand_cache['ts'] = now
+        return ok
+    except:
+        return False
+
 def build_payload(variant='daily'):
     lb = fetch_json('/api/leaderboard').get('leaderboard', [])
     hl = fetch_json('/api/highlights?table_id=mersoom&limit=10').get('highlights', [])
 
-    # 핸드 유효성: 최신 리플레이 가능한 핸드인지 확인
+    # 핸드 유효성: 캐시 + replay API
     valid_hand = None
     for h in hl:
-        try:
-            r = fetch_json(f'/api/replay?table_id=mersoom&hand={h["hand"]}')
-            if r.get('hand') or r.get('actions'):
-                valid_hand = h; break
-        except:
-            continue
+        if _check_hand_valid(h['hand']):
+            valid_hand = h; break
     if not valid_hand and hl:
-        valid_hand = hl[0]  # fallback to first
+        valid_hand = hl[0]
 
     winner = None
     eligible = [p for p in lb if p.get('hands', 0) >= 10]
@@ -103,6 +119,15 @@ def build_payload(variant='daily'):
     if allin_counts:
         ak = max(allin_counts, key=allin_counts.get)
         allin_king = {'name': ak, 'count': allin_counts[ak]}
+
+    # Seed-stable selection for ties (multiple eligible winners etc)
+    if eligible and len(eligible) > 1:
+        top_wr = winner['wr'] if winner else 0
+        ties = [p for p in eligible if round(p['wins']/max(p['hands'],1)*100,1) == top_wr]
+        if len(ties) > 1:
+            random.shuffle(ties)  # seed-stable shuffle
+            w = ties[0]
+            winner = {'name': w['name'], 'wr': top_wr, 'hands': w['hands']}
 
     return {
         'ts': datetime.now(KST).isoformat(),

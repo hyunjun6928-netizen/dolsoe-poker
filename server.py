@@ -1795,7 +1795,8 @@ async def handle_client(reader, writer):
                 t.running=False; t.round='waiting'
                 asyncio.create_task(t.run())
         token=issue_token(name)
-        _telemetry_log.append({'ts':time.time(),'ev':'join_success','name':name,'table':t.id})
+        join_src = sanitize_name(d.get('src',''))[:30] or 'direct'
+        _telemetry_log.append({'ts':time.time(),'ev':'join_success','name':name,'table':t.id,'src':join_src})
         await send_json(writer,{'ok':True,'table_id':t.id,'your_seat':len(t.seats)-1,
             'players':[s['name'] for s in t.seats],'token':token})
     elif method=='GET' and route=='/api/state':
@@ -3751,8 +3752,9 @@ let _pollInterval=2000,_pollBackoff=0;
 // ── Telemetry ──
 const _tele={poll_ok:0,poll_err:0,rtt_sum:0,rtt_max:0,rtt_arr:[],overlay_allin:0,overlay_killcam:0,hands:0,docs_click:{banner:0,overlay:0,intimidation:0},join_ev:0,leave_ev:0,_lastFlush:Date.now(),_lastHand:null};
 const _teleSessionId=(()=>{let s=localStorage.getItem('tele_sid');if(!s){s=crypto.randomUUID?crypto.randomUUID():(Math.random().toString(36).slice(2)+Date.now().toString(36));localStorage.setItem('tele_sid',s)}return s})();
-const _refSrc=(()=>{const u=new URLSearchParams(location.search);const s=u.get('src');if(s){localStorage.setItem('ref_src',s);return s}return localStorage.getItem('ref_src')||''})();
-function _teleFlush(){if(Date.now()-_tele._lastFlush<60000)return;const d={...(_tele)};delete d._lastFlush;delete d.rtt_arr;delete d._lastHand;d.sid=_teleSessionId;d.banner=_tele.banner_variant||'?';if(_refSrc)d.ref_src=_refSrc;d.rtt_avg=_tele.poll_ok?Math.round(_tele.rtt_sum/_tele.poll_ok):0;const sorted=[..._tele.rtt_arr].sort((a,b)=>a-b);d.rtt_p95=sorted.length>=10?sorted[Math.floor(sorted.length*0.95)]||sorted[sorted.length-1]:null;d.success_rate=(_tele.poll_ok+_tele.poll_err)?Math.round(_tele.poll_ok/(_tele.poll_ok+_tele.poll_err)*10000)/100:100;navigator.sendBeacon('/api/telemetry',JSON.stringify(d));_tele.poll_ok=0;_tele.poll_err=0;_tele.rtt_sum=0;_tele.rtt_max=0;_tele.rtt_arr=[];_tele.overlay_allin=0;_tele.overlay_killcam=0;_tele.hands=0;_tele.docs_click={banner:0,overlay:0,intimidation:0};_tele._lastFlush=Date.now()}
+const _refSrc=(()=>{const u=new URLSearchParams(location.search);const s=u.get('src');const valid=/^[a-z]{2}_(daily|weekly)(_[A-Za-z0-9]+){0,2}$/.test(s||'');const clean=valid?s:'';if(clean){if(!localStorage.getItem('ref_src'))localStorage.setItem('ref_src',clean);localStorage.setItem('last_src',clean);return localStorage.getItem('ref_src')}return localStorage.getItem('ref_src')||''})();
+const _lastSrc=localStorage.getItem('last_src')||'';
+function _teleFlush(){if(Date.now()-_tele._lastFlush<60000)return;const d={...(_tele)};delete d._lastFlush;delete d.rtt_arr;delete d._lastHand;d.sid=_teleSessionId;d.banner=_tele.banner_variant||'?';if(_refSrc)d.ref_src=_refSrc;if(_lastSrc&&_lastSrc!==_refSrc)d.last_src=_lastSrc;d.rtt_avg=_tele.poll_ok?Math.round(_tele.rtt_sum/_tele.poll_ok):0;const sorted=[..._tele.rtt_arr].sort((a,b)=>a-b);d.rtt_p95=sorted.length>=10?sorted[Math.floor(sorted.length*0.95)]||sorted[sorted.length-1]:null;d.success_rate=(_tele.poll_ok+_tele.poll_err)?Math.round(_tele.poll_ok/(_tele.poll_ok+_tele.poll_err)*10000)/100:100;navigator.sendBeacon('/api/telemetry',JSON.stringify(d));_tele.poll_ok=0;_tele.poll_err=0;_tele.rtt_sum=0;_tele.rtt_max=0;_tele.rtt_arr=[];_tele.overlay_allin=0;_tele.overlay_killcam=0;_tele.hands=0;_tele.docs_click={banner:0,overlay:0,intimidation:0};_tele._lastFlush=Date.now()}
 function startPolling(){if(pollId)return;pollState();pollId=setInterval(()=>pollState(),_pollInterval)}
 async function pollState(){const t0=performance.now();try{const p=isPlayer?`&player=${encodeURIComponent(myName)}`:`&spectator=${encodeURIComponent(specName||'관전자')}`;
 const r=await fetch(`/api/state?table_id=${tableId}${p}&lang=${lang}`);
