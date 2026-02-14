@@ -3717,10 +3717,10 @@ loadLobbyHighlights();setInterval(loadLobbyHighlights,30000);
 
 // === Casino Floor: POI-based NPC state machine ===
 const FLOOR_SLIMES={
-  '딜러봇':'/static/slimes/sit_sapphire.png','도박꾼':'/static/slimes/sit_ruby.png',
-  '고수':'/static/slimes/sit_emerald.png','초보':'/static/slimes/sit_amber.png',
-  'DealerBot':'/static/slimes/sit_sapphire.png','Gambler':'/static/slimes/sit_ruby.png',
-  'Pro':'/static/slimes/sit_emerald.png','Newbie':'/static/slimes/sit_amber.png',
+  '딜러봇':'/static/slimes/px_slime_sapphire.png','도박꾼':'/static/slimes/px_slime_ruby.png',
+  '고수':'/static/slimes/px_slime_emerald.png','초보':'/static/slimes/px_slime_amber.png',
+  'DealerBot':'/static/slimes/px_slime_sapphire.png','Gambler':'/static/slimes/px_slime_ruby.png',
+  'Pro':'/static/slimes/px_slime_emerald.png','Newbie':'/static/slimes/px_slime_amber.png',
 };
 const FLOOR_GENERIC=['/static/slimes/lavender_calm.png','/static/slimes/peach_cheerful.png','/static/slimes/mint_confident.png'];
 const FLOOR_BUBBLES={
@@ -5063,18 +5063,18 @@ function inferTraitsFromStyle(p) {
 }
 // === Slime PNG mapping (NPC + generic) ===
 const SLIME_PNG_MAP = {
-  '딜러봇': '/static/slimes/sit_sapphire.png',
-  '도박꾼': '/static/slimes/sit_ruby.png',
-  '고수': '/static/slimes/sit_emerald.png',
-  '초보': '/static/slimes/sit_amber.png',
-  '상어': '/static/slimes/lavender_calm.png',
-  '여우': '/static/slimes/peach_cheerful.png',
-  'DealerBot': '/static/slimes/sit_sapphire.png',
-  'Gambler': '/static/slimes/sit_ruby.png',
-  'Pro': '/static/slimes/sit_emerald.png',
-  'Newbie': '/static/slimes/sit_amber.png',
-  'Shark': '/static/slimes/lavender_calm.png',
-  'Fox': '/static/slimes/peach_cheerful.png',
+  '딜러봇': '/static/slimes/px_slime_sapphire.png',
+  '도박꾼': '/static/slimes/px_slime_ruby.png',
+  '고수': '/static/slimes/px_slime_emerald.png',
+  '초보': '/static/slimes/px_slime_amber.png',
+  '상어': '/static/slimes/px_slime_emerald.png',
+  '여우': '/static/slimes/px_slime_ruby.png',
+  'DealerBot': '/static/slimes/px_slime_sapphire.png',
+  'Gambler': '/static/slimes/px_slime_ruby.png',
+  'Pro': '/static/slimes/px_slime_emerald.png',
+  'Newbie': '/static/slimes/px_slime_amber.png',
+  'Shark': '/static/slimes/px_slime_emerald.png',
+  'Fox': '/static/slimes/px_slime_ruby.png',
 };
 const GENERIC_SLIMES = [
   '/static/slimes/lavender_calm.png',
