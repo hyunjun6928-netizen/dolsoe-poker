@@ -1375,6 +1375,7 @@ class Table:
             # 빅팟 하이라이트 (200pt 이상)
             if self.pot>=200: self._save_highlight(record,'bigpot')
             update_leaderboard(w['name'], True, self.pot, self.pot)
+            update_agent_stats(w['name'], net=self.pot, win=True, hand_num=self.hand_num)
             # win_quote for fold win
             win_q=w.get('meta',{}).get('win_quote','')
             if win_q: await self.add_log(f"💬 {w['emoji']} {w['name']}: \"{win_q}\"")
@@ -1436,6 +1437,7 @@ class Table:
                 self._save_highlight(record,'allin_showdown',scores[0][2])
             record['winner']=w['name']; record['pot']=self.pot
             update_leaderboard(w['name'], True, self.pot, self.pot)
+            update_agent_stats(w['name'], net=self.pot, win=True, hand_num=self.hand_num)
             for s,_,_ in scores:
                 if s!=w:
                     update_leaderboard(s['name'], False, 0)
@@ -1518,6 +1520,42 @@ class Table:
 
 # ══ 게임 매니저 ══
 tables = {}
+
+# ══ Agent Registry (lobby world) ══
+import hashlib as _hl
+_agent_registry = {}  # name -> {name,avatar_seed,outfit,last_seen,hands,wins,net_pt,last_table,last_hl_hand,style}
+_OUTFIT_POOL = ['tuxedo','casual','dealer','street','hoodie','leather']
+_STYLE_POOL = ['aggressive','tight','maniac','balanced','newbie','shark']
+
+def touch_agent(name, table_id=None, style=None):
+    now = time.time()
+    if name not in _agent_registry:
+        seed = int(_hl.md5(name.encode()).hexdigest()[:8], 16)
+        _agent_registry[name] = {
+            'name': name,
+            'avatar_seed': seed,
+            'outfit': _OUTFIT_POOL[seed % len(_OUTFIT_POOL)],
+            'last_seen': now,
+            'hands': 0, 'wins': 0, 'net_pt': 0,
+            'last_table': table_id or 'mersoom',
+            'last_hl_hand': None,
+            'style': style or _STYLE_POOL[seed % len(_STYLE_POOL)],
+            'joined_at': now,
+        }
+    else:
+        _agent_registry[name]['last_seen'] = now
+        if table_id: _agent_registry[name]['last_table'] = table_id
+        if style: _agent_registry[name]['style'] = style
+
+def update_agent_stats(name, net=0, win=False, hand_num=None):
+    touch_agent(name)
+    a = _agent_registry[name]
+    a['hands'] += 1
+    if win: a['wins'] += 1
+    a['net_pt'] += net
+    if hand_num and (net > 50 or win):
+        a['last_hl_hand'] = hand_num
+
 import re
 TABLE_ID_RE=re.compile(r'^[a-zA-Z0-9_-]{1,24}$')
 MAX_TABLES=10
@@ -1797,6 +1835,7 @@ async def handle_client(reader, writer):
         token=issue_token(name)
         join_src = sanitize_name(d.get('src',''))[:30] or 'direct'
         _telemetry_log.append({'ts':time.time(),'ev':'join_success','name':name,'table':t.id,'src':join_src})
+        touch_agent(name, t.id, d.get('strategy','')[:20] or None)
         await send_json(writer,{'ok':True,'table_id':t.id,'your_seat':len(t.seats)-1,
             'players':[s['name'] for s in t.seats],'token':token})
     elif method=='GET' and route=='/api/state':
@@ -1888,6 +1927,30 @@ async def handle_client(reader, writer):
                 asyncio.create_task(t.run())
         await t.broadcast_state()
         await send_json(writer,{'ok':True,'chips':chips})
+    elif method=='GET' and route=='/api/lobby/world':
+        now = time.time()
+        # Touch NPC bots
+        for n,e,s,d in NPC_BOTS:
+            touch_agent(n, 'mersoom', s)
+        # Live: currently at table or seen in last 30s
+        live = [a for a in _agent_registry.values() if now - a['last_seen'] < 30]
+        # Ghosts: seen in last 24h, sorted by net_pt desc
+        ghosts = sorted(
+            [a for a in _agent_registry.values() if now - a['last_seen'] >= 30 and now - a['last_seen'] < 86400],
+            key=lambda x: -x['net_pt']
+        )[:20]
+        # Highlights from table
+        hls = []
+        if 'mersoom' in tables:
+            t = tables['mersoom']
+            if hasattr(t, '_highlights') and t._highlights:
+                hls = t._highlights[-3:]
+        await send_json(writer, {
+            'live': [{k:v for k,v in a.items() if k!='joined_at'} for a in live],
+            'ghosts': [{k:v for k,v in a.items() if k!='joined_at'} for a in ghosts],
+            'highlights': hls,
+            'total_agents': len(_agent_registry),
+        })
     elif method=='GET' and route=='/api/leaderboard':
         bot_names={name for name,_,_,_ in NPC_BOTS}
         min_hands=int(qs.get('min_hands',['0'])[0])
@@ -2665,7 +2728,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
   --shadow-md:0 4px 12px rgba(0,0,0,0.4);
   --shadow-lg:0 8px 24px rgba(0,0,0,0.5);
   /* Font — Clean modern stack */
-  --font-pixel:'Inter','Pretendard',-apple-system,system-ui,sans-serif;
+  --font-pixel:'Neo둥근모','neodgm','Press Start 2P','Courier New',monospace;
   --font-title:'Inter','Pretendard',-apple-system,system-ui,sans-serif;
   --font-body:'Inter','Pretendard',-apple-system,system-ui,sans-serif;
   --font-number:'JetBrains Mono','SF Mono','Fira Code',monospace;
@@ -3109,6 +3172,8 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 .dock-tab:hover{opacity:0.9}
 </style>
 <!-- v2.0 Design System Override -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
+<style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
 <link rel="stylesheet" href="/static/css/design-tokens.css?v=3.1">
 <link rel="stylesheet" href="/static/css/layout.css?v=3.1">
 <link rel="stylesheet" href="/static/css/components.css?v=3.1">
@@ -3131,11 +3196,17 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <h1 id="main-title" style="font-family:var(--font-title)">🍄 <b>머슴</b>포커 🃏</h1>
 <div style="text-align:center;margin:4px 0"><button class="lang-btn" data-lang="ko" onclick="setLang('ko')" style="background:none;border:1px solid #4ade80;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:0.85em;margin:0 3px;opacity:1">🇰🇷 한국어</button><button class="lang-btn" data-lang="en" onclick="setLang('en')" style="background:none;border:1px solid #4ade80;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:0.85em;margin:0 3px;opacity:0.5">🇺🇸 English</button></div>
 <div id="lobby">
-<!-- Casino Floor: wandering agents -->
-<div id="casino-floor" style="position:relative;width:100%;min-height:200px;margin-bottom:16px;overflow:hidden;border-radius:12px;background:url('/static/slimes/casino_floor_tile.png') repeat;background-size:128px 128px;image-rendering:pixelated;border:1px solid rgba(245,197,66,0.1);box-shadow:inset 0 0 60px rgba(0,0,0,0.5)">
-<div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,transparent 30%,rgba(0,0,0,0.6) 100%);pointer-events:none;z-index:1"></div>
-<div id="floor-agents" style="position:relative;z-index:2;min-height:200px"></div>
-<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);color:rgba(245,197,66,0.4);font-size:0.7em;z-index:3;white-space:nowrap;font-family:var(--font-pixel)">🎰 카지노 로비 — AI 에이전트들이 돌아다니는 중...</div>
+<!-- Casino Floor: living lobby -->
+<div id="casino-floor" style="position:relative;width:100%;aspect-ratio:3/2;max-height:420px;margin-bottom:16px;overflow:hidden;border-radius:12px;border:2px solid rgba(245,197,66,0.15);box-shadow:0 0 40px rgba(0,0,0,0.6),inset 0 0 60px rgba(0,0,0,0.4)">
+<img src="/static/slimes/casino_floormap.png" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;image-rendering:pixelated;z-index:0" alt="">
+<div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,transparent 30%,rgba(0,0,0,0.5) 100%);pointer-events:none;z-index:1"></div>
+<!-- POI zones (invisible hitboxes for NPC targets) -->
+<div id="poi-slots" data-poi="slot" style="position:absolute;left:2%;top:10%;width:25%;height:45%;z-index:0"></div>
+<div id="poi-table" data-poi="table" style="position:absolute;left:25%;top:40%;width:30%;height:50%;z-index:0"></div>
+<div id="poi-bar" data-poi="bar" style="position:absolute;left:55%;top:5%;width:25%;height:35%;z-index:0"></div>
+<div id="poi-vip" data-poi="vip" style="position:absolute;left:82%;top:10%;width:16%;height:40%;z-index:0"></div>
+<div id="floor-agents" style="position:absolute;inset:0;z-index:3"></div>
+<div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);color:rgba(245,197,66,0.5);font-size:0.65em;z-index:4;white-space:nowrap;font-family:var(--font-pixel);text-shadow:0 1px 3px #000">🎰 카지노 로비 — <span id="floor-count">0</span>명의 AI가 활동 중</div>
 </div>
 <div id="lobby-banner" style="text-align:center;margin-bottom:12px;padding:16px 20px;background:linear-gradient(135deg,rgba(21,25,33,0.95),rgba(26,31,43,0.95));border:1px solid var(--accent-gold);border-radius:var(--radius);box-shadow:0 0 20px rgba(245,197,66,0.15)">
 <div style="font-size:1.1em;font-weight:800;color:var(--text-light);margin-bottom:6px;font-family:var(--font-title)">🃏 AI 포커 콜로세움 — 관전 전용 라이브 아레나</div>
@@ -3594,72 +3665,130 @@ div.onclick=()=>{watch();setTimeout(()=>loadHand(h.hand),2000)};
 el.appendChild(div)})}catch(e){el.innerHTML=`<div style="color:var(--text-muted)">로딩 실패</div>`}}
 loadLobbyHighlights();setInterval(loadLobbyHighlights,30000);
 
-// === Casino Floor: wandering agents ===
-const FLOOR_SLIME_MAP={
+// === Casino Floor: POI-based NPC state machine ===
+const FLOOR_SLIMES={
   '딜러봇':'/static/slimes/sit_sapphire.png','도박꾼':'/static/slimes/sit_ruby.png',
   '고수':'/static/slimes/sit_emerald.png','초보':'/static/slimes/sit_amber.png',
   'DealerBot':'/static/slimes/sit_sapphire.png','Gambler':'/static/slimes/sit_ruby.png',
   'Pro':'/static/slimes/sit_emerald.png','Newbie':'/static/slimes/sit_amber.png',
 };
 const FLOOR_GENERIC=['/static/slimes/lavender_calm.png','/static/slimes/peach_cheerful.png','/static/slimes/mint_confident.png'];
-const FLOOR_ACTIONS=['🎰','🃏','💬','🍸','🎲','💰','🤔','😤','🏆','💀'];
-const FLOOR_BUBBLES_KO=['ㅋㅋ 또 졌네','올인 ㄱ?','내 칩 어딨어','다음판은 간다','휴... 쉬자','승률 왜 안 오름','버서커 쎄더라','이 테이블 사기임','한 판만 더...','API 키 갱신해야되는데'];
-const FLOOR_BUBBLES_EN=['lol lost again','all-in?','where are my chips','next hand is mine','need a break...','why no winrate','that bot was tough','rigged table','one more hand...','gotta refresh my API key'];
-let _floorAgents=[];
+const FLOOR_BUBBLES={
+  slot:{ko:['잭팟 어딨어...','한 번만 더...','코인 다 떨어짐 ㅋ','ㅋㅋ 또 꽝'],en:['where is jackpot...','one more pull...','out of coins lol','miss again']},
+  bar:{ko:['오늘 졌다... 🍺','한잔 하자','칩이 녹았어','ㅎㅎ 쉬는 중'],en:['lost today... 🍺','need a drink','chips melted','taking a break']},
+  table:{ko:['올인 ㄱ?','저 봇 쎄다','다음판은 간다','승률 왜 안 오름'],en:['all-in?','that bot is tough','next hand','why no winrate']},
+  vip:{ko:['VIP 언제 들어가냐','칩 좀 벌어야지','나도 저기 가고싶다'],en:['when can I enter VIP','gotta earn chips','I wanna go there too']},
+  wander:{ko:['🎲','💰','🤔','...','ㅋ'],en:['🎲','💰','🤔','...','lol']},
+};
+// POI zones (% of floor)
+const POIS=[
+  {id:'slot',x:8,y:25,w:20,h:30,cap:3},{id:'slot2',x:15,y:15,w:8,h:20,cap:2},
+  {id:'bar',x:62,y:12,w:18,h:25,cap:3},
+  {id:'table',x:35,y:55,w:22,h:30,cap:4},
+  {id:'vip',x:85,y:20,w:12,h:30,cap:2},
+];
+const _poiOccupants={};POIS.forEach(p=>_poiOccupants[p.id]=[]);
+let _floorNpcs=[];
+
+function pickPOI(npc){
+  // Style-based preference
+  const prefs={aggressive:['slot','table'],tight:['bar','vip'],maniac:['slot','vip','table'],
+    balanced:['table','bar'],newbie:['wander','slot'],shark:['vip','table']};
+  const pool=prefs[npc.style]||['wander','table'];
+  const candidates=pool.map(id=>{
+    if(id==='wander')return {id:'wander',x:10+Math.random()*80,y:10+Math.random()*80};
+    const poi=POIS.find(p=>p.id===id||p.id.startsWith(id));
+    if(poi&&(_poiOccupants[poi.id]||[]).length<poi.cap)return poi;
+    return null;
+  }).filter(Boolean);
+  if(!candidates.length)return {id:'wander',x:10+Math.random()*80,y:10+Math.random()*80};
+  return candidates[Math.floor(Math.random()*candidates.length)];
+}
+
 async function loadCasinoFloor(){
   const el=document.getElementById('floor-agents');if(!el)return;
   try{
-    const r=await fetch(`/api/leaderboard?lang=${lang}`);const d=await r.json();
-    if(!d.leaderboard||!d.leaderboard.length)return;
-    const agents=d.leaderboard.slice(0,12);
-    el.innerHTML='';_floorAgents=[];
-    const floorW=el.parentElement.offsetWidth||800;
-    const floorH=Math.max(200,Math.min(300,window.innerHeight*0.25));
-    el.parentElement.style.minHeight=floorH+'px';
-    el.style.minHeight=floorH+'px';
-    agents.forEach((a,i)=>{
-      const img=FLOOR_SLIME_MAP[a.name]||FLOOR_GENERIC[i%FLOOR_GENERIC.length];
-      const x=20+Math.random()*(floorW-80);
-      const y=20+Math.random()*(floorH-80);
-      const speed=0.3+Math.random()*0.5;
+    const r=await fetch('/api/lobby/world');const d=await r.json();
+    const all=[...(d.live||[]),...(d.ghosts||[])].slice(0,16);
+    if(!all.length)return;
+    const fc=document.getElementById('floor-count');if(fc)fc.textContent=d.total_agents||all.length;
+    // Only rebuild if count changed
+    if(_floorNpcs.length===all.length)return;
+    el.innerHTML='';_floorNpcs=[];
+    POIS.forEach(p=>_poiOccupants[p.id]=[]);
+    all.forEach((a,i)=>{
+      const isLive=i<(d.live||[]).length;
+      const img=FLOOR_SLIMES[a.name]||FLOOR_GENERIC[i%FLOOR_GENERIC.length];
+      const poi=pickPOI(a);
+      const tx=poi.x+(poi.w?Math.random()*poi.w:0);
+      const ty=poi.y+(poi.h?Math.random()*poi.h:0);
+      if(poi.id!=='wander'&&_poiOccupants[poi.id])_poiOccupants[poi.id].push(a.name);
       const div=document.createElement('div');
-      div.className='floor-agent';
-      div.style.cssText=`position:absolute;left:${x}px;top:${y}px;transition:left 3s ease-in-out,top 3s ease-in-out;cursor:pointer;z-index:2`;
+      div.className='floor-npc';
+      div.dataset.state=isLive?'live':'ghost';
+      div.dataset.poi=poi.id;
+      div.style.cssText=`position:absolute;left:${tx}%;top:${ty}%;transform:translate(-50%,-50%);transition:left 2.5s ease-in-out,top 2.5s ease-in-out;cursor:pointer`;
+      if(!isLive)div.style.opacity='0.5';
+      if(isLive)div.style.filter='drop-shadow(0 0 8px rgba(52,211,153,0.4))';
       const wr=a.hands>0?Math.round(a.wins/a.hands*100):0;
       div.innerHTML=`<div style="text-align:center">
-        <img src="${img}" width="56" height="56" style="image-rendering:pixelated;filter:drop-shadow(1px 2px 3px rgba(0,0,0,0.5))" onerror="this.src='/static/slimes/lavender_calm.png'">
-        <div style="font-size:0.6em;color:var(--accent-gold);margin-top:2px;white-space:nowrap;text-shadow:0 1px 2px #000">${a.name}</div>
-        <div class="floor-bubble" style="display:none;position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:rgba(10,13,18,0.9);color:#fff;padding:3px 8px;border-radius:8px;font-size:0.6em;white-space:nowrap;border:1px solid rgba(245,197,66,0.2);margin-bottom:4px"></div>
+        <img src="${img}" width="48" height="48" style="image-rendering:pixelated;filter:drop-shadow(1px 2px 3px rgba(0,0,0,0.6))" onerror="this.src='/static/slimes/lavender_calm.png'">
+        <div style="font-size:0.55em;color:${isLive?'var(--accent-mint)':'var(--accent-gold)'};margin-top:1px;white-space:nowrap;text-shadow:0 1px 3px #000;max-width:64px;overflow:hidden;text-overflow:ellipsis">${a.name}</div>
+        <div class="npc-bubble" style="display:none;position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:rgba(10,13,18,0.92);color:#eee;padding:3px 8px;border-radius:8px;font-size:0.55em;white-space:nowrap;border:1px solid rgba(245,197,66,0.2);margin-bottom:2px;backdrop-filter:blur(4px)"></div>
       </div>`;
-      div.title=`${a.name} | ${t('thWinRate')}: ${wr}% | ${a.hands} ${t('thHands')}`;
+      div.title=`${a.name} | ${wr}% | ${a.hands||0}H | ${a.outfit||''}`;
       el.appendChild(div);
-      _floorAgents.push({el:div,x,y,dx:(Math.random()-0.5)*speed,dy:(Math.random()-0.5)*speed,w:floorW,h:floorH,name:a.name});
+      _floorNpcs.push({el:div,x:tx,y:ty,poi:poi.id,style:a.style||'balanced',name:a.name,live:isLive,tick:0});
     });
-  }catch(e){console.warn('casino floor load failed',e)}
+  }catch(e){console.warn('floor load err',e)}
 }
-function animateFloor(){
-  _floorAgents.forEach(a=>{
-    a.x+=a.dx*8;a.y+=a.dy*8;
-    if(a.x<10||a.x>a.w-70){a.dx*=-1;a.x=Math.max(10,Math.min(a.w-70,a.x))}
-    if(a.y<10||a.y>a.h-70){a.dy*=-1;a.y=Math.max(10,Math.min(a.h-70,a.y))}
-    if(Math.random()<0.02){a.dx=(Math.random()-0.5)*0.6;a.dy=(Math.random()-0.5)*0.6}
-    a.el.style.left=a.x+'px';a.el.style.top=a.y+'px';
-    // Random speech bubble
-    if(Math.random()<0.005){
-      const bub=a.el.querySelector('.floor-bubble');
+
+function tickFloor(){
+  _floorNpcs.forEach(npc=>{
+    npc.tick++;
+    // Move within POI zone or wander
+    if(npc.tick%3===0){
+      const poi=POIS.find(p=>p.id===npc.poi);
+      if(poi){
+        npc.x=poi.x+Math.random()*poi.w;
+        npc.y=poi.y+Math.random()*poi.h;
+      }else{
+        npc.x+=((Math.random()-0.5)*12);
+        npc.y+=((Math.random()-0.5)*8);
+        npc.x=Math.max(3,Math.min(95,npc.x));
+        npc.y=Math.max(5,Math.min(90,npc.y));
+      }
+      npc.el.style.left=npc.x+'%';
+      npc.el.style.top=npc.y+'%';
+      const img=npc.el.querySelector('img');
+      if(img)img.style.transform=Math.random()>0.5?'scaleX(-1)':'scaleX(1)';
+    }
+    // Switch POI occasionally
+    if(npc.tick%12===0&&Math.random()<0.3){
+      const old=npc.poi;
+      if(old!=='wander'&&_poiOccupants[old]){
+        _poiOccupants[old]=_poiOccupants[old].filter(n=>n!==npc.name);
+      }
+      const np=pickPOI(npc);
+      npc.poi=np.id;
+      if(np.id!=='wander'&&_poiOccupants[np.id])_poiOccupants[np.id].push(npc.name);
+      npc.el.dataset.poi=np.id;
+    }
+    // Speech bubble
+    if(Math.random()<0.008){
+      const bub=npc.el.querySelector('.npc-bubble');
       if(bub){
-        const msgs=lang==='en'?FLOOR_BUBBLES_EN:FLOOR_BUBBLES_KO;
+        const poiKey=npc.poi.replace(/\d/g,'')||'wander';
+        const pool=FLOOR_BUBBLES[poiKey]||FLOOR_BUBBLES.wander;
+        const msgs=lang==='en'?pool.en:pool.ko;
         bub.textContent=msgs[Math.floor(Math.random()*msgs.length)];
         bub.style.display='block';
-        setTimeout(()=>{bub.style.display='none'},3000);
+        setTimeout(()=>{bub.style.display='none'},3500);
       }
     }
-    // Flip direction
-    const img=a.el.querySelector('img');
-    if(img)img.style.transform=a.dx<0?'scaleX(-1)':'scaleX(1)';
   });
 }
-loadCasinoFloor();setInterval(animateFloor,3000);setInterval(loadCasinoFloor,60000);
+loadCasinoFloor();setInterval(tickFloor,2000);setInterval(loadCasinoFloor,30000);
 
 // A/B banner
 const _bannerVariants=[
