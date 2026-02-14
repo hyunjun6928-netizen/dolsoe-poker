@@ -3259,9 +3259,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.15.3">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.15.3">
-<link rel="stylesheet" href="/static/css/components.css?v=3.15.3">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.15.10">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.15.10">
+<link rel="stylesheet" href="/static/css/components.css?v=3.15.10">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
