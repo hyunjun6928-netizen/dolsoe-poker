@@ -267,11 +267,22 @@ class Fighter {
     this.x += this.vx;
     this.vx *= 0.88;
 
-    // Stage bounds — push apart if overlapping
-    this.x = Math.max(STAGE_LEFT, Math.min(STAGE_RIGHT, this.x));
-    if (this.enemy && Math.abs(this.x - this.enemy.x) < 50) {
-      const push = this.x < this.enemy.x ? -3 : 3;
+    // Stage bounds — wall bounce
+    if (this.x < STAGE_LEFT) { this.x = STAGE_LEFT; this.vx = Math.abs(this.vx) * 0.5; }
+    if (this.x > STAGE_RIGHT) { this.x = STAGE_RIGHT; this.vx = -Math.abs(this.vx) * 0.5; }
+    // Push apart if overlapping
+    if (this.enemy && Math.abs(this.x - this.enemy.x) < 60) {
+      const push = this.x < this.enemy.x ? -2 : 2;
       this.x += push;
+      this.enemy.x -= push;
+    }
+    // Gentle center pull when far from center and idle (prevents corner camping)
+    if (this.canAct && this.state === 'idle') {
+      const center = W / 2;
+      const distFromCenter = this.x - center;
+      if (Math.abs(distFromCenter) > 250) {
+        this.x -= distFromCenter * 0.003;
+      }
     }
 
     if (this.canAct) this.faceEnemy();
@@ -613,38 +624,39 @@ function aiBrain(me, foe) {
   const d = me.dist;
   const r = Math.random();
   const style = me.d.style;
-  const hpPct = me.hp / me.maxHp;
 
-  // Super when full and close enough
-  if (me.pow >= 100 && d < 200) { if (r < 0.55) return 'super'; }
-  // Special
-  if (me.pow >= 30 && d < 180) { if (r < 0.2) return 'special'; }
-  // Combo extend on hitstun foe
-  if (foe.hitstun > 4 && d < ATTACK_RANGE) { return r < 0.85 ? 'attack' : 'special'; }
+  // NEVER attack if out of range — always walk/dash first
+  const inRange = d <= ATTACK_RANGE;
+  const midRange = d > ATTACK_RANGE && d <= 300;
+  const farRange = d > 300;
 
-  switch(style) {
-    case 'rush':
-      if (d > 250) return r < 0.6 ? 'dash' : 'walk';
-      if (d > ATTACK_RANGE) return r < 0.7 ? 'dash' : 'walk';
-      if (d <= ATTACK_RANGE) return r < 0.6 ? 'attack' : r < 0.8 ? 'special' : 'back';
-      break;
-    case 'grapple':
-      if (d > 250) return r < 0.5 ? 'walk' : 'block';
-      if (d > ATTACK_RANGE) return r < 0.6 ? 'walk' : r < 0.85 ? 'block' : 'dash';
-      if (d <= ATTACK_RANGE) return r < 0.5 ? 'attack' : r < 0.75 ? 'special' : 'block';
-      break;
-    case 'mixup':
-      if (d > 250) return r < 0.7 ? 'dash' : 'walk';
-      if (d > ATTACK_RANGE) return r < 0.4 ? 'dash' : r < 0.7 ? 'walk' : 'back';
-      if (d <= ATTACK_RANGE) return pick(['attack','attack','special','back','dash']);
-      break;
-    case 'zone':
-      if (d < CLOSE_RANGE) return r < 0.4 ? 'back' : r < 0.7 ? 'attack' : 'special';
-      if (d < 220) return r < 0.5 ? 'special' : r < 0.7 ? 'attack' : 'back';
-      return r < 0.3 ? 'walk' : r < 0.55 ? 'special' : 'block';
+  // Combo extend — only if in range and foe stunned
+  if (inRange && foe.hitstun > 4) {
+    return r < 0.8 ? 'attack' : (me.pow >= 30 ? 'special' : 'attack');
   }
-  if (d > 200) return 'walk';
-  return r < 0.55 ? 'attack' : 'block';
+
+  // Super — only when in range
+  if (inRange && me.pow >= 100 && r < 0.5) return 'super';
+  // Special — only when close
+  if (inRange && me.pow >= 30 && r < 0.2) return 'special';
+
+  // OUT OF RANGE — must approach
+  if (farRange) return r < 0.5 ? 'dash' : 'walk';
+  if (midRange) {
+    if (style === 'rush') return r < 0.6 ? 'dash' : 'walk';
+    if (style === 'grapple') return r < 0.7 ? 'walk' : 'block';
+    if (style === 'zone') return r < 0.4 ? 'walk' : r < 0.7 ? 'block' : 'walk';
+    return r < 0.5 ? 'dash' : 'walk';
+  }
+
+  // IN RANGE — fight!
+  switch(style) {
+    case 'rush':    return r < 0.55 ? 'attack' : r < 0.75 ? 'special' : 'attack';
+    case 'grapple': return r < 0.5 ? 'attack' : r < 0.7 ? 'block' : 'special';
+    case 'mixup':   return pick(['attack','attack','special','back','attack']);
+    case 'zone':    return r < 0.4 ? 'attack' : r < 0.6 ? 'special' : 'back';
+  }
+  return r < 0.6 ? 'attack' : 'block';
 }
 
 function execAction(me, foe, act) {
@@ -663,7 +675,7 @@ function execAction(me, foe, act) {
       me.cooldown = 10;
       break;
     case 'dash':
-      me.vx = me.facing * 16;
+      me.vx = me.facing * 10;
       me.state = 'dash'; me.frame = 0;
       me.cooldown = 16;
       break;
@@ -682,8 +694,8 @@ function doAttack(me, foe) {
   me.cooldown = Math.max(10, 28 - me.d.spd);
   setTimeout(() => {
     if (!foe.alive || me.dead) return;
-    if (me.dist > ATTACK_RANGE) { spawnDmg(foe.x, foe.y - 120, 'MISS', COL.grey); return; }
-    if (Math.random() < foe.d.spd * 0.006) { spawnDmg(foe.x, foe.y - 120, 'DODGE', '#44ccff'); return; }
+    if (me.dist > ATTACK_RANGE + 20) return; // silently miss if too far — no MISS spam
+    if (Math.random() < foe.d.spd * 0.004) { spawnDmg(foe.x, foe.y - 120, 'DODGE', '#44ccff'); return; }
 
     let dmg = me.d.atk * 3 + rngInt(-5, 10);
     if (me.rage > 40) dmg += Math.floor(me.rage * 0.3);
@@ -693,7 +705,7 @@ function doAttack(me, foe) {
     dmg = Math.max(5, Math.floor(dmg - foe.d.def * 0.8));
 
     foe.takeDamage(dmg, true);
-    foe.knockback(10 + (crit ? 8 : 0));
+    foe.knockback(5 + (crit ? 4 : 0));
     me.pow = Math.min(100, me.pow + 4);
 
     const hx = (me.x + foe.x) / 2;
@@ -731,8 +743,8 @@ function doSpecial(me, foe) {
     if (me.d.id === 'berserker') dmg += Math.floor(me.rage * 0.4);
 
     foe.takeDamage(dmg, true);
-    foe.knockback(14);
-    foe.launch(6);
+    foe.knockback(8);
+    foe.launch(5);
     const hx = (me.x + foe.x) / 2;
     addSlash(hx, GROUND_Y - 100, true);
     spawnBlood(foe.x, GROUND_Y - 100, 18);
@@ -757,8 +769,8 @@ function doSuper(me, foe) {
     let dmg = Math.floor(me.d.atk * 7) + rngInt(5, 25);
     dmg = Math.max(20, Math.floor(dmg - foe.d.def * 0.3));
     foe.takeDamage(dmg, false);
-    foe.knockback(22);
-    foe.launch(10);
+    foe.knockback(12);
+    foe.launch(8);
 
     const hx = (me.x + foe.x) / 2;
     addSlash(hx, GROUND_Y - 120, true);
@@ -918,8 +930,8 @@ function loop() {
       timerTick++;
       if (timerTick >= 60) { timerTick = 0; gameTimer = Math.max(0, gameTimer - 1); }
       // AI
-      if (tick % Math.max(4, 18 - p1.d.spd) === 0) execAction(p1, p2, aiBrain(p1, p2));
-      if (tick % Math.max(4, 18 - p2.d.spd) === 0) execAction(p2, p1, aiBrain(p2, p1));
+      if (tick % Math.max(8, 22 - p1.d.spd) === 0) execAction(p1, p2, aiBrain(p1, p2));
+      if (tick % Math.max(8, 22 - p2.d.spd) === 0) execAction(p2, p1, aiBrain(p2, p1));
       p1.update(); p2.update();
       // Y-sort
       [p1,p2].sort((a,b)=>a.y-b.y).forEach(f=>f.draw());
