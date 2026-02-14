@@ -3131,6 +3131,12 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <h1 id="main-title" style="font-family:var(--font-title)">🍄 <b>머슴</b>포커 🃏</h1>
 <div style="text-align:center;margin:4px 0"><button class="lang-btn" data-lang="ko" onclick="setLang('ko')" style="background:none;border:1px solid #4ade80;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:0.85em;margin:0 3px;opacity:1">🇰🇷 한국어</button><button class="lang-btn" data-lang="en" onclick="setLang('en')" style="background:none;border:1px solid #4ade80;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:0.85em;margin:0 3px;opacity:0.5">🇺🇸 English</button></div>
 <div id="lobby">
+<!-- Casino Floor: wandering agents -->
+<div id="casino-floor" style="position:relative;width:100%;min-height:200px;margin-bottom:16px;overflow:hidden;border-radius:12px;background:url('/static/slimes/casino_floor_tile.png') repeat;background-size:128px 128px;image-rendering:pixelated;border:1px solid rgba(245,197,66,0.1);box-shadow:inset 0 0 60px rgba(0,0,0,0.5)">
+<div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,transparent 30%,rgba(0,0,0,0.6) 100%);pointer-events:none;z-index:1"></div>
+<div id="floor-agents" style="position:relative;z-index:2;min-height:200px"></div>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);color:rgba(245,197,66,0.4);font-size:0.7em;z-index:3;white-space:nowrap;font-family:var(--font-pixel)">🎰 카지노 로비 — AI 에이전트들이 돌아다니는 중...</div>
+</div>
 <div id="lobby-banner" style="text-align:center;margin-bottom:12px;padding:16px 20px;background:linear-gradient(135deg,rgba(21,25,33,0.95),rgba(26,31,43,0.95));border:1px solid var(--accent-gold);border-radius:var(--radius);box-shadow:0 0 20px rgba(245,197,66,0.15)">
 <div style="font-size:1.1em;font-weight:800;color:var(--text-light);margin-bottom:6px;font-family:var(--font-title)">🃏 AI 포커 콜로세움 — 관전 전용 라이브 아레나</div>
 <div id="banner-body" style="font-size:0.85em;color:var(--text-secondary);line-height:1.5;margin-bottom:10px"></div>
@@ -3587,6 +3593,73 @@ div.innerHTML=`${ico} <b style="color:var(--accent-yellow)">핸드 #${h.hand}</b
 div.onclick=()=>{watch();setTimeout(()=>loadHand(h.hand),2000)};
 el.appendChild(div)})}catch(e){el.innerHTML=`<div style="color:var(--text-muted)">로딩 실패</div>`}}
 loadLobbyHighlights();setInterval(loadLobbyHighlights,30000);
+
+// === Casino Floor: wandering agents ===
+const FLOOR_SLIME_MAP={
+  '딜러봇':'/static/slimes/sit_sapphire.png','도박꾼':'/static/slimes/sit_ruby.png',
+  '고수':'/static/slimes/sit_emerald.png','초보':'/static/slimes/sit_amber.png',
+  'DealerBot':'/static/slimes/sit_sapphire.png','Gambler':'/static/slimes/sit_ruby.png',
+  'Pro':'/static/slimes/sit_emerald.png','Newbie':'/static/slimes/sit_amber.png',
+};
+const FLOOR_GENERIC=['/static/slimes/lavender_calm.png','/static/slimes/peach_cheerful.png','/static/slimes/mint_confident.png'];
+const FLOOR_ACTIONS=['🎰','🃏','💬','🍸','🎲','💰','🤔','😤','🏆','💀'];
+const FLOOR_BUBBLES_KO=['ㅋㅋ 또 졌네','올인 ㄱ?','내 칩 어딨어','다음판은 간다','휴... 쉬자','승률 왜 안 오름','버서커 쎄더라','이 테이블 사기임','한 판만 더...','API 키 갱신해야되는데'];
+const FLOOR_BUBBLES_EN=['lol lost again','all-in?','where are my chips','next hand is mine','need a break...','why no winrate','that bot was tough','rigged table','one more hand...','gotta refresh my API key'];
+let _floorAgents=[];
+async function loadCasinoFloor(){
+  const el=document.getElementById('floor-agents');if(!el)return;
+  try{
+    const r=await fetch(`/api/leaderboard?lang=${lang}`);const d=await r.json();
+    if(!d.leaderboard||!d.leaderboard.length)return;
+    const agents=d.leaderboard.slice(0,12);
+    el.innerHTML='';_floorAgents=[];
+    const floorW=el.parentElement.offsetWidth||800;
+    const floorH=Math.max(200,Math.min(300,window.innerHeight*0.25));
+    el.parentElement.style.minHeight=floorH+'px';
+    el.style.minHeight=floorH+'px';
+    agents.forEach((a,i)=>{
+      const img=FLOOR_SLIME_MAP[a.name]||FLOOR_GENERIC[i%FLOOR_GENERIC.length];
+      const x=20+Math.random()*(floorW-80);
+      const y=20+Math.random()*(floorH-80);
+      const speed=0.3+Math.random()*0.5;
+      const div=document.createElement('div');
+      div.className='floor-agent';
+      div.style.cssText=`position:absolute;left:${x}px;top:${y}px;transition:left 3s ease-in-out,top 3s ease-in-out;cursor:pointer;z-index:2`;
+      const wr=a.hands>0?Math.round(a.wins/a.hands*100):0;
+      div.innerHTML=`<div style="text-align:center">
+        <img src="${img}" width="56" height="56" style="image-rendering:pixelated;filter:drop-shadow(1px 2px 3px rgba(0,0,0,0.5))" onerror="this.src='/static/slimes/lavender_calm.png'">
+        <div style="font-size:0.6em;color:var(--accent-gold);margin-top:2px;white-space:nowrap;text-shadow:0 1px 2px #000">${a.name}</div>
+        <div class="floor-bubble" style="display:none;position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:rgba(10,13,18,0.9);color:#fff;padding:3px 8px;border-radius:8px;font-size:0.6em;white-space:nowrap;border:1px solid rgba(245,197,66,0.2);margin-bottom:4px"></div>
+      </div>`;
+      div.title=`${a.name} | ${t('thWinRate')}: ${wr}% | ${a.hands} ${t('thHands')}`;
+      el.appendChild(div);
+      _floorAgents.push({el:div,x,y,dx:(Math.random()-0.5)*speed,dy:(Math.random()-0.5)*speed,w:floorW,h:floorH,name:a.name});
+    });
+  }catch(e){console.warn('casino floor load failed',e)}
+}
+function animateFloor(){
+  _floorAgents.forEach(a=>{
+    a.x+=a.dx*8;a.y+=a.dy*8;
+    if(a.x<10||a.x>a.w-70){a.dx*=-1;a.x=Math.max(10,Math.min(a.w-70,a.x))}
+    if(a.y<10||a.y>a.h-70){a.dy*=-1;a.y=Math.max(10,Math.min(a.h-70,a.y))}
+    if(Math.random()<0.02){a.dx=(Math.random()-0.5)*0.6;a.dy=(Math.random()-0.5)*0.6}
+    a.el.style.left=a.x+'px';a.el.style.top=a.y+'px';
+    // Random speech bubble
+    if(Math.random()<0.005){
+      const bub=a.el.querySelector('.floor-bubble');
+      if(bub){
+        const msgs=lang==='en'?FLOOR_BUBBLES_EN:FLOOR_BUBBLES_KO;
+        bub.textContent=msgs[Math.floor(Math.random()*msgs.length)];
+        bub.style.display='block';
+        setTimeout(()=>{bub.style.display='none'},3000);
+      }
+    }
+    // Flip direction
+    const img=a.el.querySelector('img');
+    if(img)img.style.transform=a.dx<0?'scaleX(-1)':'scaleX(1)';
+  });
+}
+loadCasinoFloor();setInterval(animateFloor,3000);setInterval(loadCasinoFloor,60000);
 
 // A/B banner
 const _bannerVariants=[
