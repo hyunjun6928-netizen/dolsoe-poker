@@ -138,10 +138,16 @@ def analyze(data):
         now = datetime.now(KST).strftime('%Y-%m-%d %H:%M')
         since_str = datetime.fromtimestamp(SINCE, KST).strftime('%m/%d %H:%M') if SINCE else 'all'
         until_str = datetime.fromtimestamp(UNTIL, KST).strftime('%m/%d %H:%M') if UNTIL else 'all'
-        log_line = f"AB_DECISION | {now} | {since_str}~{until_str} | {winner} win | total {max(b1t,b2t)*100:.1f}% vs {min(b1t,b2t)*100:.1f}% | n={b1.get('imp',0)}+{b2.get('imp',0)} | → {winner} 90% {loser} 10%"
+        log_line = f"AB_DECISION | {now} | {since_str}~{until_str} | {winner} win | total {max(b1t,b2t)*100:.1f}% vs {min(b1t,b2t)*100:.1f}% | n={b1.get('imp',0)}+{b2.get('imp',0)} | → {winner} 90% {loser} 10% | dist=A10/{winner}45/{loser}45"
         log_path = os.path.join(os.path.dirname(__file__) or '.', 'ab_decisions.log')
         with open(log_path, 'a') as f: f.write(log_line + '\n')
         print(f"\n  📝 판정 기록: {log_path}")
+        print(f"\n  💡 다음 실험 후보 적립:")
+        print(f"     → {winner} 첫 줄 유지, 둘째 줄 변형 (예: CTA 문구 or 긴급감 추가)")
+
+        backlog_path = os.path.join(os.path.dirname(__file__) or '.', 'ab_backlog.md')
+        with open(backlog_path, 'a') as f:
+            f.write(f"- [{now}] {winner} 승격 후 → 다음: {winner} 둘째줄 변형 실험\n")
     else:
         min_b = min(b1.get('imp',0), b2.get('imp',0))
         print(f"\n  ⏸️  판정 보류 (HOLD) — B1/B2 표본 부족 (min={min_b}, 필요=200)")

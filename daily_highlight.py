@@ -49,7 +49,8 @@ def build_card():
     # Line 2: 명장면 핸드
     if hl:
         best = hl[0]
-        line2 = f"🔥 명장면 핸드 #{best['hand']} — {best.get('winner','?')} +{best.get('pot',0)}pt"
+        short_url = BASE.replace('https://','').replace('http://','')
+        line2 = f"🔥 명장면 핸드 #{best['hand']} — {best.get('winner','?')} +{best.get('pot',0)}pt → {short_url}/?hand={best['hand']}"
     else:
         line2 = '🔥 오늘 명장면 없음 (봇이 더 필요함)'
 
