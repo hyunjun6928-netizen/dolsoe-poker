@@ -105,12 +105,12 @@ h1 b { color: var(--accent-gold); }
   z-index: 5;
 }
 
-/* ===== 7. GAME LAYOUT — 3-COL GRID ===== */
+/* ===== 7. GAME LAYOUT — 3-COL GRID (v3.14: log narrower, table dominant) ===== */
 .game-layout {
   display: grid;
-  grid-template-columns: 180px 1fr 260px;
-  gap: var(--sp-md);
-  height: calc(100vh - 160px);
+  grid-template-columns: 160px 1fr 240px;
+  gap: var(--sp-sm);
+  height: calc(100vh - 120px);
   min-height: 500px;
 }
 
@@ -147,9 +147,11 @@ h1 b { color: var(--accent-gold); }
 /* ===== 10. FELT WRAP & TABLE ===== */
 .felt-wrap {
   position: relative;
-  margin: var(--sp-md) auto var(--sp-lg);
+  margin: var(--sp-xs) auto var(--sp-md);
   /* 좌석 잘림 방지: 상단에 여유 공간 확보 */
-  padding-top: 60px;
+  padding-top: 50px;
+  /* v3.14: 테이블 중앙 집중 — 더 크게 */
+  max-width: min(1100px, 96%);
 }
 
 .felt-border {
@@ -178,22 +180,23 @@ h1 b { color: var(--accent-gold); }
   border: none;
   border-radius: 18px;
   width: 100%;
-  padding-bottom: 50%;
+  padding-bottom: 48%;
   overflow: visible;
-  /* Vignette + spotlight */
+  /* v3.14: lighter vignette + warm spotlight center */
   box-shadow:
-    inset 0 0 100px 40px rgba(0,0,0,0.3),
-    inset 0 0 40px 10px rgba(0,0,0,0.15),
-    inset 0 2px 0 rgba(255,255,255,0.03);
+    inset 0 0 60px 20px rgba(0,0,0,0.2),
+    inset 0 0 20px 5px rgba(0,0,0,0.1),
+    inset 0 2px 0 rgba(255,255,255,0.03),
+    0 0 80px 20px rgba(245,197,66,0.04);
 }
-/* Spotlight center glow */
+/* v3.14: Warm spotlight — center glow stronger, acts as "table lamp" */
 .felt::before {
   content: '';
   position: absolute;
-  top: 20%; left: 25%; right: 25%; bottom: 30%;
+  top: 10%; left: 15%; right: 15%; bottom: 20%;
   background: radial-gradient(ellipse at 50% 45%,
-    rgba(255,248,220,0.035) 0%,
-    rgba(255,248,220,0.015) 40%,
+    rgba(255,248,220,0.07) 0%,
+    rgba(255,248,220,0.03) 40%,
     transparent 70%);
   border-radius: 50%;
   pointer-events: none;
@@ -250,7 +253,7 @@ h1 b { color: var(--accent-gold); }
 /* ===== 12. RESPONSIVE — DESKTOP WIDE (>1400px) ===== */
 @media (min-width: 1401px) {
   .game-layout {
-    grid-template-columns: 220px 1fr 300px;
+    grid-template-columns: 180px 1fr 260px;
     max-width: 1600px;
     margin: 0 auto;
   }

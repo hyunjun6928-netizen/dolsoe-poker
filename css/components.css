@@ -90,39 +90,40 @@
 }
 .btn-watch:hover { transform: translateY(-2px); box-shadow: var(--glow-mint), var(--shadow-lg); }
 
-/* ===== 3. POT BADGE ===== */
+/* ===== 3. POT BADGE (v3.14: compact, top-aligned) ===== */
 .pot-badge, #pot {
   position: absolute;
-  top: 26%;
+  top: 18%;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(12,15,20,0.88);
+  background: rgba(12,15,20,0.82);
   backdrop-filter: var(--glass-blur-sm);
   -webkit-backdrop-filter: var(--glass-blur-sm);
-  padding: var(--sp-md) var(--sp-2xl);
-  border-radius: var(--radius-xl);
-  font-size: var(--fs-xl);
+  padding: var(--sp-xs) var(--sp-xl);
+  border-radius: var(--radius);
+  font-size: var(--fs-base);
   color: var(--accent-gold);
   font-weight: var(--fw-bold);
   font-family: var(--font-number);
-  letter-spacing: 1.5px;
+  letter-spacing: 1px;
   z-index: var(--z-badge);
-  border: 1px solid var(--border-gold);
-  box-shadow: var(--shadow-lg), var(--glow-gold);
+  border: 1px solid rgba(157,127,51,0.25);
+  box-shadow: var(--shadow-md);
   transition: font-size var(--dur-slow) var(--ease-out);
 }
 
-/* ===== 4. CHIP STACK ===== */
+/* ===== 4. CHIP STACK (v3.14: compact — height not count) ===== */
 #chip-stack {
   position: absolute;
-  top: 38%;
+  top: 34%;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translateX(-50%) scale(0.75);
   z-index: 4;
   display: flex;
-  gap: 2px;
+  gap: 1px;
   align-items: flex-end;
   justify-content: center;
+  opacity: 0.85;
 }
 
 /* ===== 5. BOARD (community cards) ===== */
@@ -176,16 +177,20 @@
 .card.red .r, .card.red .s { color: #dd1111; }
 .card.black .r, .card.black .s { color: #1a1a1a; }
 
-/* 고풍스러운 픽셀 카드 — antique parchment style */
+/* v3.14: Elegant casino card — cool off-white, gold trim, unified lighting */
 .card-f {
-  background: linear-gradient(180deg, #FCC88E 0%, #F09858 50%, #C17F54 100%);
-  border: 2px solid #9D7F33;
-  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.2), 0 2px 8px rgba(0,0,0,0.5);
+  background: linear-gradient(170deg, #f0ece4 0%, #e8e2d8 40%, #ddd6cc 100%);
+  border: 1.5px solid #9D7F33;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.6),
+    inset 0 -1px 0 rgba(0,0,0,0.08),
+    0 2px 8px rgba(0,0,0,0.5),
+    0 0 0 0.5px rgba(157,127,51,0.3);
   image-rendering: pixelated;
 }
-.card-f .r, .card-f .s { text-shadow: 1px 1px 0 rgba(0,0,0,0.15); }
-.card.red .r, .card.red .s { color: #D24C59; }
-.card.black .r, .card.black .s { color: #050F1A; }
+.card-f .r, .card-f .s { text-shadow: 0 1px 0 rgba(255,255,255,0.5); }
+.card.red .r, .card.red .s { color: #c0392b; }
+.card.black .r, .card.black .s { color: #1a1a2e; }
 .card-b {
   background: url('/static/slimes/card_back_pixel.png') center/cover no-repeat;
   border: 2px solid #9D7F33;
@@ -329,21 +334,24 @@
   content: none;
 }
 
-/* Tier 3: Name/chips — inherits from .seat layout, sits above slime */
+/* Tier 3: Name — v3.14 metal nameplate (casino 명패) */
 .seat .nm {
   position: relative;
   z-index: 3;
-  font-size: var(--fs-sm);
+  font-size: var(--fs-xs);
   font-weight: var(--fw-semi);
   white-space: nowrap;
-  background: rgba(12,15,20,0.88);
-  color: var(--text-primary);
-  padding: var(--sp-xs) var(--sp-lg);
-  border-radius: var(--radius-sm);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: linear-gradient(180deg, rgba(30,28,26,0.92) 0%, rgba(18,16,14,0.95) 100%);
+  color: var(--accent-gold);
+  padding: 2px var(--sp-md);
+  border-radius: 2px;
+  border: 1px solid rgba(157,127,51,0.3);
+  border-top-color: rgba(157,127,51,0.5);
   display: inline-block;
-  box-shadow: var(--shadow-sm);
-  letter-spacing: 0.3px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+  letter-spacing: 0.5px;
+  font-family: var(--font-pixel);
+  text-transform: uppercase;
 }
 .seat .ch {
   position: relative;
@@ -718,25 +726,34 @@
 
 @keyframes fadeIn { to { opacity: 1; } }
 
-/* ===== 14. LOG ===== */
+/* ===== 14. LOG (v3.14: demoted to secondary — less contrast, smaller) ===== */
 #log {
   background: transparent;
   border: none;
   padding: var(--sp-xs);
   height: auto;
   overflow-y: auto;
-  font-size: var(--fs-sm);
-  font-family: var(--font-body);
+  font-size: var(--fs-xs);
+  font-family: var(--font-pixel);
   flex: 1;
   box-shadow: none;
-  color: var(--text-secondary);
+  color: rgba(147,139,123,0.6);
 }
 #log div {
-  padding: 2px 0;
-  border-bottom: 1px solid rgba(255,255,255,0.03);
+  padding: 1px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.02);
   opacity: 0;
   animation: fadeIn var(--dur-base) forwards;
 }
+/* Highlight important events only */
+#log div:has(.i-allin), #log div:has(.i-raise), #log div:has(.i-win) {
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+}
+/* Pixel scrollbar */
+#log::-webkit-scrollbar { width: 4px; }
+#log::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
+#log::-webkit-scrollbar-thumb { background: rgba(157,127,51,0.3); border-radius: 2px; }
 
 /* ===== 15. PLAYER LIST PANEL (collapsible) ===== */
 #player-list-panel {
@@ -1899,9 +1916,11 @@ body.in-game #casino-floor #poi-layer,
 body.in-game #casino-floor #lobby-log,
 body.in-game #casino-floor #casino-walkers { display: none; }
 body.in-game #casino-floor::after {
+  /* v3.14: softer vignette — spotlight on table area, less crushing */
   background:
-    radial-gradient(ellipse at center, rgba(0,0,0,0.3), rgba(0,0,0,0.85)),
-    linear-gradient(to bottom, rgba(0,0,0,0.5), rgba(0,0,0,0.8));
+    radial-gradient(ellipse 70% 60% at 50% 45%, rgba(0,0,0,0.15), rgba(0,0,0,0.7)),
+    radial-gradient(ellipse 40% 35% at 50% 45%, rgba(245,197,66,0.03), transparent),
+    linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.6));
 }
 
 /* === Spectator Crowd (in-game) === */
@@ -2172,11 +2191,28 @@ code, pre, #log, .log-box, [data-log] {
   letter-spacing: 0.5px;
 }
 
-/* --- Pixelated rendering on casino background --- */
+/* --- v3.14: GLOBAL pixel rendering rule — NO blur on sprites ever --- */
 #casino-floor,
 #casino-floor img,
-.felt {
-  image-rendering: pixelated;
+.felt,
+.slime-sprite img,
+.floor-npc img,
+.chair-sprite img,
+.poi-furniture img,
+.card-b,
+.card-f,
+img[src*="slimes/"],
+img[src*="px_"] {
+  image-rendering: pixelated !important;
+}
+/* Blur ONLY on glass panels — never on game assets */
+.slime-sprite img,
+.floor-npc img,
+.chair-sprite img,
+.poi-furniture img,
+img[src*="slimes/"] {
+  filter: drop-shadow(0 3px 6px rgba(0,0,0,0.35)) !important;
+  backdrop-filter: none !important;
 }
 
 /* === Walker Animations === */
