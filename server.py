@@ -3774,37 +3774,19 @@ const FLOOR_BUBBLES={
 // v3.15: CENTRAL CLUSTER — dense casino floor, no wallpaper feel
 // Layout: center mass = table+bar+slots tight together, edges = pathways only
 const POIS=[
-  // ═══ CENTER-LEFT: Slot Zone (x:18~35) — clustered tight ═══
-  {id:'slot',x:18,y:35,w:7,h:10,cap:3,img:'/static/slimes/px_slot_machine.png',sz:70,zone:'slot',
-   tooltip:{ko:'🎰 레버 당기기',en:'🎰 Pull lever'},action:'slot_pull'},
-  {id:'slot2',x:18,y:50,w:7,h:10,cap:2,img:'/static/slimes/px_slot_machine.png',sz:65,zone:'slot',
-   tooltip:{ko:'🎰 한판 더',en:'🎰 Try again'},action:'slot_pull'},
-  {id:'jukebox',x:26,y:60,w:5,h:8,cap:1,img:'/static/slimes/px_jukebox.png',sz:50,zone:'slot'},
-  // ═══ CENTER: Poker Table (x:35~62) — the main attraction ═══
+  // ═══ NPC movement zones only — NO furniture sprites (baked into background) ═══
+  {id:'slot',x:18,y:35,w:7,h:10,cap:3,zone:'slot'},
+  {id:'slot2',x:18,y:50,w:7,h:10,cap:2,zone:'slot'},
   {id:'table',x:35,y:32,w:27,h:26,cap:6,zone:'table',
    tooltip:{ko:'🃏 관전하기',en:'🃏 Watch game'},action:'watch'},
-  // ═══ CENTER-RIGHT: Bar Zone (x:62~82) — tight cluster ═══
-  {id:'bar',x:62,y:30,w:14,h:16,cap:4,img:'/static/slimes/px_bar_counter.png',sz:90,zone:'bar',
-   tooltip:{ko:'🍸 주문하기',en:'🍸 Order drink'},action:'bar_order'},
+  {id:'bar',x:62,y:30,w:14,h:16,cap:4,zone:'bar'},
   {id:'cocktail1',x:65,y:50,w:7,h:8,cap:2,zone:'bar'},
   {id:'cocktail2',x:74,y:54,w:7,h:8,cap:2,zone:'bar'},
-  // ═══ TOP CENTER: VIP Lounge (x:38~58) ═══
-  {id:'vip',x:38,y:8,w:20,h:12,cap:3,zone:'vip',
-   tooltip:{ko:'🔒 VIP 라운지',en:'🔒 VIP Lounge'},action:'vip_peek'},
-  // ═══ DECORATIVE: Rope barriers, lamps (edges only) ═══
-  {id:'rope_l',x:14,y:30,w:3,h:40,cap:0,img:'/static/slimes/px_rope_barrier.png',sz:40,zone:'deco'},
-  {id:'rope_r',x:83,y:30,w:3,h:40,cap:0,img:'/static/slimes/px_rope_barrier.png',sz:40,zone:'deco'},
-  {id:'chandelier',x:48,y:3,w:4,h:4,cap:0,img:'/static/slimes/px_chandelier.png',sz:80,zone:'deco'},
+  {id:'vip',x:38,y:8,w:20,h:12,cap:3,zone:'vip'},
 ];
 // Zone light pool definitions (CSS will render these)
 // v3.15: Tighter light pools — amber/gold/purple only, no cyan
-const ZONE_LIGHTS=[
-  {x:24,y:46,rx:14,ry:18,color:'rgba(245,197,66,0.09)',zone:'slot'},    // amber glow on slots
-  {x:72,y:42,rx:13,ry:16,color:'rgba(210,76,89,0.06)',zone:'bar'},      // warm rose on bar
-  {x:48,y:12,rx:12,ry:8,color:'rgba(139,92,246,0.07)',zone:'vip'},      // purple VIP
-  {x:48,y:46,rx:18,ry:16,color:'rgba(245,197,66,0.06)',zone:'table'},   // gold on table
-  {x:48,y:30,rx:40,ry:30,color:'rgba(157,127,51,0.03)',zone:'ambient'}, // overall warm wash
-];
+const ZONE_LIGHTS=[];
 const _poiOccupants={};POIS.forEach(p=>_poiOccupants[p.id]=[]);
 let _floorNpcs=[];
 
@@ -3897,7 +3879,7 @@ async function loadCasinoFloor(){
       div.innerHTML=`<div style="text-align:center;position:relative">
         <div class="walker-body"><img src="${img}" width="80" height="80" style="image-rendering:pixelated" onerror="this.src='/static/slimes/judi_walk_suit.png'"></div>
         <div class="walker-shadow"></div>
-        <div style="font-size:11px;color:${isLive?'#FCC88E':'#938B7B'};margin-top:2px;white-space:nowrap;text-shadow:1px 1px 0 #050F1A,-1px -1px 0 #050F1A,1px -1px 0 #050F1A,-1px 1px 0 #050F1A;max-width:80px;overflow:hidden;text-overflow:ellipsis;font-family:var(--font-pixel);background:rgba(5,15,26,0.7);padding:1px 6px;border:1px solid rgba(157,127,51,0.3);border-radius:1px">${a.name}</div>
+        <div style="font-size:11px;color:${isLive?'#FCC88E':'#938B7B'};margin-top:2px;white-space:nowrap;text-shadow:1px 1px 0 #050F1A,-1px -1px 0 #050F1A,1px -1px 0 #050F1A,-1px 1px 0 #050F1A;max-width:80px;overflow:hidden;text-overflow:ellipsis;font-family:var(--font-pixel);background:none;padding:0;border:none">${a.name}</div>
         <div class="npc-bubble" style="display:none;position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:rgba(10,13,18,0.92);color:#eee;padding:3px 8px;border-radius:8px;font-size:0.55em;white-space:nowrap;border:1px solid rgba(245,197,66,0.2);margin-bottom:2px;backdrop-filter:blur(4px)"></div>
       </div>`;
       div.title=`${a.name} | ${wr}% | ${a.hands||0}H | ${a.outfit||''}`;
@@ -4030,100 +4012,7 @@ const CROWD_REACTIONS={
   badbeat:['💀','아...','RIP','ㅠㅠ'],
   idle:['🤔','...','🎲','🍿','ㅋ','힝','재밌다']
 };
-const INGAME_POIS_DEFS=[
-  // Slot machines along left wall
-  {img:'/static/slimes/slot_machine.png',x:'1%',y:'12%',w:65,h:85},
-  {img:'/static/slimes/slot_machine.png',x:'1%',y:'32%',w:65,h:85},
-  {img:'/static/slimes/slot_machine.png',x:'1%',y:'52%',w:65,h:85},
-  {img:'/static/slimes/slot_machine.png',x:'1%',y:'72%',w:65,h:85},
-  // Slot machines right side too
-  {img:'/static/slimes/slot_machine.png',x:'92%',y:'60%',w:60,h:80},
-  {img:'/static/slimes/slot_machine.png',x:'92%',y:'78%',w:60,h:80},
-  // Bar along right wall
-  {img:'/static/slimes/bar_counter.png',x:'87%',y:'15%',w:110,h:85},
-  {img:'/static/slimes/bar_counter.png',x:'87%',y:'38%',w:110,h:85},
-  // Chandelier top center
-  {img:'/static/slimes/poi_chandelier.png',x:'25%',y:'0%',w:100,h:80},
-  {img:'/static/slimes/poi_chandelier.png',x:'60%',y:'0%',w:100,h:80},
-  // Plants in corners & along walls
-  {img:'/static/slimes/poi_plant.png',x:'0%',y:'1%',w:45,h:55},
-  {img:'/static/slimes/poi_plant.png',x:'95%',y:'1%',w:45,h:55},
-  {img:'/static/slimes/poi_plant.png',x:'0%',y:'90%',w:45,h:55},
-  {img:'/static/slimes/poi_plant.png',x:'95%',y:'90%',w:45,h:55},
-  {img:'/static/slimes/poi_plant.png',x:'12%',y:'1%',w:35,h:45},
-  {img:'/static/slimes/poi_plant.png',x:'82%',y:'1%',w:35,h:45},
-  // Cocktail tables scattered around edges
-  {img:'/static/slimes/poi_cocktail_table.png',x:'10%',y:'84%',w:50,h:50},
-  {img:'/static/slimes/poi_cocktail_table.png',x:'82%',y:'84%',w:50,h:50},
-  {img:'/static/slimes/poi_cocktail_table.png',x:'10%',y:'8%',w:45,h:45},
-  {img:'/static/slimes/poi_cocktail_table.png',x:'82%',y:'8%',w:45,h:45},
-  // VIP rope near top
-  {img:'/static/slimes/poi_vip_rope.png',x:'30%',y:'2%',w:80,h:35},
-  {img:'/static/slimes/poi_vip_rope.png',x:'55%',y:'2%',w:80,h:35},
-  // Neon sign
-  {img:'/static/slimes/neon_sign_poker.png',x:'38%',y:'0%',w:130,h:45},
-  // Wall sconces
-  {img:'/static/slimes/poi_wall_sconce.png',x:'0%',y:'20%',w:28,h:36},
-  {img:'/static/slimes/poi_wall_sconce.png',x:'0%',y:'45%',w:28,h:36},
-  {img:'/static/slimes/poi_wall_sconce.png',x:'0%',y:'70%',w:28,h:36},
-  {img:'/static/slimes/poi_wall_sconce.png',x:'97%',y:'20%',w:28,h:36},
-  {img:'/static/slimes/poi_wall_sconce.png',x:'97%',y:'45%',w:28,h:36},
-  {img:'/static/slimes/poi_wall_sconce.png',x:'97%',y:'70%',w:28,h:36},
-  // Cards scattered on floor
-  {img:'/static/slimes/card_back_pixel.png',x:'8%',y:'72%',w:28,h:38},
-  {img:'/static/slimes/card_back_pixel.png',x:'88%',y:'68%',w:28,h:38},
-  {img:'/static/slimes/card_back_pixel.png',x:'18%',y:'90%',w:24,h:32},
-  {img:'/static/slimes/card_back_pixel.png',x:'75%',y:'92%',w:24,h:32},
-  // Chip stacks & piles
-  {img:'/static/slimes/poker_chips_pile.png',x:'14%',y:'8%',w:45,h:40},
-  {img:'/static/slimes/poker_chips_pile.png',x:'78%',y:'8%',w:40,h:35},
-  {img:'/static/slimes/chip_stack.png',x:'6%',y:'65%',w:30,h:30},
-  {img:'/static/slimes/chip_stack.png',x:'90%',y:'52%',w:30,h:30},
-  // Velvet curtains (frame the view)
-  {img:'/static/slimes/velvet_curtain_left.png',x:'-1%',y:'0%',w:100,h:200},
-  {img:'/static/slimes/velvet_curtain_right.png',x:'93%',y:'0%',w:100,h:200},
-  // Roulette table (background, right side)
-  {img:'/static/slimes/roulette_table.png',x:'85%',y:'40%',w:80,h:70},
-  // Jukebox (far left)
-  {img:'/static/slimes/jukebox.png',x:'3%',y:'88%',w:55,h:70},
-  // Lucky cat (bottom center)
-  {img:'/static/slimes/lucky_cat.png',x:'48%',y:'90%',w:40,h:45},
-  // Trophy (top center display)
-  {img:'/static/slimes/trophy_cup.png',x:'50%',y:'2%',w:40,h:45},
-  // Disco ball (ceiling)
-  {img:'/static/slimes/disco_ball.png',x:'50%',y:'-1%',w:50,h:50},
-  // Whiskey glasses on tables
-  {img:'/static/slimes/whiskey_glass.png',x:'12%',y:'78%',w:22,h:25},
-  {img:'/static/slimes/whiskey_glass.png',x:'80%',y:'78%',w:22,h:25},
-  // Cigar ashtray
-  {img:'/static/slimes/cigar_ashtray.png',x:'18%',y:'12%',w:28,h:28},
-  // Dice on table
-  {img:'/static/slimes/dice_pair.png',x:'70%',y:'14%',w:24,h:24},
-  // Money stack (VIP area)
-  {img:'/static/slimes/money_stack.png',x:'42%',y:'4%',w:35,h:30},
-  // Card fan decoration
-  {img:'/static/slimes/card_fan.png',x:'25%',y:'5%',w:40,h:35},
-  // Bouncer at entrance
-  {img:'/static/slimes/bouncer_slime.png',x:'48%',y:'86%',w:55,h:60},
-  // Bartender at bar
-  {img:'/static/slimes/bartender_slime.png',x:'88%',y:'22%',w:55,h:60},
-  // Floor lamps
-  {img:'/static/slimes/floor_lamp.png',x:'8%',y:'5%',w:35,h:55},
-  {img:'/static/slimes/floor_lamp.png',x:'88%',y:'5%',w:35,h:55},
-  // CCTV cameras
-  {img:'/static/slimes/cctv_camera.png',x:'5%',y:'1%',w:22,h:22},
-  {img:'/static/slimes/cctv_camera.png',x:'92%',y:'1%',w:22,h:22},
-  // Tip jar on bar
-  {img:'/static/slimes/tip_jar.png',x:'85%',y:'32%',w:25,h:28},
-  // Fountain (decorative)
-  {img:'/static/slimes/fountain_small.png',x:'20%',y:'88%',w:55,h:50},
-  // Gold rope barriers
-  {img:'/static/slimes/gold_rope_barrier.png',x:'30%',y:'82%',w:60,h:30},
-  {img:'/static/slimes/gold_rope_barrier.png',x:'60%',y:'82%',w:60,h:30},
-  // Neon signs (top)
-  {img:'/static/slimes/neon_sign_jackpot.png',x:'15%',y:'-1%',w:90,h:35},
-  {img:'/static/slimes/neon_sign_vip.png',x:'65%',y:'-1%',w:70,h:30},
-];
+const INGAME_POIS_DEFS=[];
 let _crowdSlimes=[];
 function buildSpectatorCrowd(){
   const el=document.getElementById('spectator-crowd');if(!el)return;
