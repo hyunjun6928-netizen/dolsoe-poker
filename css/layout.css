@@ -154,18 +154,11 @@ h1 b { color: var(--accent-gold); }
 
 .felt-border {
   position: absolute;
-  top: -16px; left: -16px; right: -16px; bottom: -16px;
-  /* Walnut/brass frame feel */
-  background: linear-gradient(180deg, #232C3A 0%, #1A2230 100%);
+  top: -8px; left: -8px; right: -8px; bottom: -8px;
+  background: transparent;
   border-radius: 24px;
-  border: 1px solid var(--frame-light);
-  box-shadow:
-    0 8px 32px rgba(0,0,0,0.6),
-    inset 0 1px 0 rgba(255,255,255,0.04),
-    /* Brass rail rim-light */
-    inset 0 0 0 3px var(--rail-dark),
-    inset 0 0 0 4px var(--rail-brass),
-    inset 0 0 0 5px var(--rail-light);
+  border: none;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
   z-index: 0;
 }
 .felt-border::before { content: none; }
@@ -178,11 +171,11 @@ h1 b { color: var(--accent-gold); }
 
 .felt, .felt#felt {
   position: relative;
-  /* Dark casino felt — pixel art table */
+  /* Dark casino felt — hi-res pixel art table */
   background:
-    url('/static/slimes/poker_table_top.png') center/cover no-repeat;
+    url('/static/slimes/poker_table_hires.png') center/cover no-repeat;
   image-rendering: pixelated;
-  border: 1px solid rgba(157,127,51,0.3);
+  border: none;
   border-radius: 18px;
   width: 100%;
   padding-bottom: 50%;

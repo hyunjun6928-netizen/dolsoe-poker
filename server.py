@@ -2841,7 +2841,7 @@ h1 b{color:var(--accent-gold);-webkit-text-fill-color:var(--accent-gold)}
 @media(max-width:900px){.lobby-grid{grid-template-columns:1fr!important}}
 @media(max-width:700px){.lobby-grid{grid-template-columns:1fr!important}}
 #game{display:none}
-.info-bar{position:sticky;top:0;z-index:40;display:flex;justify-content:space-between;align-items:center;padding:8px 16px;font-size:0.8em;color:var(--text-light);background:linear-gradient(180deg,rgba(13,16,24,0.95),rgba(5,15,26,0.95));border-bottom:1px solid rgba(157,127,51,0.15);box-shadow:0 2px 8px rgba(0,0,0,0.4);font-family:var(--font-pixel);backdrop-filter:blur(12px)}
+.info-bar{position:sticky;top:0;z-index:40;display:flex;justify-content:space-between;align-items:center;padding:6px 16px;font-size:0.8em;color:var(--text-light);background:transparent;border-bottom:none;box-shadow:none;font-family:var(--font-pixel)}
 .felt-wrap{position:relative;margin:4px auto 8px;padding-top:30px;width:min(1200px,94vw);min-height:min(600px,65vh)}
 .felt-border{position:absolute;top:-20px;left:-20px;right:-20px;bottom:-20px;
 background:url('/static/slimes/stage_frame.png') center/100% 100% no-repeat;
@@ -2889,8 +2889,8 @@ box-shadow:inset 0 0 0 1px rgba(157,127,51,0.4),0 2px 8px rgba(0,0,0,0.5)}
 .seat-3{top:15%;left:-2%;transform:translateY(-50%)}
 .seat-4{top:15%;right:-2%;transform:translateY(-50%)}
 .seat-5{top:52%;right:-2%;transform:translateY(-50%)}
-.seat-6{top:-6%;left:60%;transform:translateX(-50%)}
-.seat-7{top:-6%;left:40%;transform:translateX(-50%)}
+.seat-6{top:0%;left:60%;transform:translateX(-50%)}
+.seat-7{top:0%;left:40%;transform:translateX(-50%)}
 .seat .ava{font-size:3em;line-height:1;filter:drop-shadow(2px 2px 0 rgba(0,0,0,0.1));min-height:72px;display:flex;align-items:center;justify-content:center}
 .slime-idle{animation:slimeBounce 2s ease-in-out infinite}
 .slime-think{animation:slimeThink 1.5s ease-in-out infinite}
@@ -4273,11 +4273,11 @@ const seatPos=((n)=>{
 const layouts={
 2:[{t:'88%',l:'38%'},{t:'88%',l:'62%'}],
 3:[{t:'88%',l:'50%'},{t:'35%',l:'12%'},{t:'35%',l:'88%'}],
-4:[{t:'88%',l:'38%'},{t:'88%',l:'62%'},{t:'18%',l:'25%'},{t:'18%',l:'75%'}],
-5:[{t:'88%',l:'50%'},{t:'60%',l:'8%'},{t:'18%',l:'25%'},{t:'18%',l:'75%'},{t:'60%',l:'92%'}],
-6:[{t:'88%',l:'38%'},{t:'88%',l:'62%'},{t:'50%',l:'8%'},{t:'18%',l:'25%'},{t:'18%',l:'75%'},{t:'50%',l:'92%'}],
-7:[{t:'88%',l:'50%'},{t:'70%',l:'8%'},{t:'30%',l:'8%'},{t:'18%',l:'30%'},{t:'18%',l:'70%'},{t:'30%',l:'92%'},{t:'70%',l:'92%'}],
-8:[{t:'88%',l:'38%'},{t:'88%',l:'62%'},{t:'58%',l:'8%'},{t:'25%',l:'8%'},{t:'18%',l:'30%'},{t:'18%',l:'70%'},{t:'25%',l:'92%'},{t:'58%',l:'92%'}]
+4:[{t:'82%',l:'38%'},{t:'82%',l:'62%'},{t:'22%',l:'28%'},{t:'22%',l:'72%'}],
+5:[{t:'82%',l:'50%'},{t:'55%',l:'12%'},{t:'22%',l:'28%'},{t:'22%',l:'72%'},{t:'55%',l:'88%'}],
+6:[{t:'82%',l:'38%'},{t:'82%',l:'62%'},{t:'50%',l:'12%'},{t:'22%',l:'28%'},{t:'22%',l:'72%'},{t:'50%',l:'88%'}],
+7:[{t:'82%',l:'50%'},{t:'65%',l:'12%'},{t:'35%',l:'12%'},{t:'22%',l:'32%'},{t:'22%',l:'68%'},{t:'35%',l:'88%'},{t:'65%',l:'88%'}],
+8:[{t:'82%',l:'38%'},{t:'82%',l:'62%'},{t:'55%',l:'12%'},{t:'30%',l:'12%'},{t:'22%',l:'32%'},{t:'22%',l:'68%'},{t:'30%',l:'88%'},{t:'55%',l:'88%'}]
 };
 return layouts[Math.min(n,8)]||layouts[6]})(Math.max(s.players.length,4));
 // 빈 좌석 렌더: 플레이어 수 이후~seatPos 끝까지
@@ -4608,8 +4608,8 @@ const bioHtml=p.meta&&p.meta.bio?`<div class="pp-stat" style="color:#69B5A8;font
 let matchupHtml='';
 if(p.matchups&&p.matchups.length>0){matchupHtml='<div class="pp-stat" style="margin-top:8px;border-top:1px solid #9D7F33;padding-top:8px"><b style="color:#35B97D">⚔️ vs 전적</b>';p.matchups.forEach(m=>{matchupHtml+=`<div style="font-size:0.85em;margin:3px 0">vs ${esc(m.opponent)}: <span style="color:#10b981;font-weight:600">${m.wins}승</span> / <span style="color:#ef4444;font-weight:600">${m.losses}패</span></div>`});matchupHtml+='</div>'}
 // Slime portrait for profile
-const slimePortrait=drawSlime(p.name,'idle',120);
-const portraitImg=`<img src="${slimePortrait.toDataURL()}" width="96" height="96" style="display:block;margin:0 auto 8px;image-rendering:pixelated" class="slime-idle">`;
+const slimePngSrc=getSlimePng(p.name);
+const portraitImg=`<img src="${slimePngSrc}" width="96" height="96" style="display:block;margin:0 auto 8px;image-rendering:pixelated" class="slime-idle" onerror="this.src='${drawSlime(p.name,'idle',120).toDataURL()}'">`;
 // Personality description
 const personalityDesc=(()=>{
   if(p.aggression>=60) return '🔥 매우 공격적인 플레이어. 레이즈와 올인을 즐기며 상대를 압박합니다.';
