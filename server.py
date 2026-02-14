@@ -2889,8 +2889,8 @@ box-shadow:0 2px 8px rgba(0,0,0,0.4)}
 .seat-3{top:15%;left:-2%;transform:translateY(-50%)}
 .seat-4{top:15%;right:-2%;transform:translateY(-50%)}
 .seat-5{top:52%;right:-2%;transform:translateY(-50%)}
-.seat-6{top:-12%;left:60%;transform:translateX(-50%)}
-.seat-7{top:-12%;left:40%;transform:translateX(-50%)}
+.seat-6{top:-6%;left:60%;transform:translateX(-50%)}
+.seat-7{top:-6%;left:40%;transform:translateX(-50%)}
 .seat .ava{font-size:3em;line-height:1;filter:drop-shadow(2px 2px 0 rgba(0,0,0,0.1));min-height:72px;display:flex;align-items:center;justify-content:center}
 .slime-idle{animation:slimeBounce 2s ease-in-out infinite}
 .slime-think{animation:slimeThink 1.5s ease-in-out infinite}
@@ -3228,9 +3228,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.9">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.9">
-<link rel="stylesheet" href="/static/css/components.css?v=3.9">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.10">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.10">
+<link rel="stylesheet" href="/static/css/components.css?v=3.10">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
@@ -4251,11 +4251,11 @@ const seatPos=((n)=>{
 const layouts={
 2:[{t:'88%',l:'38%'},{t:'88%',l:'62%'}],
 3:[{t:'88%',l:'50%'},{t:'35%',l:'12%'},{t:'35%',l:'88%'}],
-4:[{t:'88%',l:'38%'},{t:'88%',l:'62%'},{t:'12%',l:'25%'},{t:'12%',l:'75%'}],
-5:[{t:'88%',l:'50%'},{t:'60%',l:'8%'},{t:'12%',l:'25%'},{t:'12%',l:'75%'},{t:'60%',l:'92%'}],
-6:[{t:'88%',l:'38%'},{t:'88%',l:'62%'},{t:'50%',l:'8%'},{t:'12%',l:'25%'},{t:'12%',l:'75%'},{t:'50%',l:'92%'}],
-7:[{t:'88%',l:'50%'},{t:'70%',l:'8%'},{t:'30%',l:'8%'},{t:'12%',l:'30%'},{t:'12%',l:'70%'},{t:'30%',l:'92%'},{t:'70%',l:'92%'}],
-8:[{t:'88%',l:'38%'},{t:'88%',l:'62%'},{t:'58%',l:'8%'},{t:'25%',l:'8%'},{t:'12%',l:'30%'},{t:'12%',l:'70%'},{t:'25%',l:'92%'},{t:'58%',l:'92%'}]
+4:[{t:'88%',l:'38%'},{t:'88%',l:'62%'},{t:'18%',l:'25%'},{t:'18%',l:'75%'}],
+5:[{t:'88%',l:'50%'},{t:'60%',l:'8%'},{t:'18%',l:'25%'},{t:'18%',l:'75%'},{t:'60%',l:'92%'}],
+6:[{t:'88%',l:'38%'},{t:'88%',l:'62%'},{t:'50%',l:'8%'},{t:'18%',l:'25%'},{t:'18%',l:'75%'},{t:'50%',l:'92%'}],
+7:[{t:'88%',l:'50%'},{t:'70%',l:'8%'},{t:'30%',l:'8%'},{t:'18%',l:'30%'},{t:'18%',l:'70%'},{t:'30%',l:'92%'},{t:'70%',l:'92%'}],
+8:[{t:'88%',l:'38%'},{t:'88%',l:'62%'},{t:'58%',l:'8%'},{t:'25%',l:'8%'},{t:'18%',l:'30%'},{t:'18%',l:'70%'},{t:'25%',l:'92%'},{t:'58%',l:'92%'}]
 };
 return layouts[Math.min(n,8)]||layouts[6]})(Math.max(s.players.length,4));
 // 빈 좌석 렌더: 플레이어 수 이후~seatPos 끝까지

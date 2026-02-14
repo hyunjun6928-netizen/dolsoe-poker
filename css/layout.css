@@ -148,6 +148,8 @@ h1 b { color: var(--accent-gold); }
 .felt-wrap {
   position: relative;
   margin: var(--sp-md) auto var(--sp-lg);
+  /* 좌석 잘림 방지: 상단에 여유 공간 확보 */
+  padding-top: 60px;
 }
 
 .felt-border {
@@ -180,7 +182,7 @@ h1 b { color: var(--accent-gold); }
   background:
     url('/static/slimes/table_felt.png') center/cover no-repeat,
     linear-gradient(180deg, #1a1e2a 0%, #0d1018 100%);
-  border: 1px solid #0D3F1C;
+  border: 1px solid rgba(157,127,51,0.3);
   border-radius: 18px;
   width: 100%;
   padding-bottom: 50%;

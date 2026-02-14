@@ -159,7 +159,7 @@
 .card {
   width: 58px;
   height: 82px;
-  border-radius: var(--radius-sm);
+  border-radius: 4px;
   display: inline-flex;
   flex-direction: column;
   align-items: center;
@@ -176,14 +176,22 @@
 .card.red .r, .card.red .s { color: #dd1111; }
 .card.black .r, .card.black .s { color: #1a1a1a; }
 
+/* 고풍스러운 픽셀 카드 — antique parchment style */
 .card-f {
-  background: linear-gradient(180deg,#FFFFFF,#F2F2F0);
-  border-color: rgba(0,0,0,0.08);
+  background: linear-gradient(180deg, #FCC88E 0%, #F09858 50%, #C17F54 100%);
+  border: 2px solid #9D7F33;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.2), 0 2px 8px rgba(0,0,0,0.5);
+  image-rendering: pixelated;
 }
+.card-f .r, .card-f .s { text-shadow: 1px 1px 0 rgba(0,0,0,0.15); }
+.card.red .r, .card.red .s { color: #D24C59; }
+.card.black .r, .card.black .s { color: #050F1A; }
 .card-b {
   background:
-    repeating-linear-gradient(45deg, #1B5E3B, #1B5E3B 4px, #186838 4px, #186838 8px);
-  border-color: rgba(255,255,255,0.08);
+    repeating-conic-gradient(#221C20 0% 25%, #073935 0% 50%) 50% / 8px 8px;
+  border: 2px solid #9D7F33;
+  box-shadow: inset 0 0 0 1px rgba(157,127,51,0.4), 0 2px 8px rgba(0,0,0,0.5);
+  image-rendering: pixelated;
 }
 .card-sm { width: 46px; height: 66px; font-size: 0.8em; }
 .card-sm .s { font-size: 0.95em; }
@@ -317,12 +325,9 @@
   object-fit: contain;
   filter: drop-shadow(0 3px 6px rgba(0,0,0,0.35));
 }
-/* CSS fallback — pastel slime blob */
+/* CSS fallback — empty seat shows nothing (no green ball!) */
 .slime-sprite:empty::after {
-  content: '🟢';
-  font-size: 3em;
-  display: block;
-  line-height: 1;
+  content: none;
 }
 
 /* Tier 3: Name/chips — inherits from .seat layout, sits above slime */
