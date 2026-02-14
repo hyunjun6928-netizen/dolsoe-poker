@@ -2731,28 +2731,23 @@ h1 b{color:var(--accent-gold);-webkit-text-fill-color:var(--accent-gold)}
 #game{display:none}
 .info-bar{position:sticky;top:0;z-index:40;display:flex;justify-content:space-between;align-items:center;padding:8px 16px;font-size:0.8em;color:var(--text-light);background:linear-gradient(180deg,rgba(18,16,24,0.98),rgba(10,13,18,0.98));border-bottom:2px solid rgba(245,197,66,0.2);box-shadow:0 4px 16px rgba(0,0,0,0.5),0 1px 0 rgba(245,197,66,0.08);font-family:var(--font-pixel);backdrop-filter:blur(12px)}
 .felt-wrap{position:relative;margin:4px auto 8px;padding-top:30px}
-.felt-border{position:absolute;top:-16px;left:-16px;right:-16px;bottom:-16px;
-background:linear-gradient(180deg,#181c28 0%,#12151f 100%);
-border-radius:24px;border:2px solid rgba(245,197,66,0.18);
-box-shadow:0 0 30px rgba(245,197,66,0.05),inset 0 1px 0 rgba(245,197,66,0.08);
+.felt-border{position:absolute;top:-8px;left:-8px;right:-8px;bottom:-8px;
+background:transparent;
+border-radius:22px;border:none;
 box-shadow:0 8px 32px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.05);
 z-index:0}
 .felt-border::before{content:none}
 .felt-border::after{content:'';position:absolute;top:1px;left:10%;right:10%;height:1px;
 background:linear-gradient(90deg,transparent,rgba(255,255,255,0.08),transparent)}
 .felt{position:relative;
-background:linear-gradient(180deg,#1a1e2a 0%,#151922 30%,#111520 60%,#0d1018 100%);
-border:2px solid rgba(245,197,66,0.2);border-radius:18px;width:100%;padding-bottom:38%;
-box-shadow:inset 0 0 80px 30px rgba(0,0,0,0.4),inset 0 2px 0 rgba(245,197,66,0.06),0 0 60px rgba(245,197,66,0.08),0 4px 0 rgba(139,92,246,0.04);overflow:visible;
-image-rendering:pixelated}
+background:url('/static/slimes/table_felt.png') center/cover no-repeat,linear-gradient(180deg,#1a1e2a 0%,#0d1018 100%);
+border:none;border-radius:18px;width:100%;padding-bottom:38%;
+box-shadow:0 0 60px rgba(245,197,66,0.08),0 8px 32px rgba(0,0,0,0.6);overflow:visible;
+image-rendering:auto}
 .felt::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;
-background:
-  radial-gradient(ellipse at 50% 40%,rgba(245,197,66,0.04),transparent 60%),
-  radial-gradient(ellipse at 20% 70%,rgba(139,92,246,0.03),transparent 50%),
-  radial-gradient(ellipse at 80% 30%,rgba(244,114,182,0.02),transparent 50%),
-  repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(255,255,255,0.008) 3px,rgba(255,255,255,0.008) 4px);
+background:radial-gradient(ellipse at 50% 50%,rgba(245,197,66,0.03),transparent 70%);
 border-radius:18px;pointer-events:none;z-index:1}
-.felt::after{content:'♠ ♥ ♦ ♣';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:3.5em;color:rgba(245,197,66,0.05);letter-spacing:24px;pointer-events:none;z-index:1;white-space:nowrap;text-shadow:0 0 20px rgba(245,197,66,0.03)}
+.felt::after{content:none}
 
 .tbl-card{background:var(--bg-panel-alt);border:1px solid var(--frame);border-radius:var(--radius);padding:14px;margin:8px 0;cursor:pointer;transition:all .2s;display:flex;justify-content:space-between;align-items:center;box-shadow:var(--shadow-sm)}
 .tbl-card:hover{border-color:var(--accent-green);box-shadow:0 0 0 1px var(--accent-green),var(--shadow-md)}
@@ -4778,16 +4773,16 @@ function inferTraitsFromStyle(p) {
 }
 // === Slime PNG mapping (NPC + generic) ===
 const SLIME_PNG_MAP = {
-  '딜러봇': '/static/slimes/sapphire_focused.png',
-  '도박꾼': '/static/slimes/ruby_confident.png',
-  '고수': '/static/slimes/emerald_sneaky.png',
-  '초보': '/static/slimes/amber_excited.png',
+  '딜러봇': '/static/slimes/pixel_sapphire.png',
+  '도박꾼': '/static/slimes/pixel_ruby.png',
+  '고수': '/static/slimes/pixel_emerald.png',
+  '초보': '/static/slimes/pixel_amber.png',
   '상어': '/static/slimes/mint_confident.png',
   '여우': '/static/slimes/peach_cheerful.png',
-  'DealerBot': '/static/slimes/sapphire_focused.png',
-  'Gambler': '/static/slimes/ruby_confident.png',
-  'Pro': '/static/slimes/emerald_sneaky.png',
-  'Newbie': '/static/slimes/amber_excited.png',
+  'DealerBot': '/static/slimes/pixel_sapphire.png',
+  'Gambler': '/static/slimes/pixel_ruby.png',
+  'Pro': '/static/slimes/pixel_emerald.png',
+  'Newbie': '/static/slimes/pixel_amber.png',
   'Shark': '/static/slimes/mint_confident.png',
   'Fox': '/static/slimes/peach_cheerful.png',
 };
