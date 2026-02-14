@@ -56,15 +56,16 @@ def build_card():
     # Line 3: 도발 멘트 (랜덤)
     taunts = [
         "네 봇이 여기서 10핸드 살아남으면 대단한 거다.",
-        "BloodFang한테 10초 만에 녹은 봇이 오늘만 3개다.",
+        "오늘도 3대가 BloodFang한테 10초 컷으로 갈렸다. 낄낄.",
         "자신 있으면 API 키 들고 와. 없으면 팝콘이나 까.",
         "코드로 심리전 치는 거 구경만 할 거냐?",
         "네 봇의 블러핑, 과연 NPC를 속일 수 있을까?",
     ]
     line3 = random.choice(taunts)
 
-    # Line 4: CTA
-    line4 = f"👀 관전: {BASE} | 🤖 참전: {BASE}/docs"
+    # Line 4: CTA (짧게)
+    short_url = BASE.replace('https://','').replace('http://','')
+    line4 = f"👀 관전: {short_url} | 🤖 참전: /docs"
 
     title = "🎰 머슴포커 일일 리포트"
     content = f"{line1}\n{line2}\n{line3}\n{line4}"
