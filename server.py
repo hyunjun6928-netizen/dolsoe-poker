@@ -364,7 +364,9 @@ _tele_summary = {'ok_total':0,'err_total':0,'success_rate':100,'rtt_avg':0,'rtt_
 
 # ── Alert system ──
 from urllib.request import Request, urlopen as _urlopen
+APP_VERSION = os.environ.get('APP_VERSION', os.environ.get('RENDER_GIT_COMMIT', 'dev'))[:12]
 ALERT_COOLDOWN_SEC = 600
+ALERT_SILENCE = os.environ.get('TELE_ALERT_SILENCE', '') == '1'
 _alert_last = {}  # key -> ts
 _alert_streaks = {}  # key -> consecutive_trigger_count
 _alert_history = []  # last 50 alerts for GET /api/telemetry
@@ -383,15 +385,31 @@ def _streak(key, active):
         _alert_streaks[key] = 0
     return _alert_streaks.get(key, 0)
 
+def _tele_snapshot():
+    """3-min summary snapshot for alert context"""
+    s = _tele_summary
+    agents = 0
+    if 'mersoom' in games:
+        agents = len([p for p in games['mersoom'].players if p.get('active', True)])
+    return {'ok%': s.get('success_rate',100), 'err': s.get('err_total',0),
+            'p95': s.get('rtt_p95'), 'avg': s.get('rtt_avg',0),
+            'h5m': s.get('hands_5m',0), 'agents': agents,
+            'allin/100h': s.get('allin_per_100h',0), 'kill/100h': s.get('killcam_per_100h',0),
+            'sess': s.get('sessions',0), 'ver': APP_VERSION}
+
 def _emit_alert(level, key, msg, data=None):
-    payload = {"level": level, "key": key, "msg": msg, "ts": time.time(), "data": data or {}}
+    snap = _tele_snapshot()
+    payload = {"level": level, "key": key, "msg": msg, "ts": time.time(),
+               "ver": APP_VERSION, "data": data or {}, "snapshot": snap}
     print(f"🚨 TELE_ALERT {json.dumps(payload, ensure_ascii=False)}", flush=True)
     _alert_history.append(payload)
     if len(_alert_history) > 50: _alert_history[:] = _alert_history[-30:]
+    if ALERT_SILENCE: return  # stdout only, no webhook
     hook = os.environ.get("TELE_ALERT_WEBHOOK")
     if not hook: return
     try:
-        body = json.dumps({"content": f"[{level}] **{key}** {msg}\n```json\n{json.dumps(data or {}, ensure_ascii=False)}\n```"}).encode("utf-8")
+        snap_str = ' | '.join(f'{k}={v}' for k,v in snap.items())
+        body = json.dumps({"content": f"[{level}] **{key}** {msg}\n📸 `{snap_str}`\n```json\n{json.dumps(data or {}, ensure_ascii=False)}\n```"}).encode("utf-8")
         req = Request(hook, data=body, headers={"Content-Type": "application/json"})
         _urlopen(req, timeout=3).read()
     except Exception:
@@ -4998,7 +5016,7 @@ async def _tele_log_loop():
         await asyncio.sleep(60)
         s = _tele_summary
         if s.get('last_ts',0) > 0:
-            print(f"📊 TELE | OK%={s.get('success_rate',100)} | RTT avg={s.get('rtt_avg',0)}ms p95={s.get('rtt_p95',0)}ms | hands={s.get('hands',0)} h5m={s.get('hands_5m',0)} | allin/100h={s.get('allin_per_100h',0)} kill/100h={s.get('killcam_per_100h',0)} | sess={s.get('sessions',0)}", flush=True)
+            print(f"📊 TELE | OK {s.get('success_rate',100)} | p95 {s.get('rtt_p95','-')}ms avg {s.get('rtt_avg',0)}ms | ERR {s.get('err_total',0)} | H+{s.get('hands_5m',0)} | AIN {s.get('sessions',0)} | ALLIN {s.get('allin_per_100h',0)}/100 KILL {s.get('killcam_per_100h',0)}/100 | {APP_VERSION}", flush=True)
             try: _tele_check_alerts(s)
             except Exception as e: print(f"⚠️ TELE_ALERT_ERR {e}", flush=True)
 
