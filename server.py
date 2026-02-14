@@ -358,7 +358,102 @@ def get_streak_badge(name):
 spectator_bets = {}  # table_id -> {hand_num -> {spectator_name -> {'pick':player_name,'amount':int}}}
 _telemetry_log = []  # client telemetry beacon store (in-memory, last 500)
 _tele_rate = {}  # IP -> (count, first_ts) for rate limiting
-_tele_summary = {'ok_total':0,'err_total':0,'rtt_avg':0,'rtt_p95':0,'hands':0,'allin_per_100h':0,'last_ts':0}
+_tele_summary = {'ok_total':0,'err_total':0,'success_rate':100,'rtt_avg':0,'rtt_p95':0,
+                 'hands':0,'allin_per_100h':0,'killcam_per_100h':0,'last_ts':0,
+                 'sessions':0,'beacon_count':0,'hands_5m':0}
+
+# ── Alert system ──
+from urllib.request import Request, urlopen as _urlopen
+ALERT_COOLDOWN_SEC = 600
+_alert_last = {}  # key -> ts
+_alert_streaks = {}  # key -> consecutive_trigger_count
+_alert_history = []  # last 50 alerts for GET /api/telemetry
+
+def _can_alert(key):
+    now = time.time()
+    if now - _alert_last.get(key, 0) < ALERT_COOLDOWN_SEC: return False
+    _alert_last[key] = now
+    return True
+
+def _streak(key, active):
+    """Track consecutive 60s ticks where condition is true. Returns streak count."""
+    if active:
+        _alert_streaks[key] = _alert_streaks.get(key, 0) + 1
+    else:
+        _alert_streaks[key] = 0
+    return _alert_streaks.get(key, 0)
+
+def _emit_alert(level, key, msg, data=None):
+    payload = {"level": level, "key": key, "msg": msg, "ts": time.time(), "data": data or {}}
+    print(f"🚨 TELE_ALERT {json.dumps(payload, ensure_ascii=False)}", flush=True)
+    _alert_history.append(payload)
+    if len(_alert_history) > 50: _alert_history[:] = _alert_history[-30:]
+    hook = os.environ.get("TELE_ALERT_WEBHOOK")
+    if not hook: return
+    try:
+        body = json.dumps({"content": f"[{level}] **{key}** {msg}\n```json\n{json.dumps(data or {}, ensure_ascii=False)}\n```"}).encode("utf-8")
+        req = Request(hook, data=body, headers={"Content-Type": "application/json"})
+        _urlopen(req, timeout=3).read()
+    except Exception:
+        pass
+
+def _tele_check_alerts(s):
+    """Run alert checks against current summary. Called every 60s."""
+    ok_rate = s.get('success_rate', 100)
+    p95 = s.get('rtt_p95')
+    avg = s.get('rtt_avg', 0)
+    err = s.get('err_total', 0)
+    hands_5m = s.get('hands_5m', 0)
+    allin_h = s.get('allin_per_100h', 0)
+    killcam_h = s.get('killcam_per_100h', 0)
+    beacon_ct = s.get('beacon_count', 0)
+    # count active agents from mersoom table
+    agents = 0
+    if 'mersoom' in games:
+        agents = len([p for p in games['mersoom'].players if p.get('active', True)])
+
+    # A. OK% (2-tick streak = 2min for WARN, 1-tick for CRIT)
+    ok_drop = _streak('ok_drop', ok_rate < 99.0)
+    ok_crit = _streak('ok_crit', ok_rate < 97.0)
+    if ok_crit >= 1 and _can_alert('ok_crit'):
+        _emit_alert('CRIT', 'ok_rate', f'OK% 급락: {ok_rate}%', {'ok_rate': ok_rate, 'poll_err': err})
+    elif ok_drop >= 2 and _can_alert('ok_warn'):
+        _emit_alert('WARN', 'ok_rate', f'OK% 저하: {ok_rate}%', {'ok_rate': ok_rate, 'poll_err': err})
+
+    # A. Error burst
+    if err >= 10 and _can_alert('err_burst'):
+        _emit_alert('WARN', 'err_burst', f'60초 poll_err={err}', {'poll_err': err})
+
+    # A. Beacon silence (only if we ever had beacons)
+    if len(_telemetry_log) > 5:
+        last_beacon_age = time.time() - s.get('last_ts', time.time())
+        silence = _streak('beacon_silence', last_beacon_age > 300)
+        if silence >= 15 and _can_alert('beacon_crit'):  # 15min
+            _emit_alert('CRIT', 'beacon_silence', f'텔레메트리 끊김 {int(last_beacon_age)}초', {'last_beacon_age_s': int(last_beacon_age)})
+        elif silence >= 5 and _can_alert('beacon_warn'):  # 5min
+            _emit_alert('WARN', 'beacon_silence', f'텔레메트리 끊김 {int(last_beacon_age)}초', {'last_beacon_age_s': int(last_beacon_age)})
+
+    # A. Hands stall (agents >= 2 but no hands)
+    stall = _streak('hands_stall', agents >= 2 and hands_5m == 0)
+    if stall >= 10 and _can_alert('hands_stall_crit'):  # 10min
+        _emit_alert('CRIT', 'hands_stall', f'에이전트 {agents}명인데 10분간 핸드 0', {'agents': agents})
+    elif stall >= 5 and _can_alert('hands_stall_warn'):  # 5min
+        _emit_alert('WARN', 'hands_stall', f'에이전트 {agents}명인데 5분간 핸드 0', {'agents': agents})
+
+    # B. RTT p95 (3-tick streak = 3min for WARN)
+    if p95 is not None:
+        rtt_high = _streak('rtt_high', p95 > 1200)
+        rtt_crit = _streak('rtt_crit', p95 > 2500)
+        if rtt_crit >= 1 and _can_alert('rtt_crit'):
+            _emit_alert('CRIT', 'rtt_p95', f'p95={p95}ms', {'rtt_p95': p95, 'rtt_avg': avg})
+        elif rtt_high >= 3 and _can_alert('rtt_warn'):
+            _emit_alert('WARN', 'rtt_p95', f'p95={p95}ms (3분 연속)', {'rtt_p95': p95, 'rtt_avg': avg})
+
+    # C. Overlay spam
+    if allin_h > 18 and _can_alert('overlay_allin'):
+        _emit_alert('WARN', 'overlay_allin', f'allin/100h={allin_h}', {'allin_per_100h': allin_h})
+    if killcam_h > 8 and _can_alert('overlay_killcam'):
+        _emit_alert('WARN', 'overlay_killcam', f'killcam/100h={killcam_h}', {'killcam_per_100h': killcam_h})
 
 def _tele_rate_ok(ip):
     now = time.time()
@@ -371,29 +466,42 @@ def _tele_rate_ok(ip):
             _tele_rate[ip] = (1, now)
     else:
         _tele_rate[ip] = (1, now)
-    # cleanup old entries every 100 inserts
     if len(_tele_rate) > 200:
-        cutoff = now - 120
         _tele_rate.clear()
     return True
+
+# hands tracking for 5min window
+_hands_5m_ring = []  # list of (ts, hands_cumulative)
 
 def _tele_update_summary():
     recent = _telemetry_log[-20:]
     if not recent: return
+    now = time.time()
     ok = sum(e.get('poll_ok',0) for e in recent)
     err = sum(e.get('poll_err',0) for e in recent)
     hands = sum(e.get('hands',0) for e in recent)
     allin = sum(e.get('overlay_allin',0) for e in recent)
+    killcam = sum(e.get('overlay_killcam',0) for e in recent)
     rtts = [e.get('rtt_avg',0) for e in recent if e.get('rtt_avg')]
     p95s = [e.get('rtt_p95') for e in recent if e.get('rtt_p95') is not None]
+    sids = set(e.get('sid','') for e in recent if e.get('sid'))
+    # hands 5min window
+    _hands_5m_ring.append((now, hands))
+    _hands_5m_ring[:] = [(t,h) for t,h in _hands_5m_ring if now - t < 300]
+    hands_5m = sum(h for _,h in _hands_5m_ring)
+
     _tele_summary['ok_total'] = ok
     _tele_summary['err_total'] = err
     _tele_summary['success_rate'] = round(ok/(ok+err)*100,1) if (ok+err) else 100
     _tele_summary['rtt_avg'] = round(sum(rtts)/len(rtts)) if rtts else 0
     _tele_summary['rtt_p95'] = round(sum(p95s)/len(p95s)) if p95s else 0
     _tele_summary['hands'] = hands
+    _tele_summary['hands_5m'] = hands_5m
     _tele_summary['allin_per_100h'] = round(allin/hands*100,1) if hands else 0
-    _tele_summary['last_ts'] = time.time()
+    _tele_summary['killcam_per_100h'] = round(killcam/hands*100,1) if hands else 0
+    _tele_summary['sessions'] = len(sids)
+    _tele_summary['beacon_count'] = len(recent)
+    _tele_summary['last_ts'] = now
 spectator_coins = {}  # spectator_name -> coins (가상 포인트)
 SPECTATOR_START_COINS = 1000
 
@@ -1863,7 +1971,7 @@ async def handle_client(reader, writer):
     elif method=='GET' and route=='/api/telemetry':
         if ADMIN_KEY and qs.get('key',[''])[0] != ADMIN_KEY:
             await send_json(writer,{'ok':False,'code':'UNAUTHORIZED'},401); return
-        await send_json(writer,{'summary':_tele_summary,'entries':_telemetry_log[-50:]})
+        await send_json(writer,{'summary':_tele_summary,'alerts':_alert_history[-20:],'streaks':dict(_alert_streaks),'entries':_telemetry_log[-50:]})
     elif method=='OPTIONS':
         await send_http(writer,200,'')
     else:
@@ -4885,12 +4993,14 @@ document.body.appendChild(topGrass);
 
 # ══ Main ══
 async def _tele_log_loop():
-    """Print telemetry summary every 60s to stdout"""
+    """Print telemetry summary every 60s + run alert checks"""
     while True:
         await asyncio.sleep(60)
         s = _tele_summary
         if s.get('last_ts',0) > 0:
-            print(f"📊 TELE | OK%={s.get('success_rate',100)} | RTT avg={s.get('rtt_avg',0)}ms p95={s.get('rtt_p95',0)}ms | hands={s.get('hands',0)} | allin/100h={s.get('allin_per_100h',0)} | sessions={len(set(e.get('sid','') for e in _telemetry_log[-20:]))}", flush=True)
+            print(f"📊 TELE | OK%={s.get('success_rate',100)} | RTT avg={s.get('rtt_avg',0)}ms p95={s.get('rtt_p95',0)}ms | hands={s.get('hands',0)} h5m={s.get('hands_5m',0)} | allin/100h={s.get('allin_per_100h',0)} kill/100h={s.get('killcam_per_100h',0)} | sess={s.get('sessions',0)}", flush=True)
+            try: _tele_check_alerts(s)
+            except Exception as e: print(f"⚠️ TELE_ALERT_ERR {e}", flush=True)
 
 async def main():
     load_leaderboard()
