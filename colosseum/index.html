@@ -82,11 +82,16 @@ function loadImg(p) {
 
 function preloadFighter(f) {
   const b = ASSET + f.id + '/';
-  const ps = [loadImg(b+'idle.png'), loadImg(b+'idle_64.png')];
-  for (const a of ['walk','attack','hit','death','victory'])
-    for (let i = 0; i < 4; i++) ps.push(loadImg(b+a+'_'+i+'.png'));
+  const ps = [loadImg(b+'idle.png')];
+  // Walk: 0-1
+  for (let i = 0; i < 2; i++) ps.push(loadImg(b+'walk_'+i+'.png'));
+  // Attack: 0-2
+  for (let i = 0; i < 3; i++) ps.push(loadImg(b+'attack_'+i+'.png'));
+  // Single-frame states
+  for (const a of ['hit','block','death','victory']) ps.push(loadImg(b+a+'.png'));
+  // Fatalities: fatal_*_0-3
   for (const ft of FATALITIES)
-    for (let i = 0; i < 4; i++) ps.push(loadImg(b+'fatality_'+ft+'_'+i+'.png'));
+    for (let i = 0; i < 4; i++) ps.push(loadImg(b+'fatal_'+ft+'_'+i+'.png'));
   return Promise.all(ps);
 }
 
@@ -142,16 +147,17 @@ class Fighter {
   getImg() {
     const b = ASSET + this.d.id + '/';
     if (this.state === 'fatality')
-      return imgCache[b + 'fatality_' + this.fatalType + '_' + Math.min(this.fatalFrame, 3) + '.png'];
-    if (this.state === 'idle' || this.state === 'block')
-      return imgCache[b + 'idle.png']; // 128px idle for bigger display
+      return imgCache[b + 'fatal_' + this.fatalType + '_' + Math.min(this.fatalFrame, 3) + '.png'];
+    if (this.state === 'idle')
+      return imgCache[b + 'idle.png'];
     if (this.state === 'walk' || this.state === 'dash')
-      return imgCache[b + 'walk_' + (this.frame % 4) + '.png'];
-    if (this.state === 'special' || this.state === 'super')
-      return imgCache[b + 'attack_' + Math.min(this.frame, 3) + '.png'];
-    const st = ['attack','hit','death','victory'].includes(this.state) ? this.state : 'idle';
-    if (st === 'idle') return imgCache[b + 'idle.png'];
-    return imgCache[b + st + '_' + Math.min(this.frame, 3) + '.png'];
+      return imgCache[b + 'walk_' + (this.frame % 2) + '.png'];
+    if (this.state === 'attack' || this.state === 'special' || this.state === 'super')
+      return imgCache[b + 'attack_' + Math.min(this.frame, 2) + '.png'];
+    // Single-frame states: hit, block, death, victory
+    if (['hit','block','death','victory'].includes(this.state))
+      return imgCache[b + this.state + '.png'];
+    return imgCache[b + 'idle.png'];
   }
 
   draw() {
@@ -159,7 +165,7 @@ class Fighter {
     if (!img) return;
 
     // Use idle (128px) at IDLE_SCALE, animations (64px) at CHAR_SCALE
-    const isIdle = (this.state === 'idle' || this.state === 'block');
+    const isIdle = (this.state === 'idle');
     const scale = isIdle ? IDLE_SCALE : CHAR_SCALE;
     const drawW = img.width * scale;
     const drawH = img.height * scale;
@@ -253,7 +259,7 @@ class Fighter {
         this.frame = (this.frame + 1) % 4;
       } else if (this.state !== 'idle' && this.state !== 'block' && this.state !== 'hit') {
         this.frame++;
-        if (this.frame >= 4) { this.state = 'idle'; this.frame = 0; }
+        if (this.frame >= 3) { this.state = 'idle'; this.frame = 0; }
       } else {
         this.frame = (this.frame + 1) % 4;
       }
