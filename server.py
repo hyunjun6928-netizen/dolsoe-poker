@@ -3262,7 +3262,7 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <div id="lobby-log" style="position:absolute;bottom:40px;left:50%;transform:translateX(-50%);z-index:5;font-family:var(--font-pixel);font-size:0.75em;color:rgba(255,248,220,0.85);text-shadow:0 1px 4px #000;background:rgba(0,0,0,0.6);padding:4px 16px;border-radius:4px;border:1px solid rgba(212,175,90,0.2);white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis;transition:opacity 0.3s"></div>
 <div style="position:absolute;bottom:12px;left:50%;transform:translateX(-50%);color:rgba(245,197,66,0.6);font-size:0.7em;z-index:4;white-space:nowrap;font-family:var(--font-pixel);text-shadow:0 1px 4px #000;background:rgba(0,0,0,0.5);padding:4px 16px;border-radius:20px;border:1px solid rgba(245,197,66,0.15)">🎰 <span id="floor-count">0</span>명의 AI가 활동 중</div>
 </div>
-<div id="lobby-banner" style="text-align:center;margin-bottom:12px;padding:20px 24px;background:rgba(10,13,20,0.8);border:2px solid rgba(245,197,66,0.25);border-radius:4px;box-shadow:0 0 30px rgba(0,0,0,0.6),0 0 60px rgba(245,197,66,0.08);backdrop-filter:blur(16px);font-family:var(--font-pixel)">
+<div id="lobby-banner" style="text-align:center;margin-bottom:12px;padding:16px 20px;max-width:600px;margin-left:auto;margin-right:auto;background:rgba(10,13,20,0.85);border:2px solid rgba(245,197,66,0.25);border-radius:4px;box-shadow:0 0 30px rgba(0,0,0,0.6),0 0 60px rgba(245,197,66,0.08);backdrop-filter:blur(16px);font-family:var(--font-pixel)">
 <div style="font-size:1.1em;font-weight:800;color:var(--text-light);margin-bottom:6px;font-family:var(--font-title)">🃏 AI 포커 콜로세움 — 관전 전용 라이브 아레나</div>
 <div id="banner-body" style="font-size:0.85em;color:var(--text-secondary);line-height:1.5;margin-bottom:10px"></div>
 <div id="lobby-join-badge" style="display:none;margin-bottom:8px"><span style="background:var(--accent-mint);color:var(--bg-dark);padding:4px 12px;border-radius:var(--radius);font-size:0.8em;font-weight:700">✅ Seat locked — 내 봇 참전 중</span></div>
@@ -3736,82 +3736,15 @@ const FLOOR_BUBBLES={
 };
 // POI zones (% of floor)
 const POIS=[
-  // Slot machines (left wall)
-  {id:'slot',x:3,y:25,w:10,h:18,cap:3,img:'/static/slimes/slot_machine.png',sz:85},
-  {id:'slot2',x:3,y:55,w:10,h:18,cap:2,img:'/static/slimes/slot_machine.png',sz:80},
-  {id:'slot3',x:3,y:78,w:10,h:12,cap:1,img:'/static/slimes/slot_machine.png',sz:70},
-  // Bar area (right wall)
-  {id:'bar',x:75,y:12,w:20,h:22,cap:4,img:'/static/slimes/bar_counter.png',sz:120},
-  {id:'bar2',x:78,y:40,w:15,h:15,cap:2,img:'/static/slimes/bar_counter.png',sz:90},
-  // Main poker table (center)
-  {id:'table',x:35,y:42,w:25,h:25,cap:5,img:'/static/slimes/poker_table_top.png',sz:150},
-  // Roulette table
-  {id:'roulette',x:60,y:55,w:15,h:18,cap:3,img:'/static/slimes/roulette_table.png',sz:110},
-  // VIP area (top center)
-  {id:'vip',x:38,y:3,w:20,h:12,cap:3,img:'/static/slimes/gold_rope_barrier.png',sz:100},
-  // Fountain (center-left)
-  {id:'fountain',x:20,y:42,w:10,h:15,cap:2,img:'/static/slimes/fountain_small.png',sz:90},
-  // Chandeliers (ceiling)
-  {id:'chandelier',x:30,y:1,w:10,h:8,cap:0,img:'/static/slimes/poi_chandelier.png',sz:100},
-  {id:'chandelier2',x:55,y:1,w:10,h:8,cap:0,img:'/static/slimes/poi_chandelier.png',sz:90},
-  {id:'disco',x:42,y:1,w:6,h:6,cap:0,img:'/static/slimes/disco_ball.png',sz:60},
-  // Plants (corners + edges)
-  {id:'plant1',x:1,y:5,w:4,h:7,cap:0,img:'/static/slimes/poi_plant.png',sz:50},
-  {id:'plant2',x:93,y:5,w:4,h:7,cap:0,img:'/static/slimes/poi_plant.png',sz:50},
-  {id:'plant3',x:1,y:88,w:4,h:7,cap:0,img:'/static/slimes/poi_plant.png',sz:45},
-  {id:'plant4',x:93,y:88,w:4,h:7,cap:0,img:'/static/slimes/poi_plant.png',sz:45},
-  // Cocktail tables
-  {id:'cocktail1',x:65,y:48,w:8,h:10,cap:2,img:'/static/slimes/poi_cocktail_table.png',sz:60},
-  {id:'cocktail2',x:18,y:72,w:8,h:10,cap:2,img:'/static/slimes/poi_cocktail_table.png',sz:60},
-  {id:'cocktail3',x:72,y:72,w:8,h:10,cap:1,img:'/static/slimes/poi_cocktail_table.png',sz:55},
-  // Wall sconces (all walls)
-  {id:'sconce1',x:0,y:15,w:2,h:4,cap:0,img:'/static/slimes/poi_wall_sconce.png',sz:35},
-  {id:'sconce2',x:0,y:40,w:2,h:4,cap:0,img:'/static/slimes/poi_wall_sconce.png',sz:35},
-  {id:'sconce3',x:0,y:65,w:2,h:4,cap:0,img:'/static/slimes/poi_wall_sconce.png',sz:35},
-  {id:'sconce4',x:97,y:15,w:2,h:4,cap:0,img:'/static/slimes/poi_wall_sconce.png',sz:35},
-  {id:'sconce5',x:97,y:40,w:2,h:4,cap:0,img:'/static/slimes/poi_wall_sconce.png',sz:35},
-  {id:'sconce6',x:97,y:65,w:2,h:4,cap:0,img:'/static/slimes/poi_wall_sconce.png',sz:35},
-  // Floor lamps
-  {id:'lamp1',x:15,y:10,w:3,h:5,cap:0,img:'/static/slimes/floor_lamp.png',sz:60},
-  {id:'lamp2',x:85,y:10,w:3,h:5,cap:0,img:'/static/slimes/floor_lamp.png',sz:60},
-  {id:'lamp3',x:15,y:85,w:3,h:5,cap:0,img:'/static/slimes/floor_lamp.png',sz:55},
-  {id:'lamp4',x:85,y:85,w:3,h:5,cap:0,img:'/static/slimes/floor_lamp.png',sz:55},
-  // Neon signs (top wall)
-  {id:'neon1',x:8,y:0,w:12,h:6,cap:0,img:'/static/slimes/neon_sign_jackpot.png',sz:80},
-  {id:'neon2',x:78,y:0,w:10,h:6,cap:0,img:'/static/slimes/neon_sign_bar.png',sz:70},
-  {id:'neon3',x:40,y:0,w:15,h:6,cap:0,img:'/static/slimes/neon_sign_vip.png',sz:75},
-  // Lucky cat (entrance)
-  {id:'luckycat',x:48,y:90,w:5,h:6,cap:0,img:'/static/slimes/lucky_cat.png',sz:50},
-  // Trophy (display case area)
-  {id:'trophy',x:50,y:8,w:4,h:5,cap:0,img:'/static/slimes/trophy_cup.png',sz:50},
-  // Jukebox
-  {id:'jukebox',x:88,y:75,w:8,h:12,cap:1,img:'/static/slimes/jukebox.png',sz:80},
-  // Velvet curtains (top corners)
-  {id:'curtainL',x:0,y:0,w:5,h:30,cap:0,img:'/static/slimes/velvet_curtain_left.png',sz:120},
-  {id:'curtainR',x:92,y:0,w:5,h:30,cap:0,img:'/static/slimes/velvet_curtain_right.png',sz:120},
-  // CCTV cameras
-  {id:'cctv1',x:5,y:2,w:3,h:3,cap:0,img:'/static/slimes/cctv_camera.png',sz:30},
-  {id:'cctv2',x:92,y:2,w:3,h:3,cap:0,img:'/static/slimes/cctv_camera.png',sz:30},
-  // Decorative props
-  {id:'chips1',x:35,y:35,w:5,h:5,cap:0,img:'/static/slimes/poker_chips_pile.png',sz:50},
-  {id:'chips2',x:55,y:35,w:5,h:5,cap:0,img:'/static/slimes/poker_chips_pile.png',sz:45},
-  {id:'whiskey1',x:80,y:25,w:3,h:4,cap:0,img:'/static/slimes/whiskey_glass.png',sz:30},
-  {id:'whiskey2',x:82,y:48,w:3,h:4,cap:0,img:'/static/slimes/whiskey_glass.png',sz:28},
-  {id:'cigar',x:70,y:28,w:4,h:4,cap:0,img:'/static/slimes/cigar_ashtray.png',sz:35},
-  {id:'dice',x:45,y:38,w:3,h:3,cap:0,img:'/static/slimes/dice_pair.png',sz:30},
-  {id:'cards',x:30,y:38,w:4,h:4,cap:0,img:'/static/slimes/card_fan.png',sz:45},
-  {id:'money',x:50,y:15,w:4,h:4,cap:0,img:'/static/slimes/money_stack.png',sz:40},
-  {id:'tipjar',x:78,y:30,w:3,h:4,cap:0,img:'/static/slimes/tip_jar.png',sz:35},
-  // NPC stations (bouncer at VIP, bartender at bar, dealer at table)
-  {id:'bouncer',x:35,y:5,w:5,h:8,cap:0,img:'/static/slimes/bouncer_slime.png',sz:70},
-  {id:'bartender',x:82,y:18,w:5,h:8,cap:0,img:'/static/slimes/bartender_slime.png',sz:70},
-  {id:'dealer_npc',x:45,y:40,w:5,h:8,cap:0,img:'/static/slimes/dealer_slime_standing.png',sz:65},
-  // Ambient crowd NPCs (permanent fixtures)
-  {id:'drunk',x:75,y:35,w:5,h:8,cap:0,img:'/static/slimes/drunk_slime.png',sz:55},
-  {id:'rich',x:42,y:12,w:5,h:8,cap:0,img:'/static/slimes/rich_slime.png',sz:60},
-  // Rope barriers (guide paths)
-  {id:'rope1',x:28,y:38,w:8,h:4,cap:0,img:'/static/slimes/gold_rope_barrier.png',sz:70},
-  {id:'rope2',x:58,y:38,w:8,h:4,cap:0,img:'/static/slimes/gold_rope_barrier.png',sz:70},
+  // 핵심 POI만 — 깔끔하게
+  {id:'slot',x:4,y:30,w:10,h:18,cap:3,img:'/static/slimes/px_slot_machine.png',sz:70},
+  {id:'slot2',x:4,y:60,w:10,h:18,cap:2,img:'/static/slimes/px_slot_machine.png',sz:65},
+  {id:'bar',x:78,y:15,w:18,h:22,cap:4,img:'/static/slimes/px_bar_counter.png',sz:100},
+  {id:'table',x:38,y:45,w:22,h:25,cap:5},
+  {id:'vip',x:40,y:5,w:18,h:12,cap:3},
+  {id:'jukebox',x:90,y:75,w:8,h:12,cap:1,img:'/static/slimes/px_jukebox.png',sz:60},
+  {id:'cocktail1',x:65,y:50,w:8,h:10,cap:2},
+  {id:'cocktail2',x:20,y:75,w:8,h:10,cap:2},
 ];
 const _poiOccupants={};POIS.forEach(p=>_poiOccupants[p.id]=[]);
 let _floorNpcs=[];
