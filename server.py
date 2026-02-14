@@ -2734,7 +2734,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
   --font-number:'JetBrains Mono','SF Mono','Fira Code',monospace;
 }
 /* ═══ UTILITY CLASSES ═══ */
-.px-panel{background:var(--bg-panel);border:var(--border-w) solid var(--frame);box-shadow:var(--shadow-md);border-radius:var(--radius);overflow:hidden;backdrop-filter:blur(8px)}
+.px-panel{background:rgba(10,13,20,0.85);border:2px solid rgba(245,197,66,0.2);box-shadow:0 4px 20px rgba(0,0,0,0.5),0 0 1px rgba(245,197,66,0.1);border-radius:4px;overflow:hidden;backdrop-filter:blur(12px);image-rendering:auto;font-family:var(--font-pixel)}
 .px-panel-header{background:linear-gradient(135deg,var(--frame),var(--frame-light));color:var(--text-light);padding:10px var(--sp-lg);font-family:var(--font-pixel);font-size:0.85em;font-weight:600;border-bottom:1px solid rgba(255,255,255,0.06);letter-spacing:0.3px}
 .px-btn{border:var(--border-w) solid var(--frame);border-radius:var(--radius);box-shadow:var(--shadow-md);padding:10px 24px;font-family:var(--font-pixel);font-size:1em;cursor:pointer;transition:all .2s ease;position:relative;top:0;font-weight:600}
 .px-btn:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg);filter:brightness(1.1)}
@@ -2766,10 +2766,10 @@ pointer-events:none;z-index:0}
 @keyframes starTwinkle{0%{opacity:0.5}50%{opacity:1}100%{opacity:0.6}}
 h1,.btn-play,.btn-watch,.pot-badge,.seat .nm,.act-label,.tab-btns button,#new-btn,.tbl-card .tbl-name,#commentary,.bp-title,.vp-title,#log,#replay-panel,#highlight-panel,.sidebar-label,#turn-options,#chatbox{font-family:var(--font-pixel)}
 .pot-badge,.seat .ch{font-family:var(--font-number)}
-.wrap{max-width:100%;margin:0 auto;padding:6px 12px;position:relative;z-index:1}
+.wrap{max-width:100%;margin:0 auto;padding:6px 12px;position:relative;z-index:2}
 h1{text-align:center;font-size:2.2em;margin:12px 0;color:var(--text-primary);-webkit-text-stroke:0;-webkit-text-fill-color:unset;text-shadow:none;position:relative;z-index:1;letter-spacing:1px;font-weight:800}
 h1 b{color:var(--accent-gold);-webkit-text-fill-color:var(--accent-gold)}
-#lobby{text-align:center;padding:40px 20px}
+#lobby{text-align:center;padding:40px 20px;position:relative;z-index:1}
 #lobby .sub{color:var(--text-secondary);margin-bottom:30px;font-size:0.95em}
 #lobby input{background:var(--bg-panel);border:1px solid var(--frame);color:var(--text-primary);padding:14px 20px;font-size:1.1em;border-radius:var(--radius);width:260px;margin:8px;outline:none;transition:border-color .2s}
 #lobby input:focus{border-color:var(--accent-green);box-shadow:0 0 0 3px rgba(52,211,153,0.15)}
@@ -2904,6 +2904,9 @@ box-shadow:0 2px 8px rgba(0,0,0,0.4)}
 .felt.fire{animation:fireGlow 1.5s ease-in-out infinite}
 @keyframes fireGlow{0%,100%{box-shadow:8px 8px 0 #000,0 0 60px #ff000066,0 0 120px #ff440044}50%{box-shadow:8px 8px 0 #000,0 0 80px #ff000088,0 0 160px #ff440066}}
 .ava-ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-60%);width:3em;height:3em;border-radius:50%;z-index:-1;pointer-events:none}
+@keyframes victoryFadeIn{0%{opacity:0}100%{opacity:1}}
+@keyframes victoryFadeOut{0%{opacity:1}100%{opacity:0}}
+@keyframes victoryBounce{0%{transform:scale(0.3) translateY(30px);opacity:0}60%{transform:scale(1.1) translateY(-5px);opacity:1}100%{transform:scale(1) translateY(0)}}
 @keyframes confettiFall{0%{transform:translateY(-10vh) rotate(0deg)}100%{transform:translateY(110vh) rotate(720deg)}}
 @keyframes confettiSway{0%,100%{margin-left:0}50%{margin-left:30px}}
 .confetti{position:fixed;top:-10px;width:10px;height:10px;z-index:9999;pointer-events:none;animation:confettiFall 3s linear forwards,confettiSway 1.5s ease-in-out infinite;opacity:0.9;border-radius:2px}
@@ -3197,18 +3200,18 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <div style="text-align:center;margin:4px 0"><button class="lang-btn" data-lang="ko" onclick="setLang('ko')" style="background:none;border:1px solid #4ade80;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:0.85em;margin:0 3px;opacity:1">🇰🇷 한국어</button><button class="lang-btn" data-lang="en" onclick="setLang('en')" style="background:none;border:1px solid #4ade80;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:0.85em;margin:0 3px;opacity:0.5">🇺🇸 English</button></div>
 <div id="lobby">
 <!-- Casino Floor: living lobby -->
-<div id="casino-floor" style="position:relative;width:100%;aspect-ratio:3/2;max-height:420px;margin-bottom:16px;overflow:hidden;border-radius:12px;border:2px solid rgba(245,197,66,0.15);box-shadow:0 0 40px rgba(0,0,0,0.6),inset 0 0 60px rgba(0,0,0,0.4)">
-<img src="/static/slimes/casino_floormap.png" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;image-rendering:pixelated;z-index:0" alt="">
-<div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,transparent 30%,rgba(0,0,0,0.5) 100%);pointer-events:none;z-index:1"></div>
-<!-- POI zones (invisible hitboxes for NPC targets) -->
-<div id="poi-slots" data-poi="slot" style="position:absolute;left:2%;top:10%;width:25%;height:45%;z-index:0"></div>
-<div id="poi-table" data-poi="table" style="position:absolute;left:25%;top:40%;width:30%;height:50%;z-index:0"></div>
-<div id="poi-bar" data-poi="bar" style="position:absolute;left:55%;top:5%;width:25%;height:35%;z-index:0"></div>
-<div id="poi-vip" data-poi="vip" style="position:absolute;left:82%;top:10%;width:16%;height:40%;z-index:0"></div>
+<div id="casino-floor" style="position:fixed;inset:0;z-index:0;overflow:hidden">
+<img src="/static/slimes/casino_floormap.png" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;image-rendering:pixelated" alt="">
+<div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 40%,transparent 20%,rgba(0,0,0,0.55) 100%);pointer-events:none"></div>
+<!-- POI zones -->
+<div id="poi-slots" data-poi="slot" style="position:absolute;left:2%;top:10%;width:25%;height:45%"></div>
+<div id="poi-table" data-poi="table" style="position:absolute;left:25%;top:40%;width:30%;height:50%"></div>
+<div id="poi-bar" data-poi="bar" style="position:absolute;left:55%;top:5%;width:25%;height:35%"></div>
+<div id="poi-vip" data-poi="vip" style="position:absolute;left:82%;top:10%;width:16%;height:40%"></div>
 <div id="floor-agents" style="position:absolute;inset:0;z-index:3"></div>
-<div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);color:rgba(245,197,66,0.5);font-size:0.65em;z-index:4;white-space:nowrap;font-family:var(--font-pixel);text-shadow:0 1px 3px #000">🎰 카지노 로비 — <span id="floor-count">0</span>명의 AI가 활동 중</div>
+<div style="position:absolute;bottom:12px;left:50%;transform:translateX(-50%);color:rgba(245,197,66,0.6);font-size:0.7em;z-index:4;white-space:nowrap;font-family:var(--font-pixel);text-shadow:0 1px 4px #000;background:rgba(0,0,0,0.5);padding:4px 16px;border-radius:20px;border:1px solid rgba(245,197,66,0.15)">🎰 <span id="floor-count">0</span>명의 AI가 활동 중</div>
 </div>
-<div id="lobby-banner" style="text-align:center;margin-bottom:12px;padding:16px 20px;background:linear-gradient(135deg,rgba(21,25,33,0.95),rgba(26,31,43,0.95));border:1px solid var(--accent-gold);border-radius:var(--radius);box-shadow:0 0 20px rgba(245,197,66,0.15)">
+<div id="lobby-banner" style="text-align:center;margin-bottom:12px;padding:20px 24px;background:rgba(10,13,20,0.8);border:2px solid rgba(245,197,66,0.25);border-radius:4px;box-shadow:0 0 30px rgba(0,0,0,0.6),0 0 60px rgba(245,197,66,0.08);backdrop-filter:blur(16px);font-family:var(--font-pixel)">
 <div style="font-size:1.1em;font-weight:800;color:var(--text-light);margin-bottom:6px;font-family:var(--font-title)">🃏 AI 포커 콜로세움 — 관전 전용 라이브 아레나</div>
 <div id="banner-body" style="font-size:0.85em;color:var(--text-secondary);line-height:1.5;margin-bottom:10px"></div>
 <div id="lobby-join-badge" style="display:none;margin-bottom:8px"><span style="background:var(--accent-mint);color:var(--bg-dark);padding:4px 12px;border-radius:var(--radius);font-size:0.8em;font-weight:700">✅ Seat locked — 내 봇 참전 중</span></div>
@@ -3732,8 +3735,8 @@ async function loadCasinoFloor(){
       if(isLive)div.style.filter='drop-shadow(0 0 8px rgba(52,211,153,0.4))';
       const wr=a.hands>0?Math.round(a.wins/a.hands*100):0;
       div.innerHTML=`<div style="text-align:center">
-        <img src="${img}" width="48" height="48" style="image-rendering:pixelated;filter:drop-shadow(1px 2px 3px rgba(0,0,0,0.6))" onerror="this.src='/static/slimes/lavender_calm.png'">
-        <div style="font-size:0.55em;color:${isLive?'var(--accent-mint)':'var(--accent-gold)'};margin-top:1px;white-space:nowrap;text-shadow:0 1px 3px #000;max-width:64px;overflow:hidden;text-overflow:ellipsis">${a.name}</div>
+        <img src="${img}" width="80" height="80" style="image-rendering:pixelated;filter:drop-shadow(2px 3px 6px rgba(0,0,0,0.7))" onerror="this.src='/static/slimes/lavender_calm.png'">
+        <div style="font-size:0.65em;color:${isLive?'var(--accent-mint)':'var(--accent-gold)'};margin-top:2px;white-space:nowrap;text-shadow:0 1px 4px #000;max-width:80px;overflow:hidden;text-overflow:ellipsis;font-family:var(--font-pixel);background:rgba(0,0,0,0.5);padding:1px 6px;border-radius:4px">${a.name}</div>
         <div class="npc-bubble" style="display:none;position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:rgba(10,13,18,0.92);color:#eee;padding:3px 8px;border-radius:8px;font-size:0.55em;white-space:nowrap;border:1px solid rgba(245,197,66,0.2);margin-bottom:2px;backdrop-filter:blur(4px)"></div>
       </div>`;
       div.title=`${a.name} | ${wr}% | ${a.hands||0}H | ${a.outfit||''}`;
@@ -3863,6 +3866,7 @@ function showBroadcastOverlay(){if(!localStorage.getItem('seenBroadcastOverlay')
 function watch(){
 isPlayer=false;var ni=document.getElementById('inp-name');specName=(ni?ni.value.trim():'')||t('specName')+Math.floor(Math.random()*999);
 document.getElementById('lobby').style.display='none';
+document.getElementById('casino-floor').style.display='none';
 document.getElementById('game').style.display='block';
 showBroadcastOverlay();
 document.getElementById('reactions').style.display='flex';
@@ -4151,7 +4155,10 @@ for(let i=s.community.length;i<5;i++)b.innerHTML+=`<div class="card card-b"><spa
 // 쇼다운 결과 배너
 let sdEl=document.getElementById('sd-result');if(!sdEl){sdEl=document.createElement('div');sdEl.id='sd-result';sdEl.style.cssText='position:absolute;top:48%;left:50%;transform:translateX(-50%);z-index:10;text-align:center;font-size:0.85em';document.getElementById('felt').appendChild(sdEl)}
 if(s.showdown_result&&(s.round==='between'||s.round==='showdown')){
-sdEl.innerHTML=`<div style="background:rgba(0,0,0,0.85);border:2px solid #ffd700;border-radius:12px;padding:10px 16px;box-shadow:0 0 20px rgba(255,215,0,0.4)">${s.showdown_result.map(p=>`<div style="padding:4px 8px;font-size:1em;${p.winner?'color:#ffd700;font-weight:bold;text-shadow:0 0 8px #ffd70088':'color:#ccc'}">${p.winner?'👑':'  '} ${esc(p.emoji)}${esc(p.name)}: ${esc(p.hand)}${p.winner?' 🏆':''}</div>`).join('')}</div>`}
+sdEl.innerHTML=`<div style="background:rgba(0,0,0,0.85);border:2px solid #ffd700;border-radius:12px;padding:10px 16px;box-shadow:0 0 20px rgba(255,215,0,0.4)">${s.showdown_result.map(p=>`<div style="padding:4px 8px;font-size:1em;${p.winner?'color:#ffd700;font-weight:bold;text-shadow:0 0 8px #ffd70088':'color:#ccc'}">${p.winner?'👑':'  '} ${esc(p.emoji)}${esc(p.name)}: ${esc(p.hand)}${p.winner?' 🏆':''}</div>`).join('')}</div>`;
+// Victory celebration overlay
+const winner=s.showdown_result.find(p=>p.winner);
+if(winner){showVictoryOverlay(winner,s)}}
 else{sdEl.innerHTML=''}
 // 베팅 변화 감지 → 칩 날리기 이펙트
 if(!window._prevBets)window._prevBets={};
@@ -4308,6 +4315,41 @@ document.body.classList.toggle('fair-on',fairnessShow);
 function mkCard(c,sm,flip){const red=['♥','♦'].includes(c.suit);
 const flipCls=flip?' flip-anim':'';
 return `<div class="card card-f${sm?' card-sm':''}${flipCls} ${red?'red':'black'}"><span class="r">${c.rank}</span><span class="s">${c.suit}</span></div>`}
+
+// === Victory Celebration Overlay ===
+const VICTORY_SLOGANS_KO=[
+  '이것이 실력이다!','완벽한 승리!','테이블의 왕!','꼼짝마!','칩은 내꺼다!',
+  '상대를 박살냈다!','역대급 플레이!','전설의 핸드!','무릎 꿇어라!','이게 포커다!'
+];
+const VICTORY_SLOGANS_EN=[
+  'DOMINATED!','PERFECT PLAY!','TABLE KING!','CRUSHED IT!','CHIPS ARE MINE!',
+  'DESTROYED!','LEGENDARY HAND!','BOW DOWN!','THIS IS POKER!','UNSTOPPABLE!'
+];
+function showVictoryOverlay(winner,state){
+  const existing=document.getElementById('victory-overlay');
+  if(existing)existing.remove();
+  const slogans=lang==='en'?VICTORY_SLOGANS_EN:VICTORY_SLOGANS_KO;
+  const slogan=slogans[Math.floor(Math.random()*slogans.length)];
+  const img=SLIME_PNG_MAP[winner.name]||FLOOR_SLIMES[winner.name]||GENERIC_SLIMES[0];
+  const pot=state.pot||0;
+  const hand=winner.hand||'';
+  const ov=document.createElement('div');
+  ov.id='victory-overlay';
+  ov.style.cssText='position:fixed;inset:0;z-index:9998;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);animation:victoryFadeIn 0.3s ease-out;cursor:pointer';
+  ov.onclick=()=>{ov.style.animation='victoryFadeOut 0.3s ease-in forwards';setTimeout(()=>ov.remove(),300)};
+  ov.innerHTML=`
+    <div style="text-align:center;font-family:var(--font-pixel)">
+      <div style="font-size:3.5em;margin-bottom:8px;animation:victoryBounce 0.5s ease-out">👑</div>
+      <img src="${img}" width="120" height="120" style="image-rendering:pixelated;filter:drop-shadow(0 0 20px rgba(255,215,0,0.6));margin-bottom:12px;animation:victoryBounce 0.6s ease-out" onerror="this.style.display='none'">
+      <div style="font-size:2em;color:#ffd700;font-weight:bold;text-shadow:0 0 20px rgba(255,215,0,0.5),0 2px 4px #000;margin-bottom:8px;animation:victoryBounce 0.7s ease-out;letter-spacing:2px">${esc(winner.emoji)} ${esc(winner.name)}</div>
+      <div style="font-size:2.5em;color:#fff;font-weight:900;text-shadow:0 0 30px rgba(255,100,100,0.4),0 3px 6px #000;margin-bottom:12px;animation:victoryBounce 0.8s ease-out;letter-spacing:3px">${slogan}</div>
+      <div style="font-size:1.2em;color:var(--accent-mint);margin-bottom:6px">${hand}</div>
+      <div style="font-size:1.5em;color:#ffd700;text-shadow:0 0 10px rgba(255,215,0,0.3)">💰 ${pot.toLocaleString()}pt</div>
+      <div style="font-size:0.7em;color:rgba(255,255,255,0.4);margin-top:16px">${lang==='en'?'click to dismiss':'클릭하면 닫힘'}</div>
+    </div>`;
+  document.body.appendChild(ov);
+  setTimeout(()=>{if(document.getElementById('victory-overlay'))ov.remove()},6000);
+}
 
 function showConfetti(){
 const colors=['#ffd700','#ff4444','#4488ff','#44cc44','#aa44ff'];
