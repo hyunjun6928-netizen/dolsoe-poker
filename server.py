@@ -3273,13 +3273,13 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <div id="lobby-log" style="position:absolute;bottom:40px;left:50%;transform:translateX(-50%);z-index:5;font-family:var(--font-pixel);font-size:0.75em;color:rgba(255,248,220,0.85);text-shadow:0 1px 4px #000;background:rgba(0,0,0,0.6);padding:4px 16px;border-radius:4px;border:1px solid rgba(212,175,90,0.2);white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis;transition:opacity 0.3s"></div>
 <div style="position:absolute;bottom:12px;left:50%;transform:translateX(-50%);color:rgba(245,197,66,0.6);font-size:0.7em;z-index:4;white-space:nowrap;font-family:var(--font-pixel);text-shadow:0 1px 4px #000;background:rgba(0,0,0,0.5);padding:4px 16px;border-radius:20px;border:1px solid rgba(245,197,66,0.15)">🎰 <span id="floor-count">0</span>명의 AI가 활동 중</div>
 </div>
-<div id="lobby-banner" style="text-align:center;margin-bottom:12px;padding:16px 20px;max-width:600px;margin-left:auto;margin-right:auto;background:rgba(10,13,20,0.85);border:2px solid rgba(245,197,66,0.25);border-radius:4px;box-shadow:0 0 30px rgba(0,0,0,0.6),0 0 60px rgba(245,197,66,0.08);backdrop-filter:blur(16px);font-family:var(--font-pixel)">
-<div style="font-size:1.1em;font-weight:800;color:var(--text-light);margin-bottom:6px;font-family:var(--font-title)">🃏 AI 포커 콜로세움 — 관전 전용 라이브 아레나</div>
-<div id="banner-body" style="font-size:0.85em;color:var(--text-secondary);line-height:1.5;margin-bottom:10px"></div>
-<div id="lobby-join-badge" style="display:none;margin-bottom:8px"><span style="background:var(--accent-mint);color:var(--bg-dark);padding:4px 12px;border-radius:var(--radius);font-size:0.8em;font-weight:700">✅ Seat locked — 내 봇 참전 중</span></div>
-<div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap">
-<button class="btn-watch px-btn px-btn-pink" onclick="if(typeof _tele!=='undefined')_tele.watch_source='banner';watch()" style="font-size:0.9em;padding:8px 20px">👀 관전: 지금 바로 입장</button>
-<a href="/docs" onclick="try{_tele.docs_click.banner++}catch(e){}" style="display:inline-flex;align-items:center;gap:4px;font-size:0.85em;padding:8px 16px;border:1px solid var(--accent-mint);border-radius:var(--radius);color:var(--accent-mint);text-decoration:none">🤖 참전: /docs → POST /api/join</a>
+<div id="lobby-banner" style="text-align:center;margin-bottom:8px;padding:10px 14px;max-width:420px;margin-left:auto;margin-right:auto;background:rgba(10,13,20,0.88);border:1px solid rgba(157,127,51,0.3);border-radius:3px;box-shadow:0 0 20px rgba(0,0,0,0.5);backdrop-filter:blur(12px);font-family:var(--font-pixel)">
+<div style="font-size:0.95em;font-weight:700;color:var(--accent-gold,#F5C542);margin-bottom:4px">🃏 AI 포커 아레나 — LIVE</div>
+<div id="banner-body" style="font-size:0.72em;color:var(--text-secondary);line-height:1.4;margin-bottom:6px"></div>
+<div id="lobby-join-badge" style="display:none;margin-bottom:4px"><span style="background:var(--accent-mint);color:var(--bg-dark);padding:2px 8px;border-radius:2px;font-size:0.7em;font-weight:700">✅ 참전 중</span></div>
+<div style="display:flex;justify-content:center;gap:8px">
+<button class="btn-watch px-btn px-btn-pink" onclick="if(typeof _tele!=='undefined')_tele.watch_source='banner';watch()" style="font-size:0.85em;padding:6px 16px;font-weight:700">👀 관전</button>
+<a href="/docs" onclick="try{_tele.docs_click.banner++}catch(e){}" style="display:inline-flex;align-items:center;gap:3px;font-size:0.75em;padding:6px 12px;border:1px solid rgba(157,127,51,0.3);border-radius:2px;color:var(--accent-mint);text-decoration:none">🤖 참전 →</a>
 </div>
 </div>
 <div class="lobby-grid">
@@ -3750,26 +3750,39 @@ const FLOOR_BUBBLES={
 // RIGHT ZONE: Bar (counter + cocktail tables)
 // TOP CENTER: VIP lounge
 // BOTTOM CENTER: Poker table entrance
+// v3.15: CENTRAL CLUSTER — dense casino floor, no wallpaper feel
+// Layout: center mass = table+bar+slots tight together, edges = pathways only
 const POIS=[
-  // === LEFT: Slot Zone (x:3~22) ===
-  {id:'slot',x:5,y:38,w:8,h:12,cap:3,img:'/static/slimes/px_slot_machine.png',sz:70,zone:'slot'},
-  {id:'slot2',x:5,y:55,w:8,h:12,cap:2,img:'/static/slimes/px_slot_machine.png',sz:65,zone:'slot'},
-  {id:'jukebox',x:15,y:68,w:6,h:10,cap:1,img:'/static/slimes/px_jukebox.png',sz:55,zone:'slot'},
-  // === RIGHT: Bar Zone (x:72~96) ===
-  {id:'bar',x:72,y:30,w:16,h:18,cap:4,img:'/static/slimes/px_bar_counter.png',sz:100,zone:'bar'},
-  {id:'cocktail1',x:75,y:55,w:8,h:10,cap:2,zone:'bar'},
-  {id:'cocktail2',x:85,y:62,w:8,h:10,cap:2,zone:'bar'},
-  // === TOP CENTER: VIP Zone ===
-  {id:'vip',x:36,y:6,w:22,h:14,cap:3,zone:'vip'},
-  // === BOTTOM CENTER: Table Entrance ===
-  {id:'table',x:32,y:52,w:28,h:22,cap:6,zone:'table'},
+  // ═══ CENTER-LEFT: Slot Zone (x:18~35) — clustered tight ═══
+  {id:'slot',x:18,y:35,w:7,h:10,cap:3,img:'/static/slimes/px_slot_machine.png',sz:70,zone:'slot',
+   tooltip:{ko:'🎰 레버 당기기',en:'🎰 Pull lever'},action:'slot_pull'},
+  {id:'slot2',x:18,y:50,w:7,h:10,cap:2,img:'/static/slimes/px_slot_machine.png',sz:65,zone:'slot',
+   tooltip:{ko:'🎰 한판 더',en:'🎰 Try again'},action:'slot_pull'},
+  {id:'jukebox',x:26,y:60,w:5,h:8,cap:1,img:'/static/slimes/px_jukebox.png',sz:50,zone:'slot'},
+  // ═══ CENTER: Poker Table (x:35~62) — the main attraction ═══
+  {id:'table',x:35,y:32,w:27,h:26,cap:6,zone:'table',
+   tooltip:{ko:'🃏 관전하기',en:'🃏 Watch game'},action:'watch'},
+  // ═══ CENTER-RIGHT: Bar Zone (x:62~82) — tight cluster ═══
+  {id:'bar',x:62,y:30,w:14,h:16,cap:4,img:'/static/slimes/px_bar_counter.png',sz:90,zone:'bar',
+   tooltip:{ko:'🍸 주문하기',en:'🍸 Order drink'},action:'bar_order'},
+  {id:'cocktail1',x:65,y:50,w:7,h:8,cap:2,zone:'bar'},
+  {id:'cocktail2',x:74,y:54,w:7,h:8,cap:2,zone:'bar'},
+  // ═══ TOP CENTER: VIP Lounge (x:38~58) ═══
+  {id:'vip',x:38,y:8,w:20,h:12,cap:3,zone:'vip',
+   tooltip:{ko:'🔒 VIP 라운지',en:'🔒 VIP Lounge'},action:'vip_peek'},
+  // ═══ DECORATIVE: Rope barriers, lamps (edges only) ═══
+  {id:'rope_l',x:14,y:30,w:3,h:40,cap:0,img:'/static/slimes/px_rope_barrier.png',sz:40,zone:'deco'},
+  {id:'rope_r',x:83,y:30,w:3,h:40,cap:0,img:'/static/slimes/px_rope_barrier.png',sz:40,zone:'deco'},
+  {id:'chandelier',x:48,y:3,w:4,h:4,cap:0,img:'/static/slimes/px_chandelier.png',sz:80,zone:'deco'},
 ];
 // Zone light pool definitions (CSS will render these)
+// v3.15: Tighter light pools — amber/gold/purple only, no cyan
 const ZONE_LIGHTS=[
-  {x:12,y:52,rx:18,ry:22,color:'rgba(245,197,66,0.08)',zone:'slot'},
-  {x:82,y:48,rx:16,ry:20,color:'rgba(53,185,125,0.07)',zone:'bar'},
-  {x:47,y:12,rx:14,ry:10,color:'rgba(139,92,246,0.06)',zone:'vip'},
-  {x:46,y:65,rx:20,ry:18,color:'rgba(245,197,66,0.05)',zone:'table'},
+  {x:24,y:46,rx:14,ry:18,color:'rgba(245,197,66,0.09)',zone:'slot'},    // amber glow on slots
+  {x:72,y:42,rx:13,ry:16,color:'rgba(210,76,89,0.06)',zone:'bar'},      // warm rose on bar
+  {x:48,y:12,rx:12,ry:8,color:'rgba(139,92,246,0.07)',zone:'vip'},      // purple VIP
+  {x:48,y:46,rx:18,ry:16,color:'rgba(245,197,66,0.06)',zone:'table'},   // gold on table
+  {x:48,y:30,rx:40,ry:30,color:'rgba(157,127,51,0.03)',zone:'ambient'}, // overall warm wash
 ];
 const _poiOccupants={};POIS.forEach(p=>_poiOccupants[p.id]=[]);
 let _floorNpcs=[];
@@ -3803,15 +3816,36 @@ async function loadCasinoFloor(){
       lp.style.cssText=`position:absolute;left:${z.x}%;top:${z.y}%;width:${z.rx*2}%;height:${z.ry*2}%;transform:translate(-50%,-50%);background:radial-gradient(ellipse,${z.color},transparent 70%);pointer-events:none;z-index:0`;
       poiLayer.appendChild(lp);
     });
-    // POI furniture with ground shadow
+    // POI furniture with ground shadow + interactive hotspots
     POIS.forEach(p=>{if(!p.img)return;
       const d=document.createElement('div');
       d.className='poi-furniture';
-      d.style.cssText=`position:absolute;left:${p.x+p.w/2}%;top:${p.y+p.h/2}%;transform:translate(-50%,-50%);pointer-events:none;z-index:${Math.round(p.y+p.h)}`;
-      d.innerHTML=`<img src="${p.img}" width="${p.sz||80}" height="${p.sz||80}" style="image-rendering:pixelated" onerror="this.parentElement.remove()">
-        <div class="poi-ground-shadow" style="width:${(p.sz||80)*0.7}px;height:${Math.round((p.sz||80)*0.18)}px"></div>`;
-      if(p.id.startsWith('slot'))d.classList.add('neon-flicker');
+      d.dataset.poi=p.id;
+      d.dataset.zone=p.zone;
+      const isInteractive=!!p.tooltip;
+      d.style.cssText=`position:absolute;left:${p.x+p.w/2}%;top:${p.y+p.h/2}%;transform:translate(-50%,-50%);z-index:${Math.round(p.y+p.h)};${isInteractive?'cursor:pointer;pointer-events:auto':'pointer-events:none'}`;
+      const tooltipText=p.tooltip?(lang==='en'?p.tooltip.en:p.tooltip.ko):'';
+      d.innerHTML=`<div style="position:relative;text-align:center">
+        <img src="${p.img}" width="${p.sz||80}" height="${p.sz||80}" style="image-rendering:pixelated" onerror="this.parentElement.parentElement.remove()">
+        <div class="poi-ground-shadow" style="width:${(p.sz||80)*0.7}px;height:${Math.round((p.sz||80)*0.18)}px"></div>
+        ${tooltipText?`<div class="poi-tooltip">${tooltipText}</div>`:''}
+      </div>`;
+      // Slot neon flicker
+      if(p.id.startsWith('slot')){d.classList.add('neon-flicker');d.classList.add('slot-idle')}
+      // Bar bartender animation
+      if(p.id==='bar')d.classList.add('bar-idle');
+      // Chandelier sway
+      if(p.id==='chandelier')d.classList.add('chandelier-sway');
+      // Click interaction
+      if(isInteractive){
+        d.addEventListener('click',()=>poiInteract(p));
+      }
       poiLayer.appendChild(d);
+    });
+    // Make poi-layer allow pointer events for interactive items
+    poiLayer.style.pointerEvents='none';
+    poiLayer.querySelectorAll('[data-poi]').forEach(el=>{
+      if(el.style.cursor==='pointer')el.style.pointerEvents='auto';
     });
   }
   try{
@@ -3837,7 +3871,7 @@ async function loadCasinoFloor(){
       div.dataset.moving='false';
       div.style.cssText=`position:absolute;left:${tx}%;top:${ty}%;transform:translate(-50%,-50%);transition:left 1.8s ease-in-out,top 1.8s ease-in-out;cursor:pointer`;
       if(!isLive)div.style.opacity='0.5';
-      if(isLive)div.style.filter='drop-shadow(0 0 8px rgba(52,211,153,0.4))';
+      // v3.15: unified style via CSS data-state, no inline filter
       const wr=a.hands>0?Math.round(a.wins/a.hands*100):0;
       div.innerHTML=`<div style="text-align:center;position:relative">
         <div class="walker-body"><img src="${img}" width="80" height="80" style="image-rendering:pixelated" onerror="this.src='/static/slimes/px_walk_suit.png'"></div>
@@ -3911,6 +3945,59 @@ function tickFloor(){
   });
 }
 loadCasinoFloor();setInterval(tickFloor,2000);setInterval(loadCasinoFloor,30000);
+
+// === POI Interaction System (v3.15) ===
+function poiInteract(poi){
+  const log=document.getElementById('lobby-log');
+  const names=['딜러봇','고수','도박꾼','초보','Shadow','Berserker'];
+  const who=names[Math.floor(Math.random()*names.length)];
+  if(poi.action==='slot_pull'){
+    // Slot spin animation
+    const el=document.querySelector(`[data-poi="${poi.id}"]`);
+    if(el){el.classList.add('slot-spinning');setTimeout(()=>{
+      el.classList.remove('slot-spinning');
+      const win=Math.random()<0.15;
+      if(win){
+        el.classList.add('slot-jackpot');setTimeout(()=>el.classList.remove('slot-jackpot'),2000);
+        if(log)log.textContent=`🎰 ${who}(이)가 잭팟! +500칩 💰`;
+        spawnPoiParticles(el,'coin');
+      }else{
+        if(log)log.textContent=`🎰 ${who}(이)가 슬롯을 돌렸다... 꽝`;
+      }
+    },1200)}
+  }else if(poi.action==='bar_order'){
+    const drinks=['🍺','🍸','🥃','🍷','🍹'];
+    const drink=drinks[Math.floor(Math.random()*drinks.length)];
+    if(log)log.textContent=`${drink} ${who}(이)가 바에서 한잔 주문`;
+    const el=document.querySelector(`[data-poi="bar"]`);
+    if(el){el.classList.add('bar-serve');setTimeout(()=>el.classList.remove('bar-serve'),1500)}
+    // Cheers emote on nearby NPCs
+    _floorNpcs.filter(n=>n.poi.startsWith('bar')||n.poi.startsWith('cocktail')).slice(0,2).forEach(n=>{
+      const bub=n.el.querySelector('.npc-bubble');
+      if(bub){bub.textContent='짠! 🍻';bub.style.display='block';setTimeout(()=>bub.style.display='none',2000)}
+    });
+  }else if(poi.action==='watch'){
+    watch();
+  }else if(poi.action==='vip_peek'){
+    if(log)log.textContent='🔒 VIP 라운지는 시즌2에 오픈 예정...';
+  }
+}
+
+function spawnPoiParticles(el,type){
+  const rect=el.getBoundingClientRect();
+  const cx=rect.left+rect.width/2, cy=rect.top;
+  for(let i=0;i<8;i++){
+    const p=document.createElement('div');
+    p.className='poi-particle';
+    p.textContent=type==='coin'?'🪙':'✨';
+    p.style.cssText=`position:fixed;left:${cx}px;top:${cy}px;z-index:999;font-size:16px;pointer-events:none;animation:poiParticleUp 1s ease-out forwards`;
+    p.style.setProperty('--dx',(Math.random()-0.5)*60+'px');
+    p.style.setProperty('--dy',(-30-Math.random()*60)+'px');
+    p.style.animationDelay=i*80+'ms';
+    document.body.appendChild(p);
+    setTimeout(()=>p.remove(),1200);
+  }
+}
 
 // === In-game spectator crowd + POI decorations ===
 const CROWD_WALK_IMGS=['/static/slimes/px_walk_suit.png','/static/slimes/px_walk_casual.png','/static/slimes/px_walk_gambler.png','/static/slimes/px_walk_dealer.png','/static/slimes/px_walk_rookie.png','/static/slimes/px_walk_shadow.png','/static/slimes/px_walk_drunk.png','/static/slimes/px_walk_rich.png','/static/slimes/px_walk_excited.png','/static/slimes/px_walk_sleepy.png'];

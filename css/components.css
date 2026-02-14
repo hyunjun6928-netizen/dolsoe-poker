@@ -2256,6 +2256,149 @@ img[src*="slimes/"] {
 }
 
 /* ============================================
+   v3.15: LOBBY WORLD RULES — CENTRAL CLUSTER
+   ============================================ */
+
+/* === SCALE RULE: Slime = 80px base, all assets proportional === */
+.floor-npc img, .walker-body img { width: 80px; height: 80px; image-rendering: pixelated !important; }
+.poi-furniture img { image-rendering: pixelated !important; filter: none !important; }
+
+/* === CHARACTER CONSISTENCY: No frame/glow per-character — unified === */
+.floor-npc { filter: none !important; } /* Remove per-NPC cyan glow */
+.floor-npc[data-state="live"] { filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)) !important; }
+.floor-npc[data-state="ghost"] { filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)) grayscale(0.3) !important; opacity: 0.45; }
+
+/* === WORLD PIXEL RULE: No blur ever in world layer === */
+#casino-floor, #casino-floor *, #poi-layer, #poi-layer *, #floor-agents, #floor-agents * {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+/* UI panels keep glass blur — separated by z-index */
+.px-panel, #lobby-banner, #lobby-log {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* === POI TOOLTIP (hover) === */
+.poi-tooltip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%) scale(0.9);
+  background: rgba(10,13,20,0.95);
+  color: var(--accent-gold, #F5C542);
+  font-family: var(--font-pixel, 'NeoDGM', monospace);
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 3px;
+  border: 1px solid rgba(157,127,51,0.4);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.2s;
+  z-index: 50;
+}
+.poi-furniture:hover .poi-tooltip {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+.poi-furniture:hover {
+  filter: brightness(1.15) !important;
+}
+
+/* === SLOT MACHINE ANIMATIONS === */
+/* Idle: neon sign flicker + subtle sparkle */
+.slot-idle img {
+  animation: slotNeonIdle 3s ease-in-out infinite;
+}
+@keyframes slotNeonIdle {
+  0%,100% { filter: brightness(1) drop-shadow(0 0 4px rgba(245,197,66,0.3)); }
+  50% { filter: brightness(1.1) drop-shadow(0 0 8px rgba(245,197,66,0.5)); }
+  75% { filter: brightness(0.95) drop-shadow(0 0 2px rgba(245,197,66,0.2)); }
+}
+/* Spinning: reel shake */
+.slot-spinning img {
+  animation: slotSpin 0.12s linear infinite !important;
+}
+@keyframes slotSpin {
+  0% { transform: translateY(0); }
+  25% { transform: translateY(-2px); }
+  50% { transform: translateY(0); }
+  75% { transform: translateY(2px); }
+}
+/* Jackpot: gold explosion glow */
+.slot-jackpot img {
+  animation: slotJackpot 0.3s ease-out 3 !important;
+}
+@keyframes slotJackpot {
+  0%,100% { filter: brightness(1) drop-shadow(0 0 4px rgba(245,197,66,0.3)); }
+  50% { filter: brightness(1.6) drop-shadow(0 0 20px rgba(245,197,66,0.8)); }
+}
+
+/* === BAR ANIMATIONS === */
+.bar-idle img {
+  animation: barIdle 3s ease-in-out infinite;
+}
+@keyframes barIdle {
+  0%,100% { transform: rotate(0deg); }
+  30% { transform: rotate(-1deg); }
+  60% { transform: rotate(1deg); }
+}
+.bar-serve img {
+  animation: barServe 0.5s ease-out 2 !important;
+}
+@keyframes barServe {
+  0%,100% { transform: scale(1); }
+  50% { transform: scale(1.05) translateY(-3px); }
+}
+
+/* === CHANDELIER SWAY === */
+.chandelier-sway img {
+  animation: chandSway 6s ease-in-out infinite;
+  transform-origin: 50% 0%;
+}
+@keyframes chandSway {
+  0%,100% { transform: rotate(0deg); }
+  25% { transform: rotate(1.5deg); }
+  75% { transform: rotate(-1.5deg); }
+}
+/* Warm spotlight from chandelier */
+.chandelier-sway::after {
+  content: '';
+  position: absolute;
+  top: 90%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(ellipse, rgba(245,197,66,0.04), transparent 70%);
+  pointer-events: none;
+}
+
+/* === POI PARTICLE ANIMATION === */
+@keyframes poiParticleUp {
+  0% { transform: translate(0,0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--dx,0), var(--dy,-60px)) scale(0.5); opacity: 0; }
+}
+.poi-particle { transition: none; }
+
+/* === LOBBY UI: World-first, dashboard-last === */
+#casino-floor {
+  z-index: 1;
+}
+#lobby-banner {
+  position: relative;
+  z-index: 10;
+  max-width: 500px; /* slimmer */
+  padding: 12px 16px;
+}
+/* Lobby grid panels: collapsible, secondary to world */
+.lobby-grid {
+  position: relative;
+  z-index: 10;
+}
+
+/* ============================================
    CASINO EFFECTS & ANIMATIONS (v3.13)
    ============================================ */
 
