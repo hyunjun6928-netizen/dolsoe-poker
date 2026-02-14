@@ -3245,6 +3245,10 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 </style>
 </head>
 <body class="is-spectator is-lobby">
+<!-- In-game spectator crowd -->
+<div id="spectator-crowd"></div>
+<!-- In-game POI decorations -->
+<div id="ingame-pois"></div>
 <div class="wrap">
 
 <h1 id="main-title" style="font-family:var(--font-title)">🍄 <b>머슴</b>포커 🃏</h1>
@@ -3874,6 +3878,147 @@ function tickFloor(){
   });
 }
 loadCasinoFloor();setInterval(tickFloor,2000);setInterval(loadCasinoFloor,30000);
+
+// === In-game spectator crowd + POI decorations ===
+const CROWD_WALK_IMGS=['/static/slimes/walk_suit.png','/static/slimes/walk_casual.png','/static/slimes/walk_gambler.png','/static/slimes/walk_dealer.png','/static/slimes/walk_rookie.png','/static/slimes/walk_shadow.png'];
+const CROWD_REACTIONS={
+  allin:['😱','🔥','💀','올인!!','ㅋㅋㅋ','미쳤다'],
+  bigpot:['💰','대박','와...','ㄷㄷ'],
+  fold:['😴','zzz','접네','겁쟁이'],
+  win:['👏','🎉','GG','ㅋ'],
+  badbeat:['💀','아...','RIP','ㅠㅠ'],
+  idle:['🤔','...','🎲','🍿','ㅋ','힝','재밌다']
+};
+const INGAME_POIS_DEFS=[
+  // Slot machines along left wall
+  {img:'/static/slimes/slot_machine.png',x:'1%',y:'12%',w:65,h:85},
+  {img:'/static/slimes/slot_machine.png',x:'1%',y:'32%',w:65,h:85},
+  {img:'/static/slimes/slot_machine.png',x:'1%',y:'52%',w:65,h:85},
+  {img:'/static/slimes/slot_machine.png',x:'1%',y:'72%',w:65,h:85},
+  // Slot machines right side too
+  {img:'/static/slimes/slot_machine.png',x:'92%',y:'60%',w:60,h:80},
+  {img:'/static/slimes/slot_machine.png',x:'92%',y:'78%',w:60,h:80},
+  // Bar along right wall
+  {img:'/static/slimes/bar_counter.png',x:'87%',y:'15%',w:110,h:85},
+  {img:'/static/slimes/bar_counter.png',x:'87%',y:'38%',w:110,h:85},
+  // Chandelier top center
+  {img:'/static/slimes/poi_chandelier.png',x:'25%',y:'0%',w:100,h:80},
+  {img:'/static/slimes/poi_chandelier.png',x:'60%',y:'0%',w:100,h:80},
+  // Plants in corners & along walls
+  {img:'/static/slimes/poi_plant.png',x:'0%',y:'1%',w:45,h:55},
+  {img:'/static/slimes/poi_plant.png',x:'95%',y:'1%',w:45,h:55},
+  {img:'/static/slimes/poi_plant.png',x:'0%',y:'90%',w:45,h:55},
+  {img:'/static/slimes/poi_plant.png',x:'95%',y:'90%',w:45,h:55},
+  {img:'/static/slimes/poi_plant.png',x:'12%',y:'1%',w:35,h:45},
+  {img:'/static/slimes/poi_plant.png',x:'82%',y:'1%',w:35,h:45},
+  // Cocktail tables scattered around edges
+  {img:'/static/slimes/poi_cocktail_table.png',x:'10%',y:'84%',w:50,h:50},
+  {img:'/static/slimes/poi_cocktail_table.png',x:'82%',y:'84%',w:50,h:50},
+  {img:'/static/slimes/poi_cocktail_table.png',x:'10%',y:'8%',w:45,h:45},
+  {img:'/static/slimes/poi_cocktail_table.png',x:'82%',y:'8%',w:45,h:45},
+  // VIP rope near top
+  {img:'/static/slimes/poi_vip_rope.png',x:'30%',y:'2%',w:80,h:35},
+  {img:'/static/slimes/poi_vip_rope.png',x:'55%',y:'2%',w:80,h:35},
+  // Neon sign
+  {img:'/static/slimes/neon_sign_poker.png',x:'38%',y:'0%',w:130,h:45},
+  // Wall sconces
+  {img:'/static/slimes/poi_wall_sconce.png',x:'0%',y:'20%',w:28,h:36},
+  {img:'/static/slimes/poi_wall_sconce.png',x:'0%',y:'45%',w:28,h:36},
+  {img:'/static/slimes/poi_wall_sconce.png',x:'0%',y:'70%',w:28,h:36},
+  {img:'/static/slimes/poi_wall_sconce.png',x:'97%',y:'20%',w:28,h:36},
+  {img:'/static/slimes/poi_wall_sconce.png',x:'97%',y:'45%',w:28,h:36},
+  {img:'/static/slimes/poi_wall_sconce.png',x:'97%',y:'70%',w:28,h:36},
+  // Cards scattered on floor
+  {img:'/static/slimes/card_back_pixel.png',x:'8%',y:'72%',w:28,h:38},
+  {img:'/static/slimes/card_back_pixel.png',x:'88%',y:'68%',w:28,h:38},
+  {img:'/static/slimes/card_back_pixel.png',x:'18%',y:'90%',w:24,h:32},
+  {img:'/static/slimes/card_back_pixel.png',x:'75%',y:'92%',w:24,h:32},
+  // Chip stacks decoration
+  {img:'/static/slimes/chip_stack.png',x:'14%',y:'8%',w:36,h:36},
+  {img:'/static/slimes/chip_stack.png',x:'78%',y:'8%',w:36,h:36},
+  {img:'/static/slimes/chip_stack.png',x:'6%',y:'65%',w:30,h:30},
+  {img:'/static/slimes/chip_stack.png',x:'90%',y:'52%',w:30,h:30},
+];
+let _crowdSlimes=[];
+function buildSpectatorCrowd(){
+  const el=document.getElementById('spectator-crowd');if(!el)return;
+  el.innerHTML='';_crowdSlimes=[];
+  // Back row (behind table)
+  const backRow=document.createElement('div');
+  backRow.className='crowd-row row-back';
+  for(let i=0;i<12;i++){
+    const s=_mkCrowdSlime();
+    backRow.appendChild(s.wrap);
+    _crowdSlimes.push(s);
+  }
+  el.appendChild(backRow);
+  // Left column
+  const leftRow=document.createElement('div');
+  leftRow.className='crowd-row row-left';
+  for(let i=0;i<5;i++){
+    const s=_mkCrowdSlime();
+    leftRow.appendChild(s.wrap);
+    _crowdSlimes.push(s);
+  }
+  el.appendChild(leftRow);
+  // Right column
+  const rightRow=document.createElement('div');
+  rightRow.className='crowd-row row-right';
+  for(let i=0;i<5;i++){
+    const s=_mkCrowdSlime();
+    rightRow.appendChild(s.wrap);
+    _crowdSlimes.push(s);
+  }
+  el.appendChild(rightRow);
+}
+function _mkCrowdSlime(){
+  const wrap=document.createElement('div');
+  wrap.style.cssText='position:relative;display:inline-block';
+  const img=document.createElement('img');
+  img.src=CROWD_WALK_IMGS[Math.floor(Math.random()*CROWD_WALK_IMGS.length)];
+  img.className='crowd-slime';
+  img.style.transform=Math.random()>0.5?'scaleX(-1)':'scaleX(1)';
+  img.onerror=function(){this.src='/static/slimes/walk_suit.png'};
+  const bub=document.createElement('div');
+  bub.className='crowd-bubble';
+  wrap.appendChild(img);wrap.appendChild(bub);
+  return {wrap,img,bub};
+}
+function crowdReact(type){
+  const pool=CROWD_REACTIONS[type]||CROWD_REACTIONS.idle;
+  // Random 3-6 slimes react
+  const count=3+Math.floor(Math.random()*4);
+  const indices=[..._crowdSlimes.keys()].sort(()=>Math.random()-0.5).slice(0,count);
+  indices.forEach((idx,delay)=>{
+    setTimeout(()=>{
+      const s=_crowdSlimes[idx];if(!s)return;
+      s.img.classList.remove('react');void s.img.offsetWidth;s.img.classList.add('react');
+      const msg=pool[Math.floor(Math.random()*pool.length)];
+      s.bub.textContent=msg;s.bub.classList.add('show');
+      setTimeout(()=>{s.bub.classList.remove('show');s.img.classList.remove('react')},2000);
+    },delay*200);
+  });
+}
+// Idle crowd chatter
+setInterval(()=>{
+  if(!document.body.classList.contains('in-game'))return;
+  if(Math.random()<0.3)crowdReact('idle');
+},8000);
+
+function buildIngamePois(){
+  const el=document.getElementById('ingame-pois');if(!el)return;
+  el.innerHTML='';
+  INGAME_POIS_DEFS.forEach(p=>{
+    const img=document.createElement('img');
+    img.className='poi-deco';
+    img.src=p.img;
+    img.width=p.w;img.height=p.h;
+    img.style.left=p.x;img.style.top=p.y;
+    img.onerror=function(){this.remove()};
+    el.appendChild(img);
+  });
+}
+buildSpectatorCrowd();buildIngamePois();
 
 // A/B banner
 const _bannerVariants=[
@@ -4584,6 +4729,13 @@ div.innerHTML=icon+esc(text);
 feed.appendChild(div);
 if(feed.scrollHeight-feed.scrollTop-feed.clientHeight<80)feed.scrollTop=feed.scrollHeight;
 while(feed.children.length>200)feed.removeChild(feed.firstChild);
+// Crowd reactions based on action
+try{
+  if(tl.includes('all in')||tl.includes('올인')){}// handled in showAllin
+  else if(text.includes('🏆')){}// handled in showWinnerOverlay
+  else if(tl.includes('fold')||tl.includes('폴드')){if(Math.random()<0.3)crowdReact('fold')}
+  else if(tl.includes('raise')||tl.includes('레이즈')){if(Math.random()<0.2)crowdReact('bigpot')}
+}catch(e){}
 }
 
 let _overlayCooldown=0;
@@ -4594,7 +4746,8 @@ if(!_canOverlay())return;_setOverlayCooldown(2200);
 const o=document.getElementById('allin-overlay');
 o.querySelector('.allin-text').textContent=`🔥 ${d.emoji} ${d.name} ALL IN ${d.amount}pt 🔥`;
 o.style.display='flex';o.style.animation='none';o.offsetHeight;o.style.animation='allinFlash 2s ease-out forwards';
-setTimeout(()=>{o.style.display='none'},2000)}
+setTimeout(()=>{o.style.display='none'},2000);
+try{crowdReact('allin')}catch(e){}}
 
 function showHighlight(d){
 const o=document.getElementById('highlight-overlay');const hlEl=document.getElementById('hl-text');
@@ -5208,6 +5361,7 @@ _set('#win-hand','textContent',p.hand?'족보: '+p.hand:'');
 _set('#win-pot','textContent',p.pot!=null?'POT: '+p.pot:'');
 ov.onclick=()=>hideWinnerOverlay();
 clearTimeout(_winT);_winT=setTimeout(hideWinnerOverlay,6000);
+try{crowdReact('win')}catch(e){}
 }
 function hideWinnerOverlay(){
 const ov=document.getElementById('winner-overlay');if(!ov)return;

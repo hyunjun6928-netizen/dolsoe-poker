@@ -32,7 +32,7 @@ body::before, body::after { content: none !important; display: none !important; 
   margin: 0 auto;
   padding: var(--sp-sm) var(--sp-lg);
   position: relative;
-  z-index: var(--z-base);
+  z-index: 5;
 }
 
 /* ===== 3. TITLE ===== */
