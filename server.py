@@ -2841,7 +2841,7 @@ h1 b{color:var(--accent-gold);-webkit-text-fill-color:var(--accent-gold)}
 @media(max-width:900px){.lobby-grid{grid-template-columns:1fr!important}}
 @media(max-width:700px){.lobby-grid{grid-template-columns:1fr!important}}
 #game{display:none}
-.info-bar{position:sticky;top:0;z-index:40;display:flex;justify-content:space-between;align-items:center;padding:8px 16px;font-size:0.8em;color:var(--text-light);background:linear-gradient(180deg,rgba(18,16,24,0.98),rgba(10,13,18,0.98));border-bottom:2px solid rgba(245,197,66,0.2);box-shadow:0 4px 16px rgba(0,0,0,0.5),0 1px 0 rgba(245,197,66,0.08);font-family:var(--font-pixel);backdrop-filter:blur(12px)}
+.info-bar{position:sticky;top:0;z-index:40;display:flex;justify-content:space-between;align-items:center;padding:8px 16px;font-size:0.8em;color:var(--text-light);background:linear-gradient(180deg,rgba(13,16,24,0.95),rgba(5,15,26,0.95));border-bottom:1px solid rgba(157,127,51,0.15);box-shadow:0 2px 8px rgba(0,0,0,0.4);font-family:var(--font-pixel);backdrop-filter:blur(12px)}
 .felt-wrap{position:relative;margin:4px auto 8px;padding-top:30px;width:min(1200px,94vw);min-height:min(600px,65vh)}
 .felt-border{position:absolute;top:-20px;left:-20px;right:-20px;bottom:-20px;
 background:url('/static/slimes/stage_frame.png') center/100% 100% no-repeat;
@@ -2875,12 +2875,12 @@ border-radius:18px;pointer-events:none;z-index:1}
 .card{width:58px;height:82px;border-radius:8px;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;font-size:1.05em;
 font-weight:bold;font-size:0.95em;box-shadow:0 2px 8px rgba(0,0,0,0.4);transition:all .2s;border:1px solid rgba(255,255,255,0.15)}
 .card:hover{transform:translateY(-3px);box-shadow:0 6px 16px rgba(0,0,0,0.5)}
-.card-f{background:linear-gradient(180deg,#FFFFFF,#F0F0F0);border-color:rgba(0,0,0,0.1);box-shadow:0 2px 8px rgba(0,0,0,0.3)}
-.card-b{background:linear-gradient(135deg,#1B5E3B,#0E4A22);border-color:rgba(255,255,255,0.1);
-box-shadow:0 2px 8px rgba(0,0,0,0.4)}
+.card-f{background:linear-gradient(180deg,#FCC88E 0%,#F09858 50%,#C17F54 100%);border:2px solid #9D7F33;box-shadow:inset 0 0 0 1px rgba(0,0,0,0.2),0 2px 8px rgba(0,0,0,0.5);image-rendering:pixelated}
+.card-b{background:url('/static/slimes/card_back_pixel.png') center/cover no-repeat;border:2px solid #9D7F33;image-rendering:pixelated;
+box-shadow:inset 0 0 0 1px rgba(157,127,51,0.4),0 2px 8px rgba(0,0,0,0.5)}
 .card .r{line-height:1}.card .s{font-size:1.1em;line-height:1}
-.card.red .r,.card.red .s{color:#dd1111}
-.card.black .r,.card.black .s{color:#111}
+.card.red .r,.card.red .s{color:#D24C59}
+.card.black .r,.card.black .s{color:#050F1A}
 .card-sm{width:46px;height:66px;font-size:0.8em;border-radius:8px}.card-sm .s{font-size:0.95em}
 .seat{position:absolute;text-align:center;z-index:10;transition:all .3s;min-width:70px}
 .seat-0{bottom:-4%;left:60%;transform:translateX(-50%)}
@@ -2930,7 +2930,7 @@ box-shadow:0 2px 8px rgba(0,0,0,0.4)}
 .seat.fold{opacity:0.35}.seat.out{opacity:0.25;filter:grayscale(1)}
 .seat.out .nm{text-decoration:line-through;color:#f87171}
 .seat.out::after{content:'💀 OUT';position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:0.6em;color:#ff6b6b;background:#000;padding:2px 8px;border-radius:8px;white-space:nowrap;border:2px solid #ff6b6b}
-.seat:not(.is-turn):not(.fold):not(.out){opacity:0.65;transition:opacity .3s}
+.seat:not(.is-turn):not(.fold):not(.out){opacity:0.9;transition:opacity .3s}
 .seat.is-turn{opacity:1}
 .seat.is-turn::before{content:'';position:absolute;bottom:-12px;left:50%;transform:translateX(-50%);width:64px;height:10px;background:radial-gradient(ellipse,#FDFD9666,transparent);border-radius:50%;pointer-events:none;z-index:-1}
 .seat.is-turn .nm{color:#0C0F14;background:var(--accent-gold);border-color:rgba(245,197,66,0.5);animation:pulse 1s infinite;box-shadow:0 0 20px rgba(245,197,66,0.3)}
@@ -3045,11 +3045,11 @@ box-shadow:0 2px 8px rgba(0,0,0,0.4)}
 #reactions button{font-size:1.5em;background:#ffffffbb;border:2.5px solid #000;border-radius:50%;width:44px;height:44px;cursor:pointer;transition:all .1s;box-shadow:3px 3px 0 #000}
 #reactions button:hover{transform:translate(1px,1px);box-shadow:2px 2px 0 #000}
 #reactions button:active{transform:translate(3px,3px) scale(1.1);box-shadow:0 0 0 #000}
-#profile-popup{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--bg-panel);border:var(--border-w) solid var(--accent-purple);border-radius:var(--radius);padding:24px;z-index:150;min-width:280px;max-width:400px;display:none;text-align:center;box-shadow:var(--shadow-md),0 8px 24px rgba(43,45,66,0.2);max-height:85vh;overflow-y:auto}
-#profile-popup h3{color:#1a6b30;margin-bottom:8px;font-size:1.3em}
-#profile-popup .pp-stat{color:#6b5040;font-size:0.9em;margin:5px 0;line-height:1.4}
-#profile-popup .pp-close{position:absolute;top:10px;right:14px;color:#2d8a4e;cursor:pointer;font-size:1.3em;transition:color .15s}
-#profile-popup .pp-close:hover{color:#fbbf24}
+#profile-popup{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(180deg,#0d1018 0%,#1a1e2a 100%);border:2px solid #9D7F33;border-radius:8px;padding:24px;z-index:150;min-width:280px;max-width:400px;display:none;text-align:center;box-shadow:0 0 40px rgba(0,0,0,0.8),inset 0 1px 0 rgba(157,127,51,0.2);max-height:85vh;overflow-y:auto;color:#FCC88E;font-family:var(--font-pixel);image-rendering:pixelated}
+#profile-popup h3{color:#9D7F33;margin-bottom:8px;font-size:1.3em;text-shadow:0 0 8px rgba(157,127,51,0.4)}
+#profile-popup .pp-stat{color:#938B7B;font-size:0.9em;margin:5px 0;line-height:1.4}
+#profile-popup .pp-close{position:absolute;top:10px;right:14px;color:#D24C59;cursor:pointer;font-size:1.3em;transition:color .15s}
+#profile-popup .pp-close:hover{color:#F09858}
 #profile-backdrop{position:fixed;top:0;left:0;right:0;bottom:0;background:#000000aa;z-index:149;display:none}
 @media(max-width:700px){
 *{box-sizing:border-box}
@@ -3228,9 +3228,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.10">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.10">
-<link rel="stylesheet" href="/static/css/components.css?v=3.10">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.12">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.12">
+<link rel="stylesheet" href="/static/css/components.css?v=3.12">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
@@ -4580,12 +4580,12 @@ if(p&&p.hands>0){
 const tiltTag=p.tilt?`<div style="color:#ff4444;font-weight:bold;margin:6px 0;animation:pulse 1s infinite">${t('tilt')} (${Math.abs(p.streak)}${t('tiltLoss')})</div>`:'';
 const streakTag=p.streak>=3?`<div style="color:#44ff88">🔥 ${p.streak}${t('winStreak')}</div>`:'';
 // 공격성 바
-const agrBar=`<div style="margin:6px 0"><span style="color:#64748b;font-size:0.8em;font-weight:600">${t('profAggr')}</span><div style="height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden;margin-top:3px"><div style="width:${p.aggression}%;height:100%;background:${p.aggression>50?'#ef4444':p.aggression>25?'#f59e0b':'#3b82f6'};transition:width .5s;border-radius:4px"></div></div></div>`;
-const vpipBar=`<div style="margin:6px 0"><span style="color:#64748b;font-size:0.8em;font-weight:600">${t('profVPIP')}</span><div style="height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden;margin-top:3px"><div style="width:${p.vpip}%;height:100%;background:#10b981;transition:width .5s;border-radius:4px"></div></div></div>`;
-const metaHtml=p.meta&&(p.meta.version||p.meta.strategy||p.meta.repo)?`<div class="pp-stat" style="margin-top:8px;border-top:1px solid #e2e8f0;padding-top:8px">${p.meta.version?'🏷️ v'+esc(p.meta.version):''}${p.meta.strategy?' · 전략: '+esc(p.meta.strategy):''}${p.meta.repo?'<br>📦 <a href="'+esc(p.meta.repo)+'" target="_blank" style="color:#2d8a4e">'+esc(p.meta.repo)+'</a>':''}</div>`:'';
-const bioHtml=p.meta&&p.meta.bio?`<div class="pp-stat" style="color:#6366f1;font-style:italic;margin:6px 0;background:#f0f0ff;padding:6px 10px;border-radius:8px">📝 ${esc(p.meta.bio)}</div>`:'';
+const agrBar=`<div style="margin:6px 0"><span style="color:#938B7B;font-size:0.8em;font-weight:600">${t('profAggr')}</span><div style="height:8px;background:#221C20;border-radius:4px;overflow:hidden;margin-top:3px"><div style="width:${p.aggression}%;height:100%;background:${p.aggression>50?'#ef4444':p.aggression>25?'#f59e0b':'#3b82f6'};transition:width .5s;border-radius:4px"></div></div></div>`;
+const vpipBar=`<div style="margin:6px 0"><span style="color:#938B7B;font-size:0.8em;font-weight:600">${t('profVPIP')}</span><div style="height:8px;background:#221C20;border-radius:4px;overflow:hidden;margin-top:3px"><div style="width:${p.vpip}%;height:100%;background:#10b981;transition:width .5s;border-radius:4px"></div></div></div>`;
+const metaHtml=p.meta&&(p.meta.version||p.meta.strategy||p.meta.repo)?`<div class="pp-stat" style="margin-top:8px;border-top:1px solid #9D7F33;padding-top:8px">${p.meta.version?'🏷️ v'+esc(p.meta.version):''}${p.meta.strategy?' · 전략: '+esc(p.meta.strategy):''}${p.meta.repo?'<br>📦 <a href="'+esc(p.meta.repo)+'" target="_blank" style="color:#35B97D">'+esc(p.meta.repo)+'</a>':''}</div>`:'';
+const bioHtml=p.meta&&p.meta.bio?`<div class="pp-stat" style="color:#69B5A8;font-style:italic;margin:6px 0;background:rgba(7,57,53,0.4);padding:6px 10px;border-radius:4px;border:1px solid rgba(157,127,51,0.2)">📝 ${esc(p.meta.bio)}</div>`:'';
 let matchupHtml='';
-if(p.matchups&&p.matchups.length>0){matchupHtml='<div class="pp-stat" style="margin-top:8px;border-top:1px solid #e2e8f0;padding-top:8px"><b style="color:#2d8a4e">⚔️ vs 전적</b>';p.matchups.forEach(m=>{matchupHtml+=`<div style="font-size:0.85em;margin:3px 0">vs ${esc(m.opponent)}: <span style="color:#10b981;font-weight:600">${m.wins}승</span> / <span style="color:#ef4444;font-weight:600">${m.losses}패</span></div>`});matchupHtml+='</div>'}
+if(p.matchups&&p.matchups.length>0){matchupHtml='<div class="pp-stat" style="margin-top:8px;border-top:1px solid #9D7F33;padding-top:8px"><b style="color:#35B97D">⚔️ vs 전적</b>';p.matchups.forEach(m=>{matchupHtml+=`<div style="font-size:0.85em;margin:3px 0">vs ${esc(m.opponent)}: <span style="color:#10b981;font-weight:600">${m.wins}승</span> / <span style="color:#ef4444;font-weight:600">${m.losses}패</span></div>`});matchupHtml+='</div>'}
 // Slime portrait for profile
 const slimePortrait=drawSlime(p.name,'idle',120);
 const portraitImg=`<img src="${slimePortrait.toDataURL()}" width="96" height="96" style="display:block;margin:0 auto 8px;image-rendering:pixelated" class="slime-idle">`;
@@ -4600,17 +4600,17 @@ const personalityDesc=(()=>{
 })();
 const traitTags=(()=>{
   const tags=[];
-  if(p.allins>=5) tags.push('<span style="background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:99px;font-size:0.75em;margin:2px">💣 올인 중독</span>');
-  if(p.win_rate>=40) tags.push('<span style="background:#d1fae5;color:#059669;padding:2px 8px;border-radius:99px;font-size:0.75em;margin:2px">👑 고승률</span>');
-  if(p.fold_rate>=50) tags.push('<span style="background:#e0e7ff;color:#4338ca;padding:2px 8px;border-radius:99px;font-size:0.75em;margin:2px">🐢 타이트</span>');
-  if(p.bluff_rate>=25) tags.push('<span style="background:#fef3c7;color:#b45309;padding:2px 8px;border-radius:99px;font-size:0.75em;margin:2px">🎭 블러퍼</span>');
-  if(p.biggest_pot>=300) tags.push('<span style="background:#fce7f3;color:#be185d;padding:2px 8px;border-radius:99px;font-size:0.75em;margin:2px">💎 빅팟 헌터</span>');
-  if(p.hands>=50) tags.push('<span style="background:#f0fdf4;color:#166534;padding:2px 8px;border-radius:99px;font-size:0.75em;margin:2px">🎖️ 베테랑</span>');
+  if(p.allins>=5) tags.push('<span style="background:rgba(210,76,89,0.2);color:#D24C59;padding:2px 8px;border-radius:99px;font-size:0.75em;margin:2px">💣 올인 중독</span>');
+  if(p.win_rate>=40) tags.push('<span style="background:rgba(53,185,125,0.2);color:#35B97D;padding:2px 8px;border-radius:99px;font-size:0.75em;margin:2px">👑 고승률</span>');
+  if(p.fold_rate>=50) tags.push('<span style="background:rgba(105,181,168,0.2);color:#69B5A8;padding:2px 8px;border-radius:99px;font-size:0.75em;margin:2px">🐢 타이트</span>');
+  if(p.bluff_rate>=25) tags.push('<span style="background:rgba(240,152,88,0.2);color:#F09858;padding:2px 8px;border-radius:99px;font-size:0.75em;margin:2px">🎭 블러퍼</span>');
+  if(p.biggest_pot>=300) tags.push('<span style="background:rgba(210,76,89,0.2);color:#FCC88E;padding:2px 8px;border-radius:99px;font-size:0.75em;margin:2px">💎 빅팟 헌터</span>');
+  if(p.hands>=50) tags.push('<span style="background:rgba(157,127,51,0.2);color:#9D7F33;padding:2px 8px;border-radius:99px;font-size:0.75em;margin:2px">🎖️ 베테랑</span>');
   return tags.join(' ');
 })();
 // MBTI card
-const mbtiCard = p.mbti ? `<div style="background:linear-gradient(135deg,#ede9fe,#fce7f3);border:2px solid #a8d8a0;border-radius:14px;padding:12px;margin:8px 0;text-align:center">
-<div style="font-size:1.8em;font-weight:bold;color:#2d8a4e;letter-spacing:3px;font-family:monospace">${esc(p.mbti)}</div>
+const mbtiCard = p.mbti ? `<div style="background:linear-gradient(135deg,#0d1018,#221C20);border:2px solid #9D7F33;border-radius:14px;padding:12px;margin:8px 0;text-align:center">
+<div style="font-size:1.8em;font-weight:bold;color:#35B97D;letter-spacing:3px;font-family:monospace">${esc(p.mbti)}</div>
 <div style="font-size:1.1em;margin:4px 0">${esc(p.mbti_name)}</div>
 <div style="font-size:0.8em;color:#64748b;margin-top:4px">${esc(p.mbti_desc)}</div>
 </div>` : '';
@@ -4627,7 +4627,7 @@ const axes = [
   {label:'생존력', val:p.survival_score||0}
 ];
 // Grid
-rc.strokeStyle = '#e2e8f0'; rc.lineWidth = 1;
+rc.strokeStyle = '#073935'; rc.lineWidth = 1;
 for (let r of [0.33, 0.66, 1]) {
   rc.beginPath();
   for (let i = 0; i <= axes.length; i++) {
@@ -4646,7 +4646,7 @@ for (let i = 0; i < axes.length; i++) {
 }
 // Data polygon
 rc.beginPath();
-rc.fillStyle = 'rgba(139,92,246,0.2)'; rc.strokeStyle = '#8b5cf6'; rc.lineWidth = 2;
+rc.fillStyle = 'rgba(53,185,125,0.2)'; rc.strokeStyle = '#35B97D'; rc.lineWidth = 2;
 for (let i = 0; i <= axes.length; i++) {
   const idx = i % axes.length;
   const a = (Math.PI*2/axes.length)*idx - Math.PI/2;
@@ -4656,7 +4656,7 @@ for (let i = 0; i <= axes.length; i++) {
 }
 rc.fill(); rc.stroke();
 // Labels
-rc.font = '11px Jua'; rc.fillStyle = '#475569'; rc.textAlign = 'center';
+rc.font = '11px neodgm'; rc.fillStyle = '#938B7B'; rc.textAlign = 'center';
 for (let i = 0; i < axes.length; i++) {
   const a = (Math.PI*2/axes.length)*i - Math.PI/2;
   const lx = rcx + (rr+18)*Math.cos(a), ly = rcy + (rr+18)*Math.sin(a);

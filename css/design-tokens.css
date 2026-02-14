@@ -33,7 +33,7 @@
   --frame-dark:    #1A1F2B;
   --frame-light:   #333C52;
   --frame-shadow:  #0A0D12;
-  --border-gold:   rgba(212,175,90,0.25); /* 골드 라인(얇게) */
+  --border-gold:   rgba(157,127,51,0.4); /* 골드 라인 — 카지노 강조 */
   --border-glass:  rgba(255,255,255,0.06);
   --border-w:      1px;
 }

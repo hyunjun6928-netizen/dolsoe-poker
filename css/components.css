@@ -497,7 +497,7 @@
 
 /* --- Default: non-active seats dimmed --- */
 .seat:not(.is-turn):not(.fold):not(.out) {
-  opacity: 0.6;
+  opacity: 0.9;
   transition: opacity var(--dur-slow);
 }
 
