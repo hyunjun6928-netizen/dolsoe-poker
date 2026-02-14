@@ -30,7 +30,7 @@
   -webkit-backdrop-filter: var(--glass-blur);
   border: var(--border-w) solid var(--frame);
   border-radius: var(--radius);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-md), 0 12px 40px rgba(0,0,0,0.5), 0 0 80px rgba(0,0,0,0.2);
   overflow: hidden;
 }
 /* Thin gold accent line at top */
@@ -1880,8 +1880,10 @@ body.fair-on .fair-commentary,
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse at center, rgba(0,0,0,0.10), rgba(0,0,0,0.75)),
-    linear-gradient(to bottom, rgba(0,0,0,0.45), rgba(0,0,0,0.70));
+    radial-gradient(ellipse 60% 50% at 50% 55%, transparent 30%, rgba(0,0,0,0.6) 100%),
+    radial-gradient(ellipse 35% 30% at 12% 52%, rgba(245,197,66,0.04), transparent),
+    radial-gradient(ellipse 30% 25% at 82% 45%, rgba(53,185,125,0.03), transparent),
+    linear-gradient(to bottom, rgba(0,0,0,0.35), rgba(0,0,0,0.55));
   pointer-events: none;
 }
 /* In-game: casino floor stays as background, dimmed */
@@ -2106,6 +2108,30 @@ code, pre, #log, .log-box, [data-log] {
 #poi-layer { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
 .poi-hotspot { border: 1px solid transparent; transition: border-color 0.2s, background 0.2s; }
 .poi-hotspot:hover { border-color: rgba(212,175,90,0.25); }
+
+/* --- POI Furniture Ground Shadow (v3.14) --- */
+.poi-furniture { position: relative; }
+.poi-furniture img {
+  filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.5));
+  image-rendering: pixelated;
+}
+.poi-ground-shadow {
+  margin: -2px auto 0;
+  background: radial-gradient(ellipse, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.15) 50%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* --- Zone Light Pools (v3.14) --- */
+.zone-light {
+  mix-blend-mode: screen;
+  border-radius: 50%;
+  animation: lightPulse 6s ease-in-out infinite alternate;
+}
+@keyframes lightPulse {
+  0% { opacity: 0.7; }
+  100% { opacity: 1; }
+}
 
 /* --- Lobby Log Line --- */
 #lobby-log { opacity: 0.4; transition: opacity 0.5s; }

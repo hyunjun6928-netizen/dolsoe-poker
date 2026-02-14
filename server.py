@@ -3228,9 +3228,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.12">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.13">
-<link rel="stylesheet" href="/static/css/components.css?v=3.13">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.14">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.14">
+<link rel="stylesheet" href="/static/css/components.css?v=3.14">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
@@ -3734,17 +3734,31 @@ const FLOOR_BUBBLES={
   vip:{ko:['VIP 언제 들어가냐','칩 좀 벌어야지','나도 저기 가고싶다'],en:['when can I enter VIP','gotta earn chips','I wanna go there too']},
   wander:{ko:['🎲','💰','🤔','...','ㅋ'],en:['🎲','💰','🤔','...','lol']},
 };
-// POI zones (% of floor)
+// POI zones — clustered layout (v3.14)
+// LEFT ZONE: Slots (2 machines + jukebox)
+// RIGHT ZONE: Bar (counter + cocktail tables)
+// TOP CENTER: VIP lounge
+// BOTTOM CENTER: Poker table entrance
 const POIS=[
-  // 핵심 POI만 — 깔끔하게
-  {id:'slot',x:4,y:30,w:10,h:18,cap:3,img:'/static/slimes/px_slot_machine.png',sz:70},
-  {id:'slot2',x:4,y:60,w:10,h:18,cap:2,img:'/static/slimes/px_slot_machine.png',sz:65},
-  {id:'bar',x:78,y:15,w:18,h:22,cap:4,img:'/static/slimes/px_bar_counter.png',sz:100},
-  {id:'table',x:38,y:45,w:22,h:25,cap:5},
-  {id:'vip',x:40,y:5,w:18,h:12,cap:3},
-  {id:'jukebox',x:90,y:75,w:8,h:12,cap:1,img:'/static/slimes/px_jukebox.png',sz:60},
-  {id:'cocktail1',x:65,y:50,w:8,h:10,cap:2},
-  {id:'cocktail2',x:20,y:75,w:8,h:10,cap:2},
+  // === LEFT: Slot Zone (x:3~22) ===
+  {id:'slot',x:5,y:38,w:8,h:12,cap:3,img:'/static/slimes/px_slot_machine.png',sz:70,zone:'slot'},
+  {id:'slot2',x:5,y:55,w:8,h:12,cap:2,img:'/static/slimes/px_slot_machine.png',sz:65,zone:'slot'},
+  {id:'jukebox',x:15,y:68,w:6,h:10,cap:1,img:'/static/slimes/px_jukebox.png',sz:55,zone:'slot'},
+  // === RIGHT: Bar Zone (x:72~96) ===
+  {id:'bar',x:72,y:30,w:16,h:18,cap:4,img:'/static/slimes/px_bar_counter.png',sz:100,zone:'bar'},
+  {id:'cocktail1',x:75,y:55,w:8,h:10,cap:2,zone:'bar'},
+  {id:'cocktail2',x:85,y:62,w:8,h:10,cap:2,zone:'bar'},
+  // === TOP CENTER: VIP Zone ===
+  {id:'vip',x:36,y:6,w:22,h:14,cap:3,zone:'vip'},
+  // === BOTTOM CENTER: Table Entrance ===
+  {id:'table',x:32,y:52,w:28,h:22,cap:6,zone:'table'},
+];
+// Zone light pool definitions (CSS will render these)
+const ZONE_LIGHTS=[
+  {x:12,y:52,rx:18,ry:22,color:'rgba(245,197,66,0.08)',zone:'slot'},
+  {x:82,y:48,rx:16,ry:20,color:'rgba(53,185,125,0.07)',zone:'bar'},
+  {x:47,y:12,rx:14,ry:10,color:'rgba(139,92,246,0.06)',zone:'vip'},
+  {x:46,y:65,rx:20,ry:18,color:'rgba(245,197,66,0.05)',zone:'table'},
 ];
 const _poiOccupants={};POIS.forEach(p=>_poiOccupants[p.id]=[]);
 let _floorNpcs=[];
@@ -3766,15 +3780,26 @@ function pickPOI(npc){
 
 async function loadCasinoFloor(){
   const el=document.getElementById('floor-agents');if(!el)return;
-  // Render POI furniture sprites (same scale as slimes)
+  // Render zone light pools + POI furniture sprites
   const poiLayer=document.getElementById('poi-layer');
   if(poiLayer&&!poiLayer.dataset.init){
     poiLayer.dataset.init='1';
     poiLayer.style.cssText='position:absolute;inset:0;z-index:1;pointer-events:none';
+    // Light pools under zones
+    ZONE_LIGHTS.forEach(z=>{
+      const lp=document.createElement('div');
+      lp.className='zone-light';
+      lp.style.cssText=`position:absolute;left:${z.x}%;top:${z.y}%;width:${z.rx*2}%;height:${z.ry*2}%;transform:translate(-50%,-50%);background:radial-gradient(ellipse,${z.color},transparent 70%);pointer-events:none;z-index:0`;
+      poiLayer.appendChild(lp);
+    });
+    // POI furniture with ground shadow
     POIS.forEach(p=>{if(!p.img)return;
       const d=document.createElement('div');
-      d.style.cssText=`position:absolute;left:${p.x+p.w/2}%;top:${p.y+p.h/2}%;transform:translate(-50%,-50%);pointer-events:none`;
-      d.innerHTML=`<img src="${p.img}" width="${p.sz||80}" height="${p.sz||80}" style="image-rendering:pixelated;filter:drop-shadow(2px 4px 8px rgba(0,0,0,0.6))" onerror="this.parentElement.remove()">`;
+      d.className='poi-furniture';
+      d.style.cssText=`position:absolute;left:${p.x+p.w/2}%;top:${p.y+p.h/2}%;transform:translate(-50%,-50%);pointer-events:none;z-index:${Math.round(p.y+p.h)}`;
+      d.innerHTML=`<img src="${p.img}" width="${p.sz||80}" height="${p.sz||80}" style="image-rendering:pixelated" onerror="this.parentElement.remove()">
+        <div class="poi-ground-shadow" style="width:${(p.sz||80)*0.7}px;height:${Math.round((p.sz||80)*0.18)}px"></div>`;
+      if(p.id.startsWith('slot'))d.classList.add('neon-flicker');
       poiLayer.appendChild(d);
     });
   }
@@ -3817,6 +3842,8 @@ async function loadCasinoFloor(){
 }
 
 function tickFloor(){
+  // Y-sort: NPCs further down = higher z-index (in front)
+  _floorNpcs.forEach(npc=>{npc.el.style.zIndex=Math.round(npc.y+10)});
   _floorNpcs.forEach(npc=>{
     npc.tick++;
     // Move within POI zone or wander
