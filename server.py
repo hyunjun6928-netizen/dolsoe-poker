@@ -3504,29 +3504,32 @@ en:{
 let lang=new URLSearchParams(location.search).get('lang')||localStorage.getItem('poker_lang')||'ko';localStorage.setItem('poker_lang',lang);
 function t(k){return (LANG[lang]&&LANG[lang][k])||LANG.ko[k]||k}
 function setLang(l){localStorage.setItem('poker_lang',l);const u=new URL(location.href);u.searchParams.set('lang',l);location.href=u.toString()}
+function _$(s){return document.querySelector(s)}
+function _$s(s){return document.querySelectorAll(s)}
+function _set(sel,prop,val){const el=typeof sel==='string'?_$(sel):sel;if(el)el[prop]=val}
 function refreshUI(){
-  document.getElementById('main-title').innerHTML=t('title');
-  document.querySelector('#lobby .sub').textContent=t('sub');
-  document.querySelector('.btn-watch span').textContent=t('watch');
-  document.getElementById('lobby-rank-title').textContent=t('rankTop');
+  _set('#main-title','innerHTML',t('title'));
+  _set('#lobby .sub','textContent',t('sub'));
+  var bw=_$('.btn-watch span');if(bw)bw.textContent=t('watch');
+  _set('#lobby-rank-title','textContent',t('rankTop'));
   // table headers
-  const ths=document.querySelectorAll('#lobby-ranking thead th');
+  const ths=_$s('#lobby-ranking thead th');
   if(ths.length>=7){ths[1].textContent=t('thPlayer');ths[2].textContent=t('thWinRate');ths[3].textContent=t('thW');ths[4].textContent=t('thL');ths[5].textContent=t('thHands');ths[6].textContent=t('thChips')}
   // links
-  document.getElementById('link-full-rank').textContent=t('fullRank');
-  document.getElementById('link-build-bot').textContent=t('buildBot');
-  document.getElementById('link-full-guide').textContent=t('fullGuide');
-  document.getElementById('join-with-label').textContent=t('joinWith');
+  _set('#link-full-rank','textContent',t('fullRank'));
+  _set('#link-build-bot','textContent',t('buildBot'));
+  _set('#link-full-guide','textContent',t('fullGuide'));
+  _set('#join-with-label','textContent',t('joinWith'));
   // tabs
-  const tabs=document.querySelectorAll('.tab-btns button');
+  const tabs=_$s('.tab-btns button');
   if(tabs.length>=3){tabs[0].textContent=t('tabLog');tabs[1].textContent=t('tabReplay');tabs[2].textContent=t('tabHL')}
   // chat placeholder
   var ci=document.getElementById('chat-inp');if(ci)ci.placeholder=t('chatPH');
   // quick chat
-  const qcs=document.querySelectorAll('#quick-chat button');
+  const qcs=_$s('#quick-chat button');
   if(qcs.length>=6){qcs[0].textContent=t('qc1');qcs[0].onclick=()=>qChat(t('qc1'));qcs[1].textContent=t('qcL2');qcs[1].onclick=()=>qChat(t('qc2'));qcs[2].textContent=t('qcL3');qcs[2].onclick=()=>qChat(t('qc3'));qcs[3].textContent=t('qc4');qcs[3].onclick=()=>qChat(t('qc4'));qcs[4].textContent=t('qc5');qcs[4].onclick=()=>qChat(t('qc5'));qcs[5].textContent=t('qc6');qcs[5].onclick=()=>qChat(t('qc6'))}
   // bet panel
-  document.querySelector('#bet-panel .bp-title').textContent=t('betTitle');
+  var bp=_$('#bet-panel .bp-title');if(bp)bp.textContent=t('betTitle');
   // bet panel removed
   // new game btn
   document.getElementById('new-btn').textContent=t('newGame');

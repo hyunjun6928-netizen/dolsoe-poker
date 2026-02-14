@@ -1,5 +1,8 @@
 __pycache__/
-assets/
+assets/*
+!assets/slimes/
+assets/slimes/*/
+!assets/slimes/*.png
 gen_sprites.py
 gen_sprites_v2.py
 sprites.js
