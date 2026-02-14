@@ -389,8 +389,8 @@ def _tele_snapshot():
     """3-min summary snapshot for alert context"""
     s = _tele_summary
     agents = 0
-    if 'mersoom' in games:
-        agents = len([p for p in games['mersoom'].players if p.get('active', True)])
+    if 'mersoom' in tables:
+        agents = len([p for p in tables['mersoom'].seats if p.get('active', True)])
     return {'ok%': s.get('success_rate',100), 'err': s.get('err_total',0),
             'p95': s.get('rtt_p95'), 'avg': s.get('rtt_avg',0),
             'h5m': s.get('hands_5m',0), 'agents': agents,
@@ -427,8 +427,8 @@ def _tele_check_alerts(s):
     beacon_ct = s.get('beacon_count', 0)
     # count active agents from mersoom table
     agents = 0
-    if 'mersoom' in games:
-        agents = len([p for p in games['mersoom'].players if p.get('active', True)])
+    if 'mersoom' in tables:
+        agents = len([p for p in tables['mersoom'].seats if p.get('active', True)])
 
     # A. OK% (2-tick streak = 2min for WARN, 1-tick for CRIT)
     ok_drop = _streak('ok_drop', ok_rate < 99.0)
