@@ -3169,7 +3169,7 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <div class="px-panel-header">🎰 LIVE TABLES</div>
 <div style="padding:var(--sp-md)">
 <div id="table-list"></div>
-<div style="margin-top:var(--sp-lg);text-align:center"><button class="btn-watch px-btn px-btn-pink" onclick="watch()" style="font-size:1.2em;padding:14px 40px"><span>👀 관전하기</span></button></div>
+<!-- 관전 버튼은 상단 배너에 통합 -->
 </div>
 </div>
 <div class="px-panel px-frame" style="margin-top:var(--sp-md)">
