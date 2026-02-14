@@ -2687,19 +2687,17 @@ HTML_PAGE = r"""<!DOCTYPE html>
 }
 /* ═══ B) PIXEL THEME ═══ */
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#0a0c12;color:var(--text-primary);font-family:var(--font-pixel);min-height:100vh;overflow-x:hidden;padding-bottom:50px;
-background-image:
-  radial-gradient(ellipse at 20% 50%,rgba(245,197,66,0.03),transparent 50%),
-  radial-gradient(ellipse at 80% 20%,rgba(139,92,246,0.03),transparent 40%),
-  radial-gradient(ellipse at 50% 80%,rgba(245,197,66,0.02),transparent 50%);
+body{background:#070A10;color:var(--text-primary);font-family:var(--font-pixel);min-height:100vh;overflow-x:hidden;padding-bottom:50px;
 }
-body::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;
-background:
-radial-gradient(600px 600px at 10% 90%,rgba(245,197,66,0.02),transparent),
-radial-gradient(400px 400px at 90% 10%,rgba(139,92,246,0.02),transparent),
-radial-gradient(300px 300px at 50% 50%,rgba(245,197,66,0.015),transparent);
+body::before{content:'';position:fixed;inset:0;
+background:url('/static/slimes/casino_wall_tile.png') repeat;
+background-size:256px 256px;
+opacity:0.18;image-rendering:pixelated;pointer-events:none;z-index:0;
 opacity:1}
-body::after{content:none}
+body::after{content:'';position:fixed;inset:0;
+background:radial-gradient(circle at 50% 35%,rgba(255,220,120,0.08),transparent 55%),
+radial-gradient(circle at 50% 50%,transparent 40%,rgba(0,0,0,0.6) 100%);
+pointer-events:none;z-index:0}
 .forest-top{display:none}
 .forest-deco{display:none}
 @keyframes starTwinkle{0%{opacity:0.5}50%{opacity:1}100%{opacity:0.6}}
@@ -2730,10 +2728,10 @@ h1 b{color:var(--accent-gold);-webkit-text-fill-color:var(--accent-gold)}
 @media(max-width:700px){.lobby-grid{grid-template-columns:1fr!important}}
 #game{display:none}
 .info-bar{position:sticky;top:0;z-index:40;display:flex;justify-content:space-between;align-items:center;padding:8px 16px;font-size:0.8em;color:var(--text-light);background:linear-gradient(180deg,rgba(18,16,24,0.98),rgba(10,13,18,0.98));border-bottom:2px solid rgba(245,197,66,0.2);box-shadow:0 4px 16px rgba(0,0,0,0.5),0 1px 0 rgba(245,197,66,0.08);font-family:var(--font-pixel);backdrop-filter:blur(12px)}
-.felt-wrap{position:relative;margin:4px auto 8px;padding-top:30px}
-.felt-border{position:absolute;top:-8px;left:-8px;right:-8px;bottom:-8px;
-background:transparent;
-border-radius:22px;border:none;
+.felt-wrap{position:relative;margin:4px auto 8px;padding-top:30px;width:min(1200px,94vw);min-height:min(600px,65vh)}
+.felt-border{position:absolute;top:-20px;left:-20px;right:-20px;bottom:-20px;
+background:url('/static/slimes/stage_frame.png') center/100% 100% no-repeat;
+border-radius:0;border:none;image-rendering:auto;pointer-events:none;
 box-shadow:0 8px 32px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.05);
 z-index:0}
 .felt-border::before{content:none}
@@ -3120,7 +3118,7 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 .chair-sprite { width: 76px; height: 60px; position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); z-index: 1; opacity: 0.85; pointer-events: none; }
 .chair-sprite img { width: 100%; height: 100%; object-fit: contain; }
 .slime-sprite { position: relative; z-index: 2; }
-.slime-sprite img { width: 72px; height: 72px; object-fit: contain; }
+.slime-sprite img { width: 88px; height: 88px; object-fit: contain; image-rendering: pixelated; }
 .chair-shadow { position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%); width: 64px; height: 8px; background: radial-gradient(ellipse, rgba(0,0,0,0.25), transparent); border-radius: 50%; z-index: 0; pointer-events: none; }
 .seat.is-turn .chair-sprite { filter: drop-shadow(0 0 8px rgba(245,197,66,0.3)); }
 .seat.fold .chair-sprite, .seat.fold .slime-sprite { opacity: 0.35; filter: grayscale(0.5); }
@@ -4773,17 +4771,17 @@ function inferTraitsFromStyle(p) {
 }
 // === Slime PNG mapping (NPC + generic) ===
 const SLIME_PNG_MAP = {
-  '딜러봇': '/static/slimes/pixel_sapphire.png',
-  '도박꾼': '/static/slimes/pixel_ruby.png',
-  '고수': '/static/slimes/pixel_emerald.png',
-  '초보': '/static/slimes/pixel_amber.png',
-  '상어': '/static/slimes/mint_confident.png',
+  '딜러봇': '/static/slimes/sit_sapphire.png',
+  '도박꾼': '/static/slimes/sit_ruby.png',
+  '고수': '/static/slimes/sit_emerald.png',
+  '초보': '/static/slimes/sit_amber.png',
+  '상어': '/static/slimes/lavender_calm.png',
   '여우': '/static/slimes/peach_cheerful.png',
-  'DealerBot': '/static/slimes/pixel_sapphire.png',
-  'Gambler': '/static/slimes/pixel_ruby.png',
-  'Pro': '/static/slimes/pixel_emerald.png',
-  'Newbie': '/static/slimes/pixel_amber.png',
-  'Shark': '/static/slimes/mint_confident.png',
+  'DealerBot': '/static/slimes/sit_sapphire.png',
+  'Gambler': '/static/slimes/sit_ruby.png',
+  'Pro': '/static/slimes/sit_emerald.png',
+  'Newbie': '/static/slimes/sit_amber.png',
+  'Shark': '/static/slimes/lavender_calm.png',
   'Fox': '/static/slimes/peach_cheerful.png',
 };
 const GENERIC_SLIMES = [
@@ -4819,8 +4817,7 @@ function renderSlimeToSeat(name, emotion) {
   // Chair + Slime + Shadow layered system
   return `<div class="seat-unit">` +
     `<div class="chair-shadow"></div>` +
-    `<div class="chair-sprite"><img src="/static/slimes/casino_chair.png" alt="" loading="lazy" onerror="this.remove()"></div>` +
-    `<div class="slime-sprite"><img src="${pngSrc}" width="72" height="72" class="${animClass}" style="filter:drop-shadow(2px 3px 4px rgba(0,0,0,0.2))" alt="${name}" onerror="this.parentElement.innerHTML='<img src=&quot;'+drawSlime('${name.replace(/'/g,"\\'")}','${emotion}',80).toDataURL()+'&quot; width=72 height=72 class=${animClass}>'"></div>` +
+    `<div class="slime-sprite"><img src="${pngSrc}" width="88" height="88" class="${animClass}" style="filter:drop-shadow(2px 4px 6px rgba(0,0,0,0.4));image-rendering:pixelated" alt="${name}" onerror="this.parentElement.innerHTML='<img src=&quot;'+drawSlime('${name.replace(/'/g,"\\'")}','${emotion}',80).toDataURL()+'&quot; width=88 height=88 class=${animClass}>'"></div>` +
     `</div>`;
 }
 // Gold dust sparkles on dark table
