@@ -122,11 +122,25 @@ def analyze(data):
         lift = (b_t - a_t) / a_t * 100
         print(f"\n  📈 Lift (B vs A): {lift:+.1f}%")
     
-    min_imp = min(results.get('A', {}).get('imp', 0), results.get('B', {}).get('imp', 0))
-    if min_imp < 100:
-        print(f"  ⚠️  최소 표본 미달 (min={min_imp}, 필요=100). 결론 보류.")
+    # B1 vs B2 판정
+    b1 = results.get('B1', results.get('B', {}))
+    b2 = results.get('B2', {})
+    if b1.get('imp',0) >= 200 and b2.get('imp',0) >= 200:
+        b1t, b2t = b1.get('total_rate',0), b2.get('total_rate',0)
+        winner = 'B1' if b1t >= b2t else 'B2'
+        loser = 'B2' if winner == 'B1' else 'B1'
+        diff = abs(b1t - b2t) / max(b1t, b2t, 0.001) * 100
+        print(f"\n  🏆 판정: {winner} 승 (total {max(b1t,b2t)*100:.1f}% vs {min(b1t,b2t)*100:.1f}%, 차이 {diff:.0f}%)")
+        print(f"  → {winner} 90%로 승격, {loser} 10% 회귀감지 유지 권장")
     else:
-        print(f"  ✅ 표본 충분 (min={min_imp})")
+        min_b = min(b1.get('imp',0), b2.get('imp',0))
+        print(f"\n  ⏸️  판정 보류 (HOLD) — B1/B2 표본 부족 (min={min_b}, 필요=200)")
+
+    min_imp = min(r.get('imp',0) for r in results.values()) if results else 0
+    if min_imp < 100:
+        print(f"  ⚠️  전체 최소 표본 미달 (min={min_imp}, 필요=100)")
+    else:
+        print(f"  ✅ 전체 표본 충분 (min={min_imp})")
 
     # Alerts summary
     alerts = data.get('alerts', [])
