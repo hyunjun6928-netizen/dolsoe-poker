@@ -2043,3 +2043,43 @@ code, pre, #log, .log-box, [data-log] {
 .felt {
   image-rendering: pixelated;
 }
+
+/* === Walker Animations === */
+@keyframes walker-bounce{
+  0%,100%{transform:translateY(0)}
+  50%{transform:translateY(-6px)}
+}
+@keyframes walker-idle{
+  0%,100%{transform:translateY(0) rotate(0deg)}
+  25%{transform:translateY(-2px) rotate(-1deg)}
+  75%{transform:translateY(-1px) rotate(1deg)}
+}
+@keyframes walker-squash{
+  0%{transform:scaleX(1) scaleY(1)}
+  50%{transform:scaleX(1.1) scaleY(0.9)}
+  100%{transform:scaleX(1) scaleY(1)}
+}
+.floor-npc{will-change:left,top}
+.floor-npc .walker-body{transition:transform 0.2s}
+.floor-npc[data-moving="true"] .walker-body{
+  animation:walker-bounce 0.4s ease-in-out infinite;
+}
+.floor-npc[data-moving="false"] .walker-body{
+  animation:walker-idle 2.5s ease-in-out infinite;
+}
+.floor-npc .walker-shadow{
+  position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);
+  width:50px;height:12px;background:radial-gradient(ellipse,rgba(0,0,0,0.5) 0%,transparent 70%);
+  border-radius:50%;pointer-events:none;
+}
+.floor-npc[data-moving="true"] .walker-shadow{
+  animation:shadow-pulse 0.4s ease-in-out infinite;
+}
+@keyframes shadow-pulse{
+  0%,100%{transform:translateX(-50%) scaleX(1)}
+  50%{transform:translateX(-50%) scaleX(0.8)}
+}
+.floor-npc .arrive-squash{animation:walker-squash 0.3s ease-out}
+@media(prefers-reduced-motion:reduce){
+  .floor-npc .walker-body,.floor-npc .walker-shadow{animation:none!important}
+}

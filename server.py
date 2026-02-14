@@ -3799,12 +3799,14 @@ async function loadCasinoFloor(){
       div.className='floor-npc';
       div.dataset.state=isLive?'live':'ghost';
       div.dataset.poi=poi.id;
-      div.style.cssText=`position:absolute;left:${tx}%;top:${ty}%;transform:translate(-50%,-50%);transition:left 2.5s ease-in-out,top 2.5s ease-in-out;cursor:pointer`;
+      div.dataset.moving='false';
+      div.style.cssText=`position:absolute;left:${tx}%;top:${ty}%;transform:translate(-50%,-50%);transition:left 1.8s ease-in-out,top 1.8s ease-in-out;cursor:pointer`;
       if(!isLive)div.style.opacity='0.5';
       if(isLive)div.style.filter='drop-shadow(0 0 8px rgba(52,211,153,0.4))';
       const wr=a.hands>0?Math.round(a.wins/a.hands*100):0;
-      div.innerHTML=`<div style="text-align:center">
-        <img src="${img}" width="80" height="80" style="image-rendering:pixelated;filter:drop-shadow(2px 3px 6px rgba(0,0,0,0.7))" onerror="this.src='/static/slimes/walk_suit.png'">
+      div.innerHTML=`<div style="text-align:center;position:relative">
+        <div class="walker-body"><img src="${img}" width="80" height="80" style="image-rendering:pixelated" onerror="this.src='/static/slimes/walk_suit.png'"></div>
+        <div class="walker-shadow"></div>
         <div style="font-size:0.65em;color:${isLive?'var(--accent-mint)':'var(--accent-gold)'};margin-top:2px;white-space:nowrap;text-shadow:0 1px 4px #000;max-width:80px;overflow:hidden;text-overflow:ellipsis;font-family:var(--font-pixel);background:rgba(0,0,0,0.5);padding:1px 6px;border-radius:4px">${a.name}</div>
         <div class="npc-bubble" style="display:none;position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:rgba(10,13,18,0.92);color:#eee;padding:3px 8px;border-radius:8px;font-size:0.55em;white-space:nowrap;border:1px solid rgba(245,197,66,0.2);margin-bottom:2px;backdrop-filter:blur(4px)"></div>
       </div>`;
@@ -3820,6 +3822,7 @@ function tickFloor(){
     npc.tick++;
     // Move within POI zone or wander
     if(npc.tick%3===0){
+      const oldX=npc.x;
       const poi=POIS.find(p=>p.id===npc.poi);
       if(poi){
         npc.x=poi.x+Math.random()*poi.w;
@@ -3830,10 +3833,20 @@ function tickFloor(){
         npc.x=Math.max(3,Math.min(95,npc.x));
         npc.y=Math.max(5,Math.min(90,npc.y));
       }
+      const dx=npc.x-oldX;
+      // Face movement direction
+      const body=npc.el.querySelector('.walker-body');
+      if(body&&Math.abs(dx)>1)body.style.transform=dx<0?'scaleX(-1)':'scaleX(1)';
+      // Set moving state for bounce animation
+      npc.el.dataset.moving='true';
       npc.el.style.left=npc.x+'%';
       npc.el.style.top=npc.y+'%';
-      const img=npc.el.querySelector('img');
-      if(img)img.style.transform=Math.random()>0.5?'scaleX(-1)':'scaleX(1)';
+      // Stop bouncing after transition ends, add arrival squash
+      clearTimeout(npc._moveTimer);
+      npc._moveTimer=setTimeout(()=>{
+        npc.el.dataset.moving='false';
+        if(body){body.classList.add('arrive-squash');setTimeout(()=>body.classList.remove('arrive-squash'),300);}
+      },1900);
     }
     // Switch POI occasionally
     if(npc.tick%12===0&&Math.random()<0.3){
