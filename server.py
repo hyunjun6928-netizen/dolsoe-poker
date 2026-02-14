@@ -3262,8 +3262,8 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <div id="banner-body" style="font-size:0.85em;color:var(--text-secondary);line-height:1.5;margin-bottom:10px"></div>
 <div id="lobby-join-badge" style="display:none;margin-bottom:8px"><span style="background:var(--accent-mint);color:var(--bg-dark);padding:4px 12px;border-radius:var(--radius);font-size:0.8em;font-weight:700">✅ Seat locked — 내 봇 참전 중</span></div>
 <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap">
-<button class="btn-watch px-btn px-btn-pink" onclick="_tele.watch_source='banner';watch()" style="font-size:0.9em;padding:8px 20px">👀 관전: 지금 바로 입장</button>
-<a href="/docs" onclick="_tele.docs_click.banner++" style="display:inline-flex;align-items:center;gap:4px;font-size:0.85em;padding:8px 16px;border:1px solid var(--accent-mint);border-radius:var(--radius);color:var(--accent-mint);text-decoration:none">🤖 참전: /docs → POST /api/join</a>
+<button class="btn-watch px-btn px-btn-pink" onclick="if(typeof _tele!=='undefined')_tele.watch_source='banner';watch()" style="font-size:0.9em;padding:8px 20px">👀 관전: 지금 바로 입장</button>
+<a href="/docs" onclick="try{_tele.docs_click.banner++}catch(e){}" style="display:inline-flex;align-items:center;gap:4px;font-size:0.85em;padding:8px 16px;border:1px solid var(--accent-mint);border-radius:var(--radius);color:var(--accent-mint);text-decoration:none">🤖 참전: /docs → POST /api/join</a>
 </div>
 </div>
 <div class="lobby-grid">
@@ -3325,7 +3325,7 @@ while True: state = requests.get(URL+'/api/state?player=내봇').json(); time.sl
 <div style="margin-bottom:4px"><span style="color:#3B82F6;font-weight:700">IronClaw</span> — 탱커. 4라운드 버팀.</div>
 <div style="margin-bottom:4px"><span style="color:#34D399;font-weight:700">Shadow</span> — 은신. 네가 눈치챘을 땐 이미 늦음.</div>
 <div style="margin-bottom:6px"><span style="color:#F59E0B;font-weight:700">Berserker</span> — 틸트? 그게 전략임.</div>
-<div style="color:var(--text-muted);font-size:0.9em;border-top:1px solid var(--frame);padding-top:6px">네 봇이 여기서 10핸드 살아남으면 대단한 거다.<br>관전은 무료. 참전은 <a href="/docs" onclick="_tele.docs_click.intimidation++" style="color:var(--accent-blue)">/docs</a>에서 토큰 받아와.</div>
+<div style="color:var(--text-muted);font-size:0.9em;border-top:1px solid var(--frame);padding-top:6px">네 봇이 여기서 10핸드 살아남으면 대단한 거다.<br>관전은 무료. 참전은 <a href="/docs" onclick="try{_tele.docs_click.intimidation++}catch(e){}" style="color:var(--accent-blue)">/docs</a>에서 토큰 받아와.</div>
 </div>
 </div>
 <div style="margin-top:var(--sp-md);text-align:center">
@@ -3340,7 +3340,7 @@ while True: state = requests.get(URL+'/api/state?player=내봇').json(); time.sl
 <div id="broadcast-body" style="font-size:0.9em;color:var(--text-secondary);line-height:1.6;margin-bottom:16px">24시간 무정지 AI 포커 생중계.<br>4개의 AI 슬라임이 실시간으로 판을 깔고, 속이고, 털린다.<br>당신은 관전석에서 모든 판을 지켜본다.</div>
 <div id="broadcast-cta" style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap">
 <button onclick="dismissBroadcastOverlay()" style="font-size:1em;padding:10px 28px;background:var(--accent-pink);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-weight:700">📡 관전 시작</button>
-<a href="/docs" onclick="_tele.docs_click.overlay++" style="display:inline-flex;align-items:center;font-size:0.9em;padding:10px 20px;border:1px solid var(--accent-mint);border-radius:var(--radius);color:var(--accent-mint);text-decoration:none">⚔️ 봇으로 도전 →</a>
+<a href="/docs" onclick="try{_tele.docs_click.overlay++}catch(e){}" style="display:inline-flex;align-items:center;font-size:0.9em;padding:10px 20px;border:1px solid var(--accent-mint);border-radius:var(--radius);color:var(--accent-mint);text-decoration:none">⚔️ 봇으로 도전 →</a>
 </div>
 </div>
 </div>
@@ -5173,44 +5173,17 @@ ov.classList.add('hidden');ov.setAttribute('aria-hidden','true');
 }
 let _prevWinnerKey='';
 
-// === 🎰 Casino Lobby System (POI + Walkers + Slot + Log) ===
-const POIS=[
-{id:'slot',label:'🎰 Slot',x:0.13,y:0.28,r:0.06,action:'slot'},
-{id:'bar',label:'🍸 Bar',x:0.72,y:0.20,r:0.06,action:'drink'},
-{id:'table',label:'🃏 Table',x:0.38,y:0.55,r:0.08,action:'cheer'},
-{id:'vip',label:'🚪 VIP',x:0.88,y:0.30,r:0.05,action:'idle'},
-];
+// === 🎰 Slot pull + Lobby log (uses existing POI/floor system) ===
 const SLOT_RESULTS=[
 {w:70,label:'💨 Miss',tier:'miss'},{w:25,label:'🍒 Small Win!',tier:'small'},
 {w:4.5,label:'💎 Rare!',tier:'rare'},{w:0.5,label:'🎰 JACKPOT!',tier:'jackpot'}
 ];
-const POI_EMOJIS={slot:['🎰','🎲','💰'],drink:['🍸','🍺','😵'],cheer:['👏','🔥','😱'],idle:['🚬','🕶️','💤']};
-let _lobbyWalkers=[];
-let _lobbyInterval=null;
 let _slotCooldown=0;
-
 function lobbyLog(msg){
 const el=document.getElementById('lobby-log');
 if(!el)return;el.textContent=msg;el.style.opacity='1';
 setTimeout(()=>{el.style.opacity='0.4'},4000);
 }
-function pickPoi(excludeId){
-const ch=POIS.filter(p=>p.id!==excludeId);
-return ch[(Math.random()*ch.length)|0];
-}
-function mountPOIs(){
-const layer=document.getElementById('poi-layer');if(!layer)return;
-layer.innerHTML='';layer.style.cssText='position:absolute;inset:0;pointer-events:none;z-index:1';
-for(const p of POIS){
-const el=document.createElement('div');
-el.className='poi-hotspot';el.dataset.poi=p.id;
-el.style.cssText=`position:absolute;left:${(p.x-p.r)*100}%;top:${(p.y-p.r)*100}%;width:${p.r*2*100}%;height:${p.r*2*100}%;pointer-events:auto;cursor:pointer;border-radius:50%;transition:background 0.2s`;
-el.title=p.label;
-el.addEventListener('mouseenter',()=>{el.style.background='rgba(245,197,66,0.08)'});
-el.addEventListener('mouseleave',()=>{el.style.background='none'});
-if(p.id==='slot'){el.addEventListener('click',()=>pullSlot())}
-layer.appendChild(el);
-}}
 function pullSlot(){
 if(Date.now()<_slotCooldown)return;
 _slotCooldown=Date.now()+6000;
@@ -5220,72 +5193,12 @@ let r=Math.random()*100,cum=0;
 for(const s of SLOT_RESULTS){cum+=s.w;if(r<=cum){lobbyLog(s.label);break}}
 },1200);
 }
-function createWalkerEl(agent){
-const el=document.createElement('div');el.className='lobby-slime';
-el.innerHTML=`<img src="${agent.sprite||'/static/slimes/sit_emerald.png'}" onerror="this.src='/static/slimes/sit_emerald.png'"><div class="tag">${agent.name}</div>`;
-return el;
-}
-function lerp(a,b,t){return a+(b-a)*t}
-function tickWalkers(){
-const root=document.getElementById('casino-walkers');if(!root)return;
-const W=root.offsetWidth||window.innerWidth,H=root.offsetHeight||window.innerHeight;
-const reducedMotion=window.matchMedia('(prefers-reduced-motion:reduce)').matches;
-for(const w of _lobbyWalkers){
-if(!w.el.parentNode)root.appendChild(w.el);
-if(w.arrived){
-w.dwellLeft-=500;
-if(w.dwellLeft<=0){
-const next=pickPoi(w.poi);w.poi=next.id;w.tx=next.x;w.ty=next.y;
-w.arrived=false;w.dwellLeft=0;
-const emojis=POI_EMOJIS[next.action]||['💤'];
-lobbyLog(`${emojis[(Math.random()*emojis.length)|0]} ${w.name} → ${next.label}`);
-}}else{
-const speed=reducedMotion?1:0.015;
-w.x=lerp(w.x,w.tx,speed);w.y=lerp(w.y,w.ty,speed);
-if(Math.abs(w.x-w.tx)<0.01&&Math.abs(w.y-w.ty)<0.01){
-w.x=w.tx;w.y=w.ty;w.arrived=true;
-w.dwellLeft=3000+Math.random()*5000;
-const poi=POIS.find(p=>p.id===w.poi);
-if(poi){const emojis=POI_EMOJIS[poi.action]||['💤'];
-lobbyLog(`${emojis[(Math.random()*emojis.length)|0]} ${w.name}: ${poi.label}에서 활동 중`)}
-}}
-w.el.style.left=(w.x*W)+'px';w.el.style.top=(w.y*H)+'px';
-}}
-async function fetchLobbyAgents(){
-try{
-const r=await fetch('/api/lobby_agents');if(!r.ok)throw new Error('fail');
-const d=await r.json();return d.agents||[];
-}catch(e){
-try{return JSON.parse(localStorage.getItem('recent_agents')||'[]').map(a=>({name:a.name,sprite:a.avatarUrl||'/static/slimes/sit_emerald.png',title:'',stats:{}}))}catch(e2){return[]}
-}}
 function recordLobbyAgent(agent){
 try{const key='recent_agents';
 const arr=JSON.parse(localStorage.getItem(key)||'[]');
 const next=[{...agent,ts:Date.now()},...arr.filter(x=>x.name!==agent.name)].slice(0,30);
 localStorage.setItem(key,JSON.stringify(next));}catch(e){}
 }
-async function initLobby(){
-if(!document.body.classList.contains('is-lobby'))return;
-mountPOIs();
-const agents=await fetchLobbyAgents();
-const root=document.getElementById('casino-walkers');if(!root)return;
-root.innerHTML='';_lobbyWalkers=[];
-const fc=document.getElementById('floor-count');if(fc)fc.textContent=agents.length;
-agents.slice(0,12).forEach((a,i)=>{
-const startPoi=POIS[i%POIS.length];
-const el=createWalkerEl(a);
-const w={name:a.name,el,x:startPoi.x+(Math.random()*0.06-0.03),y:startPoi.y+(Math.random()*0.06-0.03),tx:startPoi.x,ty:startPoi.y,poi:startPoi.id,arrived:true,dwellLeft:2000+Math.random()*4000};
-_lobbyWalkers.push(w);root.appendChild(el);
-});
-if(_lobbyInterval)clearInterval(_lobbyInterval);
-_lobbyInterval=setInterval(tickWalkers,500);
-// Refresh agents every 30s
-setInterval(async()=>{
-const fresh=await fetchLobbyAgents();
-const fc2=document.getElementById('floor-count');if(fc2)fc2.textContent=fresh.length;
-},30000);
-}
-initLobby();
 
 // === 🌿🍄 Forest Decorations v2 — PX=2 HD ===
 (function(){
