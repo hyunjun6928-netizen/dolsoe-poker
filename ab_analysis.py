@@ -132,6 +132,16 @@ def analyze(data):
         diff = abs(b1t - b2t) / max(b1t, b2t, 0.001) * 100
         print(f"\n  🏆 판정: {winner} 승 (total {max(b1t,b2t)*100:.1f}% vs {min(b1t,b2t)*100:.1f}%, 차이 {diff:.0f}%)")
         print(f"  → {winner} 90%로 승격, {loser} 10% 회귀감지 유지 권장")
+        print(f"\n  📋 커밋 메시지:")
+        print(f'  git commit -m "chore(ab): promote {winner} to 90%, keep {loser} 10% (total {max(b1t,b2t)*100:.1f}% vs {min(b1t,b2t)*100:.1f}%, n={b1.get("imp",0)}+{b2.get("imp",0)})"')
+        # Decision log
+        now = datetime.now(KST).strftime('%Y-%m-%d %H:%M')
+        since_str = datetime.fromtimestamp(SINCE, KST).strftime('%m/%d %H:%M') if SINCE else 'all'
+        until_str = datetime.fromtimestamp(UNTIL, KST).strftime('%m/%d %H:%M') if UNTIL else 'all'
+        log_line = f"AB_DECISION | {now} | {since_str}~{until_str} | {winner} win | total {max(b1t,b2t)*100:.1f}% vs {min(b1t,b2t)*100:.1f}% | n={b1.get('imp',0)}+{b2.get('imp',0)} | → {winner} 90% {loser} 10%"
+        log_path = os.path.join(os.path.dirname(__file__) or '.', 'ab_decisions.log')
+        with open(log_path, 'a') as f: f.write(log_line + '\n')
+        print(f"\n  📝 판정 기록: {log_path}")
     else:
         min_b = min(b1.get('imp',0), b2.get('imp',0))
         print(f"\n  ⏸️  판정 보류 (HOLD) — B1/B2 표본 부족 (min={min_b}, 필요=200)")
