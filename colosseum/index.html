@@ -97,7 +97,7 @@ class Fighter {
   constructor(data, side) {
     this.d = data;
     this.side = side;
-    this.x = side === 'left' ? 200 : 600;
+    this.x = side === 'left' ? 120 : 680;
     this.y = 350;
     this.vx = 0;
     this.hp = data.hp;
@@ -280,7 +280,7 @@ class Fighter {
 
     // Apply velocity
     this.x += this.vx;
-    this.vx *= 0.85;
+    this.vx *= 0.9;
 
     // Boundaries
     this.x = Math.max(60, Math.min(W - 60, this.x));
@@ -458,11 +458,11 @@ function execAction(me, foe, act) {
       break;
 
     case 'dash':
-      me.vx = me.facing * 8;
+      me.vx = me.facing * 14;
       me.state = 'dash';
       me.frame = 0;
-      me.cooldown = 12;
-      me.dashTimer = 8;
+      me.cooldown = 15;
+      me.dashTimer = 10;
       break;
 
     case 'block':
@@ -494,7 +494,7 @@ function doAttack(me, foe) {
 
   setTimeout(() => {
     if (!foe.alive || me.dead) return;
-    if (me.dist > 120) { spawnDmg(foe.x, foe.y - 70, 'MISS', COL.grey); return; }
+    if (me.dist > 110) { spawnDmg(foe.x, foe.y - 70, 'MISS', COL.grey); return; }
 
     // Dodge check
     if (Math.random() < foe.d.spd * 0.008) {
@@ -518,7 +518,7 @@ function doAttack(me, foe) {
 
     dmg = Math.max(1, Math.floor(dmg - foe.d.def * 0.3));
     foe.takeDamage(dmg, true);
-    foe.knockback(3 + (crit ? 3 : 0));
+    foe.knockback(8 + (crit ? 6 : 0));
 
     // Meter gain
     me.meter = Math.min(100, me.meter + 5);
@@ -572,8 +572,8 @@ function doSpecial(me, foe) {
     if (fx === 'berserker') { dmg += Math.floor(me.rage * 0.2); }
 
     foe.takeDamage(dmg, true);
-    foe.knockback(6);
-    foe.launch(5);
+    foe.knockback(12);
+    foe.launch(7);
     spawnBlood(foe.x, foe.y - foe.juggleY, 15);
     shake(8);
     slowmo = 8;
@@ -602,8 +602,8 @@ function doSuper(me, foe) {
     dmg = Math.max(5, Math.floor(dmg - foe.d.def * 0.15));
 
     foe.takeDamage(dmg, false); // unblockable
-    foe.knockback(10);
-    foe.launch(10);
+    foe.knockback(18);
+    foe.launch(12);
     spawnBlood(foe.x, foe.y - foe.juggleY, 30);
     spawnSpark(foe.x, foe.y - foe.juggleY - 20, 15, COL.gold);
 
@@ -1189,9 +1189,9 @@ function goNextRound() {
   roundNum++;
   // Reset fighters for new round
   p1.hp = p1.maxHp; p1.meter = 0; p1.dead = false; p1.state = 'idle'; p1.frame = 0;
-  p1.x = 200; p1.juggleY = 0; p1.airborne = false; p1.poison = 0; p1.frozen = 0; p1.comboCount = 0;
+  p1.x = 120; p1.juggleY = 0; p1.airborne = false; p1.poison = 0; p1.frozen = 0; p1.comboCount = 0;
   p2.hp = p2.maxHp; p2.meter = 0; p2.dead = false; p2.state = 'idle'; p2.frame = 0;
-  p2.x = 600; p2.juggleY = 0; p2.airborne = false; p2.poison = 0; p2.frozen = 0; p2.comboCount = 0;
+  p2.x = 680; p2.juggleY = 0; p2.airborne = false; p2.poison = 0; p2.frozen = 0; p2.comboCount = 0;
   bloodStains = []; particles = []; dmgTexts = [];
   introTimer = 0;
   scene = 'intro';
