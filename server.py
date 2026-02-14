@@ -3877,7 +3877,7 @@ async function loadCasinoFloor(){
       // v3.15: unified style via CSS data-state, no inline filter
       const wr=a.hands>0?Math.round(a.wins/a.hands*100):0;
       div.innerHTML=`<div style="text-align:center;position:relative">
-        <div class="walker-body"><img src="${img}" width="80" height="80" style="image-rendering:pixelated" onerror="this.src='/static/slimes/px_walk_suit.png'"></div>
+        <div class="walker-body" style="width:80px;height:80px;background:url('${img}') center/contain no-repeat;image-rendering:pixelated"></div>
         <div class="walker-shadow"></div>
         <div style="font-size:11px;color:${isLive?'#FCC88E':'#938B7B'};margin-top:2px;white-space:nowrap;text-shadow:1px 1px 0 #050F1A,-1px -1px 0 #050F1A,1px -1px 0 #050F1A,-1px 1px 0 #050F1A;max-width:80px;overflow:hidden;text-overflow:ellipsis;font-family:var(--font-pixel);background:none;padding:0;border:none">${a.name}</div>
         <div class="npc-bubble" style="display:none;position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:rgba(10,13,18,0.92);color:#eee;padding:3px 8px;border-radius:8px;font-size:0.55em;white-space:nowrap;border:1px solid rgba(245,197,66,0.2);margin-bottom:2px;backdrop-filter:blur(4px)"></div>
@@ -5533,24 +5533,24 @@ function inferTraitsFromStyle(p) {
 // === Slime PNG mapping (NPC + generic) ===
 // v3.16: Judi-style blob slimes for poker seats
 const SLIME_PNG_MAP = {
-  '딜러봇': '/static/slimes/px_sit_dealer.png',
-  '도박꾼': '/static/slimes/px_sit_casual.png',
-  '고수': '/static/slimes/px_sit_suit.png',
-  'DealerBot': '/static/slimes/px_sit_dealer.png',
-  'Gambler': '/static/slimes/px_sit_casual.png',
-  'Pro': '/static/slimes/px_sit_suit.png',
-  '초보': '/static/slimes/px_sit_casual.png',
-  '상어': '/static/slimes/px_sit_vip.png',
-  '여우': '/static/slimes/px_sit_suit.png',
-  'Newbie': '/static/slimes/px_sit_casual.png',
-  'Shark': '/static/slimes/px_sit_vip.png',
-  'Fox': '/static/slimes/px_sit_suit.png',
+  '딜러봇': '/static/slimes/px_walk_dealer.png',
+  '도박꾼': '/static/slimes/px_walk_gambler.png',
+  '고수': '/static/slimes/px_walk_suit.png',
+  'DealerBot': '/static/slimes/px_walk_dealer.png',
+  'Gambler': '/static/slimes/px_walk_gambler.png',
+  'Pro': '/static/slimes/px_walk_suit.png',
+  '초보': '/static/slimes/px_walk_rookie.png',
+  '상어': '/static/slimes/px_walk_shadow.png',
+  '여우': '/static/slimes/px_walk_rich.png',
+  'Newbie': '/static/slimes/px_walk_rookie.png',
+  'Shark': '/static/slimes/px_walk_shadow.png',
+  'Fox': '/static/slimes/px_walk_rich.png',
 };
 const GENERIC_SLIMES = [
-  '/static/slimes/px_sit_suit.png',
-  '/static/slimes/px_sit_casual.png',
-  '/static/slimes/px_sit_vip.png',
-  '/static/slimes/px_sit_dealer.png',
+  '/static/slimes/px_walk_suit.png',
+  '/static/slimes/px_walk_casual.png',
+  '/static/slimes/px_walk_shadow.png',
+  '/static/slimes/px_walk_dealer.png',
 ];
 const _slimeAssign = {};
 let _genericIdx = 0;
@@ -5580,7 +5580,7 @@ function renderSlimeToSeat(name, emotion) {
   // Chair + Slime + Shadow layered system
   return `<div class="seat-unit">` +
     `<div class="chair-shadow"></div>` +
-    `<div class="slime-sprite"><img src="${pngSrc}" width="88" height="88" class="${animClass}" style="filter:drop-shadow(2px 4px 6px rgba(0,0,0,0.4));image-rendering:pixelated" alt="${name}" onerror="this.parentElement.innerHTML='<img src=&quot;'+drawSlime('${name.replace(/'/g,"\\'")}','${emotion}',80).toDataURL()+'&quot; width=88 height=88 class=${animClass}>'"></div>` +
+    `<div class="slime-sprite"><div style="width:88px;height:88px;background:url('${pngSrc}') center/contain no-repeat;image-rendering:pixelated" class="${animClass}"></div></div>` +
     `</div>`;
 }
 // Gold dust sparkles on dark table
