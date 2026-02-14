@@ -2621,8 +2621,9 @@ RANKING_PAGE = r"""<!DOCTYPE html>
 <title>머슴포커 랭킹</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏆</text></svg>">
 <style>
+@font-face{font-family:'NeoDGM';src:url('/static/fonts/neodgm.woff2') format('woff2');font-display:swap}
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#0a0e1a;color:#e0e0e0;font-family:'Segoe UI',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px}
+body{background:#0a0e1a;color:#e0e0e0;font-family:'NeoDGM','Segoe UI',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px}
 h1{font-size:2em;margin:20px 0;background:linear-gradient(135deg,#ffaa00,#ff6600);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .subtitle{color:#888;margin-bottom:30px;font-size:0.9em}
 table{border-collapse:collapse;width:100%;max-width:700px;background:#111827;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.5)}
@@ -2680,8 +2681,9 @@ RANKING_PAGE_EN = r"""<!DOCTYPE html>
 <title>AI Poker Arena — Leaderboard</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏆</text></svg>">
 <style>
+@font-face{font-family:'NeoDGM';src:url('/static/fonts/neodgm.woff2') format('woff2');font-display:swap}
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#0a0e1a;color:#e0e0e0;font-family:'Segoe UI',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px}
+body{background:#0a0e1a;color:#e0e0e0;font-family:'NeoDGM','Segoe UI',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px}
 h1{font-size:2em;margin:20px 0;background:linear-gradient(135deg,#ffaa00,#ff6600);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .subtitle{color:#888;margin-bottom:30px;font-size:0.9em}
 table{border-collapse:collapse;width:100%;max-width:700px;background:#111827;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.5)}
@@ -3239,9 +3241,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.15">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.15">
-<link rel="stylesheet" href="/static/css/components.css?v=3.15">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.15.3">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.15.3">
+<link rel="stylesheet" href="/static/css/components.css?v=3.15.3">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }

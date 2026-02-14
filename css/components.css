@@ -1905,15 +1905,15 @@ body.fair-on .fair-commentary,
    ═════════════════════════════════════════════════════════ */
 
 /* --- Casino Floor Background --- */
-/* v3.15.2: Casino floor — rich carpet tile, packed feel */
+/* v3.15.3: Casino floor — full baked map (Stardew Valley density) */
 #casino-floor {
   position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  /* Rich casino carpet — tiled for full coverage */
-  background: url("/static/slimes/px_casino_carpet.png") repeat;
-  background-size: 192px 192px; /* 1.5x for visibility */
+  /* Primary: dense casino lobby map; Fallback: carpet tile */
+  background:
+    url("/static/slimes/px_lobby_map.png") center/cover no-repeat;
   image-rendering: pixelated;
 }
 #casino-floor::after {
@@ -1927,13 +1927,15 @@ body.fair-on .fair-commentary,
     linear-gradient(to bottom, rgba(0,0,0,0.35), rgba(0,0,0,0.55));
   pointer-events: none;
 }
-/* In-game: casino floor stays as background, dimmed */
+/* In-game: switch to ingame map — table + surrounding casino */
 body.in-game #casino-floor {
   display: block;
   position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
+  background: url("/static/slimes/px_ingame_map.png") center/cover no-repeat !important;
+  image-rendering: pixelated;
 }
 body.in-game #casino-floor #floor-agents,
 body.in-game #casino-floor #poi-layer,
