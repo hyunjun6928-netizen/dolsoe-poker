@@ -356,6 +356,38 @@ def get_streak_badge(name):
 
 # ══ 관전자 베팅 ══
 spectator_bets = {}  # table_id -> {hand_num -> {spectator_name -> {'pick':player_name,'amount':int}}}
+# ── Lobby Agent Registry (in-memory, 24h TTL) ──
+_lobby_agents = {}  # name -> {name,sprite,title,last_seen,stats:{hands,win_rate,allins}}
+_LOBBY_TTL = 86400  # 24h
+
+def _lobby_record(name, sprite=None, title=None, stats=None):
+    import time as _t
+    now = _t.time()
+    if name in _lobby_agents:
+        a = _lobby_agents[name]
+        a['last_seen'] = now
+        if sprite: a['sprite'] = sprite
+        if title: a['title'] = title
+        if stats:
+            for k,v in stats.items(): a['stats'][k] = v
+    else:
+        _lobby_agents[name] = {
+            'name': name,
+            'sprite': sprite or f'/static/slimes/sit_emerald.png',
+            'title': title or '',
+            'last_seen': now,
+            'stats': stats or {'hands':0,'win_rate':0,'allins':0}
+        }
+    # Evict stale
+    cutoff = now - _LOBBY_TTL
+    stale = [k for k,v in _lobby_agents.items() if v['last_seen'] < cutoff]
+    for k in stale: del _lobby_agents[k]
+
+def _lobby_get_agents():
+    import time as _t
+    cutoff = _t.time() - _LOBBY_TTL
+    return [v for v in _lobby_agents.values() if v['last_seen'] >= cutoff]
+
 _telemetry_log = []  # client telemetry beacon store (in-memory, last 500)
 _tele_rate = {}  # IP -> (count, first_ts) for rate limiting
 _tele_summary = {'ok_total':0,'err_total':0,'success_rate':100,'rtt_avg':0,'rtt_p95':0,
@@ -1376,6 +1408,9 @@ class Table:
             if self.pot>=200: self._save_highlight(record,'bigpot')
             update_leaderboard(w['name'], True, self.pot, self.pot)
             update_agent_stats(w['name'], net=self.pot, win=True, hand_num=self.hand_num)
+            _ps = self.player_stats.get(w['name'],{})
+            _h = max(_ps.get('hands',1),1)
+            _lobby_record(w['name'], stats={'hands':_h,'win_rate':round(_ps.get('wins',0)/_h,2),'allins':_ps.get('allins',0)})
             # win_quote for fold win
             win_q=w.get('meta',{}).get('win_quote','')
             if win_q: await self.add_log(f"💬 {w['emoji']} {w['name']}: \"{win_q}\"")
@@ -1592,6 +1627,11 @@ def fill_npc_bots(t, count=2):
 def init_mersoom_table():
     t = get_or_create_table('mersoom')
     fill_npc_bots(t, 3)  # NPC 3마리 기본 배치
+    # Register NPCs in lobby
+    npc_sprites = {'딜러봇':'/static/slimes/sit_sapphire.png','도박꾼':'/static/slimes/sit_ruby.png','고수':'/static/slimes/sit_emerald.png'}
+    for s in t.seats:
+        sp = npc_sprites.get(s['name'], '/static/slimes/sit_amber.png')
+        _lobby_record(s['name'], sprite=sp, title='NPC')
     asyncio.get_event_loop().call_soon(lambda: asyncio.create_task(auto_start_mersoom(t)))
     return t
 
@@ -1838,10 +1878,16 @@ async def handle_client(reader, writer):
         join_src = sanitize_name(d.get('src',''))[:30] or 'direct'
         _telemetry_log.append({'ts':time.time(),'ev':'join_success','name':name,'table':t.id,'src':join_src})
         touch_agent(name, t.id, d.get('strategy','')[:20] or None)
+        _lobby_record(name, sprite=f'/static/slimes/sit_emerald.png', title=meta_strategy or meta_bio or '')
         await send_json(writer,{'ok':True,'table_id':t.id,'your_seat':len(t.seats)-1,
             'players':[s['name'] for s in t.seats],'token':token})
     elif method=='GET' and route=='/api/version':
         await send_json(writer,{'version':APP_VERSION,'ok':True})
+        return
+    elif method=='GET' and route=='/api/lobby_agents':
+        import time as _t
+        agents = _lobby_get_agents()
+        await send_json(writer,{'ok':True,'server_time':_t.time(),'agents':agents})
         return
     elif method=='GET' and route=='/api/state':
         tid=qs.get('table_id',[''])[0]; player=qs.get('player',[''])[0]
@@ -3206,13 +3252,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <div id="lobby">
 <!-- Casino Floor: living lobby -->
 <div id="casino-floor" aria-hidden="true">
+<div id="poi-layer"></div>
 <div id="casino-walkers"></div>
-<!-- POI zones -->
-<div id="poi-slots" data-poi="slot" style="position:absolute;left:2%;top:10%;width:25%;height:45%"></div>
-<div id="poi-table" data-poi="table" style="position:absolute;left:25%;top:40%;width:30%;height:50%"></div>
-<div id="poi-bar" data-poi="bar" style="position:absolute;left:55%;top:5%;width:25%;height:35%"></div>
-<div id="poi-vip" data-poi="vip" style="position:absolute;left:82%;top:10%;width:16%;height:40%"></div>
-<div id="floor-agents" style="position:absolute;inset:0;z-index:3"></div>
+<div id="lobby-log" style="position:absolute;bottom:40px;left:50%;transform:translateX(-50%);z-index:5;font-family:var(--font-pixel);font-size:0.75em;color:rgba(255,248,220,0.85);text-shadow:0 1px 4px #000;background:rgba(0,0,0,0.6);padding:4px 16px;border-radius:4px;border:1px solid rgba(212,175,90,0.2);white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis;transition:opacity 0.3s"></div>
 <div style="position:absolute;bottom:12px;left:50%;transform:translateX(-50%);color:rgba(245,197,66,0.6);font-size:0.7em;z-index:4;white-space:nowrap;font-family:var(--font-pixel);text-shadow:0 1px 4px #000;background:rgba(0,0,0,0.5);padding:4px 16px;border-radius:20px;border:1px solid rgba(245,197,66,0.15)">🎰 <span id="floor-count">0</span>명의 AI가 활동 중</div>
 </div>
 <div id="lobby-banner" style="text-align:center;margin-bottom:12px;padding:20px 24px;background:rgba(10,13,20,0.8);border:2px solid rgba(245,197,66,0.25);border-radius:4px;box-shadow:0 0 30px rgba(0,0,0,0.6),0 0 60px rgba(245,197,66,0.08);backdrop-filter:blur(16px);font-family:var(--font-pixel)">
@@ -5131,30 +5173,119 @@ ov.classList.add('hidden');ov.setAttribute('aria-hidden','true');
 }
 let _prevWinnerKey='';
 
-// === 🎰 Lobby Walkers ===
-function renderLobbyWalkers(){
-const root=document.getElementById('casino-walkers');if(!root)return;
-let agents=[];try{agents=JSON.parse(localStorage.getItem('recent_agents')||'[]')}catch(e){}
-root.innerHTML='';
-const W=window.innerWidth,H=window.innerHeight;
-agents.slice(0,10).forEach((a,i)=>{
-const el=document.createElement('div');el.className='lobby-slime';
-el.style.left=(W*0.15+(i%5)*W*0.14)+'px';
-el.style.top=(H*0.20+Math.floor(i/5)*H*0.22)+'px';
-el.innerHTML='<img src="'+(a.avatarUrl||'/static/slimes/sit_emerald.png')+'" onerror="this.src=\\'/static/slimes/sit_emerald.png\\'"><div class="tag">'+a.name+'</div>';
-root.appendChild(el);
-if(!window.matchMedia('(prefers-reduced-motion:reduce)').matches){
-const dx=(Math.random()*120-60),dy=(Math.random()*80-40);
-el.animate([{transform:'translate(-50%,-50%)'},{transform:'translate(calc(-50% + '+dx+'px),calc(-50% + '+dy+'px))'},{transform:'translate(-50%,-50%)'}],{duration:8000+Math.random()*5000,iterations:Infinity});
-}});
+// === 🎰 Casino Lobby System (POI + Walkers + Slot + Log) ===
+const POIS=[
+{id:'slot',label:'🎰 Slot',x:0.13,y:0.28,r:0.06,action:'slot'},
+{id:'bar',label:'🍸 Bar',x:0.72,y:0.20,r:0.06,action:'drink'},
+{id:'table',label:'🃏 Table',x:0.38,y:0.55,r:0.08,action:'cheer'},
+{id:'vip',label:'🚪 VIP',x:0.88,y:0.30,r:0.05,action:'idle'},
+];
+const SLOT_RESULTS=[
+{w:70,label:'💨 Miss',tier:'miss'},{w:25,label:'🍒 Small Win!',tier:'small'},
+{w:4.5,label:'💎 Rare!',tier:'rare'},{w:0.5,label:'🎰 JACKPOT!',tier:'jackpot'}
+];
+const POI_EMOJIS={slot:['🎰','🎲','💰'],drink:['🍸','🍺','😵'],cheer:['👏','🔥','😱'],idle:['🚬','🕶️','💤']};
+let _lobbyWalkers=[];
+let _lobbyInterval=null;
+let _slotCooldown=0;
+
+function lobbyLog(msg){
+const el=document.getElementById('lobby-log');
+if(!el)return;el.textContent=msg;el.style.opacity='1';
+setTimeout(()=>{el.style.opacity='0.4'},4000);
 }
+function pickPoi(excludeId){
+const ch=POIS.filter(p=>p.id!==excludeId);
+return ch[(Math.random()*ch.length)|0];
+}
+function mountPOIs(){
+const layer=document.getElementById('poi-layer');if(!layer)return;
+layer.innerHTML='';layer.style.cssText='position:absolute;inset:0;pointer-events:none;z-index:1';
+for(const p of POIS){
+const el=document.createElement('div');
+el.className='poi-hotspot';el.dataset.poi=p.id;
+el.style.cssText=`position:absolute;left:${(p.x-p.r)*100}%;top:${(p.y-p.r)*100}%;width:${p.r*2*100}%;height:${p.r*2*100}%;pointer-events:auto;cursor:pointer;border-radius:50%;transition:background 0.2s`;
+el.title=p.label;
+el.addEventListener('mouseenter',()=>{el.style.background='rgba(245,197,66,0.08)'});
+el.addEventListener('mouseleave',()=>{el.style.background='none'});
+if(p.id==='slot'){el.addEventListener('click',()=>pullSlot())}
+layer.appendChild(el);
+}}
+function pullSlot(){
+if(Date.now()<_slotCooldown)return;
+_slotCooldown=Date.now()+6000;
+lobbyLog('🎰 레버 당기는 중...');
+setTimeout(()=>{
+let r=Math.random()*100,cum=0;
+for(const s of SLOT_RESULTS){cum+=s.w;if(r<=cum){lobbyLog(s.label);break}}
+},1200);
+}
+function createWalkerEl(agent){
+const el=document.createElement('div');el.className='lobby-slime';
+el.innerHTML=`<img src="${agent.sprite||'/static/slimes/sit_emerald.png'}" onerror="this.src='/static/slimes/sit_emerald.png'"><div class="tag">${agent.name}</div>`;
+return el;
+}
+function lerp(a,b,t){return a+(b-a)*t}
+function tickWalkers(){
+const root=document.getElementById('casino-walkers');if(!root)return;
+const W=root.offsetWidth||window.innerWidth,H=root.offsetHeight||window.innerHeight;
+const reducedMotion=window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+for(const w of _lobbyWalkers){
+if(!w.el.parentNode)root.appendChild(w.el);
+if(w.arrived){
+w.dwellLeft-=500;
+if(w.dwellLeft<=0){
+const next=pickPoi(w.poi);w.poi=next.id;w.tx=next.x;w.ty=next.y;
+w.arrived=false;w.dwellLeft=0;
+const emojis=POI_EMOJIS[next.action]||['💤'];
+lobbyLog(`${emojis[(Math.random()*emojis.length)|0]} ${w.name} → ${next.label}`);
+}}else{
+const speed=reducedMotion?1:0.015;
+w.x=lerp(w.x,w.tx,speed);w.y=lerp(w.y,w.ty,speed);
+if(Math.abs(w.x-w.tx)<0.01&&Math.abs(w.y-w.ty)<0.01){
+w.x=w.tx;w.y=w.ty;w.arrived=true;
+w.dwellLeft=3000+Math.random()*5000;
+const poi=POIS.find(p=>p.id===w.poi);
+if(poi){const emojis=POI_EMOJIS[poi.action]||['💤'];
+lobbyLog(`${emojis[(Math.random()*emojis.length)|0]} ${w.name}: ${poi.label}에서 활동 중`)}
+}}
+w.el.style.left=(w.x*W)+'px';w.el.style.top=(w.y*H)+'px';
+}}
+async function fetchLobbyAgents(){
+try{
+const r=await fetch('/api/lobby_agents');if(!r.ok)throw new Error('fail');
+const d=await r.json();return d.agents||[];
+}catch(e){
+try{return JSON.parse(localStorage.getItem('recent_agents')||'[]').map(a=>({name:a.name,sprite:a.avatarUrl||'/static/slimes/sit_emerald.png',title:'',stats:{}}))}catch(e2){return[]}
+}}
 function recordLobbyAgent(agent){
 try{const key='recent_agents';
 const arr=JSON.parse(localStorage.getItem(key)||'[]');
 const next=[{...agent,ts:Date.now()},...arr.filter(x=>x.name!==agent.name)].slice(0,30);
 localStorage.setItem(key,JSON.stringify(next));}catch(e){}
 }
-if(document.body.classList.contains('is-lobby'))renderLobbyWalkers();
+async function initLobby(){
+if(!document.body.classList.contains('is-lobby'))return;
+mountPOIs();
+const agents=await fetchLobbyAgents();
+const root=document.getElementById('casino-walkers');if(!root)return;
+root.innerHTML='';_lobbyWalkers=[];
+const fc=document.getElementById('floor-count');if(fc)fc.textContent=agents.length;
+agents.slice(0,12).forEach((a,i)=>{
+const startPoi=POIS[i%POIS.length];
+const el=createWalkerEl(a);
+const w={name:a.name,el,x:startPoi.x+(Math.random()*0.06-0.03),y:startPoi.y+(Math.random()*0.06-0.03),tx:startPoi.x,ty:startPoi.y,poi:startPoi.id,arrived:true,dwellLeft:2000+Math.random()*4000};
+_lobbyWalkers.push(w);root.appendChild(el);
+});
+if(_lobbyInterval)clearInterval(_lobbyInterval);
+_lobbyInterval=setInterval(tickWalkers,500);
+// Refresh agents every 30s
+setInterval(async()=>{
+const fresh=await fetchLobbyAgents();
+const fc2=document.getElementById('floor-count');if(fc2)fc2.textContent=fresh.length;
+},30000);
+}
+initLobby();
 
 // === 🌿🍄 Forest Decorations v2 — PX=2 HD ===
 (function(){

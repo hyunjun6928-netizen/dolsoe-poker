@@ -1987,3 +1987,11 @@ code, pre, #log, .log-box, [data-log] {
 @media (prefers-reduced-motion: reduce) {
   .lobby-slime { animation: none !important; }
 }
+
+/* --- POI Hotspots --- */
+#poi-layer { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+.poi-hotspot { border: 1px solid transparent; transition: border-color 0.2s, background 0.2s; }
+.poi-hotspot:hover { border-color: rgba(212,175,90,0.25); }
+
+/* --- Lobby Log Line --- */
+#lobby-log { opacity: 0.4; transition: opacity 0.5s; }
