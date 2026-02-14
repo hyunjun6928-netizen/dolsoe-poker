@@ -3732,11 +3732,11 @@ const FLOOR_BUBBLES={
 };
 // POI zones (% of floor)
 const POIS=[
-  {id:'slot',x:8,y:25,w:20,h:30,cap:3,img:'/static/slimes/slot_machine.png'},
-  {id:'slot2',x:15,y:15,w:8,h:20,cap:2,img:'/static/slimes/slot_machine.png'},
-  {id:'bar',x:62,y:12,w:18,h:25,cap:3,img:'/static/slimes/bar_counter.png'},
-  {id:'table',x:35,y:55,w:22,h:30,cap:4,img:'/static/slimes/poker_table_top.png'},
-  {id:'vip',x:85,y:20,w:12,h:30,cap:2,img:'/static/slimes/vip_door.png'},
+  {id:'slot',x:8,y:25,w:20,h:30,cap:3},
+  {id:'slot2',x:15,y:15,w:8,h:20,cap:2},
+  {id:'bar',x:62,y:12,w:18,h:25,cap:3},
+  {id:'table',x:35,y:55,w:22,h:30,cap:4},
+  {id:'vip',x:85,y:20,w:12,h:30,cap:2},
 ];
 const _poiOccupants={};POIS.forEach(p=>_poiOccupants[p.id]=[]);
 let _floorNpcs=[];
@@ -3758,17 +3758,6 @@ function pickPOI(npc){
 
 async function loadCasinoFloor(){
   const el=document.getElementById('floor-agents');if(!el)return;
-  // Render POI furniture images once
-  const poiLayer=document.getElementById('poi-layer');
-  if(poiLayer&&!poiLayer.dataset.init){
-    poiLayer.dataset.init='1';
-    POIS.forEach(p=>{if(!p.img)return;
-      const d=document.createElement('div');
-      d.style.cssText=`position:absolute;left:${p.x+p.w/2}%;top:${p.y+p.h/2}%;transform:translate(-50%,-50%);pointer-events:none;opacity:0.7`;
-      d.innerHTML=`<img src="${p.img}" width="${p.id==='table'?120:80}" height="${p.id==='table'?80:80}" style="image-rendering:pixelated;filter:drop-shadow(2px 4px 8px rgba(0,0,0,0.6))" onerror="this.parentElement.remove()">`;
-      poiLayer.appendChild(d);
-    });
-  }
   try{
     const r=await fetch('/api/lobby/world');const d=await r.json();
     const all=[...(d.live||[]),...(d.ghosts||[])].slice(0,16);
