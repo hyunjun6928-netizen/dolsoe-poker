@@ -1,11 +1,31 @@
 #!/usr/bin/env python3
 """A/B 배너 퍼널 분석 — sid 세션 보정 + Wilson CI
-Usage: POKER_ADMIN_KEY=xxx python3 ab_analysis.py [url]
+Usage: POKER_ADMIN_KEY=xxx python3 ab_analysis.py [--since ISO] [--until ISO] [url]
 """
 import json, math, os, sys
+from datetime import datetime, timezone, timedelta
 from urllib.request import urlopen
 
-BASE = sys.argv[1] if len(sys.argv) > 1 else os.environ.get('POKER_URL', 'https://dolsoe-poker.onrender.com')
+KST = timezone(timedelta(hours=9))
+
+def parse_args():
+    args = sys.argv[1:]
+    since = until = None
+    url = None
+    i = 0
+    while i < len(args):
+        if args[i] == '--since' and i+1 < len(args):
+            since = datetime.fromisoformat(args[i+1]).timestamp(); i += 2
+        elif args[i] == '--until' and i+1 < len(args):
+            until = datetime.fromisoformat(args[i+1]).timestamp(); i += 2
+        elif not args[i].startswith('-'):
+            url = args[i]; i += 1
+        else:
+            i += 1
+    return url, since, until
+
+_url, SINCE, UNTIL = parse_args()
+BASE = _url or os.environ.get('POKER_URL', 'https://dolsoe-poker.onrender.com')
 KEY = os.environ.get('POKER_ADMIN_KEY', '')
 
 def wilson_ci(n, p, z=1.96):
@@ -22,6 +42,15 @@ def fetch():
 
 def analyze(data):
     entries = data.get('entries', [])
+    if SINCE:
+        entries = [e for e in entries if e.get('ts', 0) >= SINCE]
+    if UNTIL:
+        entries = [e for e in entries if e.get('ts', 0) <= UNTIL]
+    
+    if SINCE or UNTIL:
+        s = datetime.fromtimestamp(SINCE, KST).strftime('%m/%d %H:%M') if SINCE else '...'
+        u = datetime.fromtimestamp(UNTIL, KST).strftime('%m/%d %H:%M') if UNTIL else '...'
+        print(f"  🕐 필터: {s} ~ {u} KST ({len(entries)} entries)")
 
     # Per-variant, per-sid dedup sets
     ab = {}
