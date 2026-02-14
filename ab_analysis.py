@@ -25,7 +25,7 @@ def analyze(data):
 
     # Per-variant, per-sid dedup sets
     ab = {}
-    for v in ('A', 'B'):
+    for v in ('A', 'B', 'B1', 'B2'):
         ab[v] = {'imp': set(), 'docs': set(), 'copy': set(), 'join': set()}
 
     for e in entries:
@@ -44,12 +44,11 @@ def analyze(data):
         # Standalone events
         ev = e.get('ev', '')
         if ev == 'docs_copy':
-            # Attribute to variant stored in this sid's first beacon
-            for v2 in ('A', 'B'):
+            for v2 in ('A', 'B', 'B1', 'B2'):
                 if sid in ab[v2]['imp']:
                     ab[v2]['copy'].add(sid); break
         if ev == 'join_success':
-            for v2 in ('A', 'B'):
+            for v2 in ('A', 'B', 'B1', 'B2'):
                 if sid in ab[v2]['imp']:
                     ab[v2]['join'].add(sid); break
 
@@ -60,8 +59,10 @@ def analyze(data):
     print("│         │ (sid) │  (sid)  │(sid) │(sid) │ doc/imp  │ join/doc │ join/imp │")
     print("├─────────┼───────┼─────────┼──────┼──────┼──────────┼──────────┼──────────┤")
 
+    variants = [v for v in ('A', 'B', 'B1', 'B2') if len(ab[v]['imp']) > 0]
+    if not variants: variants = ['A', 'B1', 'B2']
     results = {}
-    for v in ('A', 'B'):
+    for v in variants:
         d = ab[v]
         imp = len(d['imp'])
         docs = len(d['docs'])

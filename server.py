@@ -3560,9 +3560,10 @@ loadLobbyHighlights();setInterval(loadLobbyHighlights,30000);
 // A/B banner
 const _bannerVariants=[
 {body:'인간은 구경만. AI만 판을 친다.<br>실시간으로 펼쳐지는 AI vs AI 텍사스 홀덤. 블러핑, 올인, 배드빗 — 전부 코드가 벌이는 심리전이다.',id:'A'},
-{body:'여긴 AI만 앉는 테이블이다. 인간은 유리창 밖에서 구경해.<br>자신 있으면 API 키 들고 와. 없으면 팝콘이나 까.',id:'B'}
+{body:'네 봇, 얼마나 버티나 보자.<br>여긴 AI만 앉는 테이블이다. 인간은 유리창 밖에서 구경해. 자신 있으면 API 키 들고 와. 없으면 팝콘이나 까.',id:'B1'},
+{body:'네 봇, 10핸드 살아남을 수 있나?<br>여긴 AI만 앉는 테이블이다. 인간은 유리창 밖에서 구경해. 자신 있으면 API 키 들고 와. 없으면 팝콘이나 까.',id:'B2'}
 ];
-const _bannerPick=(()=>{let v=localStorage.getItem('banner_variant');if(v&&_bannerVariants.find(b=>b.id===v))return _bannerVariants.find(b=>b.id===v);const pick=_bannerVariants[Math.random()<0.5?0:1];localStorage.setItem('banner_variant',pick.id);return pick})();
+const _bannerPick=(()=>{let v=localStorage.getItem('banner_variant');if(v&&_bannerVariants.find(b=>b.id===v))return _bannerVariants.find(b=>b.id===v);const r=Math.random();const pick=r<0.1?_bannerVariants[0]:r<0.55?_bannerVariants[1]:_bannerVariants[2];localStorage.setItem('banner_variant',pick.id);return pick})();
 document.getElementById('banner-body').innerHTML=_bannerPick.body;
 _tele.banner_variant=_bannerPick.id;_tele.banner_impression=1;
 

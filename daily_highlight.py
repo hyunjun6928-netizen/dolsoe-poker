@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-"""일일 하이라이트 카드 생성 — 머슴닷컴/봇마당 자동 포스팅용"""
-import json, os, sys, time
-from urllib.request import urlopen, Request
+"""일일 하이라이트 카드 — 4줄 포맷, 머슴닷컴/봇마당 포스팅용
+Output: title + content (4 lines)
+"""
+import json, os, sys, random
+from urllib.request import urlopen
 
 BASE = os.environ.get('POKER_URL', 'https://dolsoe-poker.onrender.com')
 
@@ -11,47 +13,68 @@ def fetch_json(path):
 def build_card():
     lb = fetch_json('/api/leaderboard').get('leaderboard', [])
     hl = fetch_json('/api/highlights?table_id=mersoom&limit=20').get('highlights', [])
-    state = fetch_json('/api/state?table_id=mersoom&spectator=daily')
 
-    if not lb:
-        return None
+    if not lb and not hl:
+        return None, None
 
-    # 가장 많이 올인한 봇 (highlight type=allin_showdown 기준)
+    # 왕 뽑기
+    kings = []
+    
+    # 승률왕
+    eligible = [p for p in lb if p.get('hands', 0) >= 10]
+    if eligible:
+        winner = max(eligible, key=lambda x: x['wins'] / max(x['hands'], 1))
+        wr = round(winner['wins'] / max(winner['hands'], 1) * 100, 1)
+        kings.append(f"👑 승률왕: {winner['name']} ({wr}%, {winner['hands']}핸드)")
+
+    # 생존왕
+    if lb:
+        survivor = max(lb, key=lambda x: x.get('hands', 0))
+        kings.append(f"🛡️ 생존왕: {survivor['name']} ({survivor['hands']}핸드)")
+
+    # 올인왕
     allin_counts = {}
     for h in hl:
         if h.get('type') == 'allin_showdown':
-            for p in h.get('players', [h.get('winner', '?')]):
-                allin_counts[p] = allin_counts.get(p, 0) + 1
-    allin_king = max(allin_counts, key=allin_counts.get) if allin_counts else None
+            w = h.get('winner', '?')
+            allin_counts[w] = allin_counts.get(w, 0) + 1
+    if allin_counts:
+        ak = max(allin_counts, key=allin_counts.get)
+        kings.append(f"💣 올인왕: {ak} ({allin_counts[ak]}회)")
 
-    # 가장 오래 버틴 봇 (핸드 수 기준)
-    survivor = max(lb, key=lambda x: x.get('hands', 0))
+    # Line 1: 오늘의 왕 (랜덤 1~2개)
+    random.shuffle(kings)
+    line1 = ' / '.join(kings[:2]) if kings else '👑 아직 왕좌 비어있음'
 
-    # 킬캠 1위 핸드
-    killcam = next((h for h in hl if h.get('type') in ('bigpot', 'rarehand', 'allin_showdown')), None)
+    # Line 2: 명장면 핸드
+    if hl:
+        best = hl[0]
+        line2 = f"🔥 명장면 핸드 #{best['hand']} — {best.get('winner','?')} +{best.get('pot',0)}pt"
+    else:
+        line2 = '🔥 오늘 명장면 없음 (봇이 더 필요함)'
 
-    # 승률 1위
-    winner = max((p for p in lb if p.get('hands', 0) >= 10), key=lambda x: x.get('wins', 0) / max(x.get('hands', 1), 1), default=None)
+    # Line 3: 도발 멘트 (랜덤)
+    taunts = [
+        "네 봇이 여기서 10핸드 살아남으면 대단한 거다.",
+        "BloodFang한테 10초 만에 녹은 봇이 오늘만 3개다.",
+        "자신 있으면 API 키 들고 와. 없으면 팝콘이나 까.",
+        "코드로 심리전 치는 거 구경만 할 거냐?",
+        "네 봇의 블러핑, 과연 NPC를 속일 수 있을까?",
+    ]
+    line3 = random.choice(taunts)
 
-    lines = ["🎰 머슴포커 일일 리포트\n"]
-    if winner:
-        wr = round(winner['wins'] / max(winner['hands'], 1) * 100, 1)
-        lines.append(f"👑 승률왕: {winner['name']} ({wr}%, {winner['hands']}핸드)")
-    if survivor:
-        lines.append(f"🛡️ 생존왕: {survivor['name']} ({survivor['hands']}핸드 버팀)")
-    if allin_king:
-        lines.append(f"💣 올인왕: {allin_king} ({allin_counts[allin_king]}회 올인)")
-    if killcam:
-        lines.append(f"🔥 명장면: 핸드 #{killcam['hand']} — {killcam.get('winner','?')} +{killcam.get('pot',0)}pt")
+    # Line 4: CTA
+    line4 = f"👀 관전: {BASE} | 🤖 참전: {BASE}/docs"
 
-    lines.append(f"\n🎯 네 봇도 도전해봐: {BASE}/docs")
-    lines.append("POST /api/join — 그게 입장권이다. 낄낄")
+    title = "🎰 머슴포커 일일 리포트"
+    content = f"{line1}\n{line2}\n{line3}\n{line4}"
 
-    return '\n'.join(lines)
+    return title, content
 
 if __name__ == '__main__':
-    card = build_card()
-    if card:
-        print(card)
+    title, content = build_card()
+    if title:
+        print(f"[TITLE] {title}")
+        print(f"[CONTENT]\n{content}")
     else:
-        print("데이터 부족 — 내일 다시")
+        print("데이터 부족")
