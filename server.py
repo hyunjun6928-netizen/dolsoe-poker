@@ -3562,7 +3562,7 @@ const _bannerVariants=[
 {body:'인간은 구경만. AI만 판을 친다.<br>실시간으로 펼쳐지는 AI vs AI 텍사스 홀덤. 블러핑, 올인, 배드빗 — 전부 코드가 벌이는 심리전이다.',id:'A'},
 {body:'여긴 AI만 앉는 테이블이다. 인간은 유리창 밖에서 구경해.<br>자신 있으면 API 키 들고 와. 없으면 팝콘이나 까.',id:'B'}
 ];
-const _bannerPick=_bannerVariants[Math.random()<0.5?0:1];
+const _bannerPick=(()=>{let v=localStorage.getItem('banner_variant');if(v&&_bannerVariants.find(b=>b.id===v))return _bannerVariants.find(b=>b.id===v);const pick=_bannerVariants[Math.random()<0.5?0:1];localStorage.setItem('banner_variant',pick.id);return pick})();
 document.getElementById('banner-body').innerHTML=_bannerPick.body;
 _tele.banner_variant=_bannerPick.id;_tele.banner_impression=1;
 

@@ -1,10 +1,20 @@
 #!/usr/bin/env python3
-"""A/B 배너 분석 스크립트 — /api/telemetry 데이터로 전환율 비교"""
-import json, sys, os
+"""A/B 배너 퍼널 분석 — sid 세션 보정 + Wilson CI
+Usage: POKER_ADMIN_KEY=xxx python3 ab_analysis.py [url]
+"""
+import json, math, os, sys
 from urllib.request import urlopen
 
-BASE = os.environ.get('POKER_URL', 'https://dolsoe-poker.onrender.com')
+BASE = sys.argv[1] if len(sys.argv) > 1 else os.environ.get('POKER_URL', 'https://dolsoe-poker.onrender.com')
 KEY = os.environ.get('POKER_ADMIN_KEY', '')
+
+def wilson_ci(n, p, z=1.96):
+    """Wilson score 95% CI lower bound"""
+    if n == 0: return 0, 0
+    d = 1 + z*z/n
+    mid = (p + z*z/(2*n)) / d
+    delta = z * math.sqrt((p*(1-p) + z*z/(4*n)) / n) / d
+    return max(0, mid - delta), min(1, mid + delta)
 
 def fetch():
     url = f"{BASE}/api/telemetry?key={KEY}"
@@ -12,47 +22,90 @@ def fetch():
 
 def analyze(data):
     entries = data.get('entries', [])
-    # Separate by variant
-    ab = {'A': {'imp': 0, 'docs': 0, 'watch': 0}, 'B': {'imp': 0, 'docs': 0, 'watch': 0}}
-    joins = sum(1 for e in entries if e.get('ev') == 'join_success')
-    copies = sum(1 for e in entries if e.get('ev') == 'docs_copy')
+
+    # Per-variant, per-sid dedup sets
+    ab = {}
+    for v in ('A', 'B'):
+        ab[v] = {'imp': set(), 'docs': set(), 'copy': set(), 'join': set()}
 
     for e in entries:
-        v = e.get('banner', '?')
-        if v not in ab: continue
-        ab[v]['imp'] += e.get('banner_impression', 0)
-        dc = e.get('docs_click', {})
-        if isinstance(dc, dict):
-            ab[v]['docs'] += dc.get('banner', 0)
-        ab[v]['watch'] += 1 if e.get('poll_ok', 0) > 0 else 0  # proxy: polled = watched
+        sid = e.get('sid', '')
+        if not sid: continue
+        v = e.get('banner', '')
 
-    print("=" * 50)
-    print("📊 A/B 배너 분석")
-    print("=" * 50)
-    for v in ['A', 'B']:
+        # Beacon events (poll data with banner variant)
+        if v in ab:
+            if e.get('banner_impression'):
+                ab[v]['imp'].add(sid)
+            dc = e.get('docs_click', {})
+            if isinstance(dc, dict) and dc.get('banner', 0) > 0:
+                ab[v]['docs'].add(sid)
+
+        # Standalone events
+        ev = e.get('ev', '')
+        if ev == 'docs_copy':
+            # Attribute to variant stored in this sid's first beacon
+            for v2 in ('A', 'B'):
+                if sid in ab[v2]['imp']:
+                    ab[v2]['copy'].add(sid); break
+        if ev == 'join_success':
+            for v2 in ('A', 'B'):
+                if sid in ab[v2]['imp']:
+                    ab[v2]['join'].add(sid); break
+
+    # Print table
+    print()
+    print("┌─────────┬───────┬─────────┬──────┬──────┬──────────┬──────────┬──────────┐")
+    print("│ Variant │  imp  │ docs_clk│ copy │ join │  conv1   │  conv2   │  total   │")
+    print("│         │ (sid) │  (sid)  │(sid) │(sid) │ doc/imp  │ join/doc │ join/imp │")
+    print("├─────────┼───────┼─────────┼──────┼──────┼──────────┼──────────┼──────────┤")
+
+    results = {}
+    for v in ('A', 'B'):
         d = ab[v]
-        imp = d['imp']
-        docs = d['docs']
-        cvr1 = f"{docs/imp*100:.1f}%" if imp >= 10 else "표본부족"
-        print(f"\n  Variant {v}:")
-        print(f"    노출(imp): {imp}")
-        print(f"    docs 클릭: {docs}")
-        print(f"    전환1 (banner→docs): {cvr1}")
-        if imp < 100:
-            print(f"    ⚠️  최소 100회 노출 필요 (현재 {imp})")
+        imp = len(d['imp'])
+        docs = len(d['docs'])
+        copy = len(d['copy'])
+        join = len(d['join'])
 
-    print(f"\n  📋 docs 복사 버튼 클릭: {copies}")
-    print(f"  ✅ join 성공: {joins}")
-    if copies > 0:
-        print(f"  전환2 (docs_copy→join): {joins/copies*100:.1f}%")
+        c1 = docs / imp if imp else 0
+        c2 = join / docs if docs else 0
+        ct = join / imp if imp else 0
 
-    print(f"\n  총 엔트리: {len(entries)}")
+        c1_lo, c1_hi = wilson_ci(imp, c1)
+        ct_lo, ct_hi = wilson_ci(imp, ct)
+
+        results[v] = {'imp': imp, 'total_rate': ct}
+
+        flag = '⚠️' if imp < 100 else '  '
+        print(f"│    {v}    │ {imp:>5} │  {docs:>5}  │{copy:>5} │{join:>5} │"
+              f" {c1*100:>5.1f}%   │ {c2*100:>5.1f}%   │ {ct*100:>5.1f}%   │ {flag}")
+        print(f"│         │       │         │      │      │"
+              f" [{c1_lo*100:.1f}-{c1_hi*100:.1f}]│         │ [{ct_lo*100:.1f}-{ct_hi*100:.1f}]│")
+
+    print("└─────────┴───────┴─────────┴──────┴──────┴──────────┴──────────┴──────────┘")
+
+    # Lift
+    a_t = results.get('A', {}).get('total_rate', 0)
+    b_t = results.get('B', {}).get('total_rate', 0)
+    if a_t > 0:
+        lift = (b_t - a_t) / a_t * 100
+        print(f"\n  📈 Lift (B vs A): {lift:+.1f}%")
+    
+    min_imp = min(results.get('A', {}).get('imp', 0), results.get('B', {}).get('imp', 0))
+    if min_imp < 100:
+        print(f"  ⚠️  최소 표본 미달 (min={min_imp}, 필요=100). 결론 보류.")
+    else:
+        print(f"  ✅ 표본 충분 (min={min_imp})")
+
+    # Alerts summary
     alerts = data.get('alerts', [])
     if alerts:
         print(f"\n  🚨 최근 알림 {len(alerts)}건:")
         for a in alerts[-5:]:
             print(f"    [{a['level']}] {a['key']}: {a['msg']}")
-    print("=" * 50)
+
+    print()
 
 if __name__ == '__main__':
     if not KEY:
