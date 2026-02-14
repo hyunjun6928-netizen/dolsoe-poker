@@ -3751,13 +3751,14 @@ el.appendChild(div)})}catch(e){el.innerHTML=`<div style="color:var(--text-muted)
 loadLobbyHighlights();setInterval(loadLobbyHighlights,30000);
 
 // === Casino Floor: POI-based NPC state machine ===
+// v3.16: Judi-style blob slimes (no limbs, round jelly)
 const FLOOR_SLIMES={
-  '딜러봇':'/static/slimes/px_walk_dealer.png','도박꾼':'/static/slimes/px_walk_gambler.png',
-  '고수':'/static/slimes/px_walk_suit.png','초보':'/static/slimes/px_walk_rookie.png',
-  'DealerBot':'/static/slimes/px_walk_dealer.png','Gambler':'/static/slimes/px_walk_gambler.png',
-  'Pro':'/static/slimes/px_walk_suit.png','Newbie':'/static/slimes/px_walk_rookie.png',
+  '딜러봇':'/static/slimes/judi_walk_dealer.png','도박꾼':'/static/slimes/judi_walk_gambler.png',
+  '고수':'/static/slimes/judi_walk_suit.png','초보':'/static/slimes/judi_walk_rookie.png',
+  'DealerBot':'/static/slimes/judi_walk_dealer.png','Gambler':'/static/slimes/judi_walk_gambler.png',
+  'Pro':'/static/slimes/judi_walk_suit.png','Newbie':'/static/slimes/judi_walk_rookie.png',
 };
-const FLOOR_GENERIC=['/static/slimes/px_walk_suit.png','/static/slimes/px_walk_casual.png','/static/slimes/px_walk_gambler.png','/static/slimes/px_walk_dealer.png','/static/slimes/px_walk_rookie.png','/static/slimes/px_walk_shadow.png','/static/slimes/px_walk_drunk.png','/static/slimes/px_walk_rich.png','/static/slimes/px_walk_excited.png','/static/slimes/px_walk_sleepy.png'];
+const FLOOR_GENERIC=['/static/slimes/judi_walk_suit.png','/static/slimes/judi_walk_casual.png','/static/slimes/judi_walk_gambler.png','/static/slimes/judi_walk_dealer.png','/static/slimes/judi_walk_rookie.png','/static/slimes/judi_walk_shadow.png','/static/slimes/judi_walk_drunk.png','/static/slimes/judi_walk_rich.png'];
 const FLOOR_BUBBLES={
   slot:{ko:['잭팟 어딨어...','한 번만 더...','코인 다 떨어짐 ㅋ','ㅋㅋ 또 꽝'],en:['where is jackpot...','one more pull...','out of coins lol','miss again']},
   bar:{ko:['오늘 졌다... 🍺','한잔 하자','칩이 녹았어','ㅎㅎ 쉬는 중'],en:['lost today... 🍺','need a drink','chips melted','taking a break']},
@@ -3894,9 +3895,9 @@ async function loadCasinoFloor(){
       // v3.15: unified style via CSS data-state, no inline filter
       const wr=a.hands>0?Math.round(a.wins/a.hands*100):0;
       div.innerHTML=`<div style="text-align:center;position:relative">
-        <div class="walker-body"><img src="${img}" width="80" height="80" style="image-rendering:pixelated" onerror="this.src='/static/slimes/px_walk_suit.png'"></div>
+        <div class="walker-body"><img src="${img}" width="80" height="80" style="image-rendering:pixelated" onerror="this.src='/static/slimes/judi_walk_suit.png'"></div>
         <div class="walker-shadow"></div>
-        <div style="font-size:0.65em;color:${isLive?'var(--accent-mint)':'var(--accent-gold)'};margin-top:2px;white-space:nowrap;text-shadow:0 1px 4px #000;max-width:80px;overflow:hidden;text-overflow:ellipsis;font-family:var(--font-pixel);background:rgba(0,0,0,0.5);padding:1px 6px;border-radius:4px">${a.name}</div>
+        <div style="font-size:11px;color:${isLive?'#FCC88E':'#938B7B'};margin-top:2px;white-space:nowrap;text-shadow:1px 1px 0 #050F1A,-1px -1px 0 #050F1A,1px -1px 0 #050F1A,-1px 1px 0 #050F1A;max-width:80px;overflow:hidden;text-overflow:ellipsis;font-family:var(--font-pixel);background:rgba(5,15,26,0.7);padding:1px 6px;border:1px solid rgba(157,127,51,0.3);border-radius:1px">${a.name}</div>
         <div class="npc-bubble" style="display:none;position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:rgba(10,13,18,0.92);color:#eee;padding:3px 8px;border-radius:8px;font-size:0.55em;white-space:nowrap;border:1px solid rgba(245,197,66,0.2);margin-bottom:2px;backdrop-filter:blur(4px)"></div>
       </div>`;
       div.title=`${a.name} | ${wr}% | ${a.hands||0}H | ${a.outfit||''}`;
@@ -4020,7 +4021,7 @@ function spawnPoiParticles(el,type){
 }
 
 // === In-game spectator crowd + POI decorations ===
-const CROWD_WALK_IMGS=['/static/slimes/px_walk_suit.png','/static/slimes/px_walk_casual.png','/static/slimes/px_walk_gambler.png','/static/slimes/px_walk_dealer.png','/static/slimes/px_walk_rookie.png','/static/slimes/px_walk_shadow.png','/static/slimes/px_walk_drunk.png','/static/slimes/px_walk_rich.png','/static/slimes/px_walk_excited.png','/static/slimes/px_walk_sleepy.png'];
+const CROWD_WALK_IMGS=['/static/slimes/judi_walk_suit.png','/static/slimes/judi_walk_casual.png','/static/slimes/judi_walk_gambler.png','/static/slimes/judi_walk_dealer.png','/static/slimes/judi_walk_rookie.png','/static/slimes/judi_walk_shadow.png','/static/slimes/judi_walk_drunk.png','/static/slimes/judi_walk_rich.png','/static/slimes/px_walk_excited.png','/static/slimes/px_walk_sleepy.png'];
 const CROWD_REACTIONS={
   allin:['😱','🔥','💀','올인!!','ㅋㅋㅋ','미쳤다'],
   bigpot:['💰','대박','와...','ㄷㄷ'],
@@ -5641,32 +5642,26 @@ function inferTraitsFromStyle(p) {
   _slimeTraits[name] = t;
 }
 // === Slime PNG mapping (NPC + generic) ===
+// v3.16: Judi-style blob slimes for poker seats
 const SLIME_PNG_MAP = {
-  // NPC 봇 — PixelLab HD 슬라임
-  '딜러봇': '/static/slimes/px_sit_dealer.png',
-  '도박꾼': '/static/slimes/px_sit_gambler.png',
-  '고수': '/static/slimes/px_sit_shark.png',
-  // 영어 NPC
-  'DealerBot': '/static/slimes/px_sit_dealer.png',
-  'Gambler': '/static/slimes/px_sit_gambler.png',
-  'Pro': '/static/slimes/px_sit_shark.png',
-  // 성격별 매핑
-  '초보': '/static/slimes/px_sit_rookie.png',
-  '상어': '/static/slimes/px_sit_shadow.png',
-  '여우': '/static/slimes/px_sit_lucky.png',
-  'Newbie': '/static/slimes/px_sit_rookie.png',
-  'Shark': '/static/slimes/px_sit_shadow.png',
-  'Fox': '/static/slimes/px_sit_lucky.png',
+  '딜러봇': '/static/slimes/judi_sit_dealer.png',
+  '도박꾼': '/static/slimes/judi_sit_casual.png',
+  '고수': '/static/slimes/judi_sit_suit.png',
+  'DealerBot': '/static/slimes/judi_sit_dealer.png',
+  'Gambler': '/static/slimes/judi_sit_casual.png',
+  'Pro': '/static/slimes/judi_sit_suit.png',
+  '초보': '/static/slimes/judi_sit_casual.png',
+  '상어': '/static/slimes/judi_sit_vip.png',
+  '여우': '/static/slimes/judi_sit_suit.png',
+  'Newbie': '/static/slimes/judi_sit_casual.png',
+  'Shark': '/static/slimes/judi_sit_vip.png',
+  'Fox': '/static/slimes/judi_sit_suit.png',
 };
 const GENERIC_SLIMES = [
-  '/static/slimes/px_sit_suit.png',
-  '/static/slimes/px_sit_casual.png',
-  '/static/slimes/px_sit_vip.png',
-  '/static/slimes/px_sit_wildcard.png',
-  '/static/slimes/px_sit_bartender.png',
-  '/static/slimes/px_sit_security.png',
-  '/static/slimes/px_sit_gambler.png',
-  '/static/slimes/px_sit_lucky.png',
+  '/static/slimes/judi_sit_suit.png',
+  '/static/slimes/judi_sit_casual.png',
+  '/static/slimes/judi_sit_vip.png',
+  '/static/slimes/judi_sit_dealer.png',
 ];
 const _slimeAssign = {};
 let _genericIdx = 0;

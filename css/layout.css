@@ -328,45 +328,58 @@ body.in-game .game-main::before {
    v3.15: LOBBY MODE — World is the star, UI is glass overlay
    ═════════════════════════════════════════════════════════ */
 
-/* ═══ LOBBY: World is the star ═══ */
+/* ═══ LOBBY: World is the star — clear central pathway ═══ */
 body.is-lobby #casino-floor {
   position: fixed;
   inset: 0;
   z-index: 0;
   width: 100vw;
   height: 100vh;
-  pointer-events: auto; /* allow POI clicks */
+  pointer-events: auto;
 }
 body.is-lobby #lobby {
   position: relative;
   z-index: 10;
-  padding: 8px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
 }
-/* Lobby grid: compact, transparent, doesn't block world */
+/* Banner: top, centered, slim */
+body.is-lobby #lobby-banner {
+  position: fixed;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+}
+/* Lobby grid: BOTTOM docked, doesn't cover central pathway */
 body.is-lobby .lobby-grid {
-  max-width: 800px;
-  gap: var(--sp-xs);
-  grid-template-columns: 1fr 1.2fr 1fr;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 15;
+  max-width: 100%;
+  display: flex;
+  gap: 4px;
+  padding: 4px 8px;
+  background: linear-gradient(to top, rgba(5,15,26,0.85) 0%, rgba(5,15,26,0.4) 70%, transparent 100%);
+  max-height: 220px;
+  overflow: hidden;
+}
+body.is-lobby .lobby-grid > div {
+  flex: 1;
+  min-width: 0;
 }
 body.is-lobby .px-panel {
-  background: rgba(10,13,20,0.65);
-  font-size: 0.8em;
-  border-color: rgba(157,127,51,0.15);
+  background: rgba(10,13,20,0.75);
+  font-size: 0.78em;
 }
-body.is-lobby .px-panel-header {
-  font-size: 0.85em;
-  padding: 4px 8px;
-}
-/* Hide secondary panels — world matters more */
+/* Hide verbose panels */
 body.is-lobby .lobby-left .px-panel:nth-child(n+2),
 body.is-lobby .lobby-right .px-panel:nth-child(n+2) {
   display: none;
-}
-/* Left and right columns: collapsed by default */
-body.is-lobby .lobby-left,
-body.is-lobby .lobby-right {
-  max-height: 280px;
-  overflow: hidden;
 }
 
 /* ===== 12. RESPONSIVE — DESKTOP WIDE (>1400px) ===== */
