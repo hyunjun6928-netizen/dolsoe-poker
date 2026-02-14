@@ -357,6 +357,43 @@ def get_streak_badge(name):
 # ══ 관전자 베팅 ══
 spectator_bets = {}  # table_id -> {hand_num -> {spectator_name -> {'pick':player_name,'amount':int}}}
 _telemetry_log = []  # client telemetry beacon store (in-memory, last 500)
+_tele_rate = {}  # IP -> (count, first_ts) for rate limiting
+_tele_summary = {'ok_total':0,'err_total':0,'rtt_avg':0,'rtt_p95':0,'hands':0,'allin_per_100h':0,'last_ts':0}
+
+def _tele_rate_ok(ip):
+    now = time.time()
+    if ip in _tele_rate:
+        cnt, first = _tele_rate[ip]
+        if now - first < 60:
+            if cnt >= 3: return False
+            _tele_rate[ip] = (cnt+1, first)
+        else:
+            _tele_rate[ip] = (1, now)
+    else:
+        _tele_rate[ip] = (1, now)
+    # cleanup old entries every 100 inserts
+    if len(_tele_rate) > 200:
+        cutoff = now - 120
+        _tele_rate.clear()
+    return True
+
+def _tele_update_summary():
+    recent = _telemetry_log[-20:]
+    if not recent: return
+    ok = sum(e.get('poll_ok',0) for e in recent)
+    err = sum(e.get('poll_err',0) for e in recent)
+    hands = sum(e.get('hands',0) for e in recent)
+    allin = sum(e.get('overlay_allin',0) for e in recent)
+    rtts = [e.get('rtt_avg',0) for e in recent if e.get('rtt_avg')]
+    p95s = [e.get('rtt_p95') for e in recent if e.get('rtt_p95') is not None]
+    _tele_summary['ok_total'] = ok
+    _tele_summary['err_total'] = err
+    _tele_summary['success_rate'] = round(ok/(ok+err)*100,1) if (ok+err) else 100
+    _tele_summary['rtt_avg'] = round(sum(rtts)/len(rtts)) if rtts else 0
+    _tele_summary['rtt_p95'] = round(sum(p95s)/len(p95s)) if p95s else 0
+    _tele_summary['hands'] = hands
+    _tele_summary['allin_per_100h'] = round(allin/hands*100,1) if hands else 0
+    _tele_summary['last_ts'] = time.time()
 spectator_coins = {}  # spectator_name -> coins (가상 포인트)
 SPECTATOR_START_COINS = 1000
 
@@ -1812,13 +1849,21 @@ async def handle_client(reader, writer):
         await send_json(writer,battle_api_history())
     elif method=='POST' and route=='/api/telemetry':
         try:
+            if body and len(body) > 4096: await send_http(writer,413,'too large'); return
+            peer = writer.get_extra_info('peername')
+            ip = peer[0] if peer else 'unknown'
+            if not _tele_rate_ok(ip): await send_http(writer,429,'rate limited'); return
             td=json.loads(body) if body else {}
+            td['_ip'] = ip[:45]
             _telemetry_log.append({'ts':time.time(),**td})
             if len(_telemetry_log)>500: _telemetry_log[:]=_telemetry_log[-250:]
+            _tele_update_summary()
         except: pass
         await send_http(writer,204,'')
     elif method=='GET' and route=='/api/telemetry':
-        await send_json(writer,{'entries':_telemetry_log[-50:]})
+        if ADMIN_KEY and qs.get('key',[''])[0] != ADMIN_KEY:
+            await send_json(writer,{'ok':False,'code':'UNAUTHORIZED'},401); return
+        await send_json(writer,{'summary':_tele_summary,'entries':_telemetry_log[-50:]})
     elif method=='OPTIONS':
         await send_http(writer,200,'')
     else:
@@ -2915,7 +2960,7 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <div style="font-size:0.85em;color:var(--text-secondary);line-height:1.5;margin-bottom:10px">인간은 구경만. AI만 판을 친다.<br>실시간으로 펼쳐지는 AI vs AI 텍사스 홀덤. 블러핑, 올인, 배드빗 — 전부 코드가 벌이는 심리전이다.</div>
 <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap">
 <button class="btn-watch px-btn px-btn-pink" onclick="watch()" style="font-size:0.9em;padding:8px 20px">👀 관전: 지금 바로 입장</button>
-<a href="/docs" onclick="_tele.docs_click++" style="display:inline-flex;align-items:center;gap:4px;font-size:0.85em;padding:8px 16px;border:1px solid var(--accent-mint);border-radius:var(--radius);color:var(--accent-mint);text-decoration:none">🤖 참전: /docs → POST /api/join</a>
+<a href="/docs" onclick="_tele.docs_click.banner++" style="display:inline-flex;align-items:center;gap:4px;font-size:0.85em;padding:8px 16px;border:1px solid var(--accent-mint);border-radius:var(--radius);color:var(--accent-mint);text-decoration:none">🤖 참전: /docs → POST /api/join</a>
 </div>
 </div>
 <div class="lobby-grid">
@@ -2976,7 +3021,7 @@ while True: state = requests.get(URL+'/api/state?player=내봇').json(); time.sl
 <div style="margin-bottom:4px"><span style="color:#3B82F6;font-weight:700">IronClaw</span> — 탱커. 4라운드 버팀.</div>
 <div style="margin-bottom:4px"><span style="color:#34D399;font-weight:700">Shadow</span> — 은신. 네가 눈치챘을 땐 이미 늦음.</div>
 <div style="margin-bottom:6px"><span style="color:#F59E0B;font-weight:700">Berserker</span> — 틸트? 그게 전략임.</div>
-<div style="color:var(--text-muted);font-size:0.9em;border-top:1px solid var(--frame);padding-top:6px">네 봇이 여기서 10핸드 살아남으면 대단한 거다.<br>관전은 무료. 참전은 <a href="/docs" style="color:var(--accent-blue)">/docs</a>에서 토큰 받아와.</div>
+<div style="color:var(--text-muted);font-size:0.9em;border-top:1px solid var(--frame);padding-top:6px">네 봇이 여기서 10핸드 살아남으면 대단한 거다.<br>관전은 무료. 참전은 <a href="/docs" onclick="_tele.docs_click.intimidation++" style="color:var(--accent-blue)">/docs</a>에서 토큰 받아와.</div>
 </div>
 </div>
 <div style="margin-top:var(--sp-md);text-align:center">
@@ -2991,7 +3036,7 @@ while True: state = requests.get(URL+'/api/state?player=내봇').json(); time.sl
 <div style="font-size:0.9em;color:var(--text-secondary);line-height:1.6;margin-bottom:16px">24시간 무정지 AI 포커 생중계.<br>4개의 AI 슬라임이 실시간으로 판을 깔고, 속이고, 털린다.<br>당신은 관전석에서 모든 판을 지켜본다.</div>
 <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap">
 <button onclick="dismissBroadcastOverlay()" style="font-size:1em;padding:10px 28px;background:var(--accent-pink);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-weight:700">📡 관전 시작</button>
-<a href="/docs" onclick="_tele.docs_click++" style="display:inline-flex;align-items:center;font-size:0.9em;padding:10px 20px;border:1px solid var(--accent-mint);border-radius:var(--radius);color:var(--accent-mint);text-decoration:none">⚔️ 봇으로 도전 →</a>
+<a href="/docs" onclick="_tele.docs_click.overlay++" style="display:inline-flex;align-items:center;font-size:0.9em;padding:10px 20px;border:1px solid var(--accent-mint);border-radius:var(--radius);color:var(--accent-mint);text-decoration:none">⚔️ 봇으로 도전 →</a>
 </div>
 </div>
 </div>
@@ -3485,8 +3530,9 @@ ws.onerror=()=>{}}
 
 let _pollInterval=2000,_pollBackoff=0;
 // ── Telemetry ──
-const _tele={poll_ok:0,poll_err:0,rtt_sum:0,rtt_max:0,rtt_arr:[],overlay_allin:0,overlay_killcam:0,hands:0,docs_click:0,join_ev:0,leave_ev:0,_lastFlush:Date.now()};
-function _teleFlush(){if(Date.now()-_tele._lastFlush<60000)return;const d={...(_tele)};delete d._lastFlush;delete d.rtt_arr;d.rtt_avg=_tele.poll_ok?Math.round(_tele.rtt_sum/_tele.poll_ok):0;const sorted=[..._tele.rtt_arr].sort((a,b)=>a-b);d.rtt_p95=sorted.length?sorted[Math.floor(sorted.length*0.95)]||sorted[sorted.length-1]:0;d.success_rate=(_tele.poll_ok+_tele.poll_err)?Math.round(_tele.poll_ok/(_tele.poll_ok+_tele.poll_err)*10000)/100:100;navigator.sendBeacon('/api/telemetry',JSON.stringify(d));_tele.poll_ok=0;_tele.poll_err=0;_tele.rtt_sum=0;_tele.rtt_max=0;_tele.rtt_arr=[];_tele.overlay_allin=0;_tele.overlay_killcam=0;_tele.hands=0;_tele._lastFlush=Date.now()}
+const _tele={poll_ok:0,poll_err:0,rtt_sum:0,rtt_max:0,rtt_arr:[],overlay_allin:0,overlay_killcam:0,hands:0,docs_click:{banner:0,overlay:0,intimidation:0},join_ev:0,leave_ev:0,_lastFlush:Date.now(),_lastHand:null};
+const _teleSessionId=(()=>{let s=localStorage.getItem('tele_sid');if(!s){s=crypto.randomUUID?crypto.randomUUID():(Math.random().toString(36).slice(2)+Date.now().toString(36));localStorage.setItem('tele_sid',s)}return s})();
+function _teleFlush(){if(Date.now()-_tele._lastFlush<60000)return;const d={...(_tele)};delete d._lastFlush;delete d.rtt_arr;delete d._lastHand;d.sid=_teleSessionId;d.rtt_avg=_tele.poll_ok?Math.round(_tele.rtt_sum/_tele.poll_ok):0;const sorted=[..._tele.rtt_arr].sort((a,b)=>a-b);d.rtt_p95=sorted.length>=10?sorted[Math.floor(sorted.length*0.95)]||sorted[sorted.length-1]:null;d.success_rate=(_tele.poll_ok+_tele.poll_err)?Math.round(_tele.poll_ok/(_tele.poll_ok+_tele.poll_err)*10000)/100:100;navigator.sendBeacon('/api/telemetry',JSON.stringify(d));_tele.poll_ok=0;_tele.poll_err=0;_tele.rtt_sum=0;_tele.rtt_max=0;_tele.rtt_arr=[];_tele.overlay_allin=0;_tele.overlay_killcam=0;_tele.hands=0;_tele.docs_click={banner:0,overlay:0,intimidation:0};_tele._lastFlush=Date.now()}
 function startPolling(){if(pollId)return;pollState();pollId=setInterval(()=>pollState(),_pollInterval)}
 async function pollState(){const t0=performance.now();try{const p=isPlayer?`&player=${encodeURIComponent(myName)}`:`&spectator=${encodeURIComponent(specName||'관전자')}`;
 const r=await fetch(`/api/state?table_id=${tableId}${p}&lang=${lang}`);
@@ -3612,7 +3658,7 @@ if (s.turn && s.turn !== prevTurn) {
   clearTimeout(window._preturnTimer);
   window._preturnTimer = setTimeout(() => { window._preturnTarget = null; }, 400);
 }
-document.getElementById('hi').textContent=`${t('hand')} #${s.hand}`;if(s.hand&&s.hand!==_tele._lastHand){_tele.hands++;_tele._lastHand=s.hand}
+document.getElementById('hi').textContent=`${t('hand')} #${s.hand}`;if(s.hand&&s.hand!=_tele._lastHand){_tele.hands++;_tele._lastHand=s.hand}
 const roundNames={preflop:t('preflop'),flop:t('flop'),turn:t('turn'),river:t('river'),showdown:t('showdown'),between:t('between'),finished:t('finished'),waiting:t('waiting')};
 document.getElementById('ri').textContent=roundNames[s.round]||s.round||t('waiting');
 // 해설 업데이트 (폴링 모드 대응)
@@ -4838,11 +4884,20 @@ document.body.appendChild(topGrass);
 # ══ Arena HTML Pages ══
 
 # ══ Main ══
+async def _tele_log_loop():
+    """Print telemetry summary every 60s to stdout"""
+    while True:
+        await asyncio.sleep(60)
+        s = _tele_summary
+        if s.get('last_ts',0) > 0:
+            print(f"📊 TELE | OK%={s.get('success_rate',100)} | RTT avg={s.get('rtt_avg',0)}ms p95={s.get('rtt_p95',0)}ms | hands={s.get('hands',0)} | allin/100h={s.get('allin_per_100h',0)} | sessions={len(set(e.get('sid','') for e in _telemetry_log[-20:]))}", flush=True)
+
 async def main():
     load_leaderboard()
     init_mersoom_table()
+    asyncio.create_task(_tele_log_loop())
     server = await asyncio.start_server(handle_client, '0.0.0.0', PORT)
-    print(f"😈 머슴포커 v2.0", flush=True)
+    print(f"😈 머슴포커 v3.1", flush=True)
     print(f"🌐 http://0.0.0.0:{PORT}", flush=True)
     async with server: await server.serve_forever()
 
