@@ -1,0 +1,390 @@
+/* ═════════════════════════════════════════════════════════
+   LAYOUT — Casino Broadcast Console Grid
+   v3.0 · 머슴포커 · 2026-02-14
+   ═════════════════════════════════════════════════════════ */
+
+/* ===== 1. RESET & BASE ===== */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+
+body {
+  background: var(--bg-main);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  min-height: 100vh;
+  overflow-x: hidden;
+  line-height: var(--lh-base);
+  /* Subtle ambient light — no heavy pseudo-elements */
+  background-image:
+    radial-gradient(ellipse 800px 600px at 15% 85%, rgba(52,211,153,0.03), transparent),
+    radial-gradient(ellipse 600px 500px at 85% 15%, rgba(139,92,246,0.025), transparent),
+    radial-gradient(ellipse 500px 400px at 50% 50%, rgba(245,197,66,0.015), transparent);
+}
+
+/* Kill old pseudo-element overlays */
+body::before, body::after { content: none !important; display: none !important; }
+.forest-top, .forest-deco { display: none !important; }
+
+/* ===== 2. WRAP ===== */
+.wrap {
+  max-width: 100%;
+  margin: 0 auto;
+  padding: var(--sp-sm) var(--sp-lg);
+  position: relative;
+  z-index: var(--z-base);
+}
+
+/* ===== 3. TITLE ===== */
+h1#main-title, h1 {
+  text-align: center;
+  font-family: var(--font-title);
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-black);
+  color: var(--text-primary);
+  margin: var(--sp-lg) 0;
+  letter-spacing: 1px;
+  -webkit-text-stroke: 0;
+  text-shadow: none;
+}
+h1 b { color: var(--accent-gold); }
+
+/* ===== 4. INFO BAR (HUD) ===== */
+.info-bar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-hud);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--sp-md) var(--sp-xl);
+  font-size: var(--fs-sm);
+  color: var(--text-light);
+  background: rgba(10,13,18,0.92);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid var(--border-gold);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  font-family: var(--font-body);
+  gap: var(--sp-md);
+}
+.info-bar > div {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-md);
+}
+
+/* ===== 5. HAND TIMELINE ===== */
+#hand-timeline {
+  display: flex;
+  justify-content: center;
+  gap: var(--sp-xs);
+  margin: var(--sp-md) 0;
+  position: relative;
+  z-index: 5;
+}
+
+/* ===== 6. COMMENTARY ===== */
+#commentary {
+  background: rgba(10,13,18,0.88);
+  backdrop-filter: var(--glass-blur-sm);
+  -webkit-backdrop-filter: var(--glass-blur-sm);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius);
+  padding: var(--sp-lg) var(--sp-2xl);
+  margin: 0 0 var(--sp-md);
+  text-align: center;
+  font-size: var(--fs-lg);
+  color: var(--accent-gold);
+  font-weight: var(--fw-semi);
+  font-family: var(--font-body);
+  letter-spacing: 0.3px;
+  min-height: 36px;
+  box-shadow: var(--shadow-md);
+  position: relative;
+  z-index: 5;
+}
+
+/* ===== 7. GAME LAYOUT — 3-COL GRID ===== */
+.game-layout {
+  display: grid;
+  grid-template-columns: 180px 1fr 260px;
+  gap: var(--sp-md);
+  height: calc(100vh - 160px);
+  min-height: 500px;
+}
+
+.game-main { min-width: 0; }
+
+/* ===== 8. DOCK COLUMNS ===== */
+.dock-left, .dock-right {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-sm);
+  overflow: hidden;
+}
+
+/* ===== 9. BOTTOM DOCK (FIXED) ===== */
+.bottom-dock, #bottom-dock {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--z-dock-bottom);
+  background: rgba(10,13,18,0.94);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-top: 1px solid var(--border-gold);
+  padding: var(--sp-sm) var(--sp-xl);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-xs);
+  font-family: var(--font-body);
+}
+
+/* ===== 10. FELT WRAP & TABLE ===== */
+.felt-wrap {
+  position: relative;
+  margin: var(--sp-md) auto var(--sp-lg);
+}
+
+.felt-border {
+  position: absolute;
+  top: -16px; left: -16px; right: -16px; bottom: -16px;
+  /* Walnut/brass frame feel */
+  background: linear-gradient(180deg, #232C3A 0%, #1A2230 100%);
+  border-radius: 24px;
+  border: 1px solid var(--frame-light);
+  box-shadow:
+    0 8px 32px rgba(0,0,0,0.6),
+    inset 0 1px 0 rgba(255,255,255,0.04),
+    /* Brass rail rim-light */
+    inset 0 0 0 3px var(--rail-dark),
+    inset 0 0 0 4px var(--rail-brass),
+    inset 0 0 0 5px var(--rail-light);
+  z-index: 0;
+}
+.felt-border::before { content: none; }
+.felt-border::after {
+  content: '';
+  position: absolute;
+  top: 1px; left: 8%; right: 8%; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(212,175,90,0.12), transparent);
+}
+
+.felt, .felt#felt {
+  position: relative;
+  /* Deep emerald felt gradient */
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 45%, var(--felt-spot), transparent),
+    linear-gradient(180deg, var(--felt-light) 0%, var(--felt-mid) 35%, var(--felt-dark) 70%, var(--felt-shadow) 100%);
+  border: 1px solid #0D3F1C;
+  border-radius: 18px;
+  width: 100%;
+  padding-bottom: 50%;
+  overflow: visible;
+  /* Vignette + spotlight */
+  box-shadow:
+    inset 0 0 100px 40px rgba(0,0,0,0.3),
+    inset 0 0 40px 10px rgba(0,0,0,0.15),
+    inset 0 2px 0 rgba(255,255,255,0.03);
+}
+/* Spotlight center glow */
+.felt::before {
+  content: '';
+  position: absolute;
+  top: 20%; left: 25%; right: 25%; bottom: 30%;
+  background: radial-gradient(ellipse at 50% 45%,
+    rgba(255,248,220,0.035) 0%,
+    rgba(255,248,220,0.015) 40%,
+    transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 1;
+}
+/* Subtle suit watermark */
+.felt::after {
+  content: '♠ ♥ ♦ ♣';
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%,-50%);
+  font-size: 3em;
+  color: rgba(255,255,255,0.018);
+  letter-spacing: 20px;
+  pointer-events: none;
+  z-index: 1;
+  white-space: nowrap;
+}
+
+/* ===== C) CENTER STAGE FRAME — "방송 무대" 골드 프레임 ===== */
+/* #pot + #board + #chip-stack 를 감싸는 가상 프레임 (DOM 추가 없이) */
+.felt > .board::before {
+  content: '';
+  position: absolute;
+  top: -70px;     /* pot 위쪽까지 커버 */
+  left: -40px;
+  right: -40px;
+  bottom: -20px;
+  border: 1px solid rgba(212,175,90,0.12);
+  border-radius: 20px;
+  background: radial-gradient(ellipse 100% 80% at 50% 40%,
+    rgba(255,248,220,0.02) 0%,
+    transparent 70%);
+  pointer-events: none;
+  z-index: -1;
+  box-shadow:
+    0 0 30px rgba(212,175,90,0.04),
+    inset 0 0 20px rgba(0,0,0,0.1);
+}
+
+/* ===== 11. LOBBY ===== */
+#lobby { text-align: center; padding: 40px 20px; }
+#lobby .sub { color: var(--text-secondary); margin-bottom: 30px; font-size: var(--fs-base); }
+
+.lobby-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr 1fr;
+  gap: var(--sp-lg);
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.lobby-left, .lobby-right { min-width: 0; }
+
+/* ===== 12. RESPONSIVE — DESKTOP WIDE (>1400px) ===== */
+@media (min-width: 1401px) {
+  .game-layout {
+    grid-template-columns: 220px 1fr 300px;
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+}
+
+/* ===== 13. RESPONSIVE — TABLET (<900px) ===== */
+@media (max-width: 900px) {
+  .lobby-grid { grid-template-columns: 1fr !important; }
+  .game-layout {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+  .dock-left { display: none; }
+  .dock-right {
+    flex-direction: row;
+    overflow-x: auto;
+    gap: var(--sp-md);
+  }
+  .dock-right > * { min-width: 240px; flex-shrink: 0; }
+  /* Reduce blur intensity on tablet */
+  .dock-panel, .px-panel, .agent-card {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+}
+
+/* ===== 14. RESPONSIVE — MOBILE (<700px) ===== */
+@media (max-width: 700px) {
+  * { box-sizing: border-box; }
+  body { overflow-x: hidden; }
+  .wrap { padding: 2px; max-width: 100vw; }
+
+  h1, h1#main-title { font-size: 1.1em; margin: 2px 0; display: none; }
+
+  /* Lobby */
+  #lobby { padding: 16px 8px; }
+  #lobby .sub { font-size: var(--fs-sm); margin-bottom: 12px; }
+  .lobby-grid { grid-template-columns: 1fr !important; gap: var(--sp-md) !important; }
+  .lobby-left, .lobby-right { display: none; }
+  .api-info { display: none; }
+  #join-with-label { display: none; }
+  .lobby-grid pre { display: none; }
+
+  /* Game */
+  .game-layout { display: block; height: auto; }
+  .dock-left, .dock-right { display: none; }
+  .game-main { min-width: 0; }
+
+  /* Felt */
+  .felt-wrap { margin: var(--sp-md) auto var(--sp-md); }
+  .felt-border {
+    top: -8px; left: -8px; right: -8px; bottom: -8px;
+    border-radius: 14px;
+  }
+  .felt {
+    padding-bottom: 55%;
+    border-radius: 10px;
+  }
+
+  /* HUD */
+  .info-bar {
+    flex-wrap: wrap;
+    gap: 2px var(--sp-sm);
+    padding: var(--sp-xs) var(--sp-md);
+    font-size: var(--fs-xs);
+    justify-content: center;
+  }
+  #vol-slider { width: 30px !important; }
+  #delay-badge { font-size: var(--fs-xs) !important; padding: 1px 4px !important; }
+
+  /* Timeline */
+  #hand-timeline {
+    font-size: var(--fs-xs);
+    gap: 2px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  /* Commentary */
+  #commentary {
+    margin: 0 var(--sp-xs) 2px;
+    font-size: var(--fs-sm);
+    padding: var(--sp-xs) var(--sp-md);
+    min-height: 18px;
+  }
+
+  /* B) MOBILE PERFORMANCE — blur/shadow 경량화 */
+  .dock-panel,
+  .px-panel,
+  .agent-card {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: var(--bg-panel-solid) !important;
+  }
+  .info-bar {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .bottom-dock, #bottom-dock {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .pot-badge, #pot {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: rgba(12,15,20,0.92) !important;
+  }
+  .act-label, .thought-bubble, .seat .nm {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  /* Simplify felt shadows on mobile */
+  .felt, .felt#felt {
+    box-shadow: inset 0 0 40px 15px rgba(0,0,0,0.25) !important;
+  }
+  .felt-border {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5), inset 0 0 0 3px var(--rail-dark), inset 0 0 0 4px var(--rail-brass) !important;
+  }
+  /* Hide center stage frame on mobile */
+  .felt > .board::before { display: none; }
+
+  /* Bottom dock */
+  .bottom-dock, #bottom-dock {
+    padding: var(--sp-xs) var(--sp-sm);
+  }
+  .bottom-dock .bd-reactions { overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
+  .bottom-dock .bd-reactions::-webkit-scrollbar { display: none; }
+  .bottom-dock .bd-reactions button { width: 28px; height: 28px; font-size: 0.9em; flex-shrink: 0; }
+
+  /* Padding for fixed bottom dock */
+  body { padding-bottom: 50px; }
+}

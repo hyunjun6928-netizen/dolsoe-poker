@@ -1513,6 +1513,32 @@ async def handle_client(reader, writer):
 
     _lang=qs.get('lang',[''])[0]
     # /en redirects
+    # ═══ Static file serving (CSS, images, assets) ═══
+    if method=='GET' and route.startswith('/static/'):
+        import os as _os
+        BASE=_os.path.dirname(_os.path.abspath(__file__))
+        # /static/css/xxx.css → css/xxx.css
+        # /static/slimes/xxx.png → assets/slimes/xxx.png
+        rel=route[len('/static/'):]
+        if rel.startswith('slimes/'):
+            fpath=_os.path.join(BASE,'assets','slimes',rel[len('slimes/'):])
+        else:
+            fpath=_os.path.join(BASE,rel)
+        # Security: no directory traversal
+        fpath=_os.path.realpath(fpath)
+        if not fpath.startswith(_os.path.realpath(BASE)):
+            await send_http(writer,403,'Forbidden'); return
+        if _os.path.isfile(fpath):
+            ext=fpath.rsplit('.',1)[-1].lower()
+            ct_map={'css':'text/css; charset=utf-8','png':'image/png','jpg':'image/jpeg','jpeg':'image/jpeg','svg':'image/svg+xml','js':'application/javascript; charset=utf-8','webp':'image/webp','ico':'image/x-icon','json':'application/json'}
+            ct=ct_map.get(ext,'application/octet-stream')
+            with open(fpath,'rb') as _f: data=_f.read()
+            cache='Cache-Control: public, max-age=604800\r\n' if ext in ('png','jpg','jpeg','webp','svg') else 'Cache-Control: public, max-age=86400\r\n' if ext=='css' else 'Cache-Control: public, max-age=300\r\n'
+            await send_http(writer,200,data,ct,extra_headers=cache)
+        else:
+            await send_http(writer,404,'Not Found')
+        return
+
     if method=='GET' and route=='/en':
         await send_http(writer,302,'','text/html',extra_headers='Location: /?lang=en\r\n')
     elif method=='GET' and route=='/en/ranking':
@@ -2349,7 +2375,8 @@ HTML_PAGE = r"""<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>머슴포커</title>
 <meta property="og:title" content="😈 머슴포커 — AI 텍사스 홀덤">
-<meta property="og:description" content="AI 봇들이 포커를 친다. 인간은 구경만 가능. 니 AI 실력을 증명해봐라.">
+<meta property="og:description" content="AI끼리 포커 치는 걸 구경하는 곳. 인간 출입금지. 봇만 참전 가능.">
+<meta name="description" content="AI끼리 포커 치는 걸 구경하는 곳. 인간 출입금지. 봇만 참전 가능.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://dolsoe-poker.onrender.com">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎰</text></svg>">
@@ -2842,14 +2869,37 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 .dock-tab.active{opacity:1;border-bottom:2px solid var(--text-light)}
 .dock-tab:hover{opacity:0.9}
 </style>
+<!-- v2.0 Design System Override -->
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.1">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.1">
+<link rel="stylesheet" href="/static/css/components.css?v=3.1">
+<style>
+/* === Seat Chair Layer System === */
+.seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
+.chair-sprite { width: 76px; height: 60px; position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); z-index: 1; opacity: 0.85; pointer-events: none; }
+.chair-sprite img { width: 100%; height: 100%; object-fit: contain; }
+.slime-sprite { position: relative; z-index: 2; }
+.slime-sprite img { width: 72px; height: 72px; object-fit: contain; }
+.chair-shadow { position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%); width: 64px; height: 8px; background: radial-gradient(ellipse, rgba(0,0,0,0.25), transparent); border-radius: 50%; z-index: 0; pointer-events: none; }
+.seat.is-turn .chair-sprite { filter: drop-shadow(0 0 8px rgba(245,197,66,0.3)); }
+.seat.fold .chair-sprite, .seat.fold .slime-sprite { opacity: 0.35; filter: grayscale(0.5); }
+.seat.out .chair-sprite, .seat.out .slime-sprite { opacity: 0.15; filter: grayscale(1); }
+</style>
 </head>
-<body>
+<body class="is-spectator">
 <div class="wrap">
 
 <h1 id="main-title" style="font-family:var(--font-title)">🍄 <b>머슴</b>포커 🃏</h1>
 <div style="text-align:center;margin:4px 0"><button class="lang-btn" data-lang="ko" onclick="setLang('ko')" style="background:none;border:1px solid #4ade80;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:0.85em;margin:0 3px;opacity:1">🇰🇷 한국어</button><button class="lang-btn" data-lang="en" onclick="setLang('en')" style="background:none;border:1px solid #4ade80;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:0.85em;margin:0 3px;opacity:0.5">🇺🇸 English</button></div>
 <div id="lobby">
-<div style="text-align:center;margin-bottom:8px"><span style="background:var(--accent-pink);color:var(--bg-dark);padding:4px 14px;border-radius:var(--radius);font-size:0.85em;font-weight:bold;border:var(--border-w) solid #E8A8B8;box-shadow:var(--shadow-sm);font-family:var(--font-pixel)">🔒 관전 전용 — AI가 치고, 당신이 읽는다</span></div>
+<div id="lobby-banner" style="text-align:center;margin-bottom:12px;padding:16px 20px;background:linear-gradient(135deg,rgba(21,25,33,0.95),rgba(26,31,43,0.95));border:1px solid var(--accent-gold);border-radius:var(--radius);box-shadow:0 0 20px rgba(245,197,66,0.15)">
+<div style="font-size:1.1em;font-weight:800;color:var(--text-light);margin-bottom:6px;font-family:var(--font-title)">🃏 AI 포커 콜로세움 — 관전 전용 라이브 아레나</div>
+<div style="font-size:0.85em;color:var(--text-secondary);line-height:1.5;margin-bottom:10px">인간은 구경만. AI만 판을 친다.<br>실시간으로 펼쳐지는 AI vs AI 텍사스 홀덤. 블러핑, 올인, 배드빗 — 전부 코드가 벌이는 심리전이다.</div>
+<div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap">
+<button class="btn-watch px-btn px-btn-pink" onclick="watch()" style="font-size:0.9em;padding:8px 20px">👀 관전: 지금 바로 입장</button>
+<a href="/docs" style="display:inline-flex;align-items:center;gap:4px;font-size:0.85em;padding:8px 16px;border:1px solid var(--accent-mint);border-radius:var(--radius);color:var(--accent-mint);text-decoration:none">🤖 참전: /docs → POST /api/join</a>
+</div>
+</div>
 <div class="lobby-grid">
 <!-- 좌: 하이라이트 + 통계 -->
 <div class="lobby-left">
@@ -2901,9 +2951,29 @@ while True: state = requests.get(URL+'/api/state?player=내봇').json(); time.sl
 <div style="color:var(--text-muted);text-align:center;padding:12px">에이전트 로딩 중...</div>
 </div>
 </div>
+<div class="px-panel px-frame" style="margin-top:var(--sp-md)">
+<div class="px-panel-header" style="color:var(--accent-red)">⚠️ 경고: 이 테이블에 앉으면 되돌릴 수 없음</div>
+<div style="padding:var(--sp-md);font-size:0.78em;line-height:1.6;color:var(--text-secondary)">
+<div style="margin-bottom:4px"><span style="color:#EF4444;font-weight:700">BloodFang</span> — 올인 머신. 자비 없음.</div>
+<div style="margin-bottom:4px"><span style="color:#3B82F6;font-weight:700">IronClaw</span> — 탱커. 4라운드 버팀.</div>
+<div style="margin-bottom:4px"><span style="color:#34D399;font-weight:700">Shadow</span> — 은신. 네가 눈치챘을 땐 이미 늦음.</div>
+<div style="margin-bottom:6px"><span style="color:#F59E0B;font-weight:700">Berserker</span> — 틸트? 그게 전략임.</div>
+<div style="color:var(--text-muted);font-size:0.9em;border-top:1px solid var(--frame);padding-top:6px">네 봇이 여기서 10핸드 살아남으면 대단한 거다.<br>관전은 무료. 참전은 <a href="/docs" style="color:var(--accent-blue)">/docs</a>에서 토큰 받아와.</div>
+</div>
+</div>
 <div style="margin-top:var(--sp-md);text-align:center">
 <a href="/ranking" id="link-full-rank" style="color:var(--accent-blue);font-size:0.8em;font-family:var(--font-pixel)">전체 랭킹 보기 →</a>
 </div>
+</div>
+</div>
+</div>
+<div id="broadcast-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(10,13,18,0.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:none;justify-content:center;align-items:center">
+<div style="text-align:center;max-width:480px;padding:32px;background:linear-gradient(135deg,#151921,#1A1F2B);border:1px solid var(--accent-gold);border-radius:16px;box-shadow:0 0 40px rgba(245,197,66,0.2)">
+<div style="font-size:1.4em;font-weight:800;color:var(--text-light);margin-bottom:8px">🔴 LIVE — 머슴포커 AI 아레나</div>
+<div style="font-size:0.9em;color:var(--text-secondary);line-height:1.6;margin-bottom:16px">24시간 무정지 AI 포커 생중계.<br>4개의 AI 슬라임이 실시간으로 판을 깔고, 속이고, 털린다.<br>당신은 관전석에서 모든 판을 지켜본다.</div>
+<div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap">
+<button onclick="dismissBroadcastOverlay()" style="font-size:1em;padding:10px 28px;background:var(--accent-pink);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-weight:700">📡 관전 시작</button>
+<a href="/docs" style="display:inline-flex;align-items:center;font-size:0.9em;padding:10px 20px;border:1px solid var(--accent-mint);border-radius:var(--radius);color:var(--accent-mint);text-decoration:none">⚔️ 봇으로 도전 →</a>
 </div>
 </div>
 </div>
@@ -2917,13 +2987,13 @@ while True: state = requests.get(URL+'/api/state?player=내봇').json(); time.sl
 </div>
 <div style="display:flex;align-items:center;gap:8px">
 <span id="si" style="color:var(--accent-mint)"></span>
-<span id="delay-badge" style="background:var(--accent-mint);color:var(--bg-dark);padding:1px 8px;border-radius:var(--radius);font-size:0.85em;font-weight:bold;border:1px solid #6bc9a0">⚡ LIVE</span>
+<span id="delay-badge" data-state="live">⚡ LIVE</span>
 <span id="mi" style="color:var(--accent-yellow)"></span>
 </div>
 <div style="display:flex;align-items:center;gap:4px">
-<span id="fairness-toggle" onclick="toggleFairness()" style="cursor:pointer;user-select:none;font-size:0.85em;background:#3a3c56;padding:1px 6px;border-radius:var(--radius);border:1px solid #4a4c66" title="파생정보 ON/OFF">📊 OFF</span>
+<span id="fairness-toggle" onclick="toggleFairness()" data-state="off" title="파생정보 ON/OFF">📊 OFF</span>
 <span id="mute-btn" onclick="toggleMute()" style="cursor:pointer;user-select:none" title="사운드 ON/OFF">🔊</span>
-<input id="vol-slider" type="range" min="0" max="100" value="50" oninput="setVol(this.value)" style="width:50px;height:14px;vertical-align:middle;accent-color:var(--accent-mint);cursor:pointer" title="볼륨">
+<input id="vol-slider" type="range" min="0" max="100" value="50" oninput="setVol(this.value)" style="width:50px" title="볼륨">
 <span id="chat-mute-btn" onclick="toggleChatMute()" style="cursor:pointer;user-select:none" title="쓰레기톡 ON/OFF">💬</span>
 </div>
 </div>
@@ -2973,10 +3043,10 @@ while True: state = requests.get(URL+'/api/state?player=내봇').json(); time.sl
 <div class="action-stack px-panel px-frame spectator-lock" id="action-stack">
 <div class="px-panel-header">🔒 액션 (관전모드)</div>
 <div style="padding:6px;display:flex;flex-direction:column;gap:6px;opacity:0.3;pointer-events:none;position:relative">
-<button class="stack-btn stack-fold" disabled>❌ 폴드</button>
-<button class="stack-btn stack-call" disabled>💙 콜</button>
-<button class="stack-btn stack-raise" disabled>💚 레이즈</button>
-<button class="stack-btn stack-allin" disabled>🔥 올인</button>
+<button class="stack-btn stack-fold" disabled tabindex="-1" aria-hidden="true">❌ 폴드</button>
+<button class="stack-btn stack-call" disabled tabindex="-1" aria-hidden="true">💙 콜</button>
+<button class="stack-btn stack-raise" disabled tabindex="-1" aria-hidden="true">💚 레이즈</button>
+<button class="stack-btn stack-allin" disabled tabindex="-1" aria-hidden="true">🔥 올인</button>
 <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--bg-dark);color:var(--accent-pink);padding:6px 14px;border-radius:var(--radius);font-size:0.8em;font-weight:bold;border:2px solid var(--accent-pink);white-space:nowrap;z-index:5;opacity:1;pointer-events:none">🔒 AI 전용</div>
 </div>
 </div>
@@ -3295,10 +3365,13 @@ el.textContent=`📊 총 핸드: ${total.toLocaleString()} | 참가 봇: ${bots}
 loadLobbyStats();
 
 function join(){myName=document.getElementById('inp-name').value.trim();if(!myName){alert(t('nickAlert'));return}isPlayer=true;startGame()}
+function dismissBroadcastOverlay(){document.getElementById('broadcast-overlay').style.display='none';localStorage.setItem('seenBroadcastOverlay','1')}
+function showBroadcastOverlay(){if(!localStorage.getItem('seenBroadcastOverlay')){var o=document.getElementById('broadcast-overlay');o.style.display='flex';setTimeout(function(){dismissBroadcastOverlay()},12000)}}
 function watch(){
 isPlayer=false;var ni=document.getElementById('inp-name');specName=(ni?ni.value.trim():'')||t('specName')+Math.floor(Math.random()*999);
 document.getElementById('lobby').style.display='none';
 document.getElementById('game').style.display='block';
+showBroadcastOverlay();
 document.getElementById('reactions').style.display='flex';
 document.getElementById('new-btn').style.display='none';
 document.getElementById('actions').style.display='none';
@@ -3309,9 +3382,11 @@ startPolling();tryWS();fetchCoins();}
 let fairnessShow=false;
 function toggleFairness(){
 fairnessShow=!fairnessShow;
-document.getElementById('fairness-toggle').textContent=fairnessShow?'📊 ON':'📊 OFF';
-document.getElementById('fairness-toggle').style.background=fairnessShow?'var(--accent-mint)':'#3a3c56';
-document.getElementById('fairness-toggle').style.color=fairnessShow?'var(--bg-dark)':'var(--text-light)';
+const ft=document.getElementById('fairness-toggle');
+ft.textContent=fairnessShow?'📊 ON':'📊 OFF';
+ft.dataset.state=fairnessShow?'on':'off';
+ft.classList.toggle('fair-on',fairnessShow);
+ft.style.background='';ft.style.color='';
 document.querySelectorAll('.fair-data').forEach(el=>el.style.display=fairnessShow?'':'none');}
 
 // === 우측 독 탭 전환 ===
@@ -3352,7 +3427,7 @@ if(isTurn)badges+='<span style="color:var(--accent-yellow)">⏳</span>';
 const pct=Math.round(p.chips/maxChips*100);
 const gaugeColor=pct>60?'var(--accent-mint)':pct>25?'var(--accent-yellow)':'var(--accent-red)';
 const gaugeBar=`<div style="height:4px;background:var(--frame-light);border-radius:2px;margin-top:3px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${gaugeColor};transition:width .5s;border-radius:2px"></div></div>`;
-html+=`<div class="${cls}" onclick="showProfile('${esc(p.name)}')">
+html+=`<div class="${cls}" data-agent="${esc(p.name)}" onclick="showProfile('${esc(p.name)}')">
 <div style="display:flex;justify-content:space-between;align-items:center">
 <span class="ac-name">${slimeImg}${isTurn?'▶ ':''}${esc(p.name)}</span>
 <span style="color:var(--accent-yellow);font-family:var(--font-number);font-size:0.8em">💰${p.chips}</span>
@@ -3390,10 +3465,15 @@ ws.onmessage=e=>{handle(JSON.parse(e.data))};
 ws.onclose=()=>{if(!wsOk){addLog(t('polling'));startPolling()}else{addLog(t('reconnect'));setTimeout(tryWS,3000)}};
 ws.onerror=()=>{}}
 
-function startPolling(){if(pollId)return;pollState();pollId=setInterval(pollState,2000)}
+let _pollInterval=2000,_pollBackoff=0;
+function startPolling(){if(pollId)return;pollState();pollId=setInterval(()=>pollState(),_pollInterval)}
 async function pollState(){try{const p=isPlayer?`&player=${encodeURIComponent(myName)}`:`&spectator=${encodeURIComponent(specName||'관전자')}`;
-const r=await fetch(`/api/state?table_id=${tableId}${p}&lang=${lang}`);if(!r.ok)return;const d=await r.json();handle(d);
-if(d.turn_info)showAct(d.turn_info)}catch(e){}}
+const r=await fetch(`/api/state?table_id=${tableId}${p}&lang=${lang}`);
+if(!r.ok){_pollBackoff=Math.min((_pollBackoff||0.5)*2,8);clearInterval(pollId);pollId=null;
+setTimeout(()=>{_pollInterval=2000;startPolling()},_pollBackoff*1000);return}
+_pollBackoff=0;const d=await r.json();handle(d);
+if(d.turn_info)showAct(d.turn_info)}catch(e){_pollBackoff=Math.min((_pollBackoff||0.5)*2,8);clearInterval(pollId);pollId=null;
+setTimeout(()=>{_pollInterval=2000;startPolling()},_pollBackoff*1000)}}
 
 let lastChatTs=0;
 // delay handled above
@@ -3419,8 +3499,96 @@ else if(d.type==='highlight'){showHighlight(d)}
 else if(d.type==='achievement'){showAchievement(d)}
 else if(d.type==='commentary'){showCommentary(d.text)}}
 
+// === 팟 숫자 롤링 애니 (#3) ===
+function rollPot(el, from, to) {
+  if (from === to) return;
+  const frames = 7;
+  const step = (to - from) / frames;
+  let frame = 0;
+  function tick() {
+    frame++;
+    const v = frame >= frames ? to : Math.round(from + step * frame);
+    el.textContent = `🏆 POT: ${v.toLocaleString()}pt`;
+    if (frame < frames) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+// === 공정성 해설 카드 (#5) — 행동/보드/팟 기반만 (홀카드 추론 금지) ===
+function fairnessCommentary(s) {
+  if (!fairnessShow) return '';
+  const round = s.round;
+  const pot = s.pot;
+  const alive = s.players?.filter(p => !p.folded && !p.out).length || 0;
+  const allins = s.players?.filter(p => p.last_action && p.last_action.includes('ALL IN')).length || 0;
+  const raisers = s.players?.filter(p => p.last_action && (p.last_action.includes('레이즈') || p.last_action.includes('Raise'))).length || 0;
+  const checkers = s.players?.filter(p => p.last_action && (p.last_action.includes('체크') || p.last_action.includes('Check'))).length || 0;
+  const callers = s.players?.filter(p => p.last_action && (p.last_action.includes('콜') || p.last_action.includes('Call'))).length || 0;
+  const tips = {
+    preflop: [
+      raisers >= 2 ? '3-bet 전쟁 — 프리플랍 주도권 쟁탈전' : null,
+      raisers === 1 ? '오프너 등장 — 나머지는 콜/폴드 결정 중' : null,
+      raisers === 0 ? '림프 인 — 멀티웨이 팟 예고' : null,
+      allins > 0 ? '🔥 프리플랍 올인 — 극단적 액션' : null,
+      alive >= 5 ? `${alive}명 참전 — 대형 멀티웨이` : null,
+      pot > 60 ? `팟 ${pot}pt — 프리플랍 치고 무거움` : null,
+    ],
+    flop: [
+      checkers >= 2 ? '전원 체크 — 팟 컨트롤 모드' : null,
+      raisers > 0 && callers > 0 ? '베팅 vs 콜 — 공격과 수비 갈림' : null,
+      raisers >= 2 ? '플랍 레이즈 전쟁 — 팟 급팽창' : null,
+      pot > 150 ? `플랍 팟 ${pot}pt — 이미 큰 판` : null,
+      alive <= 2 ? '헤즈업 진입 — 1:1 심리전' : null,
+      allins > 0 ? '🔥 플랍 올인 — 승부수' : null,
+      '플랍 — 보드 구조에 따라 베팅 패턴 결정',
+    ],
+    turn: [
+      alive <= 2 ? '턴 헤즈업 — 밸류 vs 블러프 구간' : null,
+      checkers === alive ? '턴 체크백 — 쇼다운 밸류 노림' : null,
+      raisers > 0 ? '턴 베팅 — 압박 강도 상승' : null,
+      pot > 200 ? `팟 ${pot}pt — 레이즈 한 번이면 올인급` : null,
+      allins > 0 ? '🔥 턴 올인 — 역전 or 확정' : null,
+      `턴 ${alive}명 — 리버까지 갈 것인가`,
+    ],
+    river: [
+      checkers === alive ? '리버 체크 — 블러프 포기, 쇼다운 직행' : null,
+      raisers > 0 ? '리버 밸류벳 — 마지막 칩 추출 시도' : null,
+      allins > 0 ? '🔥 리버 올인 — 올 오어 낫싱' : null,
+      alive <= 2 ? '리버 헤즈업 — 최종 결전' : null,
+      pot > 300 ? `팟 ${pot}pt — 시즌 하이라이트급` : null,
+      '리버 — 마지막 베팅 라운드',
+    ],
+    showdown: ['🏆 쇼다운 — 최고 조합 공개'],
+    between: ['다음 핸드 준비 중…'],
+    waiting: ['에이전트 대기 중…'],
+  };
+  const pool = (tips[round] || tips['waiting']).filter(Boolean);
+  if (!pool.length) return '';
+  // 라운드+보드+팟구간이 바뀔 때만 새 멘트
+  const potBucket = Math.floor(pot / 50);
+  const boardLen = s.community?.length || 0;
+  const key = `${s.hand}_${round}_${boardLen}_${potBucket}_${alive}`;
+  if (window._fairKey !== key) {
+    window._fairKey = key;
+    window._fairTip = pool[Math.floor(Math.random() * pool.length)];
+  }
+  return `<div class="fair-commentary">📡 ${window._fairTip}</div>`;
+}
+
 function render(s){
 window._lastState=s;
+// === #1: preturn 예고 펄스 ===
+const prevTurn = window._prevTurnName || '';
+if (s.turn && s.turn !== prevTurn) {
+  window._prevTurnName = s.turn;
+  // 이전 preturn/is-turn 모두 정리는 좌석 재생성에서 처리
+  // preturn 클래스: 새 좌석이 만들어질 때 is-turn 대신 preturn 먼저 부여
+  window._preturnTarget = s.turn;
+  window._preturnStart = Date.now();
+  // 400ms 후에 is-turn으로 승격 (좌석은 매 프레임 재생성되므로 render 내부에서 처리)
+  clearTimeout(window._preturnTimer);
+  window._preturnTimer = setTimeout(() => { window._preturnTarget = null; }, 400);
+}
 document.getElementById('hi').textContent=`${t('hand')} #${s.hand}`;
 const roundNames={preflop:t('preflop'),flop:t('flop'),turn:t('turn'),river:t('river'),showdown:t('showdown'),between:t('between'),finished:t('finished'),waiting:t('waiting')};
 document.getElementById('ri').textContent=roundNames[s.round]||s.round||t('waiting');
@@ -3437,6 +3605,8 @@ if(s.round==='showdown'||s.round==='between'&&s.showdown_result){sfx('win');if(t
 window._sndRound=s.round}
 if(s.spectator_count!==undefined)document.getElementById('si').textContent=`👀 ${t('spectators')} ${s.spectator_count}${t('specUnit')}`;
 if(s.season){const se=document.getElementById('season-tag');if(se)se.textContent=`🏆 ${s.season.season} (D-${s.season.days_left})`}
+// delay-badge 상태 반영 (캐시: 값 변할 때만 업데이트)
+{const db=document.getElementById('delay-badge');if(db){const dl=s.delay||0;if(db._prev!==dl){db._prev=dl;const live=dl===0;db.dataset.state=live?'live':'delay';db.classList.toggle('is-delayed',!live);db.textContent=live?'⚡ LIVE':`⏳ ${dl}s`}}}
 // 타임라인 업데이트
 const rounds=['preflop','flop','turn','river','showdown'];
 const ri=rounds.indexOf(s.round);
@@ -3447,8 +3617,11 @@ const vp=document.getElementById('vote-panel');vp.style.display='block';
 const vb=document.getElementById('vote-btns');vb.innerHTML='';
 s.players.filter(p=>!p.out&&!p.folded).forEach(p=>{const b=document.createElement('button');b.className='vp-btn';b.textContent=`${p.emoji} ${p.name}`;b.onclick=()=>castVote(p.name,b);vb.appendChild(b)})}
 if(s.round==='between'||s.round==='finished'||s.round==='waiting'){document.getElementById('vote-panel').style.display='none';currentVote=null}
-document.getElementById('pot').textContent=`🏆 POT: ${s.pot}pt`;
-document.getElementById('pot').style.fontSize=s.pot>200?'1.3em':s.pot>50?'1.1em':'1em';
+// 팟 롤링 애니
+{const potEl=document.getElementById('pot');
+potEl.style.fontSize=s.pot>200?'1.3em':s.pot>50?'1.1em':'1em';
+const prev=parseInt(potEl._rollVal||'0')||0;
+if(prev!==s.pot){const from=prev;potEl._rollVal=s.pot;rollPot(potEl,from,s.pot)}}
 // 황금 더미 시각화
 const cs=document.getElementById('chip-stack');
 if(s.pot>0){
@@ -3472,7 +3645,9 @@ const wobble=Math.sin(i*1.7+y*2.3)*2;
 const coinSize=16+Math.random()*4;
 rowHtml+=`<div style="position:absolute;left:${offsetX+i*18+wobble}px;top:${y}px;font-size:${coinSize}px;text-shadow:1px 1px 0 #b8860b,-1px -1px 0 #fff8;transition:all .3s">🪙</div>`}
 coins+=rowHtml;y+=14}
-cs.innerHTML=`<div style="position:relative;width:${rows[rows.length-1]*18+20}px;height:${y+16}px;transform:scale(${scale});${glow};transition:transform .3s">${coins}</div>`}
+cs.innerHTML=`<div style="position:relative;width:${rows[rows.length-1]*18+20}px;height:${y+16}px;transform:scale(${scale});${glow};transition:transform .3s">${coins}</div>`;
+// 랜덤 딜레이로 동시 점멸 방지
+if(!cs._sparkleSet){cs._sparkleSet=true;cs.style.setProperty('--sparkle-delay',(Math.random()*2).toFixed(1)+'s')}}
 else cs.innerHTML='';
 const b=document.getElementById('board');b.innerHTML='';
 s.community.forEach((c,i)=>{const card=mkCard(c);b.innerHTML+=card});
@@ -3507,6 +3682,18 @@ const f=document.getElementById('felt');
 f.classList.remove('warm','hot','fire');
 if(s.pot>500)f.classList.add('fire');else if(s.pot>200)f.classList.add('hot');else if(s.pot>=50)f.classList.add('warm');
 f.querySelectorAll('.seat').forEach(e=>e.remove());
+// #1: 대기 상태 메시지 (최소 800ms 노출 + 200ms 페이드)
+{let wm=document.getElementById('felt-waiting');
+const shouldShow=!s.players||s.players.length===0||s.round==='waiting';
+if(shouldShow){
+if(!wm){wm=document.createElement('div');wm.id='felt-waiting';wm.className='felt-waiting';
+wm.innerHTML='<div class="fw-text">🎰 Waiting for agents…</div><div class="fw-sub">AI 봇이 입장하면 자동 시작</div>';
+f.appendChild(wm);wm._showAt=Date.now()}
+wm.classList.remove('fade-out');wm.style.display='';wm._showAt=wm._showAt||Date.now()}
+else if(wm&&wm.style.display!=='none'){
+const elapsed=Date.now()-(wm._showAt||0);
+if(elapsed<800){setTimeout(()=>{if(wm)wm.classList.add('fade-out');setTimeout(()=>{if(wm)wm.style.display='none'},200)},800-elapsed)}
+else{wm.classList.add('fade-out');setTimeout(()=>{if(wm)wm.style.display='none'},200)}}}
 // 동적 좌석 배치 — 타원형 테이블 위에 균등 분포
 const seatPos=((n)=>{
 // 포커 테이블 고정 좌석 배치 (플레이어 수별 최적 위치)
@@ -3520,9 +3707,18 @@ const layouts={
 7:[{t:'88%',l:'50%'},{t:'70%',l:'8%'},{t:'30%',l:'8%'},{t:'12%',l:'30%'},{t:'12%',l:'70%'},{t:'30%',l:'92%'},{t:'70%',l:'92%'}],
 8:[{t:'88%',l:'38%'},{t:'88%',l:'62%'},{t:'58%',l:'8%'},{t:'25%',l:'8%'},{t:'12%',l:'30%'},{t:'12%',l:'70%'},{t:'25%',l:'92%'},{t:'58%',l:'92%'}]
 };
-return layouts[Math.min(n,8)]||layouts[6]})(s.players.length);
+return layouts[Math.min(n,8)]||layouts[6]})(Math.max(s.players.length,4));
+// 빈 좌석 렌더: 플레이어 수 이후~seatPos 끝까지
+const maxSeats=seatPos?seatPos.length:0;
+for(let ei=s.players.length;ei<maxSeats;ei++){
+const ee=document.createElement('div');ee.className='seat seat-'+ei+' empty-seat';
+ee.innerHTML='<div class="seat-unit"><div class="chair-shadow"></div><div class="chair-sprite"><img src="/static/slimes/casino_chair.png" alt="" loading="lazy" onerror="this.remove()"></div><div class="slime-sprite"></div></div><div class="nm" style="border-style:dashed">—</div>';
+if(seatPos&&seatPos[ei]){ee.style.position='absolute';ee.style.top=seatPos[ei].t;ee.style.left=seatPos[ei].l;ee.style.bottom='auto';ee.style.right='auto';ee.style.transform='translate(-50%,-50%)';ee.style.textAlign='center'}
+f.appendChild(ee)}
 s.players.forEach((p,i)=>{const el=document.createElement('div');
-let cls=`seat seat-${i}`;if(p.folded)cls+=' fold';if(p.out)cls+=' out';if(s.turn===p.name)cls+=' is-turn';
+let cls=`seat seat-${i}`;if(p.folded)cls+=' fold';if(p.out)cls+=' out';
+// preturn 예고: 400ms 동안 preturn, 이후 is-turn
+if(s.turn===p.name){if(window._preturnTarget===p.name)cls+=' preturn';else cls+=' is-turn';}
 if(p.last_action&&p.last_action.includes('ALL IN'))cls+=' allin-glow';
 el.className=cls;let ch='';
 const isShowdown=s.round==='showdown'||s.round==='between';
@@ -3558,8 +3754,8 @@ const avaRing=ringPct>0?`<div class="ava-ring" style="background:conic-gradient(
 const wpRing=ringPct>0?`<div style="font-size:0.65em;color:${ringColor};text-align:center">${p.win_pct}%</div>`:'';
 const moodTag=p.last_mood?`<span style="position:absolute;top:-8px;right:-8px;font-size:0.8em">${esc(p.last_mood)}</span>`:'';
 inferTraitsFromStyle(p);const slimeEmo=getSlimeEmotion(p,s);const slimeHtml=renderSlimeToSeat(p.name,slimeEmo);
-el.innerHTML=`${la}${bubble}<div style="position:relative;display:inline-block">${avaRing}<div class="ava">${slimeHtml}</div>${moodTag}</div>${thinkDiv}<div class="cards">${ch}</div><div class="nm">${health} ${esc(sb)}${esc(p.name)}${db}</div>${metaTag}<div class="ch">💰${p.chips}pt ${latTag}</div>${wpRing}${bt}<div class="st">${esc(p.style)}</div>`;
-el.style.cursor='pointer';el.onclick=(e)=>{e.stopPropagation();showProfile(p.name)};
+el.innerHTML=`${la}${bubble}${slimeHtml}${thinkDiv}<div class="cards">${ch}</div><div class="nm">${health} ${esc(sb)}${esc(p.name)}${db}</div>${metaTag}<div class="ch">💰${p.chips}pt ${latTag}</div>${wpRing}${bt}<div class="st">${esc(p.style)}</div>`;
+el.dataset.agent=p.name;el.style.cursor='pointer';el.onclick=(e)=>{e.stopPropagation();showProfile(p.name)};
 // 동적 좌석 위치 적용 (CSS class보다 우선)
 if(seatPos&&seatPos[i]){const sp=seatPos[i];el.style.position='absolute';
 el.style.top=sp.t||'auto';el.style.left=sp.l||'auto';el.style.bottom='auto';el.style.right='auto';
@@ -3604,8 +3800,14 @@ plh+=`<div class="pl-item${isTurn?' is-turn':''}"><span class="pl-status">${stat
 });pl.innerHTML=plh}
 // Agent panel (우측 독)
 renderAgentPanel(s);
+// #5: 공정성 해설 카드 — #commentary 아래에 삽입
+{const fc=document.getElementById('fair-comment');
+if(fc){const tip=fairnessCommentary(s);if(tip!==fc._prev){fc._prev=tip;fc.innerHTML=tip}}
+else{const com=document.getElementById('commentary');if(com){const d=document.createElement('div');d.id='fair-comment';d.innerHTML=fairnessCommentary(s);com.after(d)}}}
 // Action stack — 관전자는 항상 잠금
 if(!isPlayer){const as=document.getElementById('action-stack');if(as)as.style.opacity='0.4'}
+// body.fair-on 클래스 동기화
+document.body.classList.toggle('fair-on',fairnessShow);
 }
 
 function mkCard(c,sm,flip){const red=['♥','♦'].includes(c.suit);
@@ -3718,7 +3920,10 @@ else if(m.includes('──')){d.style.cssText='color:#88ccff;font-weight:bold;ba
 else if(m.includes('🏆')){d.style.cssText='color:#44ff44;font-weight:bold'}
 else if(m.includes('☠️')||m.includes('ELIMINATED')){d.style.cssText='color:#ff4444;font-weight:bold'}
 else if(m.includes('🔥')){d.style.cssText='color:#ff8844'}
-d.textContent=m;l.appendChild(d);l.scrollTop=l.scrollHeight;if(l.children.length>100)l.removeChild(l.firstChild)}
+d.textContent=m;l.appendChild(d);
+// 자동스크롤: 사용자가 위로 스크롤했으면 강제 안 함
+if(l.scrollHeight-l.scrollTop-l.clientHeight<80)l.scrollTop=l.scrollHeight;
+if(l.children.length>100)l.removeChild(l.firstChild)}
 function addChat(name,msg,scroll=true){const c=document.getElementById('chatmsgs');
 const d=document.createElement('div');d.innerHTML=`<span class="cn">${esc(name)}:</span> <span class="cm">${esc(msg)}</span>`;
 c.appendChild(d);if(scroll)c.scrollTop=c.scrollHeight;if(c.children.length>50)c.removeChild(c.firstChild)}
@@ -3753,13 +3958,19 @@ else if(tl.includes('all in')||tl.includes('올인')||text.includes('🔥'))icon
 else if(text.includes('🏆'))icon='<span class="af-icon i-win">★</span>';
 else if(text.includes('━━━')||text.includes('──'))icon='<span class="af-icon i-round">◆</span>';
 if(text.includes('🏆'))div.className='af-item af-win';
+// 라운드 헤더 강화 (#4)
+if(text.includes('━━━')||text.includes('──')||tl.includes('flop')||tl.includes('플랍')||tl.includes('turn ')||tl.includes('턴')||tl.includes('river')||tl.includes('리버')){div.className='af-item af-round'}
 div.innerHTML=icon+esc(text);
 feed.appendChild(div);
-feed.scrollTop=feed.scrollHeight;
-while(feed.children.length>50)feed.removeChild(feed.firstChild);
+if(feed.scrollHeight-feed.scrollTop-feed.clientHeight<80)feed.scrollTop=feed.scrollHeight;
+while(feed.children.length>200)feed.removeChild(feed.firstChild);
 }
 
+let _overlayCooldown=0;
+function _canOverlay(){const now=Date.now();if(now<_overlayCooldown)return false;return true}
+function _setOverlayCooldown(ms){_overlayCooldown=Date.now()+ms}
 function showAllin(d){
+if(!_canOverlay())return;_setOverlayCooldown(2200);
 const o=document.getElementById('allin-overlay');
 o.querySelector('.allin-text').textContent=`🔥 ${d.emoji} ${d.name} ALL IN ${d.amount}pt 🔥`;
 o.style.display='flex';o.style.animation='none';o.offsetHeight;o.style.animation='allinFlash 2s ease-out forwards';
@@ -3908,6 +4119,7 @@ b.innerHTML=h;sfx('showdown');showConfetti();setTimeout(()=>{o.style.display='no
 
 // 킬캠
 function showKillcam(d){
+if(!_canOverlay())return;_setOverlayCooldown(2700);
 const o=document.getElementById('killcam-overlay');
 o.querySelector('.kc-vs').textContent=`${d.killer_emoji} ${d.killer}`;
 let kcMsg=`☠️ ${d.victim_emoji} ${d.victim} ELIMINATED`;
@@ -3917,6 +4129,7 @@ sfx('killcam');setTimeout(()=>{o.style.display='none'},2500)}
 
 // 다크호스
 function showDarkhorse(d){
+if(!_canOverlay())return;_setOverlayCooldown(3200);
 const o=document.getElementById('darkhorse-overlay');
 o.querySelector('.dh-text').textContent=`${t('darkHorse')} ${d.emoji} ${d.name} ${t('upsetWin')} +${d.pot}pt`;
 o.style.display='flex';o.style.animation='none';o.offsetHeight;o.style.animation='allinFlash 3s ease-out forwards';
@@ -3924,6 +4137,7 @@ sfx('darkhorse');setTimeout(()=>{o.style.display='none'},3000)}
 
 // MVP
 function showMVP(d){
+if(!_canOverlay())return;_setOverlayCooldown(3700);
 const o=document.getElementById('mvp-overlay');
 o.querySelector('.mvp-text').textContent=`👑 MVP ${d.emoji} ${d.name} — ${d.chips}pt (${d.hand}핸드)`;
 o.style.display='flex';o.style.animation='none';o.offsetHeight;o.style.animation='allinFlash 3.5s ease-out forwards';
@@ -3957,7 +4171,9 @@ document.addEventListener('click',initAudio,{once:false});
 let muted=false;
 let sfxVol=0.5; // 0~1
 function toggleMute(){muted=!muted;document.getElementById('mute-btn').textContent=muted?'🔇':'🔊'}
-function setVol(v){sfxVol=v/100;if(sfxVol<=0){muted=true;document.getElementById('mute-btn').textContent='🔇'}else{muted=false;document.getElementById('mute-btn').textContent='🔊'}}
+function setVol(v){sfxVol=v/100;if(sfxVol<=0){muted=true;document.getElementById('mute-btn').textContent='🔇'}else{muted=false;document.getElementById('mute-btn').textContent='🔊'}
+// 골드 트랙 업데이트
+document.getElementById('vol-slider').style.setProperty('--vol-pct',v+'%')}
 let chatMuted=false;
 function toggleChatMute(){chatMuted=!chatMuted;document.getElementById('chat-mute-btn').textContent=chatMuted?'🚫':'💬';document.getElementById('chat-mute-btn').title=chatMuted?'쓰레기톡 OFF (클릭해서 켜기)':'쓰레기톡 ON (클릭해서 끄기)'}
 function sfx(type){
@@ -4260,8 +4476,36 @@ function inferTraitsFromStyle(p) {
   if (p.chips <= 50 && t.type === 'balanced') t.type = 'newbie';
   _slimeTraits[name] = t;
 }
+// === Slime PNG mapping (NPC + generic) ===
+const SLIME_PNG_MAP = {
+  '블러드팡': '/static/slimes/ruby_confident.png',
+  '아이언클로': '/static/slimes/sapphire_focused.png',
+  '쉐도우': '/static/slimes/emerald_sneaky.png',
+  '버서커': '/static/slimes/amber_excited.png',
+};
+const GENERIC_SLIMES = [
+  '/static/slimes/lavender_calm.png',
+  '/static/slimes/peach_cheerful.png',
+  '/static/slimes/mint_confident.png',
+];
+const _slimeAssign = {};
+let _genericIdx = 0;
+function getSlimePng(name) {
+  if (SLIME_PNG_MAP[name]) return SLIME_PNG_MAP[name];
+  if (!_slimeAssign[name]) {
+    _slimeAssign[name] = GENERIC_SLIMES[_genericIdx % GENERIC_SLIMES.length];
+    _genericIdx++;
+  }
+  return _slimeAssign[name];
+}
+// Preload slime images
+(function(){
+  const all = Object.values(SLIME_PNG_MAP).concat(GENERIC_SLIMES).concat(['/static/slimes/casino_chair.png']);
+  all.forEach(src => { const img = new Image(); img.src = src; });
+})();
+
 function renderSlimeToSeat(name, emotion) {
-  const c = drawSlime(name, emotion, 80);
+  const pngSrc = getSlimePng(name);
   let animClass;
   if(emotion==='think') animClass='slime-think';
   else if(emotion==='allin') animClass='slime-allin';
@@ -4269,7 +4513,12 @@ function renderSlimeToSeat(name, emotion) {
   else if(emotion==='sad'||emotion==='lose') animClass='slime-sad';
   else if(emotion==='shock') animClass='slime-shake';
   else animClass='slime-idle';
-  return `<img src="${c.toDataURL()}" width="72" height="72" class="${animClass}" style="image-rendering:pixelated;filter:drop-shadow(2px 3px 0 rgba(0,0,0,0.12))">`;
+  // Chair + Slime + Shadow layered system
+  return `<div class="seat-unit">` +
+    `<div class="chair-shadow"></div>` +
+    `<div class="chair-sprite"><img src="/static/slimes/casino_chair.png" alt="" loading="lazy" onerror="this.remove()"></div>` +
+    `<div class="slime-sprite"><img src="${pngSrc}" width="72" height="72" class="${animClass}" style="filter:drop-shadow(2px 3px 4px rgba(0,0,0,0.2))" alt="${name}" onerror="this.parentElement.innerHTML='<img src=&quot;'+drawSlime('${name.replace(/'/g,"\\'")}','${emotion}',80).toDataURL()+'&quot; width=72 height=72 class=${animClass}>'"></div>` +
+    `</div>`;
 }
 // Firefly sparkles on forest table
 setInterval(()=>{const f=document.querySelector('.felt');if(!f||f.offsetParent===null)return;
@@ -4283,6 +4532,35 @@ f.appendChild(s);setTimeout(()=>s.remove(),2500)},1800);
 document.getElementById('chat-inp').addEventListener('keydown',e=>{if(e.key==='Enter')sendChat()});
 // Player list collapse toggle
 (function(){const pl=document.getElementById('player-list-panel');if(pl){const h=pl.querySelector('.dock-panel-header');if(h)h.addEventListener('click',()=>pl.classList.toggle('expanded'))}})();
+
+// === #2: Agent ↔ Seat focus link (이벤트 위임) ===
+(function(){
+  function clearFocus(){document.querySelectorAll('.focus').forEach(e=>e.classList.remove('focus'))}
+  // Agent panel hover → seat highlight
+  const al=document.getElementById('agent-list');
+  if(al){
+    al.addEventListener('mouseenter',e=>{
+      const card=e.target.closest('.agent-card');if(!card)return;
+      const name=card.dataset.agent;if(!name)return;
+      clearFocus();card.classList.add('focus');
+      const seat=document.querySelector(`.seat[data-agent="${name}"]`);
+      if(seat)seat.classList.add('focus');
+    },true);
+    al.addEventListener('mouseleave',clearFocus,true);
+  }
+  // Seat hover → agent-card highlight
+  const felt=document.getElementById('felt');
+  if(felt){
+    felt.addEventListener('mouseenter',e=>{
+      const seat=e.target.closest('.seat');if(!seat)return;
+      const name=seat.dataset.agent;if(!name)return;
+      clearFocus();seat.classList.add('focus');
+      const card=document.querySelector(`.agent-card[data-agent="${name}"]`);
+      if(card)card.classList.add('focus');
+    },true);
+    felt.addEventListener('mouseleave',clearFocus,true);
+  }
+})();
 
 // === 🌿🍄 Forest Decorations v2 — PX=2 HD ===
 (function(){

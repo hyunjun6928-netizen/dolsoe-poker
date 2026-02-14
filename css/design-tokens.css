@@ -1,0 +1,191 @@
+/* ═════════════════════════════════════════════════════════
+   DESIGN TOKENS — Premium Casino Broadcast Console
+   v3.0 · 머슴포커 · 2026-02-14
+   ═════════════════════════════════════════════════════════ */
+
+/* ===== 1. COLOR — BACKGROUNDS ===== */
+:root {
+  --bg-void:       #06080C;        /* 최심부 — 오버레이 뒤 */
+  --bg-main:       #0B0E14;        /* 메인 배경 */
+  --bg-dark:       #0A0D12;        /* HUD / 하단독 */
+  --bg-panel:      rgba(16,20,28,0.72);  /* 글래스 패널 내부 */
+  --bg-panel-solid:#101418;        /* 글래스 불가 폴백 */
+  --bg-panel-alt:  rgba(22,27,38,0.65);  /* 대체 패널 */
+  --bg-surface:    #151921;        /* 카드/뱃지 배경 */
+  --bg-input:      #111520;        /* 인풋 필드 */
+}
+
+/* ===== 2. COLOR — FELT & TABLE ===== */
+:root {
+  --felt-light:    #1E7A4A;        /* 펠트 하이라이트 */
+  --felt-mid:      #166034;        /* 펠트 중간톤 */
+  --felt-dark:     #0E4A22;        /* 펠트 딥 */
+  --felt-shadow:   #0A3318;        /* 펠트 비네팅 */
+  --felt-spot:     rgba(255,248,220,0.04); /* 스포트라이트 */
+  --rail-brass:    #8B7355;        /* 브라스 레일 */
+  --rail-light:    #A8956E;        /* 레일 하이라이트 */
+  --rail-dark:     #5C4D38;        /* 레일 그림자 */
+}
+
+/* ===== 3. COLOR — FRAME & BORDER ===== */
+:root {
+  --frame:         #252B3A;
+  --frame-dark:    #1A1F2B;
+  --frame-light:   #333C52;
+  --frame-shadow:  #0A0D12;
+  --border-gold:   rgba(212,175,90,0.25); /* 골드 라인(얇게) */
+  --border-glass:  rgba(255,255,255,0.06);
+  --border-w:      1px;
+}
+
+/* ===== 4. COLOR — TEXT ===== */
+:root {
+  --text-primary:  #E2E8F2;
+  --text-secondary:#7E8A9E;
+  --text-muted:    #4A5568;
+  --text-light:    #F0F4FA;
+  --text-on-gold:  #0C0F14;
+  --text-on-accent:#0C0F14;
+}
+
+/* ===== 5. COLOR — ACCENT PALETTE ===== */
+:root {
+  /* Gold system (6-tier) */
+  --gold-50:       #FFF8E1;
+  --gold-100:      #FFECB3;
+  --gold-300:      #F5C542;
+  --gold-500:      #D4AF5A;
+  --gold-700:      #B8891E;
+  --gold-900:      #8B6914;
+
+  /* Primary accents */
+  --accent-gold:   var(--gold-300);
+  --accent-mint:   #34D399;
+  --accent-pink:   #FF4D6A;
+  --accent-purple: #8B5CF6;
+  --accent-blue:   #3B82F6;
+  --accent-red:    #EF4444;
+  --accent-green:  #34D399;
+
+  /* Muted/glow variants */
+  --mint-glow:     rgba(52,211,153,0.15);
+  --gold-glow:     rgba(245,197,66,0.12);
+  --pink-glow:     rgba(255,77,106,0.12);
+  --purple-glow:   rgba(139,92,246,0.10);
+  --red-glow:      rgba(239,68,68,0.15);
+
+  /* Semantic */
+  --color-live:    var(--accent-mint);
+  --color-delay:   var(--accent-pink);
+  --color-warn:    #F59E0B;
+  --color-danger:  var(--accent-red);
+  --color-success: var(--accent-mint);
+}
+
+/* ===== 6. TYPOGRAPHY ===== */
+:root {
+  --font-body:     'Inter','Pretendard',-apple-system,system-ui,sans-serif;
+  --font-title:    'Inter','Pretendard',-apple-system,system-ui,sans-serif;
+  --font-number:   'JetBrains Mono','SF Mono','Fira Code',monospace;
+  --font-pixel:    var(--font-body); /* legacy compat alias */
+
+  --fs-xs:         0.7rem;    /* 11.2px */
+  --fs-sm:         0.8rem;    /* 12.8px */
+  --fs-base:       0.875rem;  /* 14px */
+  --fs-md:         1rem;      /* 16px */
+  --fs-lg:         1.15rem;   /* 18.4px */
+  --fs-xl:         1.5rem;    /* 24px */
+  --fs-2xl:        2rem;      /* 32px */
+  --fs-3xl:        2.8rem;    /* overlay headings */
+
+  --lh-tight:      1.2;
+  --lh-base:       1.5;
+  --lh-loose:      1.7;
+
+  --fw-normal:     400;
+  --fw-medium:     500;
+  --fw-semi:       600;
+  --fw-bold:       700;
+  --fw-black:      800;
+}
+
+/* ===== 7. SPACING ===== */
+:root {
+  --sp-2xs:        2px;
+  --sp-xs:         4px;
+  --sp-sm:         6px;
+  --sp-md:         8px;
+  --sp-lg:         12px;
+  --sp-xl:         16px;
+  --sp-2xl:        24px;
+  --sp-3xl:        32px;
+}
+
+/* ===== 8. RADIUS ===== */
+:root {
+  --radius-sm:     6px;
+  --radius:        10px;
+  --radius-lg:     14px;
+  --radius-xl:     20px;
+  --radius-pill:   9999px;
+  --radius-circle: 50%;
+}
+
+/* ===== 9. SHADOWS ===== */
+:root {
+  --shadow-xs:     0 1px 2px rgba(0,0,0,0.25);
+  --shadow-sm:     0 2px 4px rgba(0,0,0,0.3);
+  --shadow-md:     0 4px 12px rgba(0,0,0,0.4);
+  --shadow-lg:     0 8px 24px rgba(0,0,0,0.5);
+  --shadow-xl:     0 16px 48px rgba(0,0,0,0.6);
+  --shadow-inset:  inset 0 2px 8px rgba(0,0,0,0.3);
+
+  /* Colored glows */
+  --glow-gold:     0 0 20px var(--gold-glow), 0 0 4px var(--gold-glow);
+  --glow-mint:     0 0 16px var(--mint-glow);
+  --glow-pink:     0 0 16px var(--pink-glow);
+  --glow-turn:     0 0 24px rgba(245,197,66,0.2), 0 0 6px rgba(245,197,66,0.1);
+}
+
+/* ===== 10. GLASS MORPHISM ===== */
+:root {
+  --glass-blur:    blur(16px);
+  --glass-blur-sm: blur(8px);
+  --glass-bg:      var(--bg-panel);
+  --glass-border:  var(--border-glass);
+  --glass-shadow:  var(--shadow-md);
+}
+
+/* ===== 11. Z-INDEX LAYERS ===== */
+:root {
+  --z-base:        1;
+  --z-seat:        10;
+  --z-card:        15;
+  --z-badge:       20;
+  --z-hud:         40;
+  --z-dock-bottom: 50;
+  --z-overlay:     90;
+  --z-allin:       99;
+  --z-killcam:     101;
+  --z-achieve:     102;
+  --z-popup:       150;
+}
+
+/* ===== 12. TRANSITIONS ===== */
+:root {
+  --ease-out:      cubic-bezier(0.22,1,0.36,1);
+  --ease-bounce:   cubic-bezier(0.34,1.56,0.64,1);
+  --dur-fast:      120ms;
+  --dur-base:      200ms;
+  --dur-slow:      400ms;
+  --dur-dramatic:  800ms;
+}
+
+/* ===== 13. REDUCED MOTION ===== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
