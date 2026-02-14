@@ -2317,15 +2317,15 @@ img[src*="slimes/"] {
 /* === CHARACTER GROUNDING: Warm grading + AO shadow === */
 .floor-npc { filter: none !important; background: none !important; }
 .floor-npc[data-state="live"] {
-  filter: drop-shadow(0 4px 3px rgba(0,0,0,0.6)) drop-shadow(0 1px 2px rgba(0,0,0,0.4)) saturate(0.85) brightness(0.95) !important;
+  filter: none !important;
 }
 .floor-npc[data-state="ghost"] {
-  filter: drop-shadow(0 3px 2px rgba(0,0,0,0.3)) grayscale(0.4) saturate(0.7) brightness(0.8) !important;
+  filter: none !important;
   opacity: 0.4;
 }
 /* Warm rim-light on live characters (upper-right) */
 .floor-npc[data-state="live"] .walker-body img {
-  filter: drop-shadow(1px -1px 0 rgba(245,197,66,0.15));
+  filter: none;
 }
 
 /* === WORLD PIXEL RULE: No blur ever in world layer === */
