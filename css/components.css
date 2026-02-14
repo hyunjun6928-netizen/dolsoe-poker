@@ -1871,7 +1871,8 @@ body.fair-on .fair-commentary,
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background: url("/static/slimes/casino_floormap_v4.png") center / cover no-repeat;
+  background: url("/static/slimes/floor_tile.png") repeat;
+  background-size: 256px 256px;
   image-rendering: pixelated;
 }
 #casino-floor::after {

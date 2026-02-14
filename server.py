@@ -3732,11 +3732,20 @@ const FLOOR_BUBBLES={
 };
 // POI zones (% of floor)
 const POIS=[
-  {id:'slot',x:8,y:25,w:20,h:30,cap:3},
-  {id:'slot2',x:15,y:15,w:8,h:20,cap:2},
-  {id:'bar',x:62,y:12,w:18,h:25,cap:3},
-  {id:'table',x:35,y:55,w:22,h:30,cap:4},
-  {id:'vip',x:85,y:20,w:12,h:30,cap:2},
+  {id:'slot',x:5,y:30,w:12,h:20,cap:3,img:'/static/slimes/poi_slot.png',sz:90},
+  {id:'slot2',x:5,y:60,w:12,h:20,cap:2,img:'/static/slimes/poi_slot.png',sz:80},
+  {id:'bar',x:75,y:15,w:18,h:20,cap:3,img:'/static/slimes/poi_bar.png',sz:120},
+  {id:'table',x:38,y:45,w:22,h:25,cap:4,img:'/static/slimes/poi_poker_mini.png',sz:140},
+  {id:'vip',x:42,y:5,w:16,h:15,cap:2,img:'/static/slimes/poi_vip_rope.png',sz:110},
+  {id:'fountain',x:22,y:45,w:10,h:15,cap:2,img:'/static/slimes/poi_fountain.png',sz:90},
+  {id:'chandelier',x:45,y:25,w:10,h:10,cap:0,img:'/static/slimes/poi_chandelier.png',sz:100},
+  {id:'plant1',x:3,y:10,w:5,h:8,cap:0,img:'/static/slimes/poi_plant.png',sz:50},
+  {id:'plant2',x:90,y:75,w:5,h:8,cap:0,img:'/static/slimes/poi_plant.png',sz:50},
+  {id:'cocktail1',x:68,y:50,w:8,h:10,cap:1,img:'/static/slimes/poi_cocktail_table.png',sz:60},
+  {id:'cocktail2',x:20,y:75,w:8,h:10,cap:1,img:'/static/slimes/poi_cocktail_table.png',sz:60},
+  {id:'sconce1',x:0,y:20,w:3,h:5,cap:0,img:'/static/slimes/poi_wall_sconce.png',sz:40},
+  {id:'sconce2',x:0,y:50,w:3,h:5,cap:0,img:'/static/slimes/poi_wall_sconce.png',sz:40},
+  {id:'sconce3',x:97,y:35,w:3,h:5,cap:0,img:'/static/slimes/poi_wall_sconce.png',sz:40},
 ];
 const _poiOccupants={};POIS.forEach(p=>_poiOccupants[p.id]=[]);
 let _floorNpcs=[];
@@ -3758,6 +3767,18 @@ function pickPOI(npc){
 
 async function loadCasinoFloor(){
   const el=document.getElementById('floor-agents');if(!el)return;
+  // Render POI furniture sprites (same scale as slimes)
+  const poiLayer=document.getElementById('poi-layer');
+  if(poiLayer&&!poiLayer.dataset.init){
+    poiLayer.dataset.init='1';
+    poiLayer.style.cssText='position:absolute;inset:0;z-index:1;pointer-events:none';
+    POIS.forEach(p=>{if(!p.img)return;
+      const d=document.createElement('div');
+      d.style.cssText=`position:absolute;left:${p.x+p.w/2}%;top:${p.y+p.h/2}%;transform:translate(-50%,-50%);pointer-events:none`;
+      d.innerHTML=`<img src="${p.img}" width="${p.sz||80}" height="${p.sz||80}" style="image-rendering:pixelated;filter:drop-shadow(2px 4px 8px rgba(0,0,0,0.6))" onerror="this.parentElement.remove()">`;
+      poiLayer.appendChild(d);
+    });
+  }
   try{
     const r=await fetch('/api/lobby/world');const d=await r.json();
     const all=[...(d.live||[]),...(d.ghosts||[])].slice(0,16);
