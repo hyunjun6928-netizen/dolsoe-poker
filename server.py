@@ -3717,12 +3717,12 @@ loadLobbyHighlights();setInterval(loadLobbyHighlights,30000);
 
 // === Casino Floor: POI-based NPC state machine ===
 const FLOOR_SLIMES={
-  '딜러봇':'/static/slimes/sit_dealer.png','도박꾼':'/static/slimes/sit_gambler.png',
-  '고수':'/static/slimes/sit_veteran.png','초보':'/static/slimes/sit_rookie.png',
-  'DealerBot':'/static/slimes/sit_dealer.png','Gambler':'/static/slimes/sit_gambler.png',
-  'Pro':'/static/slimes/sit_veteran.png','Newbie':'/static/slimes/sit_rookie.png',
+  '딜러봇':'/static/slimes/walk_dealer.png','도박꾼':'/static/slimes/walk_gambler.png',
+  '고수':'/static/slimes/walk_suit.png','초보':'/static/slimes/walk_rookie.png',
+  'DealerBot':'/static/slimes/walk_dealer.png','Gambler':'/static/slimes/walk_gambler.png',
+  'Pro':'/static/slimes/walk_suit.png','Newbie':'/static/slimes/walk_rookie.png',
 };
-const FLOOR_GENERIC=['/static/slimes/sit_suit.png','/static/slimes/sit_casual.png','/static/slimes/sit_vip.png','/static/slimes/sit_wildcard.png','/static/slimes/sit_bartender.png','/static/slimes/sit_security.png'];
+const FLOOR_GENERIC=['/static/slimes/walk_suit.png','/static/slimes/walk_casual.png','/static/slimes/walk_gambler.png','/static/slimes/walk_dealer.png','/static/slimes/walk_rookie.png','/static/slimes/walk_shadow.png'];
 const FLOOR_BUBBLES={
   slot:{ko:['잭팟 어딨어...','한 번만 더...','코인 다 떨어짐 ㅋ','ㅋㅋ 또 꽝'],en:['where is jackpot...','one more pull...','out of coins lol','miss again']},
   bar:{ko:['오늘 졌다... 🍺','한잔 하자','칩이 녹았어','ㅎㅎ 쉬는 중'],en:['lost today... 🍺','need a drink','chips melted','taking a break']},
@@ -3783,7 +3783,7 @@ async function loadCasinoFloor(){
       if(isLive)div.style.filter='drop-shadow(0 0 8px rgba(52,211,153,0.4))';
       const wr=a.hands>0?Math.round(a.wins/a.hands*100):0;
       div.innerHTML=`<div style="text-align:center">
-        <img src="${img}" width="80" height="80" style="image-rendering:pixelated;filter:drop-shadow(2px 3px 6px rgba(0,0,0,0.7))" onerror="this.src='/static/slimes/sit_suit.png'">
+        <img src="${img}" width="80" height="80" style="image-rendering:pixelated;filter:drop-shadow(2px 3px 6px rgba(0,0,0,0.7))" onerror="this.src='/static/slimes/walk_suit.png'">
         <div style="font-size:0.65em;color:${isLive?'var(--accent-mint)':'var(--accent-gold)'};margin-top:2px;white-space:nowrap;text-shadow:0 1px 4px #000;max-width:80px;overflow:hidden;text-overflow:ellipsis;font-family:var(--font-pixel);background:rgba(0,0,0,0.5);padding:1px 6px;border-radius:4px">${a.name}</div>
         <div class="npc-bubble" style="display:none;position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:rgba(10,13,18,0.92);color:#eee;padding:3px 8px;border-radius:8px;font-size:0.55em;white-space:nowrap;border:1px solid rgba(245,197,66,0.2);margin-bottom:2px;backdrop-filter:blur(4px)"></div>
       </div>`;
