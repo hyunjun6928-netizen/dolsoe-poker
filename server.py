@@ -1764,6 +1764,8 @@ async def handle_client(reader, writer):
         rel=route[len('/static/'):]
         if rel.startswith('slimes/'):
             fpath=_os.path.join(BASE,'assets','slimes',rel[len('slimes/'):])
+        elif rel.startswith('colosseum/'):
+            fpath=_os.path.join(BASE,'colosseum','assets',rel[len('colosseum/'):])
         elif rel.startswith('fonts/'):
             fpath=_os.path.join(BASE,'assets','fonts',rel[len('fonts/'):])
         else:
@@ -1783,6 +1785,15 @@ async def handle_client(reader, writer):
             await send_http(writer,404,'Not Found')
         return
 
+    if method=='GET' and route=='/arena':
+        import os as _os2
+        arena_path=_os2.path.join(_os2.path.dirname(_os2.path.abspath(__file__)),'colosseum','index.html')
+        if _os2.path.isfile(arena_path):
+            with open(arena_path,'rb') as _f: data=_f.read()
+            await send_http(writer,200,data,'text/html; charset=utf-8')
+        else:
+            await send_http(writer,404,'Arena not found')
+        return
     if method=='GET' and route=='/en':
         await send_http(writer,302,'','text/html',extra_headers='Location: /?lang=en\r\n')
     elif method=='GET' and route=='/en/ranking':
