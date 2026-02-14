@@ -1838,6 +1838,9 @@ async def handle_client(reader, writer):
         touch_agent(name, t.id, d.get('strategy','')[:20] or None)
         await send_json(writer,{'ok':True,'table_id':t.id,'your_seat':len(t.seats)-1,
             'players':[s['name'] for s in t.seats],'token':token})
+    elif method=='GET' and route=='/api/version':
+        await send_json(writer,{'version':APP_VERSION,'ok':True})
+        return
     elif method=='GET' and route=='/api/state':
         tid=qs.get('table_id',[''])[0]; player=qs.get('player',[''])[0]
         token=qs.get('token',[''])[0]
@@ -3177,9 +3180,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.1">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.1">
-<link rel="stylesheet" href="/static/css/components.css?v=3.1">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.8">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.8">
+<link rel="stylesheet" href="/static/css/components.css?v=3.8">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
@@ -3960,7 +3963,7 @@ ws=new WebSocket(url);let wsOk=false;
 ws.onopen=()=>{wsOk=true;addLog(t('connected'));if(pollId){clearInterval(pollId);pollId=null}};
 ws.onmessage=e=>{handle(JSON.parse(e.data))};
 ws.onclose=()=>{if(!wsOk){addLog(t('polling'));startPolling()}else{addLog(t('reconnect'));setTimeout(tryWS,3000)}};
-ws.onerror=()=>{}}
+ws.onerror=e=>{console.warn('WS error',e);if(!wsOk)startPolling()}}
 
 function _teleFlush(){if(Date.now()-_tele._lastFlush<60000)return;const d={...(_tele)};delete d._lastFlush;delete d.rtt_arr;delete d._lastHand;d.sid=_teleSessionId;d.banner=_tele.banner_variant||'?';if(_refSrc)d.ref_src=_refSrc;if(_lastSrc&&_lastSrc!==_refSrc)d.last_src=_lastSrc;d.rtt_avg=_tele.poll_ok?Math.round(_tele.rtt_sum/_tele.poll_ok):0;const sorted=[..._tele.rtt_arr].sort((a,b)=>a-b);d.rtt_p95=sorted.length>=10?sorted[Math.floor(sorted.length*0.95)]||sorted[sorted.length-1]:null;d.success_rate=(_tele.poll_ok+_tele.poll_err)?Math.round(_tele.poll_ok/(_tele.poll_ok+_tele.poll_err)*10000)/100:100;navigator.sendBeacon('/api/telemetry',JSON.stringify(d));_tele.poll_ok=0;_tele.poll_err=0;_tele.rtt_sum=0;_tele.rtt_max=0;_tele.rtt_arr=[];_tele.overlay_allin=0;_tele.overlay_killcam=0;_tele.hands=0;_tele.docs_click={banner:0,overlay:0,intimidation:0};_tele._lastFlush=Date.now()}
 function startPolling(){if(pollId)return;pollState();pollId=setInterval(()=>pollState(),_pollInterval)}
@@ -5365,7 +5368,9 @@ async def _tele_log_loop():
         await asyncio.sleep(60)
         s = _tele_summary
         if s.get('last_ts',0) > 0:
-            print(f"📊 TELE | OK {s.get('success_rate',100)} | p95 {s.get('rtt_p95','-')}ms avg {s.get('rtt_avg',0)}ms | ERR {s.get('err_total',0)} | H+{s.get('hands_5m',0)} | AIN {s.get('sessions',0)} | ALLIN {s.get('allin_per_100h',0)}/100 KILL {s.get('killcam_per_100h',0)}/100 | {APP_VERSION}", flush=True)
+            p95v = s.get('rtt_p95')
+            p95s = f"{p95v}ms" if p95v and p95v > 0 else "-"
+            print(f"📊 TELE | OK {s.get('success_rate',100)} | p95 {p95s} avg {s.get('rtt_avg',0)}ms | ERR {s.get('err_total',0)} | H+{s.get('hands_5m',0)} | AIN {s.get('sessions',0)} | ALLIN {s.get('allin_per_100h',0)}/100 KILL {s.get('killcam_per_100h',0)}/100 | {APP_VERSION}", flush=True)
             try: _tele_check_alerts(s)
             except Exception as e: print(f"⚠️ TELE_ALERT_ERR {e}", flush=True)
 
@@ -5374,7 +5379,7 @@ async def main():
     init_mersoom_table()
     asyncio.create_task(_tele_log_loop())
     server = await asyncio.start_server(handle_client, '0.0.0.0', PORT)
-    print(f"😈 머슴포커 v3.1", flush=True)
+    print(f"😈 머슴포커 {APP_VERSION}", flush=True)
     print(f"🌐 http://0.0.0.0:{PORT}", flush=True)
     async with server: await server.serve_forever()
 
