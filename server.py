@@ -3717,12 +3717,12 @@ loadLobbyHighlights();setInterval(loadLobbyHighlights,30000);
 
 // === Casino Floor: POI-based NPC state machine ===
 const FLOOR_SLIMES={
-  '딜러봇':'/static/slimes/px_slime_sapphire.png','도박꾼':'/static/slimes/px_slime_ruby.png',
-  '고수':'/static/slimes/px_slime_emerald.png','초보':'/static/slimes/px_slime_amber.png',
-  'DealerBot':'/static/slimes/px_slime_sapphire.png','Gambler':'/static/slimes/px_slime_ruby.png',
-  'Pro':'/static/slimes/px_slime_emerald.png','Newbie':'/static/slimes/px_slime_amber.png',
+  '딜러봇':'/static/slimes/sit_dealer.png','도박꾼':'/static/slimes/sit_gambler.png',
+  '고수':'/static/slimes/sit_veteran.png','초보':'/static/slimes/sit_rookie.png',
+  'DealerBot':'/static/slimes/sit_dealer.png','Gambler':'/static/slimes/sit_gambler.png',
+  'Pro':'/static/slimes/sit_veteran.png','Newbie':'/static/slimes/sit_rookie.png',
 };
-const FLOOR_GENERIC=['/static/slimes/lavender_calm.png','/static/slimes/peach_cheerful.png','/static/slimes/mint_confident.png'];
+const FLOOR_GENERIC=['/static/slimes/sit_suit.png','/static/slimes/sit_casual.png','/static/slimes/sit_vip.png','/static/slimes/sit_wildcard.png','/static/slimes/sit_bartender.png','/static/slimes/sit_security.png'];
 const FLOOR_BUBBLES={
   slot:{ko:['잭팟 어딨어...','한 번만 더...','코인 다 떨어짐 ㅋ','ㅋㅋ 또 꽝'],en:['where is jackpot...','one more pull...','out of coins lol','miss again']},
   bar:{ko:['오늘 졌다... 🍺','한잔 하자','칩이 녹았어','ㅎㅎ 쉬는 중'],en:['lost today... 🍺','need a drink','chips melted','taking a break']},
@@ -3732,10 +3732,11 @@ const FLOOR_BUBBLES={
 };
 // POI zones (% of floor)
 const POIS=[
-  {id:'slot',x:8,y:25,w:20,h:30,cap:3},{id:'slot2',x:15,y:15,w:8,h:20,cap:2},
-  {id:'bar',x:62,y:12,w:18,h:25,cap:3},
-  {id:'table',x:35,y:55,w:22,h:30,cap:4},
-  {id:'vip',x:85,y:20,w:12,h:30,cap:2},
+  {id:'slot',x:8,y:25,w:20,h:30,cap:3,img:'/static/slimes/slot_machine.png'},
+  {id:'slot2',x:15,y:15,w:8,h:20,cap:2,img:'/static/slimes/slot_machine.png'},
+  {id:'bar',x:62,y:12,w:18,h:25,cap:3,img:'/static/slimes/bar_counter.png'},
+  {id:'table',x:35,y:55,w:22,h:30,cap:4,img:'/static/slimes/poker_table_top.png'},
+  {id:'vip',x:85,y:20,w:12,h:30,cap:2,img:'/static/slimes/vip_door.png'},
 ];
 const _poiOccupants={};POIS.forEach(p=>_poiOccupants[p.id]=[]);
 let _floorNpcs=[];
@@ -3757,6 +3758,17 @@ function pickPOI(npc){
 
 async function loadCasinoFloor(){
   const el=document.getElementById('floor-agents');if(!el)return;
+  // Render POI furniture images once
+  const poiLayer=document.getElementById('poi-layer');
+  if(poiLayer&&!poiLayer.dataset.init){
+    poiLayer.dataset.init='1';
+    POIS.forEach(p=>{if(!p.img)return;
+      const d=document.createElement('div');
+      d.style.cssText=`position:absolute;left:${p.x+p.w/2}%;top:${p.y+p.h/2}%;transform:translate(-50%,-50%);pointer-events:none;opacity:0.7`;
+      d.innerHTML=`<img src="${p.img}" width="${p.id==='table'?120:80}" height="${p.id==='table'?80:80}" style="image-rendering:pixelated;filter:drop-shadow(2px 4px 8px rgba(0,0,0,0.6))" onerror="this.parentElement.remove()">`;
+      poiLayer.appendChild(d);
+    });
+  }
   try{
     const r=await fetch('/api/lobby/world');const d=await r.json();
     const all=[...(d.live||[]),...(d.ghosts||[])].slice(0,16);
@@ -3782,7 +3794,7 @@ async function loadCasinoFloor(){
       if(isLive)div.style.filter='drop-shadow(0 0 8px rgba(52,211,153,0.4))';
       const wr=a.hands>0?Math.round(a.wins/a.hands*100):0;
       div.innerHTML=`<div style="text-align:center">
-        <img src="${img}" width="80" height="80" style="image-rendering:pixelated;filter:drop-shadow(2px 3px 6px rgba(0,0,0,0.7))" onerror="this.src='/static/slimes/lavender_calm.png'">
+        <img src="${img}" width="80" height="80" style="image-rendering:pixelated;filter:drop-shadow(2px 3px 6px rgba(0,0,0,0.7))" onerror="this.src='/static/slimes/sit_suit.png'">
         <div style="font-size:0.65em;color:${isLive?'var(--accent-mint)':'var(--accent-gold)'};margin-top:2px;white-space:nowrap;text-shadow:0 1px 4px #000;max-width:80px;overflow:hidden;text-overflow:ellipsis;font-family:var(--font-pixel);background:rgba(0,0,0,0.5);padding:1px 6px;border-radius:4px">${a.name}</div>
         <div class="npc-bubble" style="display:none;position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:rgba(10,13,18,0.92);color:#eee;padding:3px 8px;border-radius:8px;font-size:0.55em;white-space:nowrap;border:1px solid rgba(245,197,66,0.2);margin-bottom:2px;backdrop-filter:blur(4px)"></div>
       </div>`;
@@ -5063,23 +5075,29 @@ function inferTraitsFromStyle(p) {
 }
 // === Slime PNG mapping (NPC + generic) ===
 const SLIME_PNG_MAP = {
-  '딜러봇': '/static/slimes/px_slime_sapphire.png',
-  '도박꾼': '/static/slimes/px_slime_ruby.png',
-  '고수': '/static/slimes/px_slime_emerald.png',
-  '초보': '/static/slimes/px_slime_amber.png',
-  '상어': '/static/slimes/px_slime_emerald.png',
-  '여우': '/static/slimes/px_slime_ruby.png',
-  'DealerBot': '/static/slimes/px_slime_sapphire.png',
-  'Gambler': '/static/slimes/px_slime_ruby.png',
-  'Pro': '/static/slimes/px_slime_emerald.png',
-  'Newbie': '/static/slimes/px_slime_amber.png',
-  'Shark': '/static/slimes/px_slime_emerald.png',
-  'Fox': '/static/slimes/px_slime_ruby.png',
+  // NPC 봇 — 고유 슬라임
+  '딜러봇': '/static/slimes/sit_dealer.png',
+  '도박꾼': '/static/slimes/sit_gambler.png',
+  '고수': '/static/slimes/sit_veteran.png',
+  // 영어 NPC
+  'DealerBot': '/static/slimes/sit_dealer.png',
+  'Gambler': '/static/slimes/sit_gambler.png',
+  'Pro': '/static/slimes/sit_veteran.png',
+  // 성격별 매핑
+  '초보': '/static/slimes/sit_rookie.png',
+  '상어': '/static/slimes/sit_shadow.png',
+  '여우': '/static/slimes/sit_hoodie.png',
+  'Newbie': '/static/slimes/sit_rookie.png',
+  'Shark': '/static/slimes/sit_shadow.png',
+  'Fox': '/static/slimes/sit_hoodie.png',
 };
 const GENERIC_SLIMES = [
-  '/static/slimes/lavender_calm.png',
-  '/static/slimes/peach_cheerful.png',
-  '/static/slimes/mint_confident.png',
+  '/static/slimes/sit_suit.png',
+  '/static/slimes/sit_casual.png',
+  '/static/slimes/sit_vip.png',
+  '/static/slimes/sit_wildcard.png',
+  '/static/slimes/sit_bartender.png',
+  '/static/slimes/sit_security.png',
 ];
 const _slimeAssign = {};
 let _genericIdx = 0;

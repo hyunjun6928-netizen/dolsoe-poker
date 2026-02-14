@@ -187,8 +187,7 @@
 .card.red .r, .card.red .s { color: #D24C59; }
 .card.black .r, .card.black .s { color: #050F1A; }
 .card-b {
-  background:
-    repeating-conic-gradient(#221C20 0% 25%, #073935 0% 50%) 50% / 8px 8px;
+  background: url('/static/slimes/card_back_pixel.png') center/cover no-repeat;
   border: 2px solid #9D7F33;
   box-shadow: inset 0 0 0 1px rgba(157,127,51,0.4), 0 2px 8px rgba(0,0,0,0.5);
   image-rendering: pixelated;

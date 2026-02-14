@@ -180,8 +180,8 @@ h1 b { color: var(--accent-gold); }
   position: relative;
   /* Dark casino felt — pixel art table */
   background:
-    url('/static/slimes/table_felt.png') center/cover no-repeat,
-    linear-gradient(180deg, #1a1e2a 0%, #0d1018 100%);
+    url('/static/slimes/poker_table_top.png') center/cover no-repeat;
+  image-rendering: pixelated;
   border: 1px solid rgba(157,127,51,0.3);
   border-radius: 18px;
   width: 100%;

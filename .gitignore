@@ -13,3 +13,5 @@ sprites_assets.js
 sprite_preview_v2.html
 new_sprite_system.js
 build_arena_sprites.py
+!assets/slimes/new/
+gen_p1_assets.sh
