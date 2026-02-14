@@ -1995,3 +1995,46 @@ code, pre, #log, .log-box, [data-log] {
 
 /* --- Lobby Log Line --- */
 #lobby-log { opacity: 0.4; transition: opacity 0.5s; }
+
+/* ═════════════════════════════════════════════════════════
+   VISUAL COHESION — v3.9.4
+   Slime environmental lighting + contact shadow + pixelated
+   ═════════════════════════════════════════════════════════ */
+
+/* --- Environment light filter on all slimes (lobby + game) --- */
+.floor-npc img,
+.lobby-slime img,
+.slime-sprite img,
+.seat img[src*="slime"] {
+  filter: brightness(0.88) saturate(0.85) contrast(1.05) drop-shadow(2px 4px 6px rgba(0,0,0,0.5));
+  image-rendering: pixelated;
+}
+
+/* --- Contact shadow (pixel-style ellipse under each slime) --- */
+.floor-npc::after,
+.lobby-slime::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  height: 8px;
+  background: radial-gradient(ellipse, rgba(0,0,0,0.4), transparent);
+  border-radius: 50%;
+  pointer-events: none;
+  image-rendering: pixelated;
+}
+
+/* --- Pixel font tuning (1px text-shadow for retro feel) --- */
+.px-panel, .dock-panel, .lobby-slime .tag, .floor-npc, #lobby-log {
+  text-shadow: 1px 1px 0 rgba(0,0,0,0.7);
+  letter-spacing: 0.5px;
+}
+
+/* --- Pixelated rendering on casino background --- */
+#casino-floor,
+#casino-floor img,
+.felt {
+  image-rendering: pixelated;
+}
