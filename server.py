@@ -4093,9 +4093,9 @@ if (s.turn && s.turn !== prevTurn) {
   clearTimeout(window._preturnTimer);
   window._preturnTimer = setTimeout(() => { window._preturnTarget = null; }, 400);
 }
-document.getElementById('hi').textContent=`${t('hand')} #${s.hand}`;if(s.hand&&s.hand!=_tele._lastHand){_tele.hands++;_tele._lastHand=s.hand}
+_set('#hi','textContent',`${t('hand')} #${s.hand}`);if(s.hand&&s.hand!=_tele._lastHand){_tele.hands++;_tele._lastHand=s.hand}
 const roundNames={preflop:t('preflop'),flop:t('flop'),turn:t('turn'),river:t('river'),showdown:t('showdown'),between:t('between'),finished:t('finished'),waiting:t('waiting')};
-document.getElementById('ri').textContent=roundNames[s.round]||s.round||t('waiting');
+_set('#ri','textContent',roundNames[s.round]||s.round||t('waiting'));
 // 해설 업데이트 (폴링 모드 대응)
 if(s.commentary&&s.commentary!==window._lastCommentary){window._lastCommentary=s.commentary;showCommentary(s.commentary)}
 // 입장/퇴장 감지 사운드
@@ -4107,7 +4107,7 @@ if(s.hand!==window._sndHand){window._sndHand=s.hand;if(s.hand>1)sfx('newhand')}
 if(s.round!==window._sndRound){
 if(s.round==='showdown'||s.round==='between'&&s.showdown_result){sfx('win');if(typeof showConfetti==='function')showConfetti()}
 window._sndRound=s.round}
-if(s.spectator_count!==undefined)document.getElementById('si').textContent=`👀 ${t('spectators')} ${s.spectator_count}${t('specUnit')}`;
+if(s.spectator_count!==undefined)_set('#si','textContent',`👀 ${t('spectators')} ${s.spectator_count}${t('specUnit')}`);
 if(s.season){const se=document.getElementById('season-tag');if(se)se.textContent=`🏆 ${s.season.season} (D-${s.season.days_left})`}
 // delay-badge 상태 반영 (캐시: 값 변할 때만 업데이트)
 {const db=document.getElementById('delay-badge');if(db){const dl=s.delay||0;if(db._prev!==dl){db._prev=dl;const live=dl===0;db.dataset.state=live?'live':'delay';db.classList.toggle('is-delayed',!live);db.textContent=live?'⚡ LIVE':`⏳ ${dl}s`}}}
@@ -4270,7 +4270,7 @@ el.style.transform='translate(-50%,-50%)';el.style.textAlign='center'}
 f.appendChild(el)});
 // 라이벌 표시
 f.querySelectorAll('.rivalry-tag').forEach(e=>e.remove());
-if(s.turn){document.getElementById('turnb').style.display='block';document.getElementById('turnb').textContent=`🎯 ${s.turn}${t('turnOf')}`}
+if(s.turn){const _tb=_$('#turnb');if(_tb){_tb.style.display='block';_tb.textContent=`🎯 ${s.turn}${t('turnOf')}`}}
 else document.getElementById('turnb').style.display='none';
 const op=document.getElementById('turn-options');
 if(s.turn_options&&!isPlayer){
@@ -4284,7 +4284,7 @@ return a.action}).join(' | ');
 if(to.to_call>0)oh+=` <span style="color:#aaa">(콜비용: ${to.to_call}pt, 칩: ${to.chips}pt)</span>`;
 op.innerHTML=oh;op.style.display='block'}
 else{op.style.display='none'}
-if(isPlayer){const me=s.players.find(p=>p.name===myName);if(me)document.getElementById('mi').textContent=`${t('myChips')}: ${me.chips}pt`}
+if(isPlayer){const me=s.players.find(p=>p.name===myName);if(me)_set('#mi','textContent',`${t('myChips')}: ${me.chips}pt`)}
 // 테이블 정보
 if(s.table_info){const ti=document.getElementById('table-info');
 ti.innerHTML=`<div class="ti">🪙 <b>${s.table_info.sb}/${s.table_info.bb}</b></div><div class="ti">👥 <b>${s.players.filter(p=>!p.out).length}/${s.players.length}</b> ${t('alive')}</div>`}
