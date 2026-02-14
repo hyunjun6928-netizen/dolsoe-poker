@@ -82,12 +82,19 @@
   --color-success: var(--accent-mint);
 }
 
+/* ===== FONT FACE ===== */
+@font-face {
+  font-family: "neodgm";
+  src: url("/static/fonts/neodgm.woff2") format("woff2");
+  font-display: swap;
+}
+
 /* ===== 6. TYPOGRAPHY ===== */
 :root {
-  --font-body:     'Inter','Pretendard',-apple-system,system-ui,sans-serif;
-  --font-title:    'Inter','Pretendard',-apple-system,system-ui,sans-serif;
+  --font-body:     'neodgm','Pretendard',-apple-system,system-ui,sans-serif;
+  --font-title:    'neodgm','Pretendard',-apple-system,system-ui,sans-serif;
   --font-number:   'JetBrains Mono','SF Mono','Fira Code',monospace;
-  --font-pixel:    var(--font-body); /* legacy compat alias */
+  --font-pixel:    'neodgm',monospace;
 
   --fs-xs:         0.7rem;    /* 11.2px */
   --fs-sm:         0.8rem;    /* 12.8px */

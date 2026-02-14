@@ -1856,3 +1856,134 @@ body.fair-on .fair-commentary,
     animation: none !important;
   }
 }
+
+/* ═════════════════════════════════════════════════════════
+   CASINO FLOOR FULLSCREEN LOBBY — v3.8
+   ═════════════════════════════════════════════════════════ */
+
+/* --- Casino Floor Background --- */
+#casino-floor {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: url("/static/slimes/casino_floormap.png") center / cover no-repeat;
+  image-rendering: pixelated;
+}
+#casino-floor::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at center, rgba(0,0,0,0.10), rgba(0,0,0,0.75)),
+    linear-gradient(to bottom, rgba(0,0,0,0.45), rgba(0,0,0,0.70));
+  pointer-events: none;
+}
+body.in-game #casino-floor { display: none; }
+body.is-lobby .wrap {
+  position: relative;
+  z-index: 2;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* --- Lobby Slime Walkers (80px) --- */
+:root { --lobby-slime: 80px; }
+#casino-walkers {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+.lobby-slime {
+  position: absolute;
+  width: var(--lobby-slime);
+  height: var(--lobby-slime);
+  transform: translate(-50%, -50%);
+  image-rendering: pixelated;
+  filter: drop-shadow(0 6px 10px rgba(0,0,0,.35));
+}
+.lobby-slime img {
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+.lobby-slime .tag {
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translate(-50%, 6px);
+  padding: 4px 8px;
+  font-size: 14px;
+  font-family: var(--font-pixel);
+  line-height: 1;
+  border-radius: 4px;
+  background: rgba(0,0,0,0.55);
+  border: 1px solid rgba(212,175,90,0.35);
+  color: rgba(255,255,255,0.95);
+  white-space: nowrap;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.7);
+}
+
+/* --- Pixel Panel Override --- */
+.px-panel, .dock-panel {
+  border-radius: 4px !important;
+  border: 1px solid rgba(212,175,90,0.35) !important;
+  background: rgba(12,15,20,0.72) !important;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 28px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.06) !important;
+}
+
+/* --- Winner Overlay --- */
+#winner-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at center, rgba(0,0,0,.25), rgba(0,0,0,.85));
+}
+#winner-overlay.hidden { display: none; }
+#winner-overlay .win-card {
+  width: min(520px, 92vw);
+  padding: 18px 16px;
+  border-radius: 4px;
+  border: 1px solid rgba(212,175,90,0.55);
+  background: rgba(10,12,16,0.78);
+  backdrop-filter: blur(10px);
+  text-align: center;
+  font-family: var(--font-pixel);
+}
+#winner-overlay .crown { font-size: 48px; margin-bottom: 8px; }
+#winner-overlay img {
+  width: 120px;
+  height: 120px;
+  image-rendering: pixelated;
+}
+#winner-overlay #win-name {
+  font-size: 22px;
+  margin-top: 10px;
+  color: var(--gold-300);
+}
+#winner-overlay #win-slogan {
+  opacity: .9;
+  margin-top: 6px;
+  color: var(--accent-mint);
+}
+#winner-overlay #win-hand,
+#winner-overlay #win-pot {
+  margin-top: 8px;
+  opacity: .95;
+}
+
+/* --- Code/Log fonts stay mono --- */
+code, pre, #log, .log-box, [data-log] {
+  font-family: var(--font-number) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lobby-slime { animation: none !important; }
+}

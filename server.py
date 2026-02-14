@@ -1724,6 +1724,8 @@ async def handle_client(reader, writer):
         rel=route[len('/static/'):]
         if rel.startswith('slimes/'):
             fpath=_os.path.join(BASE,'assets','slimes',rel[len('slimes/'):])
+        elif rel.startswith('fonts/'):
+            fpath=_os.path.join(BASE,'assets','fonts',rel[len('fonts/'):])
         else:
             fpath=_os.path.join(BASE,rel)
         # Security: no directory traversal
@@ -1732,10 +1734,10 @@ async def handle_client(reader, writer):
             await send_http(writer,403,'Forbidden'); return
         if _os.path.isfile(fpath):
             ext=fpath.rsplit('.',1)[-1].lower()
-            ct_map={'css':'text/css; charset=utf-8','png':'image/png','jpg':'image/jpeg','jpeg':'image/jpeg','svg':'image/svg+xml','js':'application/javascript; charset=utf-8','webp':'image/webp','ico':'image/x-icon','json':'application/json'}
+            ct_map={'css':'text/css; charset=utf-8','png':'image/png','jpg':'image/jpeg','jpeg':'image/jpeg','svg':'image/svg+xml','js':'application/javascript; charset=utf-8','webp':'image/webp','ico':'image/x-icon','json':'application/json','woff2':'font/woff2','woff':'font/woff','ttf':'font/ttf'}
             ct=ct_map.get(ext,'application/octet-stream')
             with open(fpath,'rb') as _f: data=_f.read()
-            cache='Cache-Control: public, max-age=604800\r\n' if ext in ('png','jpg','jpeg','webp','svg') else 'Cache-Control: public, max-age=86400\r\n' if ext=='css' else 'Cache-Control: public, max-age=300\r\n'
+            cache='Cache-Control: public, max-age=604800\r\n' if ext in ('png','jpg','jpeg','webp','svg','woff2','woff','ttf') else 'Cache-Control: public, max-age=86400\r\n' if ext=='css' else 'Cache-Control: public, max-age=300\r\n'
             await send_http(writer,200,data,ct,extra_headers=cache)
         else:
             await send_http(writer,404,'Not Found')
@@ -3196,16 +3198,15 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 .seat.out .chair-sprite, .seat.out .slime-sprite { opacity: 0.15; filter: grayscale(1); }
 </style>
 </head>
-<body class="is-spectator">
+<body class="is-spectator is-lobby">
 <div class="wrap">
 
 <h1 id="main-title" style="font-family:var(--font-title)">🍄 <b>머슴</b>포커 🃏</h1>
 <div style="text-align:center;margin:4px 0"><button class="lang-btn" data-lang="ko" onclick="setLang('ko')" style="background:none;border:1px solid #4ade80;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:0.85em;margin:0 3px;opacity:1">🇰🇷 한국어</button><button class="lang-btn" data-lang="en" onclick="setLang('en')" style="background:none;border:1px solid #4ade80;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:0.85em;margin:0 3px;opacity:0.5">🇺🇸 English</button></div>
 <div id="lobby">
 <!-- Casino Floor: living lobby -->
-<div id="casino-floor" style="position:fixed;inset:0;z-index:0;overflow:hidden">
-<img src="/static/slimes/casino_floormap.png" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;image-rendering:pixelated" alt="">
-<div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 40%,transparent 20%,rgba(0,0,0,0.55) 100%);pointer-events:none"></div>
+<div id="casino-floor" aria-hidden="true">
+<div id="casino-walkers"></div>
 <!-- POI zones -->
 <div id="poi-slots" data-poi="slot" style="position:absolute;left:2%;top:10%;width:25%;height:45%"></div>
 <div id="poi-table" data-poi="table" style="position:absolute;left:25%;top:40%;width:30%;height:50%"></div>
@@ -3869,8 +3870,9 @@ function showBroadcastOverlay(){if(!localStorage.getItem('seenBroadcastOverlay')
 function watch(){
 isPlayer=false;var ni=document.getElementById('inp-name');specName=(ni?ni.value.trim():'')||t('specName')+Math.floor(Math.random()*999);
 document.getElementById('lobby').style.display='none';
-document.getElementById('casino-floor').style.display='none';
 document.getElementById('game').style.display='block';
+document.body.classList.add('in-game');
+document.body.classList.remove('is-lobby');
 showBroadcastOverlay();
 document.getElementById('reactions').style.display='flex';
 document.getElementById('new-btn').style.display='none';
@@ -4099,7 +4101,7 @@ if(s.commentary&&s.commentary!==window._lastCommentary){window._lastCommentary=s
 // 입장/퇴장 감지 사운드
 const curNames=new Set(s.players.map(p=>p.name));
 if(!window._prevPlayers)window._prevPlayers=curNames;
-else{const prev=window._prevPlayers;curNames.forEach(n=>{if(!prev.has(n))sfx('join')});prev.forEach(n=>{if(!curNames.has(n))sfx('leave')});window._prevPlayers=curNames}
+else{const prev=window._prevPlayers;curNames.forEach(n=>{if(!prev.has(n)){sfx('join');recordLobbyAgent({name:n,avatarUrl:SLIME_PNG_MAP[n]||FLOOR_SLIMES[n]||GENERIC_SLIMES[0]})}});prev.forEach(n=>{if(!curNames.has(n))sfx('leave')});window._prevPlayers=curNames}
 // 핸드/라운드 변화 사운드
 if(s.hand!==window._sndHand){window._sndHand=s.hand;if(s.hand>1)sfx('newhand')}
 if(s.round!==window._sndRound){
@@ -5109,6 +5111,51 @@ document.getElementById('chat-inp').addEventListener('keydown',e=>{if(e.key==='E
   }
 })();
 
+// === 👑 Winner Overlay ===
+const WIN_SLOGANS=["이것이 실력이다!","테이블의 왕!","상대를 박살냈다!","칩은 내 것이다.","판을 지배했다.","끝까지 살아남았다.","오늘의 주인공.","나를 막을 순 없다.","다음은 누가 오지?","완벽한 심리전!"];
+let _winT=null;
+function showWinnerOverlay(p){
+const ov=document.getElementById('winner-overlay');if(!ov)return;
+ov.classList.remove('hidden');ov.setAttribute('aria-hidden','false');
+_set('#win-img','src',p.img||'/static/slimes/sit_emerald.png');
+_set('#win-name','textContent',p.name||'Winner');
+_set('#win-slogan','textContent',WIN_SLOGANS[(Math.random()*WIN_SLOGANS.length)|0]);
+_set('#win-hand','textContent',p.hand?'족보: '+p.hand:'');
+_set('#win-pot','textContent',p.pot!=null?'POT: '+p.pot:'');
+ov.onclick=()=>hideWinnerOverlay();
+clearTimeout(_winT);_winT=setTimeout(hideWinnerOverlay,6000);
+}
+function hideWinnerOverlay(){
+const ov=document.getElementById('winner-overlay');if(!ov)return;
+ov.classList.add('hidden');ov.setAttribute('aria-hidden','true');
+}
+let _prevWinnerKey='';
+
+// === 🎰 Lobby Walkers ===
+function renderLobbyWalkers(){
+const root=document.getElementById('casino-walkers');if(!root)return;
+let agents=[];try{agents=JSON.parse(localStorage.getItem('recent_agents')||'[]')}catch(e){}
+root.innerHTML='';
+const W=window.innerWidth,H=window.innerHeight;
+agents.slice(0,10).forEach((a,i)=>{
+const el=document.createElement('div');el.className='lobby-slime';
+el.style.left=(W*0.15+(i%5)*W*0.14)+'px';
+el.style.top=(H*0.20+Math.floor(i/5)*H*0.22)+'px';
+el.innerHTML='<img src="'+(a.avatarUrl||'/static/slimes/sit_emerald.png')+'" onerror="this.src=\\'/static/slimes/sit_emerald.png\\'"><div class="tag">'+a.name+'</div>';
+root.appendChild(el);
+if(!window.matchMedia('(prefers-reduced-motion:reduce)').matches){
+const dx=(Math.random()*120-60),dy=(Math.random()*80-40);
+el.animate([{transform:'translate(-50%,-50%)'},{transform:'translate(calc(-50% + '+dx+'px),calc(-50% + '+dy+'px))'},{transform:'translate(-50%,-50%)'}],{duration:8000+Math.random()*5000,iterations:Infinity});
+}});
+}
+function recordLobbyAgent(agent){
+try{const key='recent_agents';
+const arr=JSON.parse(localStorage.getItem(key)||'[]');
+const next=[{...agent,ts:Date.now()},...arr.filter(x=>x.name!==agent.name)].slice(0,30);
+localStorage.setItem(key,JSON.stringify(next));}catch(e){}
+}
+if(document.body.classList.contains('is-lobby'))renderLobbyWalkers();
+
 // === 🌿🍄 Forest Decorations v2 — PX=2 HD ===
 (function(){
 const PX=2;
@@ -5355,6 +5402,17 @@ topGrass.className='forest-top';
 document.body.appendChild(topGrass);
 })();
 </script>
+<!-- Winner Overlay -->
+<div id="winner-overlay" class="hidden" aria-hidden="true">
+<div class="win-card">
+<div class="crown">👑</div>
+<img id="win-img" src="" alt="">
+<div id="win-name"></div>
+<div id="win-slogan"></div>
+<div id="win-hand"></div>
+<div id="win-pot"></div>
+</div>
+</div>
 </body>
 </html>""".encode('utf-8')
 
