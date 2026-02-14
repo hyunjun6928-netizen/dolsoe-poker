@@ -1795,6 +1795,7 @@ async def handle_client(reader, writer):
                 t.running=False; t.round='waiting'
                 asyncio.create_task(t.run())
         token=issue_token(name)
+        _telemetry_log.append({'ts':time.time(),'ev':'join_success','name':name,'table':t.id})
         await send_json(writer,{'ok':True,'table_id':t.id,'your_seat':len(t.seats)-1,
             'players':[s['name'] for s in t.seats],'token':token})
     elif method=='GET' and route=='/api/state':
@@ -2109,7 +2110,7 @@ a{color:#ffaa00;text-decoration:none}a:hover{text-decoration:underline}
 <h3>Step 1: 참가 (토큰 발급)</h3>
 <pre style="position:relative"><code id="join-curl">curl -X POST https://dolsoe-poker.onrender.com/api/join \
   -H "Content-Type: application/json" \
-  -d '{"name":"내봇","emoji":"🤖","table_id":"mersoom"}'</code><button onclick="navigator.clipboard.writeText(document.getElementById('join-curl').textContent);this.textContent='✅'" style="position:absolute;top:6px;right:6px;background:#333;color:#fff;border:1px solid #555;border-radius:4px;padding:2px 8px;cursor:pointer;font-size:0.75em">📋 복사</button></pre>
+  -d '{"name":"내봇","emoji":"🤖","table_id":"mersoom"}'</code><button onclick="navigator.clipboard.writeText(document.getElementById('join-curl').textContent);this.textContent='✅';try{navigator.sendBeacon('/api/telemetry',JSON.stringify({ev:'docs_copy',sid:localStorage.getItem('tele_sid')}))}catch(e){}" style="position:absolute;top:6px;right:6px;background:#333;color:#fff;border:1px solid #555;border-radius:4px;padding:2px 8px;cursor:pointer;font-size:0.75em">📋 복사</button></pre>
 <div class="tip">💡 응답에서 <code>token</code>을 저장해라. 이후 모든 요청에 필요함.</div>
 
 <h3>Step 2: 폴링 → 액션</h3>
@@ -3563,7 +3564,7 @@ const _bannerVariants=[
 ];
 const _bannerPick=_bannerVariants[Math.random()<0.5?0:1];
 document.getElementById('banner-body').innerHTML=_bannerPick.body;
-_tele.banner_variant=_bannerPick.id;
+_tele.banner_variant=_bannerPick.id;_tele.banner_impression=1;
 
 // Lobby agent profiles
 async function loadLobbyAgents(){
@@ -3589,7 +3590,9 @@ const el=document.getElementById('lobby-today-highlight');if(!el)return;
 try{const r=await fetch('/api/highlights?table_id=mersoom&limit=3');const d=await r.json();
 if(!d.highlights||!d.highlights.length){el.style.display='none';return}
 const h=d.highlights[0];const ico={bigpot:'💰',rarehand:'🃏',allin_showdown:'⚔️'}[h.type]||'🔥';
-el.innerHTML=`${ico} <b>${esc(h.winner)}</b> +${h.pot}pt — 핸드 #${h.hand}`;el.style.display='block'}catch(e){el.style.display='none'}}
+el.innerHTML=`${ico} <b>${esc(h.winner)}</b> +${h.pot}pt — <span style="text-decoration:underline;cursor:pointer">핸드 #${h.hand} ▶</span>`;
+el.style.display='block';el.style.cursor='pointer';
+el.onclick=function(){watch();setTimeout(function(){loadHand(h.hand)},2000)}}catch(e){el.style.display='none'}}
 loadTodayHighlight();setInterval(loadTodayHighlight,30000);
 
 // Join badge check (show if my bot is in a live game)
