@@ -328,32 +328,45 @@ body.in-game .game-main::before {
    v3.15: LOBBY MODE — World is the star, UI is glass overlay
    ═════════════════════════════════════════════════════════ */
 
-/* Lobby: fullscreen world, minimal UI float */
+/* ═══ LOBBY: World is the star ═══ */
 body.is-lobby #casino-floor {
   position: fixed;
   inset: 0;
   z-index: 0;
   width: 100vw;
   height: 100vh;
+  pointer-events: auto; /* allow POI clicks */
 }
 body.is-lobby #lobby {
   position: relative;
   z-index: 10;
-  padding: 12px;
+  padding: 8px;
 }
+/* Lobby grid: compact, transparent, doesn't block world */
 body.is-lobby .lobby-grid {
-  max-width: 900px;
-  gap: var(--sp-sm);
+  max-width: 800px;
+  gap: var(--sp-xs);
+  grid-template-columns: 1fr 1.2fr 1fr;
 }
-/* Lobby panels: smaller, more transparent */
 body.is-lobby .px-panel {
-  background: rgba(10,13,20,0.75);
-  font-size: 0.85em;
+  background: rgba(10,13,20,0.65);
+  font-size: 0.8em;
+  border-color: rgba(157,127,51,0.15);
 }
-/* Hide verbose lobby sections on small screens */
-body.is-lobby .lobby-left .px-panel:nth-child(n+3),
-body.is-lobby .lobby-right .px-panel:nth-child(n+3) {
+body.is-lobby .px-panel-header {
+  font-size: 0.85em;
+  padding: 4px 8px;
+}
+/* Hide secondary panels — world matters more */
+body.is-lobby .lobby-left .px-panel:nth-child(n+2),
+body.is-lobby .lobby-right .px-panel:nth-child(n+2) {
   display: none;
+}
+/* Left and right columns: collapsed by default */
+body.is-lobby .lobby-left,
+body.is-lobby .lobby-right {
+  max-height: 280px;
+  overflow: hidden;
 }
 
 /* ===== 12. RESPONSIVE — DESKTOP WIDE (>1400px) ===== */

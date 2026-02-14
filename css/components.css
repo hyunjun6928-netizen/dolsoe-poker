@@ -1905,13 +1905,15 @@ body.fair-on .fair-commentary,
    ═════════════════════════════════════════════════════════ */
 
 /* --- Casino Floor Background --- */
+/* v3.15.2: Casino floor — rich carpet tile, packed feel */
 #casino-floor {
   position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background: url("/static/slimes/floor_tile.png") repeat;
-  background-size: 256px 256px;
+  /* Rich casino carpet — tiled for full coverage */
+  background: url("/static/slimes/px_casino_carpet.png") repeat;
+  background-size: 192px 192px; /* 1.5x for visibility */
   image-rendering: pixelated;
 }
 #casino-floor::after {
@@ -2285,8 +2287,14 @@ img[src*="slimes/"] {
 .floor-npc img, .walker-body img { width: 80px; height: 80px; image-rendering: pixelated !important; }
 .poi-furniture img { image-rendering: pixelated !important; filter: none !important; }
 
+/* === FIX: Kill black boxes around characters === */
+.floor-npc img, .walker-body img, .poi-furniture img,
+.seat-unit img, .slime-sprite img, .chair-sprite img {
+  background: transparent !important;
+}
+
 /* === CHARACTER CONSISTENCY: No frame/glow per-character — unified === */
-.floor-npc { filter: none !important; } /* Remove per-NPC cyan glow */
+.floor-npc { filter: none !important; background: none !important; }
 .floor-npc[data-state="live"] { filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)) !important; }
 .floor-npc[data-state="ghost"] { filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)) grayscale(0.3) !important; opacity: 0.45; }
 
