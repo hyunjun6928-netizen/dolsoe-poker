@@ -15,40 +15,54 @@ canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
 <canvas id="G"></canvas>
 <script>
 // ═══════════════════════════════════════════════════════════════
-//  AI 콜로세움 — SAMURAI SHODOWN / KOF STYLE 2D FIGHTING
-//  Spectator-only: AI vs AI auto-combat with FATALITY finishers
+//  AI 콜로세움 — PIXEL DEATH ARENA
+//  384×216 base resolution, ×3 nearest-neighbor scaling
+//  All coordinates INTEGER only. No alpha, blur, gradient.
 // ═══════════════════════════════════════════════════════════════
 
 const C = document.getElementById('G');
 const X = C.getContext('2d');
-const W = 800, H = 480;
+const W = 384, H = 216;
 C.width = W; C.height = H;
+X.imageSmoothingEnabled = false;
 
+const SCALE = 3;
 function resize() {
-  const s = Math.min(innerWidth / W, innerHeight / H);
+  // Integer scale, nearest-neighbor
+  const maxS = Math.max(1, Math.min(
+    Math.floor(innerWidth / W),
+    Math.floor(innerHeight / H)
+  ));
+  const s = Math.max(SCALE, maxS);
   C.style.width = (W * s) + 'px';
   C.style.height = (H * s) + 'px';
 }
 resize();
 addEventListener('resize', resize);
 
-// ─── CONSTANTS ───
-const GROUND_Y = 390;       // feet position
-const CHAR_SCALE = 3.2;     // 64px × 3.2 = ~205px on screen
-const IDLE_SCALE = 1.6;     // 128px × 1.6 = ~205px
-const GRAVITY = 0.7;
-const STAGE_LEFT = 40;
-const STAGE_RIGHT = W - 40;
-const ATTACK_RANGE = 160;   // pixel distance to land a hit
-const CLOSE_RANGE = 120;
-
-const COL = {
-  bg:'#0a0810', hpGreen:'#22cc44', hpYellow:'#ccaa22', hpRed:'#cc2222',
-  hpBg:'#331111', gold:'#d4af5a', red:'#D24C59', blue:'#4488cc',
-  cream:'#FCC88E', grey:'#938B7B', dark:'#221C20', orange:'#F09858',
-  mint:'#35B97D', white:'#ffffff', black:'#000000',
-  powBlue:'#2266dd', powFull:'#ff4444',
+// ─── PALETTE ───
+const PAL = {
+  bg1: '#0a0810', bg2: '#120818', bg3: '#1a1225',
+  stone1: '#1a1020', stone2: '#231830', stone3: '#2a1e35',
+  floor1: '#1a1225', floor2: '#231830',
+  blood1: '#cc2222', blood2: '#661111',
+  spark: '#ffdd88', sparkHi: '#ffffff',
+  venom: '#22aa44', venomDk: '#115522',
+  ice: '#55aacc', iceDk: '#336688',
+  fire1: '#ff6622', fire2: '#cc3300', fireHi: '#ffcc00',
+  gold: '#d4af5a', cream: '#FCC88E',
+  hpG: '#22cc44', hpY: '#ccaa22', hpR: '#cc2222',
+  white: '#ffffff', black: '#000000',
 };
+
+// ─── CONSTANTS ───
+const GROUND_Y = 186;       // feet position (384×216 scale)
+const CHAR_SCALE = 3;       // 64px × 3 = 192px on internal canvas
+const GRAVITY = 0.7;
+const STAGE_LEFT = 20;
+const STAGE_RIGHT = W - 20;
+const ATTACK_RANGE = 80;    // scaled down from 800px canvas
+const CLOSE_RANGE = 60;
 
 // ─── FIGHTERS ───
 const FIGHTERS = [
@@ -82,24 +96,33 @@ function loadImg(p) {
 
 function preloadFighter(f) {
   const b = ASSET + f.id + '/';
-  const ps = [loadImg(b+'idle.png')];
-  // Walk: 0-1
-  for (let i = 0; i < 2; i++) ps.push(loadImg(b+'walk_'+i+'.png'));
-  // Attack: 0-2
-  for (let i = 0; i < 3; i++) ps.push(loadImg(b+'attack_'+i+'.png'));
-  // Single-frame states
-  for (const a of ['hit','block','death','victory']) ps.push(loadImg(b+a+'.png'));
-  // Fatalities: fatal_*_0-3
+  const ps = [];
+
+  // New spritesheet frames (preferred)
+  const newFrames = {
+    idle: 4, walk_fwd: 4, walk_back: 4,
+    light_atk: 4, heavy_atk: 4, special_atk: 4,
+    hit: 4, block: 4, death: 4, victory: 4
+  };
+  for (const [anim, count] of Object.entries(newFrames)) {
+    for (let i = 0; i < count; i++) ps.push(loadImg(b + anim + '_' + i + '.png'));
+  }
+
+  // Legacy fallback frames
+  ps.push(loadImg(b + 'idle.png'));
+  for (let i = 0; i < 2; i++) ps.push(loadImg(b + 'walk_' + i + '.png'));
+  for (let i = 0; i < 3; i++) ps.push(loadImg(b + 'attack_' + i + '.png'));
+  for (const a of ['hit','block','death','victory']) ps.push(loadImg(b + a + '.png'));
   for (const ft of FATALITIES)
-    for (let i = 0; i < 4; i++) ps.push(loadImg(b+'fatal_'+ft+'_'+i+'.png'));
+    for (let i = 0; i < 4; i++) ps.push(loadImg(b + 'fatal_' + ft + '_' + i + '.png'));
   return Promise.all(ps);
 }
 
 // ─── STATE ───
 let scene = 'title', tick = 0, roundNum = 1, p1Wins = 0, p2Wins = 0;
 let p1, p2, f1Data, f2Data;
-let announceText = '', announceTimer = 0, announceSize = 52;
-let slowmo = 0, flashAlpha = 0, flashColor = '#fff';
+let announceText = '', announceTimer = 0, announceSize = 24;
+let slowmo = 0, flashFrames = 0, flashColor = PAL.white;
 let bloodStains = [], particles = [], dmgTexts = [], slashFX = [];
 let selectP1 = 0, selectP2 = 1, selectTimer = 0;
 let shakeDur = 0, shakeX = 0, shakeY = 0;
@@ -111,13 +134,13 @@ class Fighter {
   constructor(data, side) {
     this.d = data;
     this.side = side;
-    this.x = side === 'left' ? 180 : W - 180;
+    this.x = side === 'left' ? 90 : W - 90;
     this.y = GROUND_Y;
     this.vx = 0;
     this.vy = 0;
     this.hp = data.hp;
     this.maxHp = data.hp;
-    this.pow = 0;           // 0~100
+    this.pow = 0;
     this.state = 'idle';
     this.frame = 0;
     this.frameTick = 0;
@@ -136,6 +159,7 @@ class Fighter {
     this.fatalFrame = 0;
     this.enemy = null;
     this.lastAction = '';
+    this.hitFlash = 0; // frames remaining for hit flash overlay
   }
 
   get alive() { return this.hp > 0 && !this.dead; }
@@ -146,86 +170,95 @@ class Fighter {
 
   getImg() {
     const b = ASSET + this.d.id + '/';
+
+    // Try new frame names first, fall back to legacy
     if (this.state === 'fatality')
       return imgCache[b + 'fatal_' + this.fatalType + '_' + Math.min(this.fatalFrame, 3) + '.png'];
-    if (this.state === 'idle')
-      return imgCache[b + 'idle.png'];
-    if (this.state === 'walk' || this.state === 'dash')
-      return imgCache[b + 'walk_' + (this.frame % 2) + '.png'];
-    if (this.state === 'attack' || this.state === 'special' || this.state === 'super')
-      return imgCache[b + 'attack_' + Math.min(this.frame, 2) + '.png'];
-    // Single-frame states: hit, block, death, victory
-    if (['hit','block','death','victory'].includes(this.state))
-      return imgCache[b + this.state + '.png'];
-    return imgCache[b + 'idle.png'];
+
+    if (this.state === 'idle') {
+      const newImg = imgCache[b + 'idle_' + (this.frame % 4) + '.png'];
+      return newImg || imgCache[b + 'idle.png'];
+    }
+    if (this.state === 'walk' || this.state === 'dash') {
+      const newImg = imgCache[b + 'walk_fwd_' + (this.frame % 4) + '.png'];
+      return newImg || imgCache[b + 'walk_' + (this.frame % 2) + '.png'];
+    }
+    if (this.state === 'attack') {
+      const newImg = imgCache[b + 'light_atk_' + Math.min(this.frame, 3) + '.png'];
+      return newImg || imgCache[b + 'attack_' + Math.min(this.frame, 2) + '.png'];
+    }
+    if (this.state === 'special') {
+      const newImg = imgCache[b + 'heavy_atk_' + Math.min(this.frame, 3) + '.png'];
+      return newImg || imgCache[b + 'attack_' + Math.min(this.frame, 2) + '.png'];
+    }
+    if (this.state === 'super') {
+      const newImg = imgCache[b + 'special_atk_' + Math.min(this.frame, 3) + '.png'];
+      return newImg || imgCache[b + 'attack_' + Math.min(this.frame, 2) + '.png'];
+    }
+    if (this.state === 'hit') {
+      const newImg = imgCache[b + 'hit_' + Math.min(this.frame, 3) + '.png'];
+      return newImg || imgCache[b + 'hit.png'];
+    }
+    if (this.state === 'block') {
+      const newImg = imgCache[b + 'block_' + Math.min(this.frame, 3) + '.png'];
+      return newImg || imgCache[b + 'block.png'];
+    }
+    if (this.state === 'death') {
+      const newImg = imgCache[b + 'death_' + Math.min(this.frame, 3) + '.png'];
+      return newImg || imgCache[b + 'death.png'];
+    }
+    if (this.state === 'victory') {
+      const newImg = imgCache[b + 'victory_' + (this.frame % 4) + '.png'];
+      return newImg || imgCache[b + 'victory.png'];
+    }
+    return imgCache[b + 'idle_0.png'] || imgCache[b + 'idle.png'];
   }
 
   draw() {
     const img = this.getImg();
     if (!img) return;
 
-    // Use idle (128px) at IDLE_SCALE, animations (64px) at CHAR_SCALE
-    const isIdle = (this.state === 'idle');
-    const scale = isIdle ? IDLE_SCALE : CHAR_SCALE;
-    const drawW = img.width * scale;
-    const drawH = img.height * scale;
+    const scale = CHAR_SCALE;
+    const drawW = ~~(img.width * scale);
+    const drawH = ~~(img.height * scale);
+    const drawY = ~~(this.y - (this.airborne ? this.vy * 3 : 0));
 
-    const drawY = this.y - (this.airborne ? this.vy * 3 : 0);
+    // Ground shadow: dark solid fillRect, no alpha
+    const shadowW = ~~(drawW * 0.3);
+    const shadowH = 2;
+    X.fillStyle = PAL.stone1;
+    X.fillRect(~~(this.x - shadowW / 2), GROUND_Y + 2, shadowW, shadowH);
 
     X.save();
-    X.translate(this.x, drawY);
+    X.translate(~~this.x, ~~drawY);
     if (this.facing < 0) X.scale(-1, 1);
 
-    // Hit flash
-    if (this.state === 'hit' && this.hitstun > 8) {
-      X.filter = 'brightness(3)';
-    } else if (this.state === 'hit') {
-      X.globalAlpha = 0.5 + Math.sin(tick * 1.2) * 0.5;
-    }
-    // Frozen blue tint
-    if (this.frozen > 0) X.filter = 'hue-rotate(180deg) brightness(1.3) saturate(1.5)';
-    // Rage red aura
-    if (this.rage > 40) {
-      X.shadowColor = '#ff2200';
-      X.shadowBlur = this.rage * 0.4;
-    }
-    // Super armor gold
-    if (this.armor > 0) {
-      X.shadowColor = '#ffdd00';
-      X.shadowBlur = 20;
-    }
-    // Block stance — slight lean back
-    if (this.state === 'block') {
-      X.translate(-this.facing * 8, 0);
-    }
-
-    X.drawImage(img, -drawW / 2, -drawH + 10, drawW, drawH);
+    X.drawImage(img, ~~(-drawW / 2), ~~(-drawH + 5), drawW, drawH);
     X.restore();
 
-    // Ground shadow
-    X.save();
-    X.globalAlpha = 0.35;
-    X.fillStyle = '#000';
-    X.beginPath();
-    X.ellipse(this.x, GROUND_Y + 8, drawW * 0.3, 6, 0, 0, Math.PI * 2);
-    X.fill();
-    X.restore();
+    // Hit flash: 2-frame bright overlay
+    if (this.hitFlash > 0) {
+      X.fillStyle = PAL.cream;
+      X.fillRect(~~(this.x - drawW / 2), ~~(drawY - drawH + 5), drawW, drawH);
+      this.hitFlash--;
+    }
 
-    // Block shield
+    // Frozen tint: solid blue rect overlay
+    if (this.frozen > 0) {
+      X.fillStyle = PAL.iceDk;
+      X.fillRect(~~(this.x - drawW / 2), ~~(drawY - drawH + 5), drawW, drawH);
+    }
+
+    // Block shield: simple 1px rect outline
     if (this.state === 'block' || this.blockstun > 0) {
-      X.save();
-      X.globalAlpha = 0.25;
-      X.strokeStyle = '#88ccff';
-      X.lineWidth = 3;
-      X.beginPath();
-      X.ellipse(this.x, drawY - drawH / 2, drawW * 0.4, drawH * 0.5, 0, 0, Math.PI * 2);
-      X.stroke();
-      X.restore();
+      X.strokeStyle = PAL.ice;
+      X.lineWidth = 1;
+      X.strokeRect(~~(this.x - drawW * 0.4), ~~(drawY - drawH * 0.8), ~~(drawW * 0.8), ~~(drawH * 0.7));
     }
 
-    // Poison drip
+    // Poison drip: solid pixels
     if (this.poison > 0 && tick % 4 === 0) {
-      particles.push({x:this.x+rng(-25,25), y:drawY-rng(30,100), vx:rng(-1,1), vy:1, life:20, color:'#22cc66', size:3});
+      particles.push({x:~~(this.x+rng(-12,12)), y:~~(drawY-rng(15,50)), vx:~~rng(-1,1), vy:1, life:20, color:PAL.venom, size:2});
     }
   }
 
@@ -237,17 +270,14 @@ class Fighter {
     if (this.frozen > 0) this.frozen--;
     if (this.armor > 0) this.armor--;
 
-    // Rage (berserker)
     if (this.d.id === 'berserker') this.rage = Math.max(0, ((this.maxHp - this.hp) / this.maxHp) * 100);
 
-    // Poison tick
     if (this.poison > 0 && tick % 50 === 0) {
       this.hp = Math.max(1, this.hp - 15);
       this.poison--;
-      spawnDmg(this.x, this.y - 120, '🧪15', '#22cc66');
+      spawnDmg(~~this.x, ~~(this.y - 60), '15', PAL.venom);
     }
 
-    // Anim frames
     const spd = this.state === 'attack' ? 4 : this.state === 'special' ? 6 : this.state === 'super' ? 7 : this.state === 'fatality' ? 10 : this.state === 'hit' ? 4 : this.state === 'death' ? 8 : 8;
     if (this.frameTick >= spd) {
       this.frameTick = 0;
@@ -265,7 +295,6 @@ class Fighter {
       }
     }
 
-    // Physics
     if (this.airborne) {
       this.vy -= GRAVITY;
       if (this.vy <= 0) { this.vy = 0; this.airborne = false; }
@@ -273,27 +302,23 @@ class Fighter {
     this.x += this.vx;
     this.vx *= 0.88;
 
-    // Stage bounds — wall bounce
     if (this.x < STAGE_LEFT) { this.x = STAGE_LEFT; this.vx = Math.abs(this.vx) * 0.5; }
     if (this.x > STAGE_RIGHT) { this.x = STAGE_RIGHT; this.vx = -Math.abs(this.vx) * 0.5; }
-    // Push apart if overlapping
-    if (this.enemy && Math.abs(this.x - this.enemy.x) < 60) {
-      const push = this.x < this.enemy.x ? -2 : 2;
+    if (this.enemy && Math.abs(this.x - this.enemy.x) < 30) {
+      const push = this.x < this.enemy.x ? -1 : 1;
       this.x += push;
       this.enemy.x -= push;
     }
-    // Gentle center pull when far from center and idle (prevents corner camping)
     if (this.canAct && this.state === 'idle') {
       const center = W / 2;
       const distFromCenter = this.x - center;
-      if (Math.abs(distFromCenter) > 250) {
+      if (Math.abs(distFromCenter) > 120) {
         this.x -= distFromCenter * 0.003;
       }
     }
 
+    this.x = ~~this.x;
     if (this.canAct) this.faceEnemy();
-
-    // Combo reset
     if (this.hitstun <= 0 && this.comboCount > 0) this.comboCount = 0;
   }
 
@@ -303,14 +328,14 @@ class Fighter {
       const chip = Math.floor(dmg * 0.1);
       this.hp -= chip;
       this.blockstun = 12;
-      spawnDmg(this.x, this.y - 140, 'GUARD ' + chip, '#88ccff');
+      spawnDmg(~~this.x, ~~(this.y - 70), 'GUARD ' + chip, PAL.ice);
       this.pow = Math.min(100, this.pow + 2);
-      spawnSpark(this.x + this.facing * 30, this.y - 100, 8, '#88ccff');
+      spawnSpark(~~(this.x + this.facing * 15), ~~(this.y - 50), 4, PAL.spark);
       return;
     }
     if (this.armor > 0) {
       this.hp -= Math.floor(dmg * 0.4);
-      spawnDmg(this.x, this.y - 150, 'ARMOR', COL.gold);
+      spawnDmg(~~this.x, ~~(this.y - 75), 'ARMOR', PAL.gold);
       return;
     }
     this.hp = Math.max(0, this.hp - dmg);
@@ -318,6 +343,7 @@ class Fighter {
     this.frame = 0;
     this.frameTick = 0;
     this.hitstun = 14;
+    this.hitFlash = 2;
     this.pow = Math.min(100, this.pow + Math.floor(dmg * 0.06));
   }
 
@@ -329,195 +355,185 @@ class Fighter {
 function rng(a,b){return a+Math.random()*(b-a)}
 function rngInt(a,b){return Math.floor(rng(a,b+1))}
 function pick(a){return a[Math.floor(Math.random()*a.length)]}
-function spawnDmg(x,y,t,c){dmgTexts.push({x,y,text:t,color:c,life:40,vy:-2.5})}
+function spawnDmg(x,y,t,c){dmgTexts.push({x:~~x,y:~~y,text:t,color:c,life:40,vy:-1})}
 function spawnBlood(x,y,n){
-  for(let i=0;i<n;i++) particles.push({x,y:y+rng(-10,10),vx:rng(-8,8),vy:rng(-10,-2),life:rngInt(25,50),color:Math.random()>.3?'#cc2222':'#661111',size:rng(2,6),grav:0.4});
+  for(let i=0;i<n;i++) particles.push({x:~~x,y:~~(y+rng(-5,5)),vx:~~rng(-4,4),vy:~~rng(-5,-1),life:rngInt(25,50),color:Math.random()>.3?PAL.blood1:Math.random()>.5?PAL.blood2:PAL.black,size:rngInt(2,4),grav:0.4});
 }
 function spawnSpark(x,y,n,c){
-  for(let i=0;i<n;i++) particles.push({x,y,vx:rng(-5,5),vy:rng(-6,-1),life:rngInt(8,18),color:c||'#ffffaa',size:rng(1,4),grav:0.2});
+  for(let i=0;i<n;i++) particles.push({x:~~x,y:~~y,vx:~~rng(-3,3),vy:~~rng(-3,-1),life:rngInt(8,18),color:Math.random()>.5?(c||PAL.spark):PAL.sparkHi,size:rngInt(1,2),grav:0.2});
 }
 function addSlash(x, y, big) {
-  slashFX.push({x, y, life: big ? 12 : 8, size: big ? 80 : 45, angle: rng(-0.5, 0.5), color: big ? '#ffffff' : '#ffffcc'});
+  slashFX.push({x:~~x, y:~~y, life: big ? 8 : 5, size: big ? 20 : 12});
 }
 function shake(d){shakeDur=d}
-function announce(t,dur,sz){announceText=t;announceTimer=dur||90;announceSize=sz||52}
-function addBloodStain(x){bloodStains.push({x,y:GROUND_Y+6,r:rng(4,12)});if(bloodStains.length>30)bloodStains.shift()}
+function announce(t,dur,sz){announceText=t;announceTimer=dur||90;announceSize=sz||24}
+function addBloodStain(x){bloodStains.push({x:~~x,y:GROUND_Y+2,w:rngInt(3,8)});if(bloodStains.length>30)bloodStains.shift()}
 
-// ─── STAGE BACKGROUND ───
+// ─── STAGE BACKGROUND (pure pixel, no gradient/alpha/blur) ───
 function drawStage() {
-  // Dark stone arena background
-  const grd = X.createLinearGradient(0, 0, 0, H);
-  grd.addColorStop(0, '#1a0a1a');
-  grd.addColorStop(0.4, '#120818');
-  grd.addColorStop(0.7, '#0a0610');
-  grd.addColorStop(1, '#050308');
-  X.fillStyle = grd;
+  // Solid background
+  X.fillStyle = PAL.bg1;
   X.fillRect(0, 0, W, H);
 
-  // Back wall with pillars
-  X.save();
-  // Stone wall texture
-  X.fillStyle = '#0f0a14';
-  X.fillRect(0, 0, W, GROUND_Y - 40);
+  // Back wall
+  X.fillStyle = PAL.bg2;
+  X.fillRect(0, 0, W, GROUND_Y - 15);
 
-  // Pillars
-  for (const px of [60, 200, W-200, W-60]) {
-    X.fillStyle = '#1a1020';
-    X.fillRect(px - 18, 20, 36, GROUND_Y - 50);
-    X.fillStyle = '#231830';
-    X.fillRect(px - 14, 20, 28, GROUND_Y - 50);
+  // Stone pillars
+  const pillars = [30, 100, W - 100, W - 30];
+  for (const px of pillars) {
+    X.fillStyle = PAL.stone1;
+    X.fillRect(px - 8, 10, 16, GROUND_Y - 22);
+    X.fillStyle = PAL.stone2;
+    X.fillRect(px - 6, 10, 12, GROUND_Y - 22);
     // Pillar cap
-    X.fillStyle = '#2a1e35';
-    X.fillRect(px - 22, 15, 44, 15);
-    X.fillRect(px - 22, GROUND_Y - 35, 44, 10);
-    // Torch flame
-    const flicker = Math.sin(tick * 0.08 + px) * 4;
-    X.fillStyle = `rgba(255,${140+flicker*3},50,${0.7+Math.sin(tick*0.12+px)*0.2})`;
-    X.beginPath();
-    X.ellipse(px, 45 + flicker, 8, 14, 0, 0, Math.PI * 2);
-    X.fill();
-    // Torch glow
-    X.globalAlpha = 0.08 + Math.sin(tick * 0.1 + px) * 0.03;
-    X.fillStyle = '#ff8830';
-    X.beginPath();
-    X.arc(px, 50, 60, 0, Math.PI * 2);
-    X.fill();
-    X.globalAlpha = 1;
+    X.fillStyle = PAL.stone3;
+    X.fillRect(px - 10, 7, 20, 6);
+    X.fillRect(px - 10, GROUND_Y - 15, 20, 4);
+
+    // Torch: solid pixel flame (no arc, no alpha)
+    const flick = (tick + px) % 8 < 4 ? 0 : 1;
+    X.fillStyle = PAL.fire1;
+    X.fillRect(px - 2, 18 + flick, 4, 6);
+    X.fillStyle = PAL.fireHi;
+    X.fillRect(px - 1, 19 + flick, 2, 3);
+    X.fillStyle = PAL.fire2;
+    X.fillRect(px - 1, 24 + flick, 2, 2);
+
+    // Torch light: dithering pattern (1px dots)
+    X.fillStyle = PAL.fire1;
+    for (let dy = -8; dy < 8; dy += 2) {
+      for (let dx = -8; dx < 8; dx += 2) {
+        if ((dx + dy + tick) % 4 === 0) {
+          X.fillRect(px + dx, 22 + dy, 1, 1);
+        }
+      }
+    }
   }
 
   // Red banners
-  for (const bx of [130, W-130]) {
-    X.fillStyle = '#881122';
-    X.fillRect(bx - 15, 30, 30, 140);
-    X.fillStyle = '#aa1533';
-    X.fillRect(bx - 11, 34, 22, 132);
-    // Banner symbol
-    X.fillStyle = '#cc9933';
-    X.font = '16px NeoDGM, monospace';
-    X.textAlign = 'center';
-    X.fillText('⚔', bx, 100);
+  for (const bx of [65, W - 65]) {
+    X.fillStyle = PAL.blood2;
+    X.fillRect(bx - 5, 14, 10, 60);
+    X.fillStyle = PAL.blood1;
+    X.fillRect(bx - 4, 16, 8, 56);
+    // Banner symbol (small cross pattern)
+    X.fillStyle = PAL.gold;
+    X.fillRect(bx - 1, 36, 2, 8);
+    X.fillRect(bx - 3, 39, 6, 2);
   }
 
-  // Center throne/statue silhouette
-  X.fillStyle = '#16101e';
-  X.fillRect(W/2 - 50, 40, 100, 150);
-  X.fillStyle = '#1e1428';
-  X.fillRect(W/2 - 40, 50, 80, 130);
-  X.fillStyle = '#cc9933';
-  X.globalAlpha = 0.6;
-  X.font = '28px NeoDGM, monospace';
-  X.textAlign = 'center';
-  X.fillText('KO', W/2, 130);
-  X.globalAlpha = 1;
+  // Center throne silhouette
+  X.fillStyle = PAL.stone1;
+  X.fillRect(W / 2 - 20, 20, 40, 70);
+  X.fillStyle = PAL.stone2;
+  X.fillRect(W / 2 - 16, 25, 32, 60);
 
-  X.restore();
-
-  // Ground / floor
-  X.fillStyle = '#1a1225';
-  X.fillRect(0, GROUND_Y - 30, W, H - GROUND_Y + 40);
-  // Stone floor tiles
-  X.strokeStyle = '#231830';
-  X.lineWidth = 1;
-  for (let gx = 0; gx < W; gx += 40) {
-    X.beginPath(); X.moveTo(gx, GROUND_Y - 30); X.lineTo(gx, H); X.stroke();
-  }
-  for (let gy = GROUND_Y - 30; gy < H; gy += 25) {
-    X.beginPath(); X.moveTo(0, gy); X.lineTo(W, gy); X.stroke();
+  // Floor: 2-color checkerboard (no perspective, side view)
+  const tileW = 12, tileH = 8;
+  for (let gy = GROUND_Y - 12; gy < H; gy += tileH) {
+    for (let gx = 0; gx < W; gx += tileW) {
+      const checker = ((gx / tileW) + (gy / tileH)) % 2;
+      X.fillStyle = checker ? PAL.floor1 : PAL.floor2;
+      X.fillRect(gx, gy, tileW, tileH);
+    }
   }
 
-  // Ground line highlight
-  X.strokeStyle = '#332244';
-  X.lineWidth = 2;
-  X.beginPath(); X.moveTo(0, GROUND_Y - 28); X.lineTo(W, GROUND_Y - 28); X.stroke();
+  // Ground line
+  X.fillStyle = PAL.stone3;
+  X.fillRect(0, GROUND_Y - 13, W, 1);
 
-  // Blood stains on floor
-  X.save();
-  X.globalAlpha = 0.2;
+  // Blood stains on floor (solid dark rects, no alpha)
+  X.fillStyle = '#220404';
   bloodStains.forEach(b => {
-    X.fillStyle = '#440808';
-    X.beginPath(); X.ellipse(b.x, b.y, b.r, b.r * 0.3, 0, 0, Math.PI * 2); X.fill();
+    X.fillRect(b.x, b.y, b.w, 1);
   });
-  X.restore();
 }
 
-// ─── HUD (Samurai Shodown style) ───
+// ─── HUD (pixel style: 1px borders, solid fills, no alpha/blur) ───
 function drawHUD() {
   if (!p1 || !p2) return;
-  const barW = 310, barH = 18, barY = 22, barGap = 35;
+  const barW = 148, barH = 8, barY = 10, barGap = 16;
 
-  // Background bar panels
-  X.fillStyle = 'rgba(0,0,0,0.6)';
-  X.fillRect(0, 0, W, 60);
+  // Dark HUD background bar (solid, no rgba)
+  X.fillStyle = PAL.black;
+  X.fillRect(0, 0, W, 28);
 
-  // P1 HP bar (right-to-left fill, left side)
-  const p1x = W/2 - barGap;
-  drawHP(p1x - barW, barY, barW, barH, p1.hp, p1.maxHp, true, p1.d.color);
+  // P1 HP bar (right-to-left fill)
+  const p1x = W / 2 - barGap;
+  drawHP(p1x - barW, barY, barW, barH, p1.hp, p1.maxHp, true);
 
-  // P2 HP bar (left-to-right fill, right side)
-  const p2x = W/2 + barGap;
-  drawHP(p2x, barY, barW, barH, p2.hp, p2.maxHp, false, p2.d.color);
+  // P2 HP bar (left-to-right fill)
+  const p2x = W / 2 + barGap;
+  drawHP(p2x, barY, barW, barH, p2.hp, p2.maxHp, false);
 
   // Names
-  X.font = '16px NeoDGM, monospace';
+  X.font = '8px NeoDGM, monospace';
   X.textAlign = 'left';
-  X.fillStyle = '#ffffff';
-  X.fillText(p1.d.name, 12, barY - 2);
+  X.fillStyle = PAL.white;
+  X.fillText(p1.d.name, 4, barY - 1);
   X.textAlign = 'right';
-  X.fillText(p2.d.name, W - 12, barY - 2);
+  X.fillText(p2.d.name, W - 4, barY - 1);
 
-  // Timer
+  // Timer (big, centered)
   X.textAlign = 'center';
-  X.font = '28px NeoDGM, monospace';
-  X.fillStyle = gameTimer > 20 ? COL.cream : COL.red;
-  X.fillText(String(gameTimer).padStart(2, '0'), W/2, barY + 14);
+  X.font = '14px NeoDGM, monospace';
+  X.fillStyle = gameTimer > 20 ? PAL.cream : PAL.hpR;
+  // 1px drop shadow
+  X.fillStyle = PAL.black;
+  X.fillText(String(gameTimer).padStart(2, '0'), W / 2 + 1, barY + 8);
+  X.fillStyle = gameTimer > 20 ? PAL.cream : PAL.hpR;
+  X.fillText(String(gameTimer).padStart(2, '0'), W / 2, barY + 7);
 
-  // Round / Win marks
-  X.font = '10px NeoDGM, monospace';
-  X.fillStyle = COL.grey;
-  X.textAlign = 'left';
-  X.fillText('R' + roundNum, W/2 - 10, barY + 28);
+  // Round indicator
+  X.font = '6px NeoDGM, monospace';
+  X.fillStyle = PAL.stone3;
+  X.fillText('R' + roundNum, W / 2, barY + 15);
 
-  // Win dots
-  for (let i = 0; i < p1Wins; i++) { X.fillStyle = COL.red; X.beginPath(); X.arc(15 + i * 14, barY + barH + 8, 4, 0, Math.PI*2); X.fill(); }
-  for (let i = 0; i < p2Wins; i++) { X.fillStyle = COL.red; X.beginPath(); X.arc(W - 15 - i * 14, barY + barH + 8, 4, 0, Math.PI*2); X.fill(); }
+  // Win dots (solid rects)
+  for (let i = 0; i < p1Wins; i++) { X.fillStyle = PAL.hpR; X.fillRect(6 + i * 6, barY + barH + 4, 4, 4); }
+  for (let i = 0; i < p2Wins; i++) { X.fillStyle = PAL.hpR; X.fillRect(W - 10 - i * 6, barY + barH + 4, 4, 4); }
 
-  // POW gauges at bottom
-  const powY = H - 28, powW = 160, powH = 10;
+  // POW gauges at bottom (2-color bar)
+  const powY = H - 12, powW = 80, powH = 4;
   // P1
-  X.fillStyle = '#111';
-  X.fillRect(12, powY, powW, powH);
-  X.fillStyle = p1.pow >= 100 ? COL.powFull : COL.powBlue;
-  X.fillRect(12, powY, powW * (p1.pow / 100), powH);
-  X.strokeStyle = '#444'; X.strokeRect(12, powY, powW, powH);
-  X.font = '10px NeoDGM, monospace';
-  X.fillStyle = p1.pow >= 100 ? '#ff4444' : '#4488cc';
+  X.fillStyle = PAL.stone1;
+  X.fillRect(4, powY, powW, powH);
+  X.fillStyle = p1.pow >= 100 ? PAL.hpR : PAL.ice;
+  X.fillRect(4, powY, ~~(powW * (p1.pow / 100)), powH);
+  X.strokeStyle = PAL.stone3; X.lineWidth = 1;
+  X.strokeRect(4, powY, powW, powH);
+  X.font = '6px NeoDGM, monospace';
+  X.fillStyle = p1.pow >= 100 ? PAL.hpR : PAL.ice;
   X.textAlign = 'left';
-  X.fillText('POW', 12, powY - 3);
-  if (p1.pow >= 100) { X.fillStyle = '#ff4444'; X.fillText('MAX!', 60, powY - 3); }
+  X.fillText('POW', 4, powY - 2);
+  if (p1.pow >= 100) { X.fillStyle = PAL.hpR; X.fillText('MAX!', 28, powY - 2); }
 
   // P2
-  X.fillStyle = '#111';
-  X.fillRect(W - 12 - powW, powY, powW, powH);
-  X.fillStyle = p2.pow >= 100 ? COL.powFull : COL.powBlue;
-  X.fillRect(W - 12 - powW, powY, powW * (p2.pow / 100), powH);
-  X.strokeStyle = '#444'; X.strokeRect(W - 12 - powW, powY, powW, powH);
+  X.fillStyle = PAL.stone1;
+  X.fillRect(W - 4 - powW, powY, powW, powH);
+  X.fillStyle = p2.pow >= 100 ? PAL.hpR : PAL.ice;
+  X.fillRect(W - 4 - powW, powY, ~~(powW * (p2.pow / 100)), powH);
+  X.strokeStyle = PAL.stone3;
+  X.strokeRect(W - 4 - powW, powY, powW, powH);
   X.textAlign = 'right';
-  X.fillStyle = p2.pow >= 100 ? '#ff4444' : '#4488cc';
-  X.fillText('POW', W - 12, powY - 3);
-  if (p2.pow >= 100) { X.fillStyle = '#ff4444'; X.fillText('MAX!', W - 60, powY - 3); }
+  X.fillStyle = p2.pow >= 100 ? PAL.hpR : PAL.ice;
+  X.fillText('POW', W - 4, powY - 2);
+  if (p2.pow >= 100) { X.fillStyle = PAL.hpR; X.fillText('MAX!', W - 28, powY - 2); }
 
   // Combo display
-  if (p1.comboCount >= 2) { X.font = '22px NeoDGM, monospace'; X.fillStyle = COL.orange; X.textAlign = 'left'; X.fillText(p1.comboCount + ' HITS!', 15, H/2); }
-  if (p2.comboCount >= 2) { X.font = '22px NeoDGM, monospace'; X.fillStyle = COL.orange; X.textAlign = 'right'; X.fillText(p2.comboCount + ' HITS!', W - 15, H/2); }
+  if (p1.comboCount >= 2) { X.font = '10px NeoDGM, monospace'; X.fillStyle = PAL.fire1; X.textAlign = 'left'; X.fillText(p1.comboCount + ' HITS!', 6, H / 2); }
+  if (p2.comboCount >= 2) { X.font = '10px NeoDGM, monospace'; X.fillStyle = PAL.fire1; X.textAlign = 'right'; X.fillText(p2.comboCount + ' HITS!', W - 6, H / 2); }
 }
 
-function drawHP(x, y, w, h, hp, max, rtl, color) {
-  X.fillStyle = COL.hpBg;
+function drawHP(x, y, w, h, hp, max, rtl) {
+  // Background
+  X.fillStyle = PAL.stone1;
   X.fillRect(x, y, w, h);
   const pct = Math.max(0, hp / max);
-  const fw = w * pct;
-  const c = pct > 0.5 ? COL.hpGreen : pct > 0.25 ? COL.hpYellow : COL.hpRed;
-  // Yellow "damage" bar (slightly wider, fading)
+  const fw = ~~(w * pct);
+  const c = pct > 0.5 ? PAL.hpG : pct > 0.25 ? PAL.hpY : PAL.hpR;
+
   if (rtl) {
     X.fillStyle = c;
     X.fillRect(x + w - fw, y, fw, h);
@@ -525,28 +541,31 @@ function drawHP(x, y, w, h, hp, max, rtl, color) {
     X.fillStyle = c;
     X.fillRect(x, y, fw, h);
   }
-  // Border
-  X.strokeStyle = '#555';
-  X.lineWidth = 2;
-  X.strokeRect(x, y, w, h);
-  // Ticks
-  X.strokeStyle = '#333';
+
+  // 1px border
+  X.strokeStyle = PAL.stone3;
   X.lineWidth = 1;
+  X.strokeRect(x, y, w, h);
+
+  // Segment ticks
+  X.fillStyle = PAL.stone2;
   for (let i = 1; i < 10; i++) {
-    const tx = x + (w / 10) * i;
-    X.beginPath(); X.moveTo(tx, y); X.lineTo(tx, y + h); X.stroke();
+    const tx = ~~(x + (w / 10) * i);
+    X.fillRect(tx, y, 1, h);
   }
 }
 
-// ─── EFFECTS ───
+// ─── EFFECTS (pixel style: no alpha, no blur) ───
 function drawParticles() {
   particles.forEach(p => {
-    p.x += p.vx; p.y += p.vy; if (p.grav) p.vy += p.grav; p.life--;
+    p.x = ~~(p.x + p.vx); p.y = ~~(p.y + p.vy); if (p.grav) p.vy += p.grav; p.life--;
     if (p.life > 0) {
-      X.save(); X.globalAlpha = Math.min(1, p.life / 10);
-      X.fillStyle = p.color;
-      X.fillRect(~~p.x, ~~p.y, ~~p.size, ~~p.size);
-      X.restore();
+      // Color changes by life (bright → dark), no alpha
+      let c = p.color;
+      if (p.life < 8) c = PAL.stone2; // fade to dark
+      else if (p.life < 15) c = p.color; // mid
+      X.fillStyle = c;
+      X.fillRect(p.x, p.y, p.size, p.size);
     }
   });
   particles = particles.filter(p => p.life > 0);
@@ -554,14 +573,15 @@ function drawParticles() {
 
 function drawDmgTexts() {
   dmgTexts.forEach(d => {
-    d.y += d.vy; d.life--;
+    d.y = ~~(d.y + d.vy); d.life--;
     if (d.life > 0) {
-      X.save(); X.globalAlpha = Math.min(1, d.life / 15);
-      X.font = 'bold 16px NeoDGM, monospace';
-      X.fillStyle = d.color; X.textAlign = 'center';
-      X.shadowColor = '#000'; X.shadowBlur = 4;
-      X.fillText(d.text, ~~d.x, ~~d.y);
-      X.restore();
+      X.font = '8px NeoDGM, monospace';
+      X.textAlign = 'center';
+      // 1px drop shadow
+      X.fillStyle = PAL.black;
+      X.fillText(d.text, d.x + 1, d.y + 1);
+      X.fillStyle = d.life < 10 ? PAL.stone3 : d.color;
+      X.fillText(d.text, d.x, d.y);
     }
   });
   dmgTexts = dmgTexts.filter(d => d.life > 0);
@@ -571,24 +591,16 @@ function drawSlashFX() {
   slashFX.forEach(s => {
     s.life--;
     if (s.life > 0) {
-      X.save();
-      X.translate(s.x, s.y);
-      X.rotate(s.angle);
-      X.globalAlpha = s.life / 12;
-      X.strokeStyle = s.color;
-      X.lineWidth = 3;
-      X.shadowColor = s.color;
-      X.shadowBlur = 10;
-      // Slash arc
-      const sz = s.size * (1 - s.life / 12 * 0.3);
-      X.beginPath();
-      X.arc(0, 0, sz, -0.4, 0.4);
-      X.stroke();
-      X.beginPath();
-      X.moveTo(-sz * 0.8, -sz * 0.3);
-      X.lineTo(sz * 0.8, sz * 0.1);
-      X.stroke();
-      X.restore();
+      // Slash = 3~4 fillRect chunks forming an arc
+      const sz = s.size;
+      const c = s.life > 4 ? PAL.sparkHi : PAL.spark;
+      X.fillStyle = c;
+      X.fillRect(s.x - sz, s.y - 1, sz, 2);
+      X.fillRect(s.x, s.y - 2, sz, 2);
+      X.fillRect(s.x - ~~(sz * 0.5), s.y + 1, sz, 1);
+      if (sz > 15) {
+        X.fillRect(s.x + ~~(sz * 0.3), s.y - 3, ~~(sz * 0.5), 1);
+      }
     }
   });
   slashFX = slashFX.filter(s => s.life > 0);
@@ -597,30 +609,20 @@ function drawSlashFX() {
 function drawAnnounce() {
   if (announceTimer <= 0) return;
   announceTimer--;
-  X.save();
-  const alpha = Math.min(1, announceTimer / 12);
-  X.globalAlpha = alpha;
   X.font = announceSize + 'px NeoDGM, monospace';
   X.textAlign = 'center';
-  // Outline
-  X.strokeStyle = '#000';
-  X.lineWidth = 5;
-  X.strokeText(announceText, W/2, H/2 - 30);
-  // Fill
-  X.fillStyle = announceSize > 48 ? COL.red : COL.gold;
-  X.shadowColor = announceSize > 48 ? '#ff0000' : '#ffaa00';
-  X.shadowBlur = 25;
-  X.fillText(announceText, W/2, H/2 - 30);
-  X.restore();
+  // 1px drop shadow (no blur, no strokeText with thick line)
+  X.fillStyle = PAL.black;
+  X.fillText(announceText, W / 2 + 1, ~~(H / 2 - 12) + 1);
+  X.fillStyle = announceSize > 20 ? PAL.hpR : PAL.gold;
+  X.fillText(announceText, W / 2, ~~(H / 2 - 12));
 }
 
 function drawFlash() {
-  if (flashAlpha > 0) {
-    X.save(); X.globalAlpha = flashAlpha;
+  if (flashFrames > 0) {
     X.fillStyle = flashColor;
     X.fillRect(0, 0, W, H);
-    X.restore();
-    flashAlpha -= 0.06;
+    flashFrames--;
   }
 }
 
@@ -631,22 +633,17 @@ function aiBrain(me, foe) {
   const r = Math.random();
   const style = me.d.style;
 
-  // NEVER attack if out of range — always walk/dash first
   const inRange = d <= ATTACK_RANGE;
-  const midRange = d > ATTACK_RANGE && d <= 300;
-  const farRange = d > 300;
+  const midRange = d > ATTACK_RANGE && d <= 150;
+  const farRange = d > 150;
 
-  // Combo extend — only if in range and foe stunned
   if (inRange && foe.hitstun > 4) {
     return r < 0.8 ? 'attack' : (me.pow >= 30 ? 'special' : 'attack');
   }
 
-  // Super — only when in range
   if (inRange && me.pow >= 100 && r < 0.5) return 'super';
-  // Special — only when close
   if (inRange && me.pow >= 30 && r < 0.2) return 'special';
 
-  // OUT OF RANGE — must approach
   if (farRange) return r < 0.5 ? 'dash' : 'walk';
   if (midRange) {
     if (style === 'rush') return r < 0.6 ? 'dash' : 'walk';
@@ -655,7 +652,6 @@ function aiBrain(me, foe) {
     return r < 0.5 ? 'dash' : 'walk';
   }
 
-  // IN RANGE — fight!
   switch(style) {
     case 'rush':    return r < 0.55 ? 'attack' : r < 0.75 ? 'special' : 'attack';
     case 'grapple': return r < 0.5 ? 'attack' : r < 0.7 ? 'block' : 'special';
@@ -672,16 +668,16 @@ function execAction(me, foe, act) {
 
   switch(act) {
     case 'walk':
-      me.vx = me.facing * 3.5;
+      me.vx = me.facing * 2;
       me.state = 'walk'; me.frame = 0;
       me.cooldown = 5;
       break;
     case 'back':
-      me.vx = -me.facing * 5;
+      me.vx = -me.facing * 3;
       me.cooldown = 10;
       break;
     case 'dash':
-      me.vx = me.facing * 10;
+      me.vx = me.facing * 5;
       me.state = 'dash'; me.frame = 0;
       me.cooldown = 16;
       break;
@@ -700,8 +696,8 @@ function doAttack(me, foe) {
   me.cooldown = Math.max(10, 28 - me.d.spd);
   setTimeout(() => {
     if (!foe.alive || me.dead) return;
-    if (me.dist > ATTACK_RANGE + 20) return; // silently miss if too far — no MISS spam
-    if (Math.random() < foe.d.spd * 0.004) { spawnDmg(foe.x, foe.y - 120, 'DODGE', '#44ccff'); return; }
+    if (me.dist > ATTACK_RANGE + 10) return;
+    if (Math.random() < foe.d.spd * 0.004) { spawnDmg(~~foe.x, ~~(foe.y - 60), 'DODGE', PAL.ice); return; }
 
     let dmg = me.d.atk * 3 + rngInt(-5, 10);
     if (me.rage > 40) dmg += Math.floor(me.rage * 0.3);
@@ -711,17 +707,17 @@ function doAttack(me, foe) {
     dmg = Math.max(5, Math.floor(dmg - foe.d.def * 0.8));
 
     foe.takeDamage(dmg, true);
-    foe.knockback(5 + (crit ? 4 : 0));
+    foe.knockback(3 + (crit ? 2 : 0));
     me.pow = Math.min(100, me.pow + 4);
 
-    const hx = (me.x + foe.x) / 2;
-    const hy = GROUND_Y - 100;
+    const hx = ~~((me.x + foe.x) / 2);
+    const hy = ~~(GROUND_Y - 50);
     addSlash(hx, hy, crit);
-    spawnDmg(foe.x, foe.y - 140, (crit ? '💥' : '') + dmg, crit ? COL.orange : COL.red);
-    spawnBlood(hx, hy, crit ? 20 : 8);
-    spawnSpark(hx, hy, 6, '#ffffaa');
+    spawnDmg(~~foe.x, ~~(foe.y - 70), (crit ? '!' : '') + dmg, crit ? PAL.fire1 : PAL.hpR);
+    spawnBlood(hx, hy, crit ? 12 : 5);
+    spawnSpark(hx, hy, 4, PAL.spark);
     addBloodStain(foe.x);
-    shake(crit ? 8 : 4);
+    shake(crit ? 6 : 3);
   }, 120);
 }
 
@@ -730,31 +726,31 @@ function doSpecial(me, foe) {
   me.pow -= 30;
   me.state = 'special'; me.frame = 0; me.frameTick = 0;
   me.cooldown = 32;
-  flashAlpha = 0.3; flashColor = me.d.color;
-  spawnDmg(me.x, me.y - 170, '✨' + me.d.special, me.d.color);
+  flashFrames = 2; flashColor = me.d.color;
+  spawnDmg(~~me.x, ~~(me.y - 80), me.d.special, me.d.color);
 
   setTimeout(() => {
     if (!foe.alive || me.dead) return;
-    if (me.dist > 200) return;
+    if (me.dist > 100) return;
     let dmg = Math.floor(me.d.atk * 4.5) + rngInt(0, 15);
     dmg = Math.max(10, Math.floor(dmg - foe.d.def * 0.5));
 
-    if (me.d.id === 'venomqueen') { foe.poison += 4; spawnDmg(foe.x, foe.y-130, '🧪독!', '#22cc66'); }
-    if (me.d.id === 'frostbite') { foe.frozen = 40; spawnDmg(foe.x, foe.y-130, '🧊빙결!', '#55aacc'); }
+    if (me.d.id === 'venomqueen') { foe.poison += 4; spawnDmg(~~foe.x, ~~(foe.y-65), 'POISON', PAL.venom); }
+    if (me.d.id === 'frostbite') { foe.frozen = 40; spawnDmg(~~foe.x, ~~(foe.y-65), 'FREEZE', PAL.ice); }
     if (me.d.id === 'ironclaw' || me.d.id === 'bonecrusher') me.armor = 25;
     if (me.d.id === 'shadowblade') dmg = Math.floor(dmg * 1.4);
     if (me.d.id === 'hellfire') {
-      for (let i = 0; i < 25; i++) particles.push({x:foe.x+rng(-40,40),y:GROUND_Y-rng(50,150),vx:rng(-3,3),vy:rng(-4,-1),life:25,color:pick(['#ff6622','#ff3300','#ffcc00']),size:rng(3,6),grav:-0.1});
+      for (let i = 0; i < 15; i++) particles.push({x:~~(foe.x+rng(-20,20)),y:~~(GROUND_Y-rng(25,75)),vx:~~rng(-2,2),vy:~~rng(-2,-1),life:25,color:pick([PAL.fire1,PAL.fire2,PAL.fireHi]),size:rngInt(2,4),grav:-0.1});
     }
     if (me.d.id === 'berserker') dmg += Math.floor(me.rage * 0.4);
 
     foe.takeDamage(dmg, true);
-    foe.knockback(8);
+    foe.knockback(4);
     foe.launch(5);
-    const hx = (me.x + foe.x) / 2;
-    addSlash(hx, GROUND_Y - 100, true);
-    spawnBlood(foe.x, GROUND_Y - 100, 18);
-    shake(10);
+    const hx = ~~((me.x + foe.x) / 2);
+    addSlash(hx, ~~(GROUND_Y - 50), true);
+    spawnBlood(~~foe.x, ~~(GROUND_Y - 50), 12);
+    shake(8);
     slowmo = 10;
   }, 180);
 }
@@ -765,26 +761,26 @@ function doSuper(me, foe) {
   me.state = 'super'; me.frame = 0; me.frameTick = 0;
   me.cooldown = 50;
   me.armor = 35;
-  flashAlpha = 1.0; flashColor = '#ffffff';
+  flashFrames = 3; flashColor = PAL.white;
   slowmo = 25;
-  announce(me.d.super + '!!', 70, 38);
+  announce(me.d.super + '!!', 70, 16);
 
   setTimeout(() => {
     if (!foe.alive || me.dead) return;
-    if (me.dist > 250) return;
+    if (me.dist > 120) return;
     let dmg = Math.floor(me.d.atk * 7) + rngInt(5, 25);
     dmg = Math.max(20, Math.floor(dmg - foe.d.def * 0.3));
     foe.takeDamage(dmg, false);
-    foe.knockback(12);
+    foe.knockback(6);
     foe.launch(8);
 
-    const hx = (me.x + foe.x) / 2;
-    addSlash(hx, GROUND_Y - 120, true);
-    addSlash(hx + 30, GROUND_Y - 80, true);
-    spawnBlood(foe.x, GROUND_Y - 100, 40);
-    for (let i = 0; i < 30; i++) particles.push({x:rng(100,700),y:rng(100,350),vx:rng(-2,2),vy:rng(-3,1),life:30,color:me.d.color,size:rng(2,7),grav:0.1});
-    spawnDmg(foe.x, foe.y - 160, '💀' + dmg, COL.gold);
-    shake(18);
+    const hx = ~~((me.x + foe.x) / 2);
+    addSlash(hx, ~~(GROUND_Y - 60), true);
+    addSlash(hx + 15, ~~(GROUND_Y - 40), true);
+    spawnBlood(~~foe.x, ~~(GROUND_Y - 50), 25);
+    for (let i = 0; i < 20; i++) particles.push({x:~~rng(50,W-50),y:~~rng(50,170),vx:~~rng(-1,1),vy:~~rng(-2,1),life:30,color:me.d.color,size:rngInt(2,4),grav:0.1});
+    spawnDmg(~~foe.x, ~~(foe.y - 80), '' + dmg, PAL.gold);
+    shake(14);
   }, 300);
 }
 
@@ -793,10 +789,10 @@ function triggerFatality(winner, loser) {
   scene = 'fatality';
   const ft = pick(FATALITIES);
   loser.state = 'fatality'; loser.fatalType = ft; loser.fatalFrame = 0; loser.dead = true;
-  flashAlpha = 1.0; flashColor = '#ff0000';
-  slowmo = 35; shake(25);
-  spawnBlood(loser.x, GROUND_Y - 100, 80);
-  announce('💀 FATALITY — ' + FATALITY_KR[ft] + ' 💀', 120, 42);
+  flashFrames = 3; flashColor = PAL.blood1;
+  slowmo = 35; shake(20);
+  spawnBlood(~~loser.x, ~~(GROUND_Y - 50), 50);
+  announce('FATALITY - ' + FATALITY_KR[ft], 120, 18);
   setTimeout(() => { winner.state = 'victory'; winner.frame = 0; }, 1500);
   setTimeout(() => {
     if (winner === p1) p1Wins++; else p2Wins++;
@@ -809,7 +805,7 @@ function goNextRound() {
   roundNum++;
   [p1, p2].forEach((f, i) => {
     f.hp = f.maxHp; f.pow = 0; f.dead = false; f.state = 'idle'; f.frame = 0;
-    f.x = i === 0 ? 180 : W - 180;
+    f.x = i === 0 ? 90 : W - 90;
     f.vy = 0; f.vx = 0; f.airborne = false; f.poison = 0; f.frozen = 0; f.comboCount = 0;
   });
   bloodStains = []; particles = []; dmgTexts = []; slashFX = [];
@@ -820,57 +816,72 @@ function goNextRound() {
 // ─── SCENES ───
 function drawTitle() {
   drawStage();
-  X.save(); X.textAlign = 'center';
-  X.fillStyle = 'rgba(0,0,0,0.6)'; X.fillRect(0, 0, W, H);
-  X.font = '48px NeoDGM, monospace'; X.fillStyle = COL.red;
-  X.shadowColor = '#ff0000'; X.shadowBlur = 25;
-  X.fillText('⚔️ AI 콜로세움', W/2, 150);
-  X.shadowBlur = 0;
-  X.font = '20px NeoDGM, monospace'; X.fillStyle = COL.cream;
-  X.fillText('PIXEL DEATH ARENA', W/2, 185);
-  X.font = '13px NeoDGM, monospace'; X.fillStyle = COL.gold;
-  X.fillText('AI vs AI 자동 전투 · 관전 전용 · 3라운드 2선승 · 고어', W/2, 215);
+  // Dark overlay (solid, no rgba)
+  X.fillStyle = PAL.black;
+  X.fillRect(0, 0, W, H);
+  // Partial redraw for visibility
+  X.fillStyle = PAL.bg2;
+  X.fillRect(0, 0, W, H);
 
-  // Showcase
+  X.textAlign = 'center';
+  // Title with 1px drop shadow
+  X.font = '20px NeoDGM, monospace';
+  X.fillStyle = PAL.black;
+  X.fillText('AI COLOSSEUM', W / 2 + 1, 61);
+  X.fillStyle = PAL.hpR;
+  X.fillText('AI COLOSSEUM', W / 2, 60);
+
+  X.font = '8px NeoDGM, monospace';
+  X.fillStyle = PAL.cream;
+  X.fillText('PIXEL DEATH ARENA', W / 2, 74);
+
+  X.font = '6px NeoDGM, monospace';
+  X.fillStyle = PAL.gold;
+  X.fillText('AI vs AI AUTO COMBAT - 3R 2WIN - GORE', W / 2, 86);
+
+  // Showcase fighter
   const idx = Math.floor(tick / 80) % FIGHTERS.length;
   const sf = FIGHTERS[idx];
   const img = imgCache[ASSET + sf.id + '/idle.png'];
-  if (img) { X.save(); X.globalAlpha = .7+Math.sin(tick*.03)*.3; X.drawImage(img, W/2-80, 240, 160, 160); X.restore(); }
-  X.font = '14px NeoDGM, monospace'; X.fillStyle = sf.color;
-  X.fillText(sf.name + ' — ' + sf.weapon, W/2, 420);
+  if (img) { X.drawImage(img, W / 2 - 32, 100, 64, 64); }
+  X.font = '7px NeoDGM, monospace'; X.fillStyle = sf.color;
+  X.fillText(sf.name + ' - ' + sf.weapon, W / 2, 175);
 
-  if (~~(tick/25)%2===0) { X.font = '18px NeoDGM, monospace'; X.fillStyle = COL.cream; X.fillText('[ 클릭하여 시작 ]', W/2, 455); }
-  X.restore();
+  if (~~(tick / 25) % 2 === 0) { X.font = '8px NeoDGM, monospace'; X.fillStyle = PAL.cream; X.fillText('[ CLICK TO START ]', W / 2, 195); }
 }
 
 function drawSelect() {
   drawStage();
-  X.fillStyle = 'rgba(0,0,0,0.7)'; X.fillRect(0, 0, W, H);
-  X.save(); X.textAlign = 'center';
-  X.font = '22px NeoDGM, monospace'; X.fillStyle = COL.gold; X.fillText('⚔️ FIGHTER SELECT', W/2, 35);
-  const cols = 4, cw = 180, ch = 170, sx = (W-cols*cw)/2, sy = 50;
+  X.fillStyle = PAL.black; X.fillRect(0, 0, W, H);
+  X.fillStyle = PAL.bg2; X.fillRect(0, 0, W, H);
+
+  X.textAlign = 'center';
+  X.font = '10px NeoDGM, monospace'; X.fillStyle = PAL.gold; X.fillText('FIGHTER SELECT', W / 2, 14);
+
+  const cols = 4, cw = 90, ch = 80, sx = ~~((W - cols * cw) / 2), sy = 20;
   FIGHTERS.forEach((f, i) => {
-    const c = i%cols, r = Math.floor(i/cols);
-    const cx = sx+c*cw+cw/2, cy = sy+r*ch+ch/2;
-    const isP1 = i===selectP1, isP2 = i===selectP2;
-    if (isP1||isP2) {
-      X.save(); X.strokeStyle = isP1?COL.red:'#4488cc'; X.lineWidth = 2;
-      X.shadowColor = isP1?COL.red:'#4488cc'; X.shadowBlur = 12;
-      X.strokeRect(cx-cw/2+8, cy-ch/2+4, cw-16, ch-8); X.restore();
-      X.font = '11px NeoDGM, monospace'; X.fillStyle = isP1?COL.red:'#4488cc';
-      X.fillText(isP1?'1P':'2P', cx, cy-ch/2+16);
+    const c = i % cols, r = Math.floor(i / cols);
+    const cx = sx + c * cw + ~~(cw / 2), cy = sy + r * ch + ~~(ch / 2);
+    const isP1 = i === selectP1, isP2 = i === selectP2;
+
+    if (isP1 || isP2) {
+      X.strokeStyle = isP1 ? PAL.hpR : PAL.ice;
+      X.lineWidth = 1;
+      X.strokeRect(cx - ~~(cw / 2) + 4, cy - ~~(ch / 2) + 2, cw - 8, ch - 4);
+      X.font = '6px NeoDGM, monospace'; X.fillStyle = isP1 ? PAL.hpR : PAL.ice;
+      X.fillText(isP1 ? '1P' : '2P', cx, cy - ~~(ch / 2) + 10);
     }
-    const img = imgCache[ASSET+f.id+'/idle.png'];
-    if (img) X.drawImage(img, cx-45, cy-50, 90, 90);
-    X.font = '12px NeoDGM, monospace'; X.fillStyle = f.color; X.fillText(f.name, cx, cy+52);
-    X.font = '9px NeoDGM, monospace'; X.fillStyle = COL.grey; X.fillText(f.weapon+' ATK:'+f.atk+' SPD:'+f.spd, cx, cy+66);
+    const img = imgCache[ASSET + f.id + '/idle.png'];
+    if (img) X.drawImage(img, cx - 20, cy - 22, 40, 40);
+    X.font = '6px NeoDGM, monospace'; X.fillStyle = f.color; X.fillText(f.name, cx, cy + 26);
+    X.font = '5px NeoDGM, monospace'; X.fillStyle = PAL.stone3; X.fillText(f.weapon + ' A:' + f.atk + ' S:' + f.spd, cx, cy + 34);
   });
+
   selectTimer++;
   if (selectTimer > 100) startMatch();
-  X.font = '14px NeoDGM, monospace'; X.fillStyle = COL.cream;
-  X.fillText(FIGHTERS[selectP1].name+'  ⚔️  '+FIGHTERS[selectP2].name, W/2, H-25);
-  X.font = '10px NeoDGM, monospace'; X.fillStyle = COL.grey; X.fillText('자동 선택 중...', W/2, H-10);
-  X.restore();
+  X.font = '7px NeoDGM, monospace'; X.fillStyle = PAL.cream;
+  X.fillText(FIGHTERS[selectP1].name + '  vs  ' + FIGHTERS[selectP2].name, W / 2, H - 10);
+  X.font = '5px NeoDGM, monospace'; X.fillStyle = PAL.stone3; X.fillText('AUTO SELECT...', W / 2, H - 3);
 }
 
 let introTimer = 0;
@@ -879,35 +890,45 @@ function drawIntro() {
   if (p1) p1.draw(); if (p2) p2.draw();
   drawHUD();
   introTimer++;
-  X.save(); X.textAlign = 'center';
+  X.textAlign = 'center';
   if (introTimer < 50) {
-    X.font = '40px NeoDGM, monospace'; X.fillStyle = COL.gold;
-    X.strokeStyle = '#000'; X.lineWidth = 4; X.strokeText('ROUND '+roundNum, W/2, H/2-30);
-    X.shadowColor = COL.gold; X.shadowBlur = 15; X.fillText('ROUND '+roundNum, W/2, H/2-30);
+    X.font = '18px NeoDGM, monospace';
+    // 1px drop shadow
+    X.fillStyle = PAL.black;
+    X.fillText('ROUND ' + roundNum, W / 2 + 1, ~~(H / 2 - 12) + 1);
+    X.fillStyle = PAL.gold;
+    X.fillText('ROUND ' + roundNum, W / 2, ~~(H / 2 - 12));
   } else if (introTimer < 85) {
-    X.font = '56px NeoDGM, monospace'; X.fillStyle = COL.red;
-    X.strokeStyle = '#000'; X.lineWidth = 5; X.strokeText('FIGHT!', W/2, H/2-20);
-    X.shadowColor = '#ff0000'; X.shadowBlur = 25; X.fillText('FIGHT!', W/2, H/2-20);
+    X.font = '24px NeoDGM, monospace';
+    X.fillStyle = PAL.black;
+    X.fillText('FIGHT!', W / 2 + 1, ~~(H / 2 - 8) + 1);
+    X.fillStyle = PAL.hpR;
+    X.fillText('FIGHT!', W / 2, ~~(H / 2 - 8));
   } else { scene = 'fighting'; tick = 0; timerTick = 0; }
-  X.restore();
 }
 
 function drawResult() {
   drawStage();
   if (p1) p1.draw(); if (p2) p2.draw();
   drawParticles();
-  X.fillStyle = 'rgba(0,0,0,0.65)'; X.fillRect(0, 0, W, H);
-  X.save(); X.textAlign = 'center';
+  X.fillStyle = PAL.black; X.fillRect(0, 0, W, H);
+  X.fillStyle = PAL.bg2; X.fillRect(0, 0, W, H);
+
+  X.textAlign = 'center';
   const w = p1Wins >= 2 ? p1 : p2;
-  X.font = '40px NeoDGM, monospace'; X.fillStyle = COL.gold;
-  X.shadowColor = COL.gold; X.shadowBlur = 20;
-  X.fillText('🏆 '+w.d.name+' 승리!', W/2, 130); X.shadowBlur = 0;
-  X.font = '18px NeoDGM, monospace'; X.fillStyle = COL.cream;
-  X.fillText(w.d.weapon+' | '+p1Wins+' — '+p2Wins, W/2, 165);
-  const img = imgCache[ASSET+w.d.id+'/idle.png'];
-  if (img) X.drawImage(img, W/2-80, 190, 160, 160);
-  if (~~(tick/25)%2===0) { X.font = '18px NeoDGM, monospace'; X.fillStyle = COL.cream; X.fillText('[ 클릭하여 재시작 ]', W/2, 400); }
-  X.restore();
+  X.font = '16px NeoDGM, monospace';
+  X.fillStyle = PAL.black;
+  X.fillText(w.d.name + ' WINS!', W / 2 + 1, 56);
+  X.fillStyle = PAL.gold;
+  X.fillText(w.d.name + ' WINS!', W / 2, 55);
+
+  X.font = '8px NeoDGM, monospace'; X.fillStyle = PAL.cream;
+  X.fillText(w.d.weapon + ' | ' + p1Wins + ' - ' + p2Wins, W / 2, 70);
+
+  const img = imgCache[ASSET + w.d.id + '/idle.png'];
+  if (img) X.drawImage(img, W / 2 - 32, 80, 64, 64);
+
+  if (~~(tick / 25) % 2 === 0) { X.font = '8px NeoDGM, monospace'; X.fillStyle = PAL.cream; X.fillText('[ CLICK TO RESTART ]', W / 2, 170); }
 }
 
 // ─── MAIN LOOP ───
@@ -916,58 +937,56 @@ function loop() {
   if (slowmo > 0) { slowmo--; if (tick % 3 !== 0) { requestAnimationFrame(loop); return; } }
 
   X.clearRect(0, 0, W, H);
-  if (shakeDur > 0) { shakeX = (Math.random()-.5)*shakeDur*.8; shakeY = (Math.random()-.5)*shakeDur*.8; shakeDur--; } else { shakeX=0; shakeY=0; }
+  X.imageSmoothingEnabled = false;
+
+  if (shakeDur > 0) { shakeX = ~~((Math.random() - .5) * shakeDur * 0.4); shakeY = ~~((Math.random() - .5) * shakeDur * 0.4); shakeDur--; } else { shakeX = 0; shakeY = 0; }
   X.save(); X.translate(shakeX, shakeY);
 
   switch(scene) {
     case 'title': drawTitle(); break;
     case 'select': drawSelect(); break;
     case 'loading':
-      X.fillStyle = '#000'; X.fillRect(0,0,W,H);
-      X.textAlign = 'center'; X.font = '16px NeoDGM, monospace'; X.fillStyle = COL.cream;
-      X.fillText('로딩 중... '+loaded+'/'+totalLoad, W/2, H/2);
-      X.fillStyle = '#222'; X.fillRect(W/2-150, H/2+15, 300, 12);
-      X.fillStyle = COL.gold; X.fillRect(W/2-150, H/2+15, 300*(loaded/Math.max(1,totalLoad)), 12);
+      X.fillStyle = PAL.black; X.fillRect(0, 0, W, H);
+      X.textAlign = 'center'; X.font = '8px NeoDGM, monospace'; X.fillStyle = PAL.cream;
+      X.fillText('LOADING... ' + loaded + '/' + totalLoad, W / 2, H / 2);
+      X.fillStyle = PAL.stone1; X.fillRect(W / 2 - 60, ~~(H / 2) + 6, 120, 6);
+      X.fillStyle = PAL.gold; X.fillRect(W / 2 - 60, ~~(H / 2) + 6, ~~(120 * (loaded / Math.max(1, totalLoad))), 6);
       break;
     case 'intro': drawIntro(); break;
     case 'fighting':
       drawStage();
-      // Timer
       timerTick++;
       if (timerTick >= 60) { timerTick = 0; gameTimer = Math.max(0, gameTimer - 1); }
-      // AI
       if (tick % Math.max(8, 22 - p1.d.spd) === 0) execAction(p1, p2, aiBrain(p1, p2));
       if (tick % Math.max(8, 22 - p2.d.spd) === 0) execAction(p2, p1, aiBrain(p2, p1));
       p1.update(); p2.update();
-      // Y-sort
-      [p1,p2].sort((a,b)=>a.y-b.y).forEach(f=>f.draw());
+      [p1, p2].sort((a, b) => a.y - b.y).forEach(f => f.draw());
       drawSlashFX(); drawParticles(); drawDmgTexts(); drawHUD(); drawAnnounce();
       // KO check
       if (p1.hp <= 0 && !p1.dead) {
         p1.hp = 0;
-        if (p2.hp === p2.maxHp) announce('PERFECT!', 80, 44);
+        if (p2.hp === p2.maxHp) announce('PERFECT!', 80, 20);
         if (Math.random() < 0.35) triggerFatality(p2, p1);
-        else { p1.state='death';p1.frame=0;p1.dead=true;p2.state='victory';p2.frame=0; announce('K.O.!',80,56);shake(12);flashAlpha=0.7;flashColor='#fff'; setTimeout(()=>{p2Wins++;goNextRound()},3000); }
+        else { p1.state = 'death'; p1.frame = 0; p1.dead = true; p2.state = 'victory'; p2.frame = 0; announce('K.O.!', 80, 24); shake(10); flashFrames = 2; flashColor = PAL.white; setTimeout(() => { p2Wins++; goNextRound(); }, 3000); }
       }
       if (p2.hp <= 0 && !p2.dead) {
         p2.hp = 0;
-        if (p1.hp === p1.maxHp) announce('PERFECT!', 80, 44);
+        if (p1.hp === p1.maxHp) announce('PERFECT!', 80, 20);
         if (Math.random() < 0.35) triggerFatality(p1, p2);
-        else { p2.state='death';p2.frame=0;p2.dead=true;p1.state='victory';p1.frame=0; announce('K.O.!',80,56);shake(12);flashAlpha=0.7;flashColor='#fff'; setTimeout(()=>{p1Wins++;goNextRound()},3000); }
+        else { p2.state = 'death'; p2.frame = 0; p2.dead = true; p1.state = 'victory'; p1.frame = 0; announce('K.O.!', 80, 24); shake(10); flashFrames = 2; flashColor = PAL.white; setTimeout(() => { p1Wins++; goNextRound(); }, 3000); }
       }
-      // Timeout
       if (gameTimer <= 0 && !p1.dead && !p2.dead) {
-        announce('TIME UP!', 80, 44);
-        const pp1=p1.hp/p1.maxHp, pp2=p2.hp/p2.maxHp;
-        if(pp1>pp2){p2.dead=true;p1Wins++}else if(pp2>pp1){p1.dead=true;p2Wins++}else{p1Wins++;p2Wins++}
-        setTimeout(()=>goNextRound(),2000);
+        announce('TIME UP!', 80, 20);
+        const pp1 = p1.hp / p1.maxHp, pp2 = p2.hp / p2.maxHp;
+        if (pp1 > pp2) { p2.dead = true; p1Wins++; } else if (pp2 > pp1) { p1.dead = true; p2Wins++; } else { p1Wins++; p2Wins++; }
+        setTimeout(() => goNextRound(), 2000);
       }
       break;
     case 'fatality':
       drawStage();
-      p1.update();p2.update();
-      [p1,p2].sort((a,b)=>a.y-b.y).forEach(f=>f.draw());
-      drawSlashFX();drawParticles();drawDmgTexts();drawHUD();drawAnnounce();
+      p1.update(); p2.update();
+      [p1, p2].sort((a, b) => a.y - b.y).forEach(f => f.draw());
+      drawSlashFX(); drawParticles(); drawDmgTexts(); drawHUD(); drawAnnounce();
       break;
     case 'result': drawResult(); break;
   }
@@ -982,19 +1001,19 @@ async function startMatch() {
   await Promise.all([preloadFighter(f1Data), preloadFighter(f2Data)]);
   p1 = new Fighter(f1Data, 'left'); p2 = new Fighter(f2Data, 'right');
   p1.enemy = p2; p2.enemy = p1;
-  p1Wins=0;p2Wins=0;roundNum=1;gameTimer=99;timerTick=0;
-  bloodStains=[];particles=[];dmgTexts=[];slashFX=[];
-  introTimer=0; scene='intro';
+  p1Wins = 0; p2Wins = 0; roundNum = 1; gameTimer = 99; timerTick = 0;
+  bloodStains = []; particles = []; dmgTexts = []; slashFX = [];
+  introTimer = 0; scene = 'intro';
 }
 
 C.addEventListener('click', () => {
-  if (scene==='title'||scene==='result') {
-    const idx=[...Array(8).keys()].sort(()=>Math.random()-.5);
-    selectP1=idx[0];selectP2=idx[1];selectTimer=0;scene='select';
+  if (scene === 'title' || scene === 'result') {
+    const idx = [...Array(8).keys()].sort(() => Math.random() - .5);
+    selectP1 = idx[0]; selectP2 = idx[1]; selectTimer = 0; scene = 'select';
   }
 });
 
-Promise.all(FIGHTERS.map(f=>loadImg(ASSET+f.id+'/idle.png')));
+Promise.all(FIGHTERS.map(f => loadImg(ASSET + f.id + '/idle.png')));
 loop();
 </script>
 </body>
