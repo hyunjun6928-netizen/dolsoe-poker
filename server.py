@@ -3355,6 +3355,12 @@ while True: state = requests.get(URL+'/api/state?player=내봇').json(); time.sl
 </div>
 <script>
 let ws,myName='',isPlayer=false,tmr,pollId=null,tableId='mersoom',chatLoaded=false,specName='';
+// ===== P0: globals before any use =====
+let _pollInterval=2000,_pollBackoff=0;
+const _tele={poll_ok:0,poll_err:0,rtt_sum:0,rtt_max:0,rtt_arr:[],overlay_allin:0,overlay_killcam:0,hands:0,docs_click:{banner:0,overlay:0,intimidation:0},join_ev:0,leave_ev:0,_lastFlush:Date.now(),_lastHand:null};
+const _teleSessionId=(()=>{let s=localStorage.getItem('tele_sid');if(!s){s=crypto.randomUUID?crypto.randomUUID():(Math.random().toString(36).slice(2)+Date.now().toString(36));localStorage.setItem('tele_sid',s)}return s})();
+const _refSrc=(()=>{const u=new URLSearchParams(location.search);const s=u.get('src');const valid=/^[a-z]{2}_(daily|weekly)(_[A-Za-z0-9]+){0,2}$/.test(s||'');const clean=valid?s:'';if(clean){if(!localStorage.getItem('ref_src'))localStorage.setItem('ref_src',clean);localStorage.setItem('last_src',clean);return localStorage.getItem('ref_src')}return localStorage.getItem('ref_src')||''})();
+const _lastSrc=localStorage.getItem('last_src')||'';
 const LANG={
 ko:{
   title:'😈 <b>머슴</b>포커 🃏',
@@ -3650,12 +3656,6 @@ document.getElementById('broadcast-body').style.display='none';
 document.getElementById('broadcast-cta').style.display='none';
 localStorage.setItem('seenBroadcastOverlay','1')}
 function showBroadcastOverlay(){if(!localStorage.getItem('seenBroadcastOverlay')){var o=document.getElementById('broadcast-overlay');o.style.display='flex';setTimeout(function(){collapseBroadcastOverlay()},12000);setTimeout(function(){dismissBroadcastOverlay()},30000)}}
-// ── Telemetry + Poll state (hoisted before watch/startPolling) ──
-let _pollInterval=2000,_pollBackoff=0;
-const _tele={poll_ok:0,poll_err:0,rtt_sum:0,rtt_max:0,rtt_arr:[],overlay_allin:0,overlay_killcam:0,hands:0,docs_click:{banner:0,overlay:0,intimidation:0},join_ev:0,leave_ev:0,_lastFlush:Date.now(),_lastHand:null};
-const _teleSessionId=(()=>{let s=localStorage.getItem('tele_sid');if(!s){s=crypto.randomUUID?crypto.randomUUID():(Math.random().toString(36).slice(2)+Date.now().toString(36));localStorage.setItem('tele_sid',s)}return s})();
-const _refSrc=(()=>{const u=new URLSearchParams(location.search);const s=u.get('src');const valid=/^[a-z]{2}_(daily|weekly)(_[A-Za-z0-9]+){0,2}$/.test(s||'');const clean=valid?s:'';if(clean){if(!localStorage.getItem('ref_src'))localStorage.setItem('ref_src',clean);localStorage.setItem('last_src',clean);return localStorage.getItem('ref_src')}return localStorage.getItem('ref_src')||''})();
-const _lastSrc=localStorage.getItem('last_src')||'';
 function watch(){
 isPlayer=false;var ni=document.getElementById('inp-name');specName=(ni?ni.value.trim():'')||t('specName')+Math.floor(Math.random()*999);
 document.getElementById('lobby').style.display='none';
