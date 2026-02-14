@@ -1,707 +1,679 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AI 콜로세움 — GORE EDITION</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🗡️ AI 콜로세움 — FATALITY</title>
 <style>
 @font-face{font-family:'NeoDGM';src:url('/static/fonts/neodgm.woff2') format('woff2');font-display:swap}
 *{margin:0;padding:0;box-sizing:border-box}
-body{background:#050510;color:#e0d8cc;font-family:'NeoDGM',monospace;overflow:hidden;height:100vh}
-#ui{position:fixed;inset:0;display:flex;flex-direction:column;pointer-events:none;z-index:10}
-#ui>*{pointer-events:auto}
-/* Top HUD */
-#hud{display:flex;justify-content:space-between;align-items:center;padding:8px 16px;background:linear-gradient(180deg,rgba(5,5,16,0.95),transparent)}
-.hp-bar-wrap{width:280px;height:24px;background:#1a1a1a;border:2px solid #444;border-radius:2px;position:relative;overflow:hidden}
-.hp-bar{height:100%;transition:width 0.3s;position:relative}
-.hp-bar.p1{background:linear-gradient(90deg,#8C1414,#D43218);border-right:2px solid #ff4444}
-.hp-bar.p2{background:linear-gradient(270deg,#5078A0,#80120160);border-left:2px solid #4488cc}
-.hp-text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;text-shadow:0 1px 2px #000;letter-spacing:1px}
-.fighter-name{font-size:14px;font-weight:bold;text-shadow:0 0 8px rgba(140,20,20,0.5)}
-.fighter-name.p2{text-shadow:0 0 8px rgba(80,120,160,0.5)}
-#vs{font-size:20px;color:#9D7F33;text-shadow:0 0 12px rgba(245,197,66,0.4)}
-/* Center canvas */
-#arena-wrap{flex:1;display:flex;align-items:center;justify-content:center}
-canvas{image-rendering:pixelated;border:2px solid #222;box-shadow:0 0 40px rgba(140,20,20,0.15),0 0 80px rgba(5,5,16,0.8)}
-/* Bottom bar */
-#bottom{padding:8px 16px;background:linear-gradient(0deg,rgba(5,5,16,0.95),transparent);display:flex;justify-content:space-between;align-items:center}
-#combo{font-size:18px;color:#D43218;text-shadow:0 0 8px rgba(210,50,40,0.6);min-width:120px}
-#timer{font-size:14px;color:#938B7B}
-#round-info{font-size:12px;color:#646055}
-/* Fatality overlay */
-#fatality{display:none;position:fixed;inset:0;z-index:100;align-items:center;justify-content:center;flex-direction:column;background:rgba(5,5,10,0.85)}
-#fatality.show{display:flex;animation:fatFlash 0.5s ease-out}
-#fatality h1{font-size:64px;color:#D43218;text-shadow:0 0 30px rgba(210,50,40,0.8),0 0 60px rgba(140,20,20,0.5);letter-spacing:8px;animation:fatPulse 0.3s ease-in-out 3}
-#fatality .sub{font-size:18px;color:#C8B48C;margin-top:12px}
-@keyframes fatFlash{0%{background:rgba(140,20,20,0.6)}100%{background:rgba(5,5,10,0.85)}}
-@keyframes fatPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
-/* Match start overlay */
-#match-start{display:none;position:fixed;inset:0;z-index:90;align-items:center;justify-content:center;flex-direction:column;background:rgba(5,5,10,0.9)}
-#match-start.show{display:flex}
-#match-start .vs-big{font-size:48px;color:#9D7F33;text-shadow:0 0 20px rgba(245,197,66,0.5);animation:vsBounce 0.6s ease-out}
-#match-start .names{font-size:24px;margin:16px 0;display:flex;gap:24px;align-items:center}
-@keyframes vsBounce{0%{transform:scale(3);opacity:0}60%{transform:scale(0.9)}100%{transform:scale(1);opacity:1}}
-/* Hit flash */
-.hit-flash{animation:hitFlash 0.15s ease-out}
-@keyframes hitFlash{0%{filter:brightness(3)}100%{filter:brightness(1)}}
-/* Blood splatter */
-.blood-particle{position:fixed;pointer-events:none;z-index:50;width:4px;height:4px;background:#8C1414;border-radius:50%}
-/* KO text */
-#ko{display:none;position:fixed;top:30%;left:50%;transform:translate(-50%,-50%);z-index:80;font-size:100px;color:#D43218;text-shadow:0 0 40px rgba(210,50,40,0.8);letter-spacing:12px}
-#ko.show{display:block;animation:koPop 0.5s ease-out}
-@keyframes koPop{0%{transform:translate(-50%,-50%) scale(5);opacity:0}60%{transform:translate(-50%,-50%) scale(0.9);opacity:1}100%{transform:translate(-50%,-50%) scale(1)}}
+body{background:#050F1A;color:#FCC88E;font-family:'NeoDGM',monospace;overflow:hidden;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center}
+canvas{image-rendering:pixelated;border:2px solid #9D7F33;background:#0a0f1a}
+#hud{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;padding:8px 20px;background:rgba(5,15,26,0.9);border-bottom:1px solid #9D7F33;z-index:10;font-size:14px}
+.hp-bar{width:200px;height:16px;background:#221C20;border:1px solid #704637;border-radius:2px;overflow:hidden}
+.hp-fill{height:100%;transition:width 0.3s;border-radius:1px}
+.hp-p1{background:linear-gradient(90deg,#D24C59,#F09858)}
+.hp-p2{background:linear-gradient(90deg,#35B97D,#69B5A8)}
+#p1-info,#p2-info{display:flex;align-items:center;gap:8px}
+#p2-info{flex-direction:row-reverse}
+.fighter-name{font-size:16px;font-weight:bold}
+#center-info{text-align:center}
+#round-num{font-size:18px;color:#9D7F33}
+#fight-msg{font-size:12px;color:#938B7B;margin-top:2px}
+#overlay{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:20;background:rgba(5,15,26,0.95);transition:opacity 0.5s}
+#overlay.hidden{opacity:0;pointer-events:none}
+#overlay h1{font-size:48px;color:#D24C59;text-shadow:0 0 20px rgba(210,76,89,0.5);margin-bottom:8px}
+#overlay h2{font-size:24px;color:#FCC88E;margin-bottom:20px}
+#matchup{display:flex;align-items:center;gap:40px;margin:20px 0}
+.matchup-fighter{text-align:center}
+.matchup-fighter img{width:128px;height:128px;image-rendering:pixelated}
+.matchup-fighter .name{font-size:18px;margin-top:8px}
+#vs{font-size:36px;color:#D24C59;text-shadow:0 0 15px #D24C59}
+#start-btn{margin-top:20px;padding:12px 40px;font-size:18px;font-family:'NeoDGM',monospace;background:#D24C59;color:#FCC88E;border:2px solid #9D7F33;cursor:pointer;transition:all 0.2s}
+#start-btn:hover{background:#F09858;transform:scale(1.05)}
+#fatality-text{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-size:64px;color:#D24C59;text-shadow:0 0 30px #D24C59,0 0 60px rgba(210,76,89,0.5);z-index:30;display:none;animation:fatalShake 0.5s ease-out}
+@keyframes fatalShake{0%{transform:translate(-50%,-50%) scale(3);opacity:0}50%{transform:translate(-50%,-50%) scale(1.1);opacity:1}100%{transform:translate(-50%,-50%) scale(1)}}
+#ko-flash{position:fixed;inset:0;background:#D24C59;z-index:25;opacity:0;pointer-events:none;transition:opacity 0.1s}
+#blood-overlay{position:fixed;inset:0;z-index:15;pointer-events:none;opacity:0;background:radial-gradient(circle at 50% 50%,transparent 30%,rgba(210,76,89,0.3) 100%);transition:opacity 0.5s}
+#combo-text{position:fixed;top:30%;right:10%;font-size:32px;color:#F09858;text-shadow:0 0 10px #F09858;z-index:15;display:none}
+a{color:#69B5A8;text-decoration:none}
 </style>
 </head>
 <body>
-<div id="ui">
-  <div id="hud">
-    <div style="text-align:left">
-      <div class="fighter-name" id="p1-name">블러드팡</div>
-      <div class="hp-bar-wrap"><div class="hp-bar p1" id="p1-hp" style="width:100%"><div class="hp-text"><span id="p1-hp-text">100%</span></div></div></div>
-    </div>
-    <div id="vs">⚔️ VS</div>
-    <div style="text-align:right">
-      <div class="fighter-name p2" id="p2-name">아이언클로</div>
-      <div class="hp-bar-wrap"><div class="hp-bar p2" id="p2-hp" style="width:100%"><div class="hp-text"><span id="p2-hp-text">100%</span></div></div></div>
-    </div>
+
+<div id="hud">
+  <div id="p1-info">
+    <div class="fighter-name" id="p1-name">???</div>
+    <div class="hp-bar"><div class="hp-fill hp-p1" id="p1-hp" style="width:100%"></div></div>
+    <span id="p1-hp-text">100</span>
   </div>
-  <div id="arena-wrap">
-    <canvas id="arena" width="512" height="320"></canvas>
+  <div id="center-info">
+    <div id="round-num">ROUND 1</div>
+    <div id="fight-msg">대기 중...</div>
   </div>
-  <div id="bottom">
-    <div id="combo"></div>
-    <div id="timer">⏱ 99</div>
-    <div id="round-info">ROUND 1</div>
+  <div id="p2-info">
+    <div class="fighter-name" id="p2-name">???</div>
+    <div class="hp-bar"><div class="hp-fill hp-p2" id="p2-hp" style="width:100%"></div></div>
+    <span id="p2-hp-text">100</span>
   </div>
 </div>
-<div id="fatality"><h1>FATALITY</h1><div class="sub" id="fatal-desc"></div></div>
-<div id="ko">K.O.</div>
-<div id="match-start">
-  <div class="names"><span id="ms-p1" style="color:#D43218">???</span><span class="vs-big">VS</span><span id="ms-p2" style="color:#5078A0">???</span></div>
+
+<canvas id="arena" width="800" height="500"></canvas>
+
+<div id="fatality-text">💀 FATALITY 💀</div>
+<div id="ko-flash"></div>
+<div id="blood-overlay"></div>
+<div id="combo-text"></div>
+
+<div id="overlay">
+  <h1>⚔️ AI 콜로세움</h1>
+  <h2>PIXEL DEATH ARENA</h2>
+  <div id="matchup">
+    <div class="matchup-fighter">
+      <img id="mu-p1-img" src="">
+      <div class="name" id="mu-p1-name">???</div>
+    </div>
+    <div id="vs">VS</div>
+    <div class="matchup-fighter">
+      <img id="mu-p2-img" src="">
+      <div class="name" id="mu-p2-name">???</div>
+    </div>
+  </div>
+  <button id="start-btn" onclick="startFight()">⚔️ FIGHT</button>
+  <div style="margin-top:12px;font-size:12px;color:#938B7B">관전 전용 · AI vs AI 자동 전투 · 성인용 고어</div>
+  <div style="margin-top:8px"><a href="/">🃏 포커 아레나로 돌아가기</a></div>
 </div>
 
 <script>
-// ═══════════════════════════════════════
-// AI COLOSSEUM — Gore Fighting Game v1.0
-// Spectator-only: AI vs AI auto-battle
-// ═══════════════════════════════════════
+const FIGHTERS = [
+  {id:'bloodfang',   name:'블러드팡',     name_en:'BloodFang',    weapon:'도끼',  color:'#D24C59', style:'aggressive', baseAtk:18, baseDef:8,  baseSpd:12, hp:110},
+  {id:'ironclaw',    name:'아이언클로',   name_en:'IronClaw',     weapon:'철퇴',  color:'#938B7B', style:'tank',       baseAtk:14, baseDef:16, baseSpd:8,  hp:140},
+  {id:'shadowblade', name:'쉐도우블레이드',name_en:'ShadowBlade', weapon:'쌍단검',color:'#073935', style:'assassin',   baseAtk:20, baseDef:6,  baseSpd:18, hp:90},
+  {id:'berserker',   name:'버서커',       name_en:'Berserker',    weapon:'카타나',color:'#D24C59', style:'berserker',  baseAtk:22, baseDef:5,  baseSpd:15, hp:95},
+  {id:'bonecrusher', name:'본크러셔',     name_en:'BoneCrusher',  weapon:'해머',  color:'#704637', style:'tank',       baseAtk:16, baseDef:14, baseSpd:6,  hp:130},
+  {id:'venomqueen',  name:'베놈퀸',       name_en:'VenomQueen',   weapon:'독검',  color:'#126D65', style:'dot',        baseAtk:12, baseDef:10, baseSpd:14, hp:100},
+  {id:'hellfire',    name:'헬파이어',     name_en:'HellFire',     weapon:'화염검',color:'#F09858', style:'burst',      baseAtk:20, baseDef:7,  baseSpd:13, hp:100},
+  {id:'frostbite',   name:'프로스트바이트',name_en:'FrostBite',   weapon:'빙결창',color:'#69B5A8', style:'control',    baseAtk:13, baseDef:12, baseSpd:10, hp:115},
+];
 
-const CANVAS_W = 512, CANVAS_H = 320;
-const GROUND_Y = 260; // ground line
-const GRAVITY = 0.6;
-const PX = 2; // pixel scale
+const FATALITIES = ['head_off','bisect','explode','impale','spine_rip','dissolve'];
+const FATALITY_NAMES = {
+  head_off:'참수',bisect:'양단',explode:'폭사',impale:'관통',spine_rip:'척추 뽑기',dissolve:'용해'
+};
+const ANIMS = ['walk','attack','hit','death','victory'];
+const ASSET_BASE = '/colosseum/assets/';
 
 const canvas = document.getElementById('arena');
 const ctx = canvas.getContext('2d');
-ctx.imageSmoothingEnabled = false;
 
-// ═══ FIGHTER DEFINITIONS ═══
-const FIGHTER_DEFS = [
-  {id:'bloodfang',  name:'블러드팡',    color:'#8C1414', hp:110, atk:18, spd:2.5, def:8,  style:'aggressive'},
-  {id:'ironclaw',   name:'아이언클로',  color:'#646055', hp:140, atk:14, spd:1.8, def:14, style:'tank'},
-  {id:'shadowblade', name:'쉐도우',     color:'#321450', hp:85,  atk:22, spd:3.5, def:5,  style:'assassin'},
-  {id:'berserker',  name:'버서커',      color:'#B41E1E', hp:100, atk:20, spd:2.8, def:6,  style:'berserker'},
-  {id:'bonecrusher',name:'본크러셔',    color:'#C8B48C', hp:150, atk:16, spd:1.5, def:16, style:'tank'},
-  {id:'venomqueen', name:'베놈퀸',      color:'#2D5A1E', hp:90,  atk:15, spd:2.2, def:7,  style:'dot'},
-  {id:'hellfire',   name:'헬파이어',    color:'#D43218', hp:95,  atk:24, spd:2.0, def:5,  style:'glass_cannon'},
-  {id:'frostbite',  name:'프로스트바이트',color:'#5078A0',hp:105, atk:16, spd:2.3, def:10, style:'control'},
-];
-
-// ═══ SPRITE LOADER ═══
-const spriteCache = {};
-function loadSprite(path) {
-  if (spriteCache[path]) return spriteCache[path];
-  const img = new Image();
-  img.src = path;
-  spriteCache[path] = img;
-  return img;
+// Preload images
+const imgCache = {};
+function loadImg(path) {
+  if (imgCache[path]) return Promise.resolve(imgCache[path]);
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => { imgCache[path] = img; res(img); };
+    img.onerror = () => rej(path);
+    img.src = path;
+  });
 }
 
-function getFighterSprites(id) {
-  const base = `/static/colosseum/${id}`;
-  const sprites = { idle: [], walk: [], attack: [], hit: [], death: [], victory: [] };
-  // Load frame-by-frame (4 frames each)
-  for (const anim of Object.keys(sprites)) {
-    for (let i = 0; i < 4; i++) {
-      sprites[anim].push(loadSprite(`${base}/${anim}_${i}.png`));
-    }
+async function preloadFighter(f) {
+  const base = ASSET_BASE + f.id + '/';
+  const promises = [loadImg(base + 'idle.png'), loadImg(base + 'idle_64.png')];
+  for (const anim of ANIMS) {
+    for (let i = 0; i < 4; i++) promises.push(loadImg(base + anim + '_' + i + '.png'));
   }
-  // Also load idle_64 as single fallback
-  sprites.idle_single = loadSprite(`${base}/idle_64.png`);
-  // Fatalities
-  sprites.fatalities = {};
-  for (const f of ['head_off','bisect','explode','impale','spine_rip','dissolve']) {
-    sprites.fatalities[f] = [];
-    for (let i = 0; i < 4; i++) {
-      sprites.fatalities[f].push(loadSprite(`${base}/fatal_${f}_${i}.png`));
-    }
+  for (const fat of FATALITIES) {
+    for (let i = 0; i < 4; i++) promises.push(loadImg(base + 'fatal_' + fat + '_' + i + '.png'));
   }
-  return sprites;
+  await Promise.all(promises);
 }
 
-// ═══ FIGHTER STATE ═══
+// Game state
+let p1, p2, gameState = 'menu', round = 1, tick = 0;
+let particles = [], shakeX = 0, shakeY = 0, shakeDur = 0;
+let combo = { p1: 0, p2: 0 };
+
 class Fighter {
-  constructor(def, x, facing, sprites) {
-    this.def = def;
-    this.x = x;
-    this.y = GROUND_Y;
-    this.vx = 0;
-    this.vy = 0;
-    this.facing = facing; // 1=right, -1=left
-    this.hp = def.hp;
-    this.maxHp = def.hp;
-    this.sprites = sprites;
-    this.state = 'idle';
+  constructor(data, side) {
+    this.data = data;
+    this.side = side; // 'left' or 'right'
+    this.x = side === 'left' ? 150 : 550;
+    this.y = 300;
+    this.hp = data.hp;
+    this.maxHp = data.hp;
+    this.atk = data.baseAtk;
+    this.def = data.baseDef;
+    this.spd = data.baseSpd;
+    this.state = 'idle'; // idle, walk, attack, hit, death, victory, fatality
     this.frame = 0;
     this.frameTick = 0;
-    this.frameSpeed = 8; // ticks per frame
-    this.stateTimer = 0;
-    this.comboCount = 0;
-    this.knockback = 0;
-    this.hitStun = 0;
-    this.invincible = 0;
+    this.facing = side === 'left' ? 1 : -1;
+    this.targetX = this.x;
+    this.cooldown = 0;
+    this.poison = 0;
+    this.frozen = 0;
+    this.rage = 0; // berserker mechanic
+    this.fatalityType = null;
+    this.fatalityFrame = 0;
     this.dead = false;
-    // AI brain
-    this.aiTimer = 0;
-    this.aiDecision = 'idle';
-    this.aiCooldown = 0;
-    // DOT (poison etc)
-    this.dot = 0;
-    this.dotTicks = 0;
+    this.actionQueue = [];
+    this.stagger = 0;
   }
 
-  get grounded() { return this.y >= GROUND_Y; }
+  get basePath() { return ASSET_BASE + this.data.id + '/'; }
 
-  takeDamage(dmg, attacker) {
-    if (this.invincible > 0 || this.dead) return 0;
-    const actual = Math.max(1, dmg - Math.floor(this.def.def * 0.3));
-    this.hp = Math.max(0, this.hp - actual);
-    this.hitStun = 12;
-    this.state = 'hit';
-    this.frame = 0;
-    this.frameTick = 0;
-    // Knockback
-    this.vx = attacker.facing * 4;
-    this.vy = -3;
-    // Blood particles
-    spawnBlood(this.x + 32, this.y - 20, 8 + actual);
-    if (this.hp <= 0) {
-      this.dead = true;
-      this.state = 'death';
-      this.frame = 0;
+  getImg() {
+    if (this.state === 'idle') {
+      return imgCache[this.basePath + 'idle_64.png'];
     }
-    return actual;
-  }
-
-  update() {
-    // Physics
-    if (!this.grounded) {
-      this.vy += GRAVITY;
-      this.y += this.vy;
-      if (this.y >= GROUND_Y) { this.y = GROUND_Y; this.vy = 0; }
+    if (this.state === 'fatality') {
+      const key = this.basePath + 'fatal_' + this.fatalityType + '_' + Math.min(this.fatalityFrame, 3) + '.png';
+      return imgCache[key];
     }
-    this.x += this.vx;
-    this.vx *= 0.85;
-    // Bounds
-    this.x = Math.max(10, Math.min(CANVAS_W - 74, this.x));
-    // Timers
-    if (this.hitStun > 0) this.hitStun--;
-    if (this.invincible > 0) this.invincible--;
-    if (this.stateTimer > 0) this.stateTimer--;
-    // DOT
-    if (this.dotTicks > 0 && !this.dead) {
-      this.dotTicks--;
-      if (this.dotTicks % 20 === 0) {
-        this.hp = Math.max(0, this.hp - this.dot);
-        spawnBlood(this.x + 32, this.y - 20, 3, '#2D5A1E');
-        if (this.hp <= 0) { this.dead = true; this.state = 'death'; this.frame = 0; }
-      }
-    }
-    // Animation
-    this.frameTick++;
-    const spd = this.state === 'attack' ? 5 : this.state === 'hit' ? 6 : this.frameSpeed;
-    if (this.frameTick >= spd) {
-      this.frameTick = 0;
-      this.frame++;
-      const frames = this.sprites[this.state];
-      if (frames && this.frame >= frames.length) {
-        if (this.state === 'death') { this.frame = frames.length - 1; }
-        else if (this.state === 'victory') { this.frame = 0; }
-        else if (this.state === 'attack') { this.state = 'idle'; this.frame = 0; this.aiCooldown = 15; }
-        else if (this.state === 'hit') {
-          if (this.hitStun <= 0) { this.state = 'idle'; this.frame = 0; }
-          else this.frame = 0;
-        }
-        else { this.frame = this.frame % (frames.length || 1); }
-      }
-    }
-    // Return to idle from hit
-    if (this.state === 'hit' && this.hitStun <= 0 && this.frame >= 3) {
-      this.state = 'idle'; this.frame = 0;
-    }
+    const f = Math.min(this.frame, 3);
+    return imgCache[this.basePath + this.state + '_' + f + '.png'];
   }
 
   draw(ctx) {
-    const frames = this.sprites[this.state] || this.sprites.idle;
-    const f = Math.min(this.frame, (frames?.length || 1) - 1);
-    const sprite = frames?.[f] || this.sprites.idle_single;
-    if (!sprite || !sprite.complete || !sprite.naturalWidth) return;
-    
+    const img = this.getImg();
+    if (!img) return;
+    const size = this.state === 'idle' ? 128 : 128; // draw at 2x for 64px sprites
+    const drawW = this.state === 'idle' ? 128 : 128;
+    const drawH = this.state === 'idle' ? 128 : 128;
     ctx.save();
-    const drawW = 64, drawH = 64;
-    const dx = this.x, dy = this.y - drawH + 8;
-    
-    // Flash white when hit
-    if (this.hitStun > 8) ctx.filter = 'brightness(2.5)';
-    else if (this.invincible > 0 && this.invincible % 4 < 2) ctx.globalAlpha = 0.4;
-    
-    if (this.facing === -1) {
-      ctx.translate(dx + drawW, dy);
-      ctx.scale(-1, 1);
-      ctx.drawImage(sprite, 0, 0, drawW, drawH);
-    } else {
-      ctx.drawImage(sprite, dx, dy, drawW, drawH);
+    ctx.translate(this.x, this.y);
+    if (this.facing < 0) ctx.scale(-1, 1);
+    // Flash white on hit
+    if (this.state === 'hit' && this.frame < 2) {
+      ctx.globalAlpha = 0.7 + Math.sin(tick * 0.5) * 0.3;
     }
+    // Frozen tint
+    if (this.frozen > 0) {
+      ctx.filter = 'hue-rotate(180deg) brightness(1.3)';
+    }
+    // Rage red tint
+    if (this.rage > 30) {
+      ctx.filter = `brightness(${1 + this.rage * 0.005}) saturate(${1 + this.rage * 0.02})`;
+    }
+    const srcW = img.width, srcH = img.height;
+    ctx.drawImage(img, -drawW/2, -drawH/2, drawW, drawH);
     ctx.restore();
-    
+
     // Shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.save();
+    ctx.globalAlpha = 0.3;
+    ctx.fillStyle = '#000';
     ctx.beginPath();
-    ctx.ellipse(this.x + 32, GROUND_Y + 6, 24, 6, 0, 0, Math.PI * 2);
+    ctx.ellipse(this.x, this.y + 55, 30, 8, 0, 0, Math.PI * 2);
     ctx.fill();
+    ctx.restore();
+
+    // HP bar above
+    if (!this.dead && this.state !== 'fatality') {
+      const bw = 60, bh = 5;
+      const bx = this.x - bw/2, by = this.y - 75;
+      ctx.fillStyle = '#221C20';
+      ctx.fillRect(bx, by, bw, bh);
+      const pct = Math.max(0, this.hp / this.maxHp);
+      ctx.fillStyle = pct > 0.5 ? '#35B97D' : pct > 0.2 ? '#F09858' : '#D24C59';
+      ctx.fillRect(bx, by, bw * pct, bh);
+      ctx.strokeStyle = '#704637';
+      ctx.strokeRect(bx, by, bw, bh);
+    }
+
+    // Poison particles
+    if (this.poison > 0) {
+      for (let i = 0; i < 2; i++) {
+        particles.push({
+          x: this.x + (Math.random()-0.5)*40,
+          y: this.y + (Math.random()-0.5)*40,
+          vx: (Math.random()-0.5)*2,
+          vy: -1-Math.random(),
+          life: 20,
+          color: '#126D65',
+          size: 3
+        });
+      }
+    }
+  }
+
+  update() {
+    this.frameTick++;
+    if (this.cooldown > 0) this.cooldown--;
+    if (this.stagger > 0) this.stagger--;
+    if (this.frozen > 0) this.frozen--;
+
+    // Animation frame advance
+    const spd = this.state === 'attack' ? 6 : this.state === 'fatality' ? 12 : 8;
+    if (this.frameTick >= spd) {
+      this.frameTick = 0;
+      if (this.state === 'fatality') {
+        if (this.fatalityFrame < 3) this.fatalityFrame++;
+      } else if (this.state === 'death') {
+        if (this.frame < 3) this.frame++;
+      } else if (this.state === 'victory') {
+        this.frame = (this.frame + 1) % 4;
+      } else if (this.state !== 'idle') {
+        this.frame++;
+        if (this.frame >= 4) {
+          this.state = 'idle';
+          this.frame = 0;
+        }
+      }
+    }
+
+    // Move toward target
+    if (Math.abs(this.x - this.targetX) > 2) {
+      this.x += (this.targetX - this.x) * 0.1;
+      if (this.state === 'idle') this.state = 'walk';
+    }
+
+    // Poison tick
+    if (this.poison > 0 && tick % 30 === 0) {
+      this.hp -= 2;
+      this.poison--;
+      spawnDmgText(this.x, this.y - 60, '🧪2', '#126D65');
+    }
+
+    // Berserker rage
+    if (this.data.style === 'berserker') {
+      this.rage = Math.max(0, ((this.maxHp - this.hp) / this.maxHp) * 100);
+      this.atk = this.data.baseAtk + Math.floor(this.rage * 0.15);
+    }
   }
 }
 
-// ═══ AI BRAIN ═══
-function aiThink(fighter, enemy) {
-  if (fighter.dead || fighter.hitStun > 0 || fighter.aiCooldown > 0) {
-    fighter.aiCooldown = Math.max(0, fighter.aiCooldown - 1);
-    return;
-  }
-  fighter.aiTimer++;
-  const dist = Math.abs(fighter.x - enemy.x);
-  const hpRatio = fighter.hp / fighter.maxHp;
-  const style = fighter.def.style;
-  
-  // Decision based on style + situation
-  if (style === 'aggressive' || style === 'berserker') {
-    if (dist > 80) { fighter.aiDecision = 'approach'; }
-    else if (dist < 70 && Math.random() < 0.4) { fighter.aiDecision = 'attack'; }
-    else if (Math.random() < 0.15) { fighter.aiDecision = 'jump_attack'; }
-    else { fighter.aiDecision = Math.random() < 0.3 ? 'attack' : 'approach'; }
-    // Berserker rage at low HP
-    if (style === 'berserker' && hpRatio < 0.3) fighter.aiDecision = 'attack';
-  } else if (style === 'tank') {
-    if (dist > 90) { fighter.aiDecision = 'approach'; }
-    else if (dist < 60 && Math.random() < 0.3) { fighter.aiDecision = 'attack'; }
-    else { fighter.aiDecision = Math.random() < 0.5 ? 'idle' : 'approach'; }
-  } else if (style === 'assassin') {
-    if (dist > 120) { fighter.aiDecision = 'dash'; }
-    else if (dist < 50 && Math.random() < 0.5) { fighter.aiDecision = 'attack'; }
-    else if (Math.random() < 0.2) { fighter.aiDecision = 'retreat'; }
-    else { fighter.aiDecision = 'approach'; }
-  } else if (style === 'dot') {
-    if (dist > 100) { fighter.aiDecision = 'approach'; }
-    else if (dist < 70 && Math.random() < 0.35) { fighter.aiDecision = 'attack'; }
-    else if (Math.random() < 0.25) { fighter.aiDecision = 'retreat'; }
-    else { fighter.aiDecision = 'idle'; }
-  } else if (style === 'glass_cannon') {
-    if (dist > 90) { fighter.aiDecision = 'approach'; }
-    else if (dist < 60) { fighter.aiDecision = Math.random() < 0.5 ? 'attack' : 'retreat'; }
-    else { fighter.aiDecision = 'approach'; }
-  } else if (style === 'control') {
-    if (dist > 100) { fighter.aiDecision = 'approach'; }
-    else if (dist < 80 && Math.random() < 0.3) { fighter.aiDecision = 'attack'; }
-    else { fighter.aiDecision = Math.random() < 0.4 ? 'retreat' : 'idle'; }
-  }
-
-  // Execute decision
-  const spd = fighter.def.spd;
-  switch (fighter.aiDecision) {
-    case 'approach':
-      fighter.facing = enemy.x > fighter.x ? 1 : -1;
-      fighter.x += fighter.facing * spd;
-      if (fighter.state !== 'attack') { fighter.state = 'walk'; }
-      break;
-    case 'retreat':
-      fighter.facing = enemy.x > fighter.x ? 1 : -1;
-      fighter.x -= fighter.facing * spd * 0.8;
-      if (fighter.state !== 'attack') { fighter.state = 'walk'; }
-      break;
-    case 'dash':
-      fighter.facing = enemy.x > fighter.x ? 1 : -1;
-      fighter.x += fighter.facing * spd * 2.5;
-      fighter.state = 'walk';
-      break;
-    case 'attack':
-      if (fighter.state !== 'attack') {
-        fighter.state = 'attack';
-        fighter.frame = 0;
-        fighter.frameTick = 0;
-        fighter.facing = enemy.x > fighter.x ? 1 : -1;
-        // Hit check
-        if (Math.abs(fighter.x - enemy.x) < 75 && !enemy.dead) {
-          let dmg = fighter.def.atk + Math.floor(Math.random() * 6) - 2;
-          // Crits
-          if (Math.random() < 0.12) { dmg = Math.floor(dmg * 1.8); spawnText(enemy.x+32, enemy.y-50, 'CRIT!', '#D43218'); }
-          const actual = enemy.takeDamage(dmg, fighter);
-          if (actual > 0) {
-            fighter.comboCount++;
-            if (fighter.comboCount >= 3) spawnText(fighter.x+32, fighter.y-60, `${fighter.comboCount} COMBO!`, '#9D7F33');
-            // DOT for venomqueen
-            if (fighter.def.style === 'dot' && Math.random() < 0.4) {
-              enemy.dot = 3; enemy.dotTicks = 60;
-              spawnText(enemy.x+32, enemy.y-40, 'POISON!', '#2D5A1E');
-            }
-          }
-        }
-        fighter.aiCooldown = 20 + Math.floor(Math.random() * 15);
-      }
-      break;
-    case 'jump_attack':
-      if (fighter.grounded) {
-        fighter.vy = -8;
-        fighter.vx = fighter.facing * 3;
-        fighter.state = 'attack';
-        fighter.frame = 0;
-        if (Math.abs(fighter.x - enemy.x) < 90 && !enemy.dead) {
-          const dmg = fighter.def.atk + Math.floor(Math.random() * 8);
-          enemy.takeDamage(dmg, fighter);
-        }
-        fighter.aiCooldown = 30;
-      }
-      break;
-    default:
-      if (fighter.state === 'walk') { fighter.state = 'idle'; fighter.frame = 0; }
-      fighter.comboCount = 0;
-  }
+// Damage text particles
+const dmgTexts = [];
+function spawnDmgText(x, y, text, color) {
+  dmgTexts.push({ x, y, text, color, life: 40, vy: -2 });
 }
 
-// ═══ PARTICLES ═══
-const particles = [];
-function spawnBlood(x, y, count, color) {
+// Blood particles
+function spawnBlood(x, y, count) {
   for (let i = 0; i < count; i++) {
     particles.push({
-      x, y,
-      vx: (Math.random() - 0.5) * 8,
-      vy: -Math.random() * 6 - 2,
+      x, y: y + (Math.random()-0.5)*20,
+      vx: (Math.random()-0.5) * 8,
+      vy: -2 - Math.random() * 6,
       life: 30 + Math.random() * 30,
-      color: color || (Math.random() < 0.5 ? '#8C1414' : '#B41E1E'),
-      size: 2 + Math.random() * 3,
-      gravity: true,
+      color: Math.random() > 0.3 ? '#D24C59' : '#4D2C2C',
+      size: 2 + Math.random() * 4,
+      gravity: 0.3
     });
   }
 }
 
-const floatTexts = [];
-function spawnText(x, y, text, color) {
-  floatTexts.push({ x, y, text, color, life: 60, vy: -1.5 });
+function screenShake(dur) {
+  shakeDur = dur;
 }
 
-function updateParticles() {
-  for (let i = particles.length - 1; i >= 0; i--) {
-    const p = particles[i];
-    p.x += p.vx;
-    p.y += p.vy;
-    if (p.gravity) p.vy += 0.3;
-    p.vx *= 0.98;
-    p.life--;
-    if (p.life <= 0 || p.y > GROUND_Y + 20) {
-      // Leave blood stain
-      if (p.y >= GROUND_Y) bloodStains.push({ x: p.x, y: GROUND_Y + 2 + Math.random()*4, size: p.size * 0.8, color: p.color });
-      particles.splice(i, 1);
-    }
+// AI decision
+function aiDecide(me, enemy) {
+  if (me.cooldown > 0 || me.stagger > 0 || me.frozen > 0) return null;
+  const dist = Math.abs(me.x - enemy.x);
+  const style = me.data.style;
+
+  // Attack range
+  if (dist < 120) {
+    // In range — attack or dodge
+    const r = Math.random();
+    if (style === 'aggressive') return r < 0.7 ? 'attack' : 'dodge';
+    if (style === 'tank') return r < 0.5 ? 'attack' : r < 0.8 ? 'block' : 'dodge';
+    if (style === 'assassin') return r < 0.6 ? 'attack' : r < 0.9 ? 'dodge' : 'attack';
+    if (style === 'berserker') return me.rage > 50 ? 'attack' : r < 0.65 ? 'attack' : 'dodge';
+    if (style === 'dot') return r < 0.5 ? 'attack' : 'poison';
+    if (style === 'burst') return r < 0.55 ? 'attack' : r < 0.8 ? 'special' : 'dodge';
+    if (style === 'control') return r < 0.45 ? 'attack' : r < 0.7 ? 'freeze' : 'dodge';
+    return r < 0.6 ? 'attack' : 'dodge';
   }
-  for (let i = floatTexts.length - 1; i >= 0; i--) {
-    const t = floatTexts[i];
-    t.y += t.vy;
-    t.life--;
-    if (t.life <= 0) floatTexts.splice(i, 1);
+
+  // Out of range — approach
+  return 'approach';
+}
+
+function executeAction(me, enemy, action) {
+  if (!action) return;
+
+  if (action === 'approach') {
+    me.targetX += me.facing * 40;
+    me.state = 'walk';
+    me.frame = 0;
+    me.cooldown = 10;
+  }
+  else if (action === 'dodge') {
+    me.targetX -= me.facing * 60;
+    me.targetX = Math.max(80, Math.min(720, me.targetX));
+    me.cooldown = 15;
+  }
+  else if (action === 'attack') {
+    me.state = 'attack';
+    me.frame = 0;
+    me.cooldown = Math.max(8, 25 - me.spd);
+    // Calculate hit
+    setTimeout(() => {
+      if (enemy.dead) return;
+      const dist = Math.abs(me.x - enemy.x);
+      if (dist > 140) { spawnDmgText(enemy.x, enemy.y-60, 'MISS', '#938B7B'); return; }
+      const dodge = Math.random() < (enemy.spd * 0.01);
+      if (dodge) { spawnDmgText(enemy.x, enemy.y-60, 'DODGE', '#69B5A8'); return; }
+      let dmg = me.atk + Math.floor(Math.random() * 6) - Math.floor(enemy.def * 0.4);
+      const crit = Math.random() < 0.15;
+      if (crit) dmg = Math.floor(dmg * 1.8);
+      dmg = Math.max(1, dmg);
+      enemy.hp -= dmg;
+      enemy.state = 'hit';
+      enemy.frame = 0;
+      enemy.stagger = 8;
+      const side = me.side === 'left' ? 'p1' : 'p2';
+      combo[side]++;
+      spawnDmgText(enemy.x, enemy.y - 70, (crit ? '💥' : '') + dmg, crit ? '#F09858' : '#D24C59');
+      spawnBlood(enemy.x, enemy.y, crit ? 20 : 8);
+      screenShake(crit ? 8 : 4);
+      if (combo[side] >= 3) {
+        showCombo(combo[side]);
+      }
+      // Reset other side combo
+      combo[side === 'p1' ? 'p2' : 'p1'] = 0;
+      updateHUD();
+    }, 200);
+  }
+  else if (action === 'poison' && me.data.style === 'dot') {
+    me.state = 'attack';
+    me.frame = 0;
+    me.cooldown = 35;
+    setTimeout(() => {
+      if (Math.abs(me.x - enemy.x) < 150) {
+        enemy.poison += 5;
+        spawnDmgText(enemy.x, enemy.y - 60, '🧪독!', '#126D65');
+      }
+    }, 200);
+  }
+  else if (action === 'freeze' && me.data.style === 'control') {
+    me.state = 'attack';
+    me.frame = 0;
+    me.cooldown = 40;
+    setTimeout(() => {
+      if (Math.abs(me.x - enemy.x) < 150) {
+        enemy.frozen = 40;
+        spawnDmgText(enemy.x, enemy.y - 60, '🧊빙결!', '#69B5A8');
+      }
+    }, 200);
+  }
+  else if (action === 'special' && me.data.style === 'burst') {
+    me.state = 'attack';
+    me.frame = 0;
+    me.cooldown = 30;
+    setTimeout(() => {
+      if (Math.abs(me.x - enemy.x) < 160) {
+        const dmg = Math.floor(me.atk * 1.5);
+        enemy.hp -= dmg;
+        enemy.state = 'hit';
+        enemy.frame = 0;
+        enemy.stagger = 12;
+        spawnDmgText(enemy.x, enemy.y - 70, '🔥' + dmg, '#F09858');
+        spawnBlood(enemy.x, enemy.y, 25);
+        screenShake(10);
+        // Fire particles
+        for (let i = 0; i < 15; i++) {
+          particles.push({
+            x: enemy.x + (Math.random()-0.5)*40,
+            y: enemy.y + (Math.random()-0.5)*40,
+            vx: (Math.random()-0.5)*4,
+            vy: -3 - Math.random()*3,
+            life: 25, color: Math.random()>0.5?'#F09858':'#D24C59', size: 4
+          });
+        }
+        updateHUD();
+      }
+    }, 250);
+  }
+  else if (action === 'block') {
+    me.def = me.data.baseDef * 2;
+    me.cooldown = 20;
+    setTimeout(() => { me.def = me.data.baseDef; }, 600);
+    spawnDmgText(me.x, me.y - 60, '🛡️', '#938B7B');
   }
 }
 
-function drawParticles(ctx) {
-  for (const p of particles) {
-    ctx.globalAlpha = Math.min(1, p.life / 15);
-    ctx.fillStyle = p.color;
-    ctx.fillRect(Math.floor(p.x), Math.floor(p.y), Math.ceil(p.size), Math.ceil(p.size));
-  }
-  ctx.globalAlpha = 1;
-  for (const t of floatTexts) {
-    ctx.globalAlpha = Math.min(1, t.life / 20);
-    ctx.fillStyle = t.color;
-    ctx.font = '10px NeoDGM';
-    ctx.textAlign = 'center';
-    ctx.fillText(t.text, Math.floor(t.x), Math.floor(t.y));
-  }
-  ctx.globalAlpha = 1;
-}
-
-// Blood stains on ground (persistent)
-const bloodStains = [];
-function drawBloodStains(ctx) {
-  for (const s of bloodStains) {
-    ctx.fillStyle = s.color;
-    ctx.globalAlpha = 0.6;
-    ctx.fillRect(Math.floor(s.x), Math.floor(s.y), Math.ceil(s.size), Math.ceil(s.size * 0.5));
-  }
-  ctx.globalAlpha = 1;
-}
-
-// ═══ ARENA BACKGROUND ═══
-function drawArena(ctx) {
-  // Dark stone floor
-  ctx.fillStyle = '#0a0a14';
-  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-  
-  // Stone tiles
-  ctx.fillStyle = '#12121c';
-  for (let x = 0; x < CANVAS_W; x += 32) {
-    for (let y = GROUND_Y; y < CANVAS_H; y += 16) {
-      if ((x/32 + y/16) % 2 === 0) ctx.fillRect(x, y, 32, 16);
-    }
-  }
-  
-  // Ground line
-  ctx.strokeStyle = '#2a2a3a';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(0, GROUND_Y + 2);
-  ctx.lineTo(CANVAS_W, GROUND_Y + 2);
-  ctx.stroke();
-  
-  // Torch pillars (left/right)
-  for (const tx of [30, CANVAS_W - 40]) {
-    // Pillar
-    ctx.fillStyle = '#1a1a2a';
-    ctx.fillRect(tx, GROUND_Y - 80, 12, 82);
-    ctx.fillStyle = '#252535';
-    ctx.fillRect(tx + 1, GROUND_Y - 80, 10, 4);
-    // Fire
-    const flicker = Math.sin(Date.now() * 0.01) * 2;
-    ctx.fillStyle = '#D43218';
-    ctx.beginPath();
-    ctx.ellipse(tx + 6, GROUND_Y - 86 + flicker, 6, 10, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#F09858';
-    ctx.beginPath();
-    ctx.ellipse(tx + 6, GROUND_Y - 88 + flicker, 3, 6, 0, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  
-  // Chains hanging from top
-  ctx.strokeStyle = '#2a2a3a';
-  ctx.lineWidth = 2;
-  for (const cx of [80, 200, 320, 430]) {
-    const sway = Math.sin(Date.now() * 0.002 + cx) * 3;
-    ctx.beginPath();
-    ctx.moveTo(cx, 0);
-    ctx.quadraticCurveTo(cx + sway, 40, cx + sway * 0.5, 60 + Math.abs(sway));
-    ctx.stroke();
-  }
-  
-  // Vignette
-  const vg = ctx.createRadialGradient(CANVAS_W/2, CANVAS_H/2, 80, CANVAS_W/2, CANVAS_H/2, 300);
-  vg.addColorStop(0, 'transparent');
-  vg.addColorStop(1, 'rgba(5,5,10,0.5)');
-  ctx.fillStyle = vg;
-  ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-  
-  // Blood stains
-  drawBloodStains(ctx);
-}
-
-// ═══ GAME STATE ═══
-let p1, p2;
-let gameState = 'loading'; // loading, intro, fighting, ko, fatality, victory
-let stateTimer = 0;
-let roundTimer = 99 * 60; // 99 seconds in frames
-let currentRound = 1;
-let matchQueue = [];
-let matchIndex = 0;
-
-function startMatch(f1Idx, f2Idx) {
-  const d1 = FIGHTER_DEFS[f1Idx];
-  const d2 = FIGHTER_DEFS[f2Idx];
-  const s1 = getFighterSprites(d1.id);
-  const s2 = getFighterSprites(d2.id);
-  
-  p1 = new Fighter(d1, 100, 1, s1);
-  p2 = new Fighter(d2, CANVAS_W - 164, -1, s2);
-  
-  // UI
-  document.getElementById('p1-name').textContent = d1.name;
-  document.getElementById('p2-name').textContent = d2.name;
-  document.getElementById('p1-name').style.color = d1.color;
-  document.getElementById('p2-name').style.color = d2.color;
-  document.getElementById('ms-p1').textContent = d1.name;
-  document.getElementById('ms-p2').textContent = d2.name;
-  
-  bloodStains.length = 0;
-  particles.length = 0;
-  floatTexts.length = 0;
-  roundTimer = 99 * 60;
-  currentRound = 1;
-  
-  gameState = 'intro';
-  stateTimer = 120; // 2 sec intro
-  document.getElementById('match-start').classList.add('show');
+function showCombo(n) {
+  const el = document.getElementById('combo-text');
+  el.textContent = `${n} COMBO!`;
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 800);
 }
 
 function updateHUD() {
-  if (!p1 || !p2) return;
-  const h1 = Math.max(0, Math.round(p1.hp / p1.maxHp * 100));
-  const h2 = Math.max(0, Math.round(p2.hp / p2.maxHp * 100));
-  document.getElementById('p1-hp').style.width = h1 + '%';
-  document.getElementById('p2-hp').style.width = h2 + '%';
-  document.getElementById('p1-hp-text').textContent = h1 + '%';
-  document.getElementById('p2-hp-text').textContent = h2 + '%';
-  
-  const secs = Math.max(0, Math.ceil(roundTimer / 60));
-  document.getElementById('timer').textContent = '⏱ ' + secs;
-  document.getElementById('round-info').textContent = 'ROUND ' + currentRound;
-  
-  // Combo display
-  const maxCombo = Math.max(p1.comboCount, p2.comboCount);
-  document.getElementById('combo').textContent = maxCombo >= 3 ? `🔥 ${maxCombo} COMBO` : '';
+  const p1pct = Math.max(0, p1.hp / p1.maxHp * 100);
+  const p2pct = Math.max(0, p2.hp / p2.maxHp * 100);
+  document.getElementById('p1-hp').style.width = p1pct + '%';
+  document.getElementById('p2-hp').style.width = p2pct + '%';
+  document.getElementById('p1-hp-text').textContent = Math.max(0, Math.floor(p1.hp));
+  document.getElementById('p2-hp-text').textContent = Math.max(0, Math.floor(p2.hp));
 }
 
-// ═══ MAIN LOOP ═══
+async function triggerFatality(winner, loser) {
+  gameState = 'fatality';
+  const ftype = FATALITIES[Math.floor(Math.random() * FATALITIES.length)];
+
+  // Flash
+  const flash = document.getElementById('ko-flash');
+  flash.style.opacity = '1';
+  setTimeout(() => flash.style.opacity = '0', 150);
+
+  // Blood overlay
+  document.getElementById('blood-overlay').style.opacity = '1';
+
+  // Show fatality text
+  const ftext = document.getElementById('fatality-text');
+  ftext.textContent = `💀 ${FATALITY_NAMES[ftype]} 💀`;
+  ftext.style.display = 'block';
+  ftext.style.animation = 'none';
+  ftext.offsetHeight; // reflow
+  ftext.style.animation = 'fatalShake 0.5s ease-out';
+
+  // Loser plays fatality anim
+  loser.state = 'fatality';
+  loser.fatalityType = ftype;
+  loser.fatalityFrame = 0;
+  loser.dead = true;
+
+  // Massive blood
+  spawnBlood(loser.x, loser.y, 50);
+  screenShake(20);
+
+  document.getElementById('fight-msg').textContent =
+    `${winner.data.name}의 ${FATALITY_NAMES[ftype]}!! ${loser.data.name} 처형!!`;
+
+  // Winner victory after delay
+  setTimeout(() => {
+    winner.state = 'victory';
+    winner.frame = 0;
+  }, 1500);
+
+  // Show restart after delay
+  setTimeout(() => {
+    ftext.style.display = 'none';
+    document.getElementById('blood-overlay').style.opacity = '0';
+    gameState = 'result';
+    showResult(winner);
+  }, 4000);
+}
+
+function showResult(winner) {
+  const overlay = document.getElementById('overlay');
+  overlay.innerHTML = `
+    <h1>🏆 ${winner.data.name} 승리!</h1>
+    <h2>${winner.data.weapon} — HP ${Math.floor(winner.hp)}/${winner.maxHp}</h2>
+    <div style="margin:20px 0">
+      <img src="${ASSET_BASE}${winner.data.id}/idle.png" style="width:128px;height:128px;image-rendering:pixelated">
+    </div>
+    <button id="start-btn" onclick="location.reload()" style="padding:12px 40px;font-size:18px;font-family:'NeoDGM',monospace;background:#D24C59;color:#FCC88E;border:2px solid #9D7F33;cursor:pointer">🔄 다시 싸우기</button>
+    <div style="margin-top:12px"><a href="/">🃏 포커 아레나</a></div>
+  `;
+  overlay.classList.remove('hidden');
+}
+
+// Draw floor
+function drawFloor() {
+  // Dark arena floor with grid
+  ctx.fillStyle = '#0a0f1a';
+  ctx.fillRect(0, 0, 800, 500);
+
+  // Arena circle
+  ctx.save();
+  ctx.globalAlpha = 0.15;
+  ctx.strokeStyle = '#9D7F33';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.ellipse(400, 340, 300, 120, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.globalAlpha = 0.05;
+  ctx.fillStyle = '#9D7F33';
+  ctx.fill();
+  ctx.restore();
+
+  // Blood stains on floor (accumulate during fight)
+  ctx.save();
+  ctx.globalAlpha = 0.1;
+  particles.filter(p => p.life <= 0 && p.gravity).forEach(p => {
+    ctx.fillStyle = '#4D2C2C';
+    ctx.beginPath();
+    ctx.arc(p.x, p.y + 50, p.size * 0.5, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.restore();
+}
+
+// Main game loop
 function gameLoop() {
-  stateTimer--;
-  
-  switch (gameState) {
-    case 'intro':
-      if (stateTimer <= 0) {
-        document.getElementById('match-start').classList.remove('show');
-        gameState = 'fighting';
-      }
-      break;
-      
-    case 'fighting':
-      roundTimer--;
-      aiThink(p1, p2);
-      aiThink(p2, p1);
-      p1.update();
-      p2.update();
-      updateParticles();
-      
-      // Check KO
-      if (p1.dead || p2.dead) {
-        gameState = 'ko';
-        stateTimer = 90;
-        document.getElementById('ko').classList.add('show');
-        const winner = p1.dead ? p2 : p1;
-        winner.state = 'victory';
-        winner.frame = 0;
-      }
-      // Timer out
-      if (roundTimer <= 0) {
-        const winner = p1.hp > p2.hp ? p1 : p2;
-        const loser = winner === p1 ? p2 : p1;
-        loser.dead = true;
-        loser.state = 'death';
-        gameState = 'ko';
-        stateTimer = 90;
-        document.getElementById('ko').classList.add('show');
-        winner.state = 'victory';
-        winner.frame = 0;
-      }
-      break;
-      
-    case 'ko':
-      p1.update();
-      p2.update();
-      updateParticles();
-      if (stateTimer <= 0) {
-        document.getElementById('ko').classList.remove('show');
-        // Trigger FATALITY with 40% chance
-        if (Math.random() < 0.4) {
-          gameState = 'fatality';
-          stateTimer = 150;
-          const fatalities = ['head_off','bisect','explode','impale','spine_rip','dissolve'];
-          const fatalType = fatalities[Math.floor(Math.random() * fatalities.length)];
-          const fatalNames = {head_off:'참수',bisect:'양단',explode:'폭사',impale:'관통',spine_rip:'척추 발골',dissolve:'용해'};
-          document.getElementById('fatal-desc').textContent = fatalNames[fatalType] || fatalType;
-          document.getElementById('fatality').classList.add('show');
-          // Big blood explosion
-          const loser = p1.dead ? p1 : p2;
-          spawnBlood(loser.x + 32, loser.y - 30, 40);
-          spawnBlood(loser.x + 32, loser.y - 10, 30, '#B41E1E');
-        } else {
-          gameState = 'victory';
-          stateTimer = 180;
-        }
-      }
-      break;
-      
-    case 'fatality':
-      updateParticles();
-      if (stateTimer <= 0) {
-        document.getElementById('fatality').classList.remove('show');
-        gameState = 'victory';
-        stateTimer = 120;
-      }
-      break;
-      
-    case 'victory':
-      p1.update();
-      p2.update();
-      updateParticles();
-      if (stateTimer <= 0) {
-        // Next match
-        matchIndex++;
-        if (matchIndex < matchQueue.length) {
-          const [a, b] = matchQueue[matchIndex];
-          startMatch(a, b);
-        } else {
-          // Generate new bracket
-          generateBracket();
-        }
-      }
-      break;
+  tick++;
+  ctx.clearRect(0, 0, 800, 500);
+
+  // Screen shake
+  if (shakeDur > 0) {
+    shakeX = (Math.random() - 0.5) * shakeDur;
+    shakeY = (Math.random() - 0.5) * shakeDur;
+    shakeDur--;
+  } else {
+    shakeX = 0; shakeY = 0;
   }
-  
-  // Draw
-  drawArena(ctx);
-  if (p1) p1.draw(ctx);
-  if (p2) p2.draw(ctx);
-  drawParticles(ctx);
-  updateHUD();
-  
+  ctx.save();
+  ctx.translate(shakeX, shakeY);
+
+  drawFloor();
+
+  if (gameState === 'fighting' || gameState === 'fatality' || gameState === 'result') {
+    // AI decisions (every N ticks based on speed)
+    if (gameState === 'fighting') {
+      if (tick % Math.max(5, 20 - p1.spd) === 0) {
+        const act = aiDecide(p1, p2);
+        executeAction(p1, p2, act);
+      }
+      if (tick % Math.max(5, 20 - p2.spd) === 0) {
+        const act = aiDecide(p2, p1);
+        executeAction(p2, p1, act);
+      }
+
+      // Check death
+      if (p1.hp <= 0 && !p1.dead) {
+        p1.hp = 0;
+        updateHUD();
+        triggerFatality(p2, p1);
+      }
+      if (p2.hp <= 0 && !p2.dead) {
+        p2.hp = 0;
+        updateHUD();
+        triggerFatality(p1, p2);
+      }
+    }
+
+    p1.update();
+    p2.update();
+
+    // Draw (y-sort)
+    const sorted = [p1, p2].sort((a, b) => a.y - b.y);
+    sorted.forEach(f => f.draw(ctx));
+  }
+
+  // Particles
+  particles.forEach(p => {
+    p.x += p.vx || 0;
+    p.y += p.vy || 0;
+    if (p.gravity) p.vy += p.gravity;
+    p.life--;
+    if (p.life > 0) {
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, p.life / 15);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(p.x, p.y, p.size, p.size);
+      ctx.restore();
+    }
+  });
+  particles = particles.filter(p => p.life > 0);
+
+  // Damage texts
+  dmgTexts.forEach(d => {
+    d.y += d.vy;
+    d.life--;
+    if (d.life > 0) {
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, d.life / 20);
+      ctx.font = 'bold 16px NeoDGM, monospace';
+      ctx.fillStyle = d.color;
+      ctx.textAlign = 'center';
+      ctx.fillText(d.text, d.x, d.y);
+      ctx.restore();
+    }
+  });
+  dmgTexts.splice(0, dmgTexts.length, ...dmgTexts.filter(d => d.life > 0));
+
+  ctx.restore();
   requestAnimationFrame(gameLoop);
 }
 
-function generateBracket() {
-  // Random matchups — all combinations
-  matchQueue = [];
-  const indices = [...Array(FIGHTER_DEFS.length).keys()];
-  // Shuffle
-  for (let i = indices.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [indices[i], indices[j]] = [indices[j], indices[i]];
-  }
-  for (let i = 0; i < indices.length - 1; i += 2) {
-    matchQueue.push([indices[i], indices[i + 1]]);
-  }
-  matchIndex = 0;
-  startMatch(matchQueue[0][0], matchQueue[0][1]);
+// Start
+async function startFight() {
+  document.getElementById('overlay').classList.add('hidden');
+  document.getElementById('fight-msg').textContent = '로딩 중...';
+
+  // Random matchup
+  const shuffled = [...FIGHTERS].sort(() => Math.random() - 0.5);
+  const f1 = shuffled[0], f2 = shuffled[1];
+
+  // Preload
+  await Promise.all([preloadFighter(f1), preloadFighter(f2)]);
+
+  p1 = new Fighter(f1, 'left');
+  p2 = new Fighter(f2, 'right');
+
+  document.getElementById('p1-name').textContent = f1.name;
+  document.getElementById('p2-name').textContent = f2.name;
+  document.getElementById('p1-name').style.color = f1.color;
+  document.getElementById('p2-name').style.color = f2.color;
+  updateHUD();
+
+  // Countdown
+  document.getElementById('fight-msg').textContent = 'READY...';
+  await new Promise(r => setTimeout(r, 1000));
+  document.getElementById('fight-msg').textContent = '⚔️ FIGHT!';
+
+  gameState = 'fighting';
 }
 
-// ═══ INIT ═══
-window.addEventListener('load', () => {
-  // Preload all sprites
-  let loaded = 0;
-  const totalFighters = FIGHTER_DEFS.length;
-  FIGHTER_DEFS.forEach(d => {
-    const img = new Image();
-    img.src = `/static/colosseum/${d.id}/idle_64.png`;
-    img.onload = () => { loaded++; if (loaded >= totalFighters) { gameState = 'ready'; generateBracket(); } };
-    img.onerror = () => { loaded++; if (loaded >= totalFighters) { gameState = 'ready'; generateBracket(); } };
-  });
-  
-  gameLoop();
-});
+// Init matchup preview
+function initMenu() {
+  const shuffled = [...FIGHTERS].sort(() => Math.random() - 0.5);
+  document.getElementById('mu-p1-img').src = ASSET_BASE + shuffled[0].id + '/idle.png';
+  document.getElementById('mu-p2-img').src = ASSET_BASE + shuffled[1].id + '/idle.png';
+  document.getElementById('mu-p1-name').textContent = shuffled[0].name;
+  document.getElementById('mu-p2-name').textContent = shuffled[1].name;
+}
+
+initMenu();
+gameLoop();
 </script>
 </body>
 </html>
