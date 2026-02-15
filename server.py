@@ -3737,8 +3737,10 @@ box-shadow:inset 0 0 0 1px rgba(157,127,51,0.4),0 2px 8px rgba(0,0,0,0.5)}
 .thought-bubble{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:18px;background:rgba(15,20,28,0.9);color:var(--accent-green);padding:5px 12px;border-radius:6px;font-size:0.8em;white-space:normal;word-break:keep-all;z-index:24;border:1px solid rgba(52,211,153,0.15);max-width:280px;min-width:80px;animation:bubbleFade 4s ease-out forwards;pointer-events:none;box-shadow:0 1px 4px rgba(0,0,0,0.3);line-height:1.3}
 .thought-bubble::after{content:'';display:none}
 /* 좌우 사이드 좌석: 대사를 옆에 표시 */
-.seat-side-left .act-label,.seat-side-right .act-label{bottom:100%;top:auto;left:50%;right:auto;transform:translateX(-50%);margin-bottom:1px;margin-left:0;margin-right:0}
-.seat-side-left .thought-bubble,.seat-side-right .thought-bubble{bottom:100%;top:auto;left:50%;right:auto;transform:translateX(-50%);margin-bottom:18px;margin-left:0;margin-right:0}
+.seat-side-left .act-label{bottom:auto;top:50%;left:100%;right:auto;transform:translateY(-50%);margin:0 0 0 8px}
+.seat-side-left .thought-bubble{bottom:auto;top:30%;left:100%;right:auto;transform:none;margin:0 0 0 8px}
+.seat-side-right .act-label{bottom:auto;top:50%;left:auto;right:100%;transform:translateY(-50%);margin:0 8px 0 0}
+.seat-side-right .thought-bubble{bottom:auto;top:30%;left:auto;right:100%;transform:none;margin:0 8px 0 0}
 @keyframes bubbleFade{0%{opacity:0;transform:translateX(-50%) translateY(4px)}10%{opacity:1;transform:translateX(-50%) translateY(0)}80%{opacity:0.8}100%{opacity:0;transform:translateX(-50%) translateY(-4px)}}
 @keyframes actFade{0%{opacity:1;transform:translateX(-50%)}70%{opacity:1}100%{opacity:0;transform:translateX(-50%) translateY(-6px)}}
 @keyframes actPop{0%{transform:translateX(-50%) scale(0.5);opacity:0}100%{transform:translateX(-50%) scale(1);opacity:1}}
@@ -4092,9 +4094,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.57.0">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.57.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.57.0">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.58.0">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.58.0">
+<link rel="stylesheet" href="/static/css/components.css?v=3.58.0">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
