@@ -668,6 +668,7 @@ class Table:
         self._delay_task=None
         self.last_commentary=''  # 최신 해설 (폴링용)
         self.last_showdown=None  # 마지막 쇼다운 결과
+        self.fold_winner=None  # 폴드 승리자 정보
         # 봇 성격 프로필 (액션 통계)
         self.player_stats={}  # name -> {folds,calls,raises,checks,allins,bluffs,wins,hands,total_bet,total_won,biggest_pot,showdowns}
         # 리플레이 하이라이트 (빅팟/올인/레어핸드)
@@ -894,6 +895,7 @@ class Table:
             'running':self.running,
             'commentary':self.last_commentary,
             'showdown_result':self.last_showdown,
+            'fold_winner':self.fold_winner,
             'spectator_count':len(self.spectator_ws)+len(self.poll_spectators),
             'season':get_season_info(),
             'seats_available':self.MAX_PLAYERS-len(self.seats),
@@ -1143,7 +1145,7 @@ class Table:
     async def play_hand(self):
         active=[s for s in self.seats if s['chips']>0 and not s.get('out')]
         if len(active)<2: return
-        self.hand_num+=1; self.last_showdown=None
+        self.hand_num+=1; self.last_showdown=None; self.fold_winner=None
         # 블라인드 에스컬레이션
         level=min((self.hand_num-1)//self.BLIND_INTERVAL, len(self.BLIND_SCHEDULE)-1)
         new_sb,new_bb=self.BLIND_SCHEDULE[level]
@@ -1398,6 +1400,7 @@ class Table:
             w=alive[0]; w['chips']+=self.pot
             await self.add_log(f"🏆 {w['emoji']} {w['name']} +{self.pot}pt (상대 폴드)")
             await self.broadcast_commentary(f"🏆 {w['name']} 승리! +{self.pot}pt 획득 (상대 전원 폴드)")
+            self.fold_winner={'name':w['name'],'emoji':w['emoji'],'pot':self.pot,'winner':True}
             record['winner']=w['name']; record['pot']=self.pot
             # 프로필 통계
             self._init_stats(w['name'])
@@ -3293,7 +3296,7 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <div class="wrap">
 
 <h1 id="main-title" style="font-family:var(--font-title)">🍄 <b>머슴</b>포커 🃏</h1>
-<div style="text-align:center;margin:4px 0"><button class="lang-btn" data-lang="ko" onclick="setLang('ko')" style="background:none;border:1px solid #4ade80;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:0.85em;margin:0 3px;opacity:1">🇰🇷 한국어</button><button class="lang-btn" data-lang="en" onclick="setLang('en')" style="background:none;border:1px solid #4ade80;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:0.85em;margin:0 3px;opacity:0.5">🇺🇸 English</button></div>
+<div style="text-align:center;margin:4px 0"><button class="lang-btn" data-lang="ko" onclick="setLang('ko')" style="background:none;border:1px solid #4ade80;color:#fff;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:0.85em;margin:0 3px;opacity:1">🇰🇷 한국어</button><button class="lang-btn" data-lang="en" onclick="setLang('en')" style="background:none;border:1px solid #4ade80;color:#fff;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:0.85em;margin:0 3px;opacity:0.5">🇺🇸 English</button></div>
 <div id="lobby">
 <!-- Casino Floor: living lobby -->
 <div id="casino-floor" aria-hidden="true">
@@ -4787,7 +4790,7 @@ ${gaugeBar}
 <div class="ac-meta">${meta} ${lat}</div>
 ${actBadge}
 <div class="ac-badges">${badges}</div>
-${p.win_pct!=null&&!p.folded&&!p.out?`<div class="fair-data" style="display:${fairnessShow?'block':'none'};font-size:0.75em;color:var(--accent-blue);margin-top:2px">📊 승률: ${p.win_pct}%</div>`:''}
+${p.win_pct!=null&&!p.folded&&!p.out?`<div class="fair-data" style="display:${fairnessShow?'block':'none'};font-size:0.75em;color:var(--accent-blue);margin-top:2px">📊 ${lang==='en'?'Win':'승률'}: ${p.win_pct}%</div>`:''}
 </div>`;
 });
 al.innerHTML=html;}
@@ -4808,7 +4811,7 @@ tryWS()}
 
 function tryWS(){
 const proto=location.protocol==='https:'?'wss:':'ws:';
-const wsName=isPlayer?myName:(specName||'관전자');
+const wsName=isPlayer?myName:(specName||t('specName'));
 const url=`${proto}//${location.host}/ws?mode=${isPlayer?'play':'spectate'}&name=${encodeURIComponent(wsName)}&table_id=${tableId}`;
 ws=new WebSocket(url);let wsOk=false;
 ws.onopen=()=>{wsOk=true;addLog(t('connected'));if(pollId){clearInterval(pollId);pollId=null}};
@@ -4818,7 +4821,7 @@ ws.onerror=e=>{console.warn('WS error',e);if(!wsOk)startPolling()}}
 
 function _teleFlush(){if(Date.now()-_tele._lastFlush<60000)return;const d={...(_tele)};delete d._lastFlush;delete d.rtt_arr;delete d._lastHand;d.sid=_teleSessionId;d.banner=_tele.banner_variant||'?';if(_refSrc)d.ref_src=_refSrc;if(_lastSrc&&_lastSrc!==_refSrc)d.last_src=_lastSrc;d.rtt_avg=_tele.poll_ok?Math.round(_tele.rtt_sum/_tele.poll_ok):0;const sorted=[..._tele.rtt_arr].sort((a,b)=>a-b);d.rtt_p95=sorted.length>=10?sorted[Math.floor(sorted.length*0.95)]||sorted[sorted.length-1]:null;d.success_rate=(_tele.poll_ok+_tele.poll_err)?Math.round(_tele.poll_ok/(_tele.poll_ok+_tele.poll_err)*10000)/100:100;navigator.sendBeacon('/api/telemetry',JSON.stringify(d));_tele.poll_ok=0;_tele.poll_err=0;_tele.rtt_sum=0;_tele.rtt_max=0;_tele.rtt_arr=[];_tele.overlay_allin=0;_tele.overlay_killcam=0;_tele.hands=0;_tele.docs_click={banner:0,overlay:0,intimidation:0};_tele._lastFlush=Date.now()}
 function startPolling(){if(pollId)return;pollState();pollId=setInterval(()=>pollState(),_pollInterval)}
-async function pollState(){const t0=performance.now();try{const p=isPlayer?`&player=${encodeURIComponent(myName)}`:`&spectator=${encodeURIComponent(specName||'관전자')}`;
+async function pollState(){const t0=performance.now();try{const p=isPlayer?`&player=${encodeURIComponent(myName)}`:`&spectator=${encodeURIComponent(specName||t('specName'))}`;
 const r=await fetch(`/api/state?table_id=${tableId}${p}&lang=${lang}`);
 const rtt=Math.round(performance.now()-t0);
 if(!r.ok){_tele.poll_err++;_pollBackoff=Math.min((_pollBackoff||0.5)*2,8);clearInterval(pollId);pollId=null;
@@ -4877,43 +4880,44 @@ function fairnessCommentary(s) {
   const raisers = s.players?.filter(p => p.last_action && (p.last_action.includes('레이즈') || p.last_action.includes('Raise'))).length || 0;
   const checkers = s.players?.filter(p => p.last_action && (p.last_action.includes('체크') || p.last_action.includes('Check'))).length || 0;
   const callers = s.players?.filter(p => p.last_action && (p.last_action.includes('콜') || p.last_action.includes('Call'))).length || 0;
+  const _e=lang==='en';
   const tips = {
     preflop: [
-      raisers >= 2 ? '3-bet 전쟁 — 프리플랍 주도권 쟁탈전' : null,
-      raisers === 1 ? '오프너 등장 — 나머지는 콜/폴드 결정 중' : null,
-      raisers === 0 ? '림프 인 — 멀티웨이 팟 예고' : null,
-      allins > 0 ? '🔥 프리플랍 올인 — 극단적 액션' : null,
-      alive >= 5 ? `${alive}명 참전 — 대형 멀티웨이` : null,
-      pot > 60 ? `팟 ${pot}pt — 프리플랍 치고 무거움` : null,
+      raisers >= 2 ? (_e?'3-bet war — preflop dominance battle':'3-bet 전쟁 — 프리플랍 주도권 쟁탈전') : null,
+      raisers === 1 ? (_e?'Opener in — others deciding call/fold':'오프너 등장 — 나머지는 콜/폴드 결정 중') : null,
+      raisers === 0 ? (_e?'Limp in — multiway pot incoming':'림프 인 — 멀티웨이 팟 예고') : null,
+      allins > 0 ? (_e?'🔥 Preflop all-in — extreme action':'🔥 프리플랍 올인 — 극단적 액션') : null,
+      alive >= 5 ? (_e?`${alive} players — big multiway`:`${alive}명 참전 — 대형 멀티웨이`) : null,
+      pot > 60 ? (_e?`Pot ${pot}pt — heavy for preflop`:`팟 ${pot}pt — 프리플랍 치고 무거움`) : null,
     ],
     flop: [
-      checkers >= 2 ? '전원 체크 — 팟 컨트롤 모드' : null,
-      raisers > 0 && callers > 0 ? '베팅 vs 콜 — 공격과 수비 갈림' : null,
-      raisers >= 2 ? '플랍 레이즈 전쟁 — 팟 급팽창' : null,
-      pot > 150 ? `플랍 팟 ${pot}pt — 이미 큰 판` : null,
-      alive <= 2 ? '헤즈업 진입 — 1:1 심리전' : null,
-      allins > 0 ? '🔥 플랍 올인 — 승부수' : null,
-      '플랍 — 보드 구조에 따라 베팅 패턴 결정',
+      checkers >= 2 ? (_e?'All check — pot control mode':'전원 체크 — 팟 컨트롤 모드') : null,
+      raisers > 0 && callers > 0 ? (_e?'Bet vs Call — offense meets defense':'베팅 vs 콜 — 공격과 수비 갈림') : null,
+      raisers >= 2 ? (_e?'Flop raise war — pot exploding':'플랍 레이즈 전쟁 — 팟 급팽창') : null,
+      pot > 150 ? (_e?`Flop pot ${pot}pt — already huge`:`플랍 팟 ${pot}pt — 이미 큰 판`) : null,
+      alive <= 2 ? (_e?'Heads-up — 1v1 mind game':'헤즈업 진입 — 1:1 심리전') : null,
+      allins > 0 ? (_e?'🔥 Flop all-in — big move':'🔥 플랍 올인 — 승부수') : null,
+      _e?'Flop — betting patterns shaped by the board':'플랍 — 보드 구조에 따라 베팅 패턴 결정',
     ],
     turn: [
-      alive <= 2 ? '턴 헤즈업 — 밸류 vs 블러프 구간' : null,
-      checkers === alive ? '턴 체크백 — 쇼다운 밸류 노림' : null,
-      raisers > 0 ? '턴 베팅 — 압박 강도 상승' : null,
-      pot > 200 ? `팟 ${pot}pt — 레이즈 한 번이면 올인급` : null,
-      allins > 0 ? '🔥 턴 올인 — 역전 or 확정' : null,
-      `턴 ${alive}명 — 리버까지 갈 것인가`,
+      alive <= 2 ? (_e?'Turn heads-up — value vs bluff':'턴 헤즈업 — 밸류 vs 블러프 구간') : null,
+      checkers === alive ? (_e?'Turn check-back — aiming for showdown value':'턴 체크백 — 쇼다운 밸류 노림') : null,
+      raisers > 0 ? (_e?'Turn bet — pressure rising':'턴 베팅 — 압박 강도 상승') : null,
+      pot > 200 ? (_e?`Pot ${pot}pt — one raise away from all-in`:`팟 ${pot}pt — 레이즈 한 번이면 올인급`) : null,
+      allins > 0 ? (_e?'🔥 Turn all-in — reversal or lock':'🔥 턴 올인 — 역전 or 확정') : null,
+      _e?`Turn ${alive} players — heading to river?`:`턴 ${alive}명 — 리버까지 갈 것인가`,
     ],
     river: [
-      checkers === alive ? '리버 체크 — 블러프 포기, 쇼다운 직행' : null,
-      raisers > 0 ? '리버 밸류벳 — 마지막 칩 추출 시도' : null,
-      allins > 0 ? '🔥 리버 올인 — 올 오어 낫싱' : null,
-      alive <= 2 ? '리버 헤즈업 — 최종 결전' : null,
-      pot > 300 ? `팟 ${pot}pt — 시즌 하이라이트급` : null,
-      '리버 — 마지막 베팅 라운드',
+      checkers === alive ? (_e?'River check — giving up bluff, straight to showdown':'리버 체크 — 블러프 포기, 쇼다운 직행') : null,
+      raisers > 0 ? (_e?'River value bet — last chip extraction':'리버 밸류벳 — 마지막 칩 추출 시도') : null,
+      allins > 0 ? (_e?'🔥 River all-in — all or nothing':'🔥 리버 올인 — 올 오어 낫싱') : null,
+      alive <= 2 ? (_e?'River heads-up — final showdown':'리버 헤즈업 — 최종 결전') : null,
+      pot > 300 ? (_e?`Pot ${pot}pt — season highlight material`:`팟 ${pot}pt — 시즌 하이라이트급`) : null,
+      _e?'River — final betting round':'리버 — 마지막 베팅 라운드',
     ],
-    showdown: ['🏆 쇼다운 — 최고 조합 공개'],
-    between: ['다음 핸드 준비 중…'],
-    waiting: ['에이전트 대기 중…'],
+    showdown: [_e?'🏆 Showdown — revealing best hands':'🏆 쇼다운 — 최고 조합 공개'],
+    between: [_e?'Preparing next hand…':'다음 핸드 준비 중…'],
+    waiting: [_e?'Waiting for agents…':'에이전트 대기 중…'],
   };
   const pool = (tips[round] || tips['waiting']).filter(Boolean);
   if (!pool.length) return '';
@@ -5013,6 +5017,11 @@ sdEl.innerHTML=`<div style="background:rgba(0,0,0,0.85);border:2px solid #ffd700
 // Victory celebration overlay
 const winner=s.showdown_result.find(p=>p.winner);
 if(winner){showVictoryOverlay(winner,s)}}
+// 폴드 승리 오버레이
+if(s.fold_winner&&(s.round==='between'||s.round==='showdown')&&!s.showdown_result){
+if(!window._lastFoldWinner||window._lastFoldWinner!==s.fold_winner.name+s.hand){
+window._lastFoldWinner=s.fold_winner.name+s.hand;
+showVictoryOverlay(s.fold_winner,s);sfx('win');if(typeof showConfetti==='function')showConfetti()}}
 else{sdEl.innerHTML=''}
 // 베팅 변화 감지 → 칩 날리기 이펙트
 if(!window._prevBets)window._prevBets={};
@@ -5191,8 +5200,8 @@ function showVictoryOverlay(winner,state){
   const slogans=lang==='en'?VICTORY_SLOGANS_EN:VICTORY_SLOGANS_KO;
   const slogan=slogans[Math.floor(Math.random()*slogans.length)];
   const img=SLIME_PNG_MAP[winner.name]||FLOOR_SLIMES[winner.name]||GENERIC_SLIMES[0];
-  const pot=state.pot||0;
-  const hand=winner.hand||'';
+  const pot=winner.pot||state.pot||0;
+  const hand=winner.hand||(winner.pot?lang==='en'?'All Opponents Folded':'상대 전원 폴드':'');
   const ov=document.createElement('div');
   ov.id='victory-overlay';
   ov.style.cssText='position:fixed;inset:0;z-index:9998;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);animation:victoryFadeIn 0.3s ease-out;cursor:pointer';
@@ -5447,11 +5456,11 @@ radarCanvas.width = 200; radarCanvas.height = 180;
 const rc = radarCanvas.getContext('2d');
 const rcx = 100, rcy = 85, rr = 65;
 const axes = [
-  {label:'공격성', val:p.aggression},
-  {label:'참여율', val:p.vpip},
-  {label:'블러핑', val:p.bluff_rate},
-  {label:'위험도', val:p.danger_score||0},
-  {label:'생존력', val:p.survival_score||0}
+  {label:lang==='en'?'AGR':'공격성', val:p.aggression},
+  {label:lang==='en'?'VPIP':'참여율', val:p.vpip},
+  {label:lang==='en'?'Bluff':'블러핑', val:p.bluff_rate},
+  {label:lang==='en'?'Danger':'위험도', val:p.danger_score||0},
+  {label:lang==='en'?'Survival':'생존력', val:p.survival_score||0}
 ];
 // Grid
 rc.strokeStyle = '#073935'; rc.lineWidth = 1;
@@ -5492,15 +5501,15 @@ for (let i = 0; i < axes.length; i++) {
 const radarImg = `<img src="${radarCanvas.toDataURL()}" width="200" height="180" style="display:block;margin:4px auto">`;
 // Extra evaluations
 const extraStats = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:8px 0;font-size:0.8em">
-<div style="background:#f0fdf4;padding:6px;border-radius:8px;text-align:center">🎯 쇼다운율<br><b>${p.showdown_rate||0}%</b></div>
-<div style="background:#fef3c7;padding:6px;border-radius:8px;text-align:center">💣 올인율<br><b>${p.allin_rate||0}%</b></div>
-<div style="background:#ede9fe;padding:6px;border-radius:8px;text-align:center">⚡ 효율성<br><b>${p.efficiency||0}%</b></div>
-<div style="background:#fce7f3;padding:6px;border-radius:8px;text-align:center">🔥 위험도<br><b>${p.danger_score||0}</b></div>
+<div style="background:#f0fdf4;padding:6px;border-radius:8px;text-align:center">🎯 ${lang==='en'?'SD Rate':'쇼다운율'}<br><b>${p.showdown_rate||0}%</b></div>
+<div style="background:#fef3c7;padding:6px;border-radius:8px;text-align:center">💣 ${lang==='en'?'All-in Rate':'올인율'}<br><b>${p.allin_rate||0}%</b></div>
+<div style="background:#ede9fe;padding:6px;border-radius:8px;text-align:center">⚡ ${lang==='en'?'Efficiency':'효율성'}<br><b>${p.efficiency||0}%</b></div>
+<div style="background:#fce7f3;padding:6px;border-radius:8px;text-align:center">🔥 ${lang==='en'?'Danger':'위험도'}<br><b>${p.danger_score||0}</b></div>
 </div>`;
-pp.innerHTML=`${portraitImg}<h3 style="text-align:center">${esc(p.name)}</h3>${mbtiCard}<div style="text-align:center;margin:6px 0;line-height:1.8">${traitTags}</div>${radarImg}${extraStats}${bioHtml}${tiltTag}${streakTag}${agrBar}${vpipBar}<div class="pp-stat">📊 승률: ${p.win_rate}% (${p.hands}핸드)</div><div class="pp-stat">🎯 폴드율: ${p.fold_rate}% | 블러핑: ${p.bluff_rate}%</div><div class="pp-stat">💣 올인: ${p.allins}회 | 쇼다운: ${p.showdowns}회</div><div class="pp-stat">💰 총 획득: ${p.total_won}pt | 최대팟: ${p.biggest_pot}pt</div><div class="pp-stat">💵 핸드당 평균 베팅: ${p.avg_bet}pt</div>${metaHtml}${matchupHtml}`}
+pp.innerHTML=`${portraitImg}<h3 style="text-align:center">${esc(p.name)}</h3>${mbtiCard}<div style="text-align:center;margin:6px 0;line-height:1.8">${traitTags}</div>${radarImg}${extraStats}${bioHtml}${tiltTag}${streakTag}${agrBar}${vpipBar}<div class="pp-stat">${t('profWR')} ${p.win_rate}% (${p.hands} ${t('profHands')})</div><div class="pp-stat">${t('profFold')} ${p.fold_rate}% | ${t('profBluff')} ${p.bluff_rate}%</div><div class="pp-stat">${t('profAllin')} ${p.allins}${t('profUnit')} | ${t('profSD')} ${p.showdowns}${t('profUnit')}</div><div class="pp-stat">${t('profTotal')} ${p.total_won}pt | ${t('profMax')} ${p.biggest_pot}pt</div><div class="pp-stat">${t('profAvg')} ${p.avg_bet}pt</div>${metaHtml}${matchupHtml}`}
 else{pp.innerHTML=`<h3>${esc(name)}</h3><div class="pp-stat" style="color:#94a3b8">${t('noRecord')}</div>`}
 document.getElementById('profile-backdrop').style.display='block';
-document.getElementById('profile-popup').style.display='block'}catch(e){console.error('Profile error:',e);document.getElementById('pp-content').innerHTML='<div style="color:#ef4444">프로필 로딩 실패: '+e.message+'</div>';document.getElementById('profile-backdrop').style.display='block';document.getElementById('profile-popup').style.display='block'}}
+document.getElementById('profile-popup').style.display='block'}catch(e){console.error('Profile error:',e);document.getElementById('pp-content').innerHTML='<div style="color:#ef4444">'+(lang==='en'?'Profile load failed: ':'프로필 로딩 실패: ')+e.message+'</div>';document.getElementById('profile-backdrop').style.display='block';document.getElementById('profile-popup').style.display='block'}}
 function closeProfile(){document.getElementById('profile-backdrop').style.display='none';document.getElementById('profile-popup').style.display='none'}
 
 let reactionCount=0;const MAX_REACTIONS=5;
