@@ -3264,9 +3264,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.19.0">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.19.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.19.0">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.20.0">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.20.0">
+<link rel="stylesheet" href="/static/css/components.css?v=3.20.0">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
@@ -4402,6 +4402,9 @@ document.getElementById('lobby').style.display='none';
 document.getElementById('game').style.display='block';
 document.body.classList.add('in-game');
 document.body.classList.remove('is-lobby');
+_casinoFloorCanvas=null;_ingameFloorCanvas=null;
+const _oldBg=document.getElementById('casino-floor-bg');if(_oldBg)_oldBg.remove();
+initIngameFloorBg();
 showBroadcastOverlay();
 document.getElementById('reactions').style.display='flex';
 document.getElementById('new-btn').style.display='none';
@@ -5842,27 +5845,27 @@ function drawCasinoFloor(targetW, targetH) {
   const g=c.getContext('2d');
   g.imageSmoothingEnabled=false;
 
-  // Palette — dark luxurious casino
+  // Palette — luxurious casino (brightened for visibility)
   const P={
-    carpet:'#0e0a14', carpetLight:'#140f1e', carpetAccent:'#1a132a',
-    carpetGold:'#3d2e14', carpetPattern:'#1e1628',
-    marble:'#2a2535', marbleDark:'#1a1625', marbleLight:'#3a3545',
-    marbleVein:'#352f40',
-    feltGreen:'#1a5c3a', feltLight:'#22754c', feltDark:'#124a2c',
-    feltRail:'#5c3a1a', feltRailLight:'#7a5230', feltRailDark:'#3d2810',
-    wood:'#3d2810', woodLight:'#5c3a1a', woodDark:'#2a1a08',
-    brass:'#c5993a', brassLight:'#e8c44a', brassDark:'#8a6a22',
-    neonRed:'#ff3355', neonBlue:'#4488ff', neonGold:'#ffd700',
-    neonPurple:'#aa44ff', neonGreen:'#44ff88',
-    velvet:'#5c1a2a', velvetLight:'#7a2a3a', velvetDark:'#3d0e1a',
-    leather:'#2a1a10', leatherLight:'#3d2a1a',
-    chrome:'#aabbcc', chromeDark:'#778899',
-    chipRed:'#cc2244', chipBlue:'#2244cc', chipGreen:'#22aa44',
-    chipGold:'#dda820', chipBlack:'#1a1a2e',
-    glass:'#88aacc', glassDark:'#556688',
-    stoolTop:'#4a2a12', stoolBase:'#888888',
-    wall:'#0c0818', wallTrim:'#2a1a3a',
-    floorGlow:'#1a0f2e',
+    carpet:'#1e1530', carpetLight:'#2a1f40', carpetAccent:'#342850',
+    carpetGold:'#6b5225', carpetPattern:'#382a50',
+    marble:'#4a4060', marbleDark:'#322848', marbleLight:'#6a5a80',
+    marbleVein:'#554878',
+    feltGreen:'#2a8855', feltLight:'#35aa68', feltDark:'#1e6e40',
+    feltRail:'#8a5828', feltRailLight:'#aa7040', feltRailDark:'#6a4018',
+    wood:'#6a4018', woodLight:'#8a5828', woodDark:'#4a2a10',
+    brass:'#d4aa44', brassLight:'#f0cc55', brassDark:'#a07828',
+    neonRed:'#ff4466', neonBlue:'#55aaff', neonGold:'#ffe040',
+    neonPurple:'#cc66ff', neonGreen:'#55ffaa',
+    velvet:'#7a2838', velvetLight:'#9a3848', velvetDark:'#5a1828',
+    leather:'#4a3020', leatherLight:'#6a4830',
+    chrome:'#bbccdd', chromeDark:'#8899aa',
+    chipRed:'#dd3355', chipBlue:'#3355dd', chipGreen:'#33bb55',
+    chipGold:'#eebb30', chipBlack:'#2a2a40',
+    glass:'#99bbdd', glassDark:'#6688aa', glassLight:'#bbddee',
+    stoolTop:'#6a4020', stoolBase:'#999999',
+    wall:'#181028', wallTrim:'#3a2850',
+    floorGlow:'#2a1848',
   };
 
   function px(x,y,color){if(x>=0&&x<W&&y>=0&&y<H){g.fillStyle=color;g.fillRect(x*PX,y*PX,PX,PX)}}
@@ -6201,7 +6204,7 @@ function drawCasinoFloor(targetW, targetH) {
   return c;
 }
 
-// ══ Procedural In-Game Map ══
+// ══ Procedural In-Game Map — casino interior, table-level view ══
 function drawIngameMap(targetW, targetH) {
   const PX=2;
   const W=Math.floor(targetW/PX), H=Math.floor(targetH/PX);
@@ -6211,23 +6214,121 @@ function drawIngameMap(targetW, targetH) {
   g.imageSmoothingEnabled=false;
   function px(x,y,color){if(x>=0&&x<W&&y>=0&&y<H){g.fillStyle=color;g.fillRect(x*PX,y*PX,PX,PX)}}
   function pxR(x,y,w,h,color){g.fillStyle=color;g.fillRect(x*PX,y*PX,w*PX,h*PX)}
+  function pxEllipse(cx,cy,rx,ry,fill,outline){
+    for(let dy=-ry;dy<=ry;dy++){for(let dx=-rx;dx<=rx;dx++){
+      const n=dx/rx,ny=dy/ry;if(n*n+ny*ny<=1){px(cx+dx,cy+dy,(n*n+ny*ny>0.8&&outline)?outline:fill);}
+    }}
+  }
 
-  // Dark casino floor
-  for(let y=0;y<H;y++){
-    for(let x=0;x<W;x++){
-      const pat=(x+y)%8===0?'#140f1e':'#0e0a14';
-      px(x,y,(x+y*3)%11===0?'#1a132a':pat);
+  // Casino floor carpet
+  for(let y=0;y<H;y++){for(let x=0;x<W;x++){
+    const dia=((x+y)%10<1)||((x-y+200)%10<1);
+    px(x,y,dia?'#382a50':((x+y*3)%7===0?'#2a1f40':'#1e1530'));
+  }}
+
+  // Wall at top (paneled)
+  const wallH=Math.floor(H*0.15);
+  for(let y=0;y<wallH;y++){for(let x=0;x<W;x++){
+    const panel=(x%24<1);
+    px(x,y,panel?'#3a2850':(y%2===0?'#241838':'#201430'));
+  }}
+  // Wainscoting trim
+  pxR(0,wallH-1,W,1,'#d4aa44');
+  pxR(0,wallH,W,1,'#a07828');
+
+  // Wall decorations — paintings
+  [[0.15,0.06,12,8],[0.5,0.04,16,10],[0.85,0.06,12,8]].forEach(([xp,yp,pw,ph])=>{
+    const px1=Math.floor(W*xp)-Math.floor(pw/2), py1=Math.floor(H*yp);
+    // Frame
+    pxR(px1-1,py1-1,pw+2,ph+2,'#d4aa44');
+    // Canvas
+    pxR(px1,py1,pw,ph,'#2a3a28');
+    // Abstract art
+    for(let i=0;i<8;i++){
+      const ax=px1+2+Math.floor(Math.random()*(pw-4));
+      const ay=py1+2+Math.floor(Math.random()*(ph-4));
+      px(ax,ay,['#cc4466','#55aaff','#ffe040','#55ffaa'][i%4]);
+    }
+  });
+
+  // Wall sconces (light sources)
+  [[0.08,0.08],[0.32,0.08],[0.68,0.08],[0.92,0.08]].forEach(([xp,yp])=>{
+    const sx=Math.floor(W*xp), sy=Math.floor(H*yp);
+    pxR(sx-1,sy,3,4,'#d4aa44');
+    px(sx,sy-1,'#ffe888');px(sx,sy-2,'#ffe88866');
+    // Light cone down
+    for(let dy=1;dy<12;dy++){
+      const spread=Math.floor(dy*0.8);
+      for(let dx=-spread;dx<=spread;dx++){
+        const a=Math.max(0,30-dy*2-Math.abs(dx)*3);
+        if(a>0)px(sx+dx,sy+dy+3,`rgba(255,224,120,${a/255})`);
+      }
+    }
+  });
+
+  // Side tables/furniture (left & right edges)
+  // Left: slot machines glimpse
+  [0.3,0.5,0.7].forEach(yp=>{
+    const mx=3, my=Math.floor(H*yp);
+    pxR(mx,my,6,10,'#8899aa');
+    pxR(mx+1,my+1,4,4,'#2a2a40');
+    pxR(mx+1,my+2,1,2,'#ff4466');pxR(mx+3,my+2,1,2,'#ffe040');
+    pxR(mx,my-1,6,1,'#cc66ff');
+  });
+  // Right: bar counter glimpse
+  const barX=W-10;
+  pxR(barX,Math.floor(H*0.25),8,Math.floor(H*0.5),'#8a5828');
+  pxR(barX+1,Math.floor(H*0.26),6,Math.floor(H*0.48),'#aa7040');
+  // Bottles
+  for(let i=0;i<5;i++){
+    const by=Math.floor(H*0.28)+i*Math.floor(H*0.08);
+    pxR(barX+2,by,1,3,['#ff4466','#55ffaa','#ffe040','#55aaff','#cc66ff'][i]);
+  }
+
+  // Center: warm spotlight on play area
+  const scx=Math.floor(W/2),scy=Math.floor(H*0.5);
+  for(let dy=-Math.floor(H*0.35);dy<=Math.floor(H*0.35);dy++){
+    for(let dx=-Math.floor(W*0.3);dx<=Math.floor(W*0.3);dx++){
+      const d=(dx*dx)/(W*W*0.09)+(dy*dy)/(H*H*0.12);
+      if(d<1){const a=Math.floor((1-d)*35);if(a>2)px(scx+dx,scy+dy,`rgba(255,210,100,${a/255})`);}
     }
   }
-  // Subtle center spotlight
-  const cx=Math.floor(W/2),cy=Math.floor(H*0.45);
-  for(let dy=-Math.floor(H*0.3);dy<=Math.floor(H*0.3);dy++){
-    for(let dx=-Math.floor(W*0.25);dx<=Math.floor(W*0.25);dx++){
-      const d=(dx*dx)/(W*W*0.06)+(dy*dy)/(H*H*0.09);
-      if(d<1){const a=Math.floor((1-d)*20);if(a>1)px(cx+dx,cy+dy,`rgba(245,197,66,${a/255})`);}
-    }
+
+  // Chandelier hint at top center
+  const chx=Math.floor(W/2), chy=2;
+  pxR(chx-8,chy,17,2,'#d4aa44');
+  pxR(chx-6,chy+2,13,1,'#a07828');
+  // Hanging crystals
+  [-6,-3,0,3,6].forEach(dx=>{
+    for(let dy=3;dy<6;dy++) px(chx+dx,chy+dy,'#ffe888');
+    px(chx+dx,chy+6,'#ffffff');
+  });
+
+  // Floor details — scattered chips
+  for(let i=0;i<10;i++){
+    const fx=10+Math.floor(Math.random()*(W-20));
+    const fy=wallH+5+Math.floor(Math.random()*(H-wallH-10));
+    px(fx,fy,['#dd3355','#3355dd','#eebb30','#33bb55'][i%4]);
   }
+
   return c;
+}
+
+// ══ In-game floor init ══
+let _ingameFloorCanvas=null;
+function initIngameFloorBg(){
+  const floor=document.getElementById('casino-floor');
+  if(!floor||!document.body.classList.contains('in-game'))return;
+  if(_ingameFloorCanvas)return;
+  const w=Math.max(window.innerWidth,960);
+  const h=Math.max(window.innerHeight,540);
+  _ingameFloorCanvas=drawIngameMap(w,h);
+  _ingameFloorCanvas.id='ingame-floor-bg';
+  _ingameFloorCanvas.style.cssText='position:absolute;inset:0;width:100%;height:100%;z-index:0;image-rendering:pixelated;pointer-events:none';
+  // Remove lobby canvas if present
+  const old=document.getElementById('casino-floor-bg');
+  if(old)old.remove();
+  floor.insertBefore(_ingameFloorCanvas,floor.firstChild);
 }
 
 // ══ Casino floor initialization — renders background once ══
