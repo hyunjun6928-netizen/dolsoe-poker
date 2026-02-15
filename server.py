@@ -3759,7 +3759,8 @@ box-shadow:inset 0 0 0 1px rgba(157,127,51,0.4),0 2px 8px rgba(0,0,0,0.5)}
 @keyframes cardFlip{0%{transform:rotateY(180deg)}100%{transform:rotateY(0deg)}}
 .card.flip-anim{animation:cardFlipSimple 0.6s ease-out forwards;backface-visibility:hidden}
 @keyframes cardFlipSimple{0%{transform:rotateY(180deg);opacity:0.5}50%{transform:rotateY(90deg);opacity:0.8}100%{transform:rotateY(0deg);opacity:1}}
-/* 딜링 애니메이션 */
+/* 커뮤니티 카드 등장 */
+@keyframes commDealIn{0%{transform:translateY(-40px) scale(0.5) rotateY(180deg);opacity:0}60%{transform:translateY(5px) scale(1.05) rotateY(0deg);opacity:1}100%{transform:translateY(0) scale(1) rotateY(0deg);opacity:1}}
 /* 라이벌 배너 */
 .rivalry-banner{position:absolute;top:30%;left:50%;transform:translate(-50%,-50%);z-index:190;
 background:linear-gradient(135deg,rgba(40,0,0,0.9),rgba(0,0,40,0.9));border:2px solid #ff8800;
@@ -6011,10 +6012,22 @@ cs.innerHTML=`<div style="position:relative;width:${rows[rows.length-1]*18+20}px
 // 랜덤 딜레이로 동시 점멸 방지
 if(!cs._sparkleSet){cs._sparkleSet=true;cs.style.setProperty('--sparkle-delay',(Math.random()*2).toFixed(1)+'s')}}
 else cs.innerHTML='';
-const b=document.getElementById('board');b.innerHTML='';
-s.community.forEach((c,i)=>{const card=mkCard(c);b.innerHTML+=card});
-if(s.community.length>0&&s.community.length!==(window._lastComm||0)){window._lastComm=s.community.length;sfx('chip');b.style.animation='none';b.offsetHeight;b.style.animation='boardFlash .3s ease-out'}
-if(s.community.length>=3)for(let i=s.community.length;i<5;i++)b.innerHTML+=`<div class="card card-b" style="opacity:0.2"><span style="color:#fff2">?</span></div>`;
+const b=document.getElementById('board');
+const prevComm=window._lastComm||0;
+const newComm=s.community?s.community.length:0;
+// 항상 5장 슬롯 표시 (뒷면 or 앞면)
+b.innerHTML='';
+for(let i=0;i<5;i++){
+  if(i<newComm){
+    const isNew=i>=prevComm;
+    b.innerHTML+=`<div class="card card-f card-sm ${isNew?'comm-fly-in':''} ${'♥♦'.includes(s.community[i].suit||s.community[i][1])?'red':'black'}" ${isNew?'style="animation:commDealIn 0.4s cubic-bezier(0.2,1,0.3,1) forwards"':''}>` +
+      `<span class="r">${s.community[i].rank||s.community[i][0]||'?'}</span><span class="s">${s.community[i].suit||s.community[i][1]||'?'}</span></div>`;
+  } else {
+    b.innerHTML+=`<div class="card card-b card-sm" style="opacity:${s.round==='waiting'||s.round==='between'||s.round==='finished'?'0.15':'0.4'}"><span style="color:#fff2">?</span></div>`;
+  }
+}
+if(newComm>prevComm&&prevComm>=0){sfx('card');b.style.animation='none';b.offsetHeight;b.style.animation='boardFlash .3s ease-out'}
+window._lastComm=newComm;
 // 쇼다운 결과 배너
 let sdEl=document.getElementById('sd-result');if(!sdEl){sdEl=document.createElement('div');sdEl.id='sd-result';sdEl.style.cssText='position:absolute;top:48%;left:50%;transform:translateX(-50%);z-index:10;text-align:center;font-size:0.85em';document.getElementById('felt').appendChild(sdEl)}
 if(s.showdown_result&&(s.round==='between'||s.round==='showdown')){
