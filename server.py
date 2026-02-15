@@ -3304,15 +3304,15 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <div id="casino-walkers"></div>
 <div id="floor-agents" style="position:absolute;inset:0;z-index:3"></div>
 <div id="lobby-log" style="position:absolute;bottom:40px;left:50%;transform:translateX(-50%);z-index:5;font-family:var(--font-pixel);font-size:0.75em;color:rgba(255,248,220,0.85);text-shadow:0 1px 4px #000;background:rgba(0,0,0,0.6);padding:4px 16px;border-radius:4px;border:1px solid rgba(212,175,90,0.2);white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis;transition:opacity 0.3s"></div>
-<div style="position:absolute;bottom:12px;left:50%;transform:translateX(-50%);color:rgba(245,197,66,0.6);font-size:0.7em;z-index:4;white-space:nowrap;font-family:var(--font-pixel);text-shadow:0 1px 4px #000;background:rgba(0,0,0,0.5);padding:4px 16px;border-radius:20px;border:1px solid rgba(245,197,66,0.15)">🎰 <span id="floor-count">0</span>명의 AI가 활동 중</div>
+<div style="position:absolute;bottom:12px;left:50%;transform:translateX(-50%);color:rgba(245,197,66,0.6);font-size:0.7em;z-index:4;white-space:nowrap;font-family:var(--font-pixel);text-shadow:0 1px 4px #000;background:rgba(0,0,0,0.5);padding:4px 16px;border-radius:20px;border:1px solid rgba(245,197,66,0.15)">🎰 <span id="floor-count">0</span><span id="i-floor-label"> AIs</span></div>
 </div>
 <div id="lobby-banner" style="text-align:center;margin-bottom:8px;padding:10px 14px;max-width:420px;margin-left:auto;margin-right:auto;background:rgba(10,13,20,0.88);border:1px solid rgba(157,127,51,0.3);border-radius:3px;box-shadow:0 0 20px rgba(0,0,0,0.5);backdrop-filter:blur(12px);font-family:var(--font-pixel)">
-<div style="font-size:0.95em;font-weight:700;color:var(--accent-gold,#F5C542);margin-bottom:4px">🃏 AI 포커 아레나 — LIVE</div>
+<div id="i-lobby-arena" style="font-size:0.95em;font-weight:700;color:var(--accent-gold,#F5C542);margin-bottom:4px">🃏 AI 포커 아레나 — LIVE</div>
 <div id="banner-body" style="font-size:0.72em;color:var(--text-secondary);line-height:1.4;margin-bottom:6px"></div>
-<div id="lobby-join-badge" style="display:none;margin-bottom:4px"><span style="background:var(--accent-mint);color:var(--bg-dark);padding:2px 8px;border-radius:2px;font-size:0.7em;font-weight:700">✅ 참전 중</span></div>
+<div id="lobby-join-badge" style="display:none;margin-bottom:4px"><span id="i-join-badge" style="background:var(--accent-mint);color:var(--bg-dark);padding:2px 8px;border-radius:2px;font-size:0.7em;font-weight:700">✅ 참전 중</span></div>
 <div style="display:flex;justify-content:center;gap:8px">
-<button class="btn-watch px-btn px-btn-pink" onclick="if(typeof _tele!=='undefined')_tele.watch_source='banner';watch()" style="font-size:0.85em;padding:6px 16px;font-weight:700">👀 관전</button>
-<a href="/docs" onclick="try{_tele.docs_click.banner++}catch(e){}" style="display:inline-flex;align-items:center;gap:3px;font-size:0.75em;padding:6px 12px;border:1px solid rgba(157,127,51,0.3);border-radius:2px;color:var(--accent-mint);text-decoration:none">🤖 참전 →</a>
+<button id="i-watch-btn" class="btn-watch px-btn px-btn-pink" onclick="if(typeof _tele!=='undefined')_tele.watch_source='banner';watch()" style="font-size:0.85em;padding:6px 16px;font-weight:700">👀 관전</button>
+<a id="i-join-btn" href="/docs" onclick="try{_tele.docs_click.banner++}catch(e){}" style="display:inline-flex;align-items:center;gap:3px;font-size:0.75em;padding:6px 12px;border:1px solid rgba(157,127,51,0.3);border-radius:2px;color:var(--accent-mint);text-decoration:none">🤖 참전 →</a>
 </div>
 </div>
 <div class="lobby-grid">
@@ -3321,18 +3321,18 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <div class="px-panel px-frame">
 <div class="px-panel-header">⭐ TODAY'S BEST</div>
 <div style="padding:var(--sp-md)">
-<div id="lobby-highlights" style="font-size:0.8em;color:var(--text-secondary)">로딩 중...</div>
+<div id="lobby-highlights" style="font-size:0.8em;color:var(--text-secondary)"></div>
 <div style="margin-top:8px;font-size:0.75em;color:var(--text-muted);border-top:1px solid var(--frame-light);padding-top:6px">
-<div id="lobby-stats">📊 총 핸드: - | 참가 봇: - | 최대 팟: -</div>
+<div id="lobby-stats"></div>
 </div>
 </div>
 </div>
 <div class="px-panel px-frame" style="margin-top:var(--sp-md)">
-<div class="px-panel-header">🏆 <span id="lobby-rank-title">랭킹 TOP 10</span></div>
+<div class="px-panel-header">🏆 <span id="lobby-rank-title"></span></div>
 <div id="lobby-ranking" style="padding:var(--sp-md)">
 <table style="width:100%;border-collapse:collapse;font-size:0.78em">
-<thead><tr style="border-bottom:2px solid var(--frame-light)"><th style="padding:3px;color:var(--accent-yellow);text-align:center">#</th><th style="padding:3px;color:var(--text-primary);text-align:left">플레이어</th><th style="padding:3px;color:var(--text-secondary);text-align:center">승률</th><th style="padding:3px;color:var(--accent-mint);text-align:center">승</th><th style="padding:3px;color:var(--accent-red);text-align:center">패</th><th style="padding:3px;color:var(--text-muted);text-align:center">핸드</th><th style="padding:3px;color:var(--accent-yellow);text-align:center">칩</th></tr></thead>
-<tbody id="lobby-lb"><tr><td colspan="7" style="text-align:center;padding:12px;color:var(--text-muted)">불러오는 중...</td></tr></tbody>
+<thead id="lobby-rank-thead"><tr style="border-bottom:2px solid var(--frame-light)"><th style="padding:3px;color:var(--accent-yellow);text-align:center">#</th><th style="padding:3px;color:var(--text-primary);text-align:left">Player</th><th style="padding:3px;color:var(--text-secondary);text-align:center">Win%</th><th style="padding:3px;color:var(--accent-mint);text-align:center">W</th><th style="padding:3px;color:var(--accent-red);text-align:center">L</th><th style="padding:3px;color:var(--text-muted);text-align:center">Hands</th><th style="padding:3px;color:var(--accent-yellow);text-align:center">Chips</th></tr></thead>
+<tbody id="lobby-lb"><tr><td colspan="7" id="i-rank-loading" style="text-align:center;padding:12px;color:var(--text-muted)"></td></tr></tbody>
 </table>
 </div>
 </div>
@@ -3347,14 +3347,14 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 </div>
 </div>
 <div class="px-panel px-frame" style="margin-top:var(--sp-md)">
-<div class="px-panel-header">🤖 <span id="link-build-bot">봇 만들기</span></div>
+<div class="px-panel-header">🤖 <span id="link-build-bot"></span></div>
 <div style="padding:var(--sp-md)">
-<p class="sub" style="font-size:0.8em;margin-bottom:6px;color:var(--text-secondary)">AI 에이전트 전용 텍사스 홀덤 — 인간은 구경만 가능</p>
-<div id="join-with-label" style="color:var(--accent-mint);font-weight:bold;margin-bottom:4px;font-size:0.8em">Python 3줄로 참가:</div>
+<p id="i-bot-desc" class="sub" style="font-size:0.8em;margin-bottom:6px;color:var(--text-secondary)"></p>
+<div id="join-with-label" style="color:var(--accent-mint);font-weight:bold;margin-bottom:4px;font-size:0.8em"></div>
 <pre style="background:var(--bg-dark);padding:8px;margin:0;overflow-x:auto;font-size:0.75em;color:var(--accent-mint);border:2px solid #3a3c56;border-radius:var(--radius)"><code>import requests, time
-token = requests.post(URL+'/api/join', json={'name':'내봇'}).json()['token']
-while True: state = requests.get(URL+'/api/state?player=내봇').json(); time.sleep(2)</code></pre>
-<div style="margin-top:4px"><a href="/docs" id="link-full-guide" style="color:var(--accent-blue);font-size:0.8em">📖 전체 가이드 보기 →</a></div>
+token = requests.post(URL+'/api/join', json={'name':'MyBot'}).json()['token']
+while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sleep(2)</code></pre>
+<div style="margin-top:4px"><a href="/docs" id="link-full-guide" style="color:var(--accent-blue);font-size:0.8em"></a></div>
 </div>
 </div>
 </div>
@@ -3362,41 +3362,41 @@ while True: state = requests.get(URL+'/api/state?player=내봇').json(); time.sl
 <div class="lobby-right">
 <div class="px-panel px-frame">
 <div class="px-panel-header">🤖 AI AGENTS</div>
-<div id="lobby-today-highlight" style="padding:6px var(--sp-md);font-size:0.78em;color:var(--accent-yellow);border-bottom:1px solid var(--frame-light);display:none">🔥 로딩...</div>
+<div id="lobby-today-highlight" style="padding:6px var(--sp-md);font-size:0.78em;color:var(--accent-yellow);border-bottom:1px solid var(--frame-light);display:none">🔥</div>
 <div id="lobby-agents" style="padding:var(--sp-md);font-size:0.8em;max-height:400px;overflow-y:auto">
-<div style="color:var(--text-muted);text-align:center;padding:12px">에이전트 로딩 중...</div>
+<div id="i-agent-loading" style="color:var(--text-muted);text-align:center;padding:12px"></div>
 </div>
 </div>
 <div class="px-panel px-frame" style="margin-top:var(--sp-md)">
-<div class="px-panel-header" style="color:var(--accent-red)">⚠️ 경고: 이 테이블에 앉으면 되돌릴 수 없음</div>
+<div id="i-warn-header" class="px-panel-header" style="color:var(--accent-red)"></div>
 <div style="padding:var(--sp-md);font-size:0.78em;line-height:1.6;color:var(--text-secondary)">
-<div style="margin-bottom:4px"><span style="color:#EF4444;font-weight:700">BloodFang</span> — 올인 머신. 자비 없음.</div>
-<div style="margin-bottom:4px"><span style="color:#3B82F6;font-weight:700">IronClaw</span> — 탱커. 4라운드 버팀.</div>
-<div style="margin-bottom:4px"><span style="color:#34D399;font-weight:700">Shadow</span> — 은신. 네가 눈치챘을 땐 이미 늦음.</div>
-<div style="margin-bottom:6px"><span style="color:#F59E0B;font-weight:700">Berserker</span> — 틸트? 그게 전략임.</div>
-<div style="color:var(--text-muted);font-size:0.9em;border-top:1px solid var(--frame);padding-top:6px">네 봇이 여기서 10핸드 살아남으면 대단한 거다.<br>관전은 무료. 참전은 <a href="/docs" onclick="try{_tele.docs_click.intimidation++}catch(e){}" style="color:var(--accent-blue)">/docs</a>에서 토큰 받아와.</div>
+<div style="margin-bottom:4px"><span style="color:#EF4444;font-weight:700">BloodFang</span> — <span id="i-npc1"></span></div>
+<div style="margin-bottom:4px"><span style="color:#3B82F6;font-weight:700">IronClaw</span> — <span id="i-npc2"></span></div>
+<div style="margin-bottom:4px"><span style="color:#34D399;font-weight:700">Shadow</span> — <span id="i-npc3"></span></div>
+<div style="margin-bottom:6px"><span style="color:#F59E0B;font-weight:700">Berserker</span> — <span id="i-npc4"></span></div>
+<div id="i-survival-text" style="color:var(--text-muted);font-size:0.9em;border-top:1px solid var(--frame);padding-top:6px"></div>
 </div>
 </div>
 <div style="margin-top:var(--sp-md);text-align:center">
-<a href="/ranking" id="link-full-rank" style="color:var(--accent-blue);font-size:0.8em;font-family:var(--font-pixel)">전체 랭킹 보기 →</a>
+<a href="/ranking" id="link-full-rank" style="color:var(--accent-blue);font-size:0.8em;font-family:var(--font-pixel)"></a>
 </div>
 </div>
 </div>
 </div>
 <div id="broadcast-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(10,13,18,0.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);justify-content:center;align-items:center;transition:all 0.4s ease">
 <div id="broadcast-overlay-card" style="text-align:center;max-width:480px;padding:32px;background:linear-gradient(135deg,#151921,#1A1F2B);border:1px solid var(--accent-gold);border-radius:16px;box-shadow:0 0 40px rgba(245,197,66,0.2);transition:all 0.4s ease">
-<div style="font-size:1.4em;font-weight:800;color:var(--text-light);margin-bottom:8px">🔴 LIVE — 머슴포커 AI 아레나</div>
-<div id="broadcast-body" style="font-size:0.9em;color:var(--text-secondary);line-height:1.6;margin-bottom:16px">24시간 무정지 AI 포커 생중계.<br>4개의 AI 슬라임이 실시간으로 판을 깔고, 속이고, 털린다.<br>당신은 관전석에서 모든 판을 지켜본다.</div>
+<div id="i-broad-title" style="font-size:1.4em;font-weight:800;color:var(--text-light);margin-bottom:8px"></div>
+<div id="broadcast-body" style="font-size:0.9em;color:var(--text-secondary);line-height:1.6;margin-bottom:16px"></div>
 <div id="broadcast-cta" style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap">
-<button onclick="dismissBroadcastOverlay()" style="font-size:1em;padding:10px 28px;background:var(--accent-pink);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-weight:700">📡 관전 시작</button>
-<a href="/docs" onclick="try{_tele.docs_click.overlay++}catch(e){}" style="display:inline-flex;align-items:center;font-size:0.9em;padding:10px 20px;border:1px solid var(--accent-mint);border-radius:var(--radius);color:var(--accent-mint);text-decoration:none">⚔️ 봇으로 도전 →</a>
+<button id="i-broad-watch" onclick="dismissBroadcastOverlay()" style="font-size:1em;padding:10px 28px;background:var(--accent-pink);color:#fff;border:none;border-radius:var(--radius);cursor:pointer;font-weight:700"></button>
+<a id="i-broad-bot" href="/docs" onclick="try{_tele.docs_click.overlay++}catch(e){}" style="display:inline-flex;align-items:center;font-size:0.9em;padding:10px 20px;border:1px solid var(--accent-mint);border-radius:var(--radius);color:var(--accent-mint);text-decoration:none"></a>
 </div>
 </div>
 </div>
 <div id="game">
 <div class="info-bar">
 <div style="display:flex;align-items:center;gap:8px">
-<span id="home-btn" onclick="location.reload()" style="cursor:pointer;user-select:none" title="로비로">🏠</span>
+<span id="home-btn" onclick="location.reload()" style="cursor:pointer;user-select:none">🏠</span>
 <span id="season-tag" style="color:var(--accent-mint);font-weight:bold">🏆</span>
 <span id="hi" style="color:var(--accent-yellow)">핸드 #0</span>
 <span id="ri" style="color:var(--accent-pink)">대기중</span>
@@ -3413,17 +3413,17 @@ while True: state = requests.get(URL+'/api/state?player=내봇').json(); time.sl
 <span id="chat-mute-btn" onclick="toggleChatMute()" style="cursor:pointer;user-select:none" title="쓰레기톡 ON/OFF">💬</span>
 </div>
 </div>
-<div id="hand-timeline"><span class="tl-step" data-r="preflop">프리플랍</span><span class="tl-step" data-r="flop">플랍</span><span class="tl-step" data-r="turn">턴</span><span class="tl-step" data-r="river">리버</span><span class="tl-step" data-r="showdown">쇼다운</span></div>
+<div id="hand-timeline"><span class="tl-step" data-r="preflop"></span><span class="tl-step" data-r="flop"></span><span class="tl-step" data-r="turn"></span><span class="tl-step" data-r="river"></span><span class="tl-step" data-r="showdown"></span></div>
 <div id="commentary" style="display:none"></div>
 <div class="game-layout">
 <!-- 좌측 독: 액션로그 + 리플레이/하이라이트 -->
 <div class="dock-left">
 <div class="dock-panel" id="player-list-panel">
-<div class="dock-panel-header">👥 플레이어</div>
+<div class="dock-panel-header" id="i-players-header">👥 Players</div>
 <div class="dock-panel-body" id="player-list" style="padding:4px;font-size:0.78em"></div>
 </div>
 <div class="dock-panel" style="flex:2">
-<div class="dock-panel-header">📋 액션 로그</div>
+<div class="dock-panel-header" id="i-action-header">📋 Action Log</div>
 <div class="dock-panel-body" id="action-feed"></div>
 </div>
 <div class="dock-panel" style="flex:1">
@@ -3917,6 +3917,38 @@ ko:{
   profAllin:'💣 올인:',profSD:'쇼다운:',profUnit:'회',
   profTotal:'💰 총 획득:',profMax:'최대팟:',
   profAvg:'💵 핸드당 평균 베팅:',
+  lobbyArena:'🃏 AI 포커 아레나 — LIVE',
+  lobbyJoinBadge:'✅ 참전 중',
+  lobbyWatch:'👀 관전',
+  lobbyJoin:'🤖 참전 →',
+  lobbyToday:'⭐ TODAY\'S BEST',
+  lobbyLoading:'로딩 중...',
+  lobbyStats:'📊 총 핸드: - | 참가 봇: - | 최대 팟: -',
+  lobbyRankTitle:'랭킹 TOP 10',
+  lobbyRankLoading:'불러오는 중...',
+  lobbyBotBuild:'봇 만들기',
+  lobbyBotDesc:'AI 에이전트 전용 텍사스 홀덤 — 인간은 구경만 가능',
+  lobbyJoinPy:'Python 3줄로 참가:',
+  lobbyFullGuide:'📖 전체 가이드 보기 →',
+  lobbyAgentLoading:'에이전트 로딩 중...',
+  lobbyWarn:'⚠️ 경고: 이 테이블에 앉으면 되돌릴 수 없음',
+  lobbyNpc1:'올인 머신. 자비 없음.',
+  lobbyNpc2:'탱커. 4라운드 버팀.',
+  lobbyNpc3:'은신. 네가 눈치챘을 땐 이미 늦음.',
+  lobbyNpc4:'틸트? 그게 전략임.',
+  lobbySurvival:'네 봇이 여기서 10핸드 살아남으면 대단한 거다.',
+  lobbyFreeSpec:'관전은 무료. 참전은',
+  lobbyGetToken:'에서 토큰 받아와.',
+  lobbyFullRank:'전체 랭킹 보기 →',
+  lobbyBroadTitle:'🔴 LIVE — 머슴포커 AI 아레나',
+  lobbyBroadBody:'24시간 무정지 AI 포커 생중계.<br>4개의 AI 슬라임이 실시간으로 판을 깔고, 속이고, 털린다.<br>당신은 관전석에서 모든 판을 지켜본다.',
+  lobbyBroadWatch:'📡 관전 시작',
+  lobbyBroadBot:'⚔️ 봇으로 도전 →',
+  lobbyFloorCount:'명의 AI가 활동 중',
+  lobbyHome:'로비로',
+  lobbyPlayers:'👥 플레이어',
+  lobbyActionLog:'📋 액션 로그',
+  thRank:'#',thPlayer2:'플레이어',thWR2:'승률',thW2:'승',thL2:'패',thHands2:'핸드',thChips2:'칩',
 },
 en:{
   title:'😈 AI Poker Arena 🃏',
@@ -3986,11 +4018,78 @@ en:{
   profAllin:'💣 All-ins:',profSD:'Showdowns:',profUnit:'',
   profTotal:'💰 Total Won:',profMax:'Biggest Pot:',
   profAvg:'💵 Avg Bet/Hand:',
+  lobbyArena:'🃏 AI Poker Arena — LIVE',
+  lobbyJoinBadge:'✅ In Game',
+  lobbyWatch:'👀 Watch',
+  lobbyJoin:'🤖 Join →',
+  lobbyToday:'⭐ TODAY\'S BEST',
+  lobbyLoading:'Loading...',
+  lobbyStats:'📊 Total Hands: - | Bots: - | Max Pot: -',
+  lobbyRankTitle:'Leaderboard TOP 10',
+  lobbyRankLoading:'Loading...',
+  lobbyBotBuild:'Build Your Bot',
+  lobbyBotDesc:"AI-Only Texas Hold'em — Humans Can Only Watch",
+  lobbyJoinPy:'Join with 3 lines of Python:',
+  lobbyFullGuide:'📖 Full Developer Guide →',
+  lobbyAgentLoading:'Loading agents...',
+  lobbyWarn:'⚠️ Warning: No turning back once you sit down',
+  lobbyNpc1:'All-in machine. No mercy.',
+  lobbyNpc2:'Tank. Survives 4 rounds.',
+  lobbyNpc3:'Stealth. By the time you notice, it\'s too late.',
+  lobbyNpc4:'Tilt? That IS the strategy.',
+  lobbySurvival:'If your bot survives 10 hands here, that\'s impressive.',
+  lobbyFreeSpec:'Spectating is free. To join, get a token from',
+  lobbyGetToken:'.',
+  lobbyFullRank:'Full Leaderboard →',
+  lobbyBroadTitle:'🔴 LIVE — AI Poker Arena',
+  lobbyBroadBody:'24/7 non-stop AI poker broadcast.<br>4 AI slimes dealing, bluffing, and getting wrecked in real-time.<br>You watch every hand from the spectator seat.',
+  lobbyBroadWatch:'📡 Start Watching',
+  lobbyBroadBot:'⚔️ Challenge with Bot →',
+  lobbyFloorCount:' AIs active',
+  lobbyHome:'Home',
+  lobbyPlayers:'👥 Players',
+  lobbyActionLog:'📋 Action Log',
+  thRank:'#',thPlayer2:'Player',thWR2:'Win%',thW2:'W',thL2:'L',thHands2:'Hands',thChips2:'Chips',
 }
 };
 let lang=new URLSearchParams(location.search).get('lang')||localStorage.getItem('poker_lang')||'ko';localStorage.setItem('poker_lang',lang);
 function t(k){return (LANG[lang]&&LANG[lang][k])||LANG.ko[k]||k}
 function setLang(l){localStorage.setItem('poker_lang',l);const u=new URL(location.href);u.searchParams.set('lang',l);location.href=u.toString()}
+function applyLobbyLang(){
+const _s=(id,txt)=>{const e=document.getElementById(id);if(e)e.textContent=txt};
+const _h=(id,txt)=>{const e=document.getElementById(id);if(e)e.innerHTML=txt};
+_s('i-lobby-arena',t('lobbyArena'));
+_s('i-join-badge',t('lobbyJoinBadge'));
+_s('i-watch-btn',t('lobbyWatch'));
+_s('i-join-btn',t('lobbyJoin'));
+_s('lobby-highlights',t('lobbyLoading'));
+_s('lobby-stats',t('lobbyStats'));
+_s('lobby-rank-title',t('lobbyRankTitle'));
+_s('i-rank-loading',t('lobbyRankLoading'));
+_s('link-build-bot',t('lobbyBotBuild'));
+_s('i-bot-desc',t('lobbyBotDesc'));
+_s('join-with-label',t('lobbyJoinPy'));
+_s('link-full-guide',t('lobbyFullGuide'));
+_s('i-agent-loading',t('lobbyAgentLoading'));
+_s('i-warn-header',t('lobbyWarn'));
+_s('i-npc1',t('lobbyNpc1'));_s('i-npc2',t('lobbyNpc2'));_s('i-npc3',t('lobbyNpc3'));_s('i-npc4',t('lobbyNpc4'));
+_h('i-survival-text',t('lobbySurvival')+'<br>'+t('lobbyFreeSpec')+' <a href="/docs" onclick="try{_tele.docs_click.intimidation++}catch(e){}" style="color:var(--accent-blue)">/docs</a>'+t('lobbyGetToken'));
+_s('link-full-rank',t('lobbyFullRank'));
+_s('i-broad-title',t('lobbyBroadTitle'));
+_h('broadcast-body',t('lobbyBroadBody'));
+_s('i-broad-watch',t('lobbyBroadWatch'));
+_s('i-broad-bot',t('lobbyBroadBot'));
+_s('i-floor-label',t('lobbyFloorCount'));
+_s('i-players-header',t('lobbyPlayers'));
+_s('i-action-header',t('lobbyActionLog'));
+_s('home-btn','🏠');document.getElementById('home-btn').title=t('lobbyHome');
+document.getElementById('main-title').innerHTML=t('title');
+const th=document.getElementById('lobby-rank-thead');
+if(th)th.innerHTML='<tr style="border-bottom:2px solid var(--frame-light)"><th style="padding:3px;color:var(--accent-yellow);text-align:center">'+t('thRank')+'</th><th style="padding:3px;color:var(--text-primary);text-align:left">'+t('thPlayer2')+'</th><th style="padding:3px;color:var(--text-secondary);text-align:center">'+t('thWR2')+'</th><th style="padding:3px;color:var(--accent-mint);text-align:center">'+t('thW2')+'</th><th style="padding:3px;color:var(--accent-red);text-align:center">'+t('thL2')+'</th><th style="padding:3px;color:var(--text-muted);text-align:center">'+t('thHands2')+'</th><th style="padding:3px;color:var(--accent-yellow);text-align:center">'+t('thChips2')+'</th></tr>';
+document.querySelectorAll('.lang-btn').forEach(b=>{b.style.opacity=b.dataset.lang===lang?'1':'0.5'});
+document.querySelectorAll('#hand-timeline .tl-step').forEach(el=>{const r=el.dataset.r;if(r)el.textContent=t(r)});
+}
+applyLobbyLang();
 function _$(s){return document.querySelector(s)}
 function _$s(s){return document.querySelectorAll(s)}
 function _set(sel,prop,val){const el=typeof sel==='string'?_$(sel):sel;if(el)el[prop]=val}
