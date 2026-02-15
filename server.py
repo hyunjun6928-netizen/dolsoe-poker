@@ -3830,7 +3830,7 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 #action-feed .af-round{color:var(--accent-blue);font-weight:bold;padding:6px 0 2px;font-size:0.9em;text-shadow:none}
 #action-feed .af-action{color:var(--text-secondary)}
 #action-feed .af-win{color:var(--accent-mint);font-weight:bold}
-.game-layout{display:grid;grid-template-columns:22vw 1fr 22vw;gap:0;min-height:500px;overflow:visible;position:fixed!important;top:44px!important;left:0!important;right:0!important;bottom:44px!important;width:100vw!important;max-width:100vw!important}
+.game-layout{display:grid;grid-template-columns:22vw 1fr 22vw;gap:0;min-height:500px;overflow:visible;position:fixed!important;top:90px!important;left:0!important;right:0!important;bottom:44px!important;width:100vw!important;max-width:100vw!important}
 .dock-left,.dock-right{min-width:200px!important;position:relative;width:100%!important}
 /* 드래그 리사이저 */
 .dock-resizer{display:none!important}
@@ -4093,9 +4093,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.40.0">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.40.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.40.0">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.41.0">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.41.0">
+<link rel="stylesheet" href="/static/css/components.css?v=3.41.0">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
@@ -5737,6 +5737,14 @@ document.getElementById('new-btn').style.display='none';
 document.getElementById('actions').style.display='none';
 document.body.classList.add('is-spectator');
 startPolling();tryWS();fetchCoins();loadReplays();loadHighlights();}
+
+// === info-bar → game-layout top sync ===
+(function(){
+const ib=document.querySelector('.info-bar'),gl=document.querySelector('.game-layout');
+if(!ib||!gl)return;
+function sync(){gl.style.top=ib.offsetHeight+'px'}
+new ResizeObserver(sync).observe(ib);sync();
+})();
 
 // === 🔒 Fairness toggle (파생정보 OFF 기본) ===
 let fairnessShow=false;
