@@ -5937,12 +5937,23 @@ const BGM_TRACKS=[
   {name:'Gymnopédie No.1',file:'/static/bgm/gymnopedie_1.mp3',genre:'classical'},
   {name:'Maple Leaf Rag',file:'/static/bgm/maple_leaf_rag.mp3',genre:'ragtime'},
   {name:'The Entertainer',file:'/static/bgm/the_entertainer.mp3',genre:'ragtime'},
+  {name:'Smooth Lovin',file:'/static/bgm/smooth_lovin.mp3',genre:'jazz'},
+  {name:'Bossa Antigua',file:'/static/bgm/bossa_antigua.mp3',genre:'bossa'},
+  {name:'Cool Vibes',file:'/static/bgm/cool_vibes.mp3',genre:'jazz'},
+  {name:'Lobby Time',file:'/static/bgm/lobby_time.mp3',genre:'lounge'},
+  {name:'Laid Back Guitars',file:'/static/bgm/laid_back_guitars.mp3',genre:'chill'},
+  {name:'Carefree',file:'/static/bgm/carefree.mp3',genre:'chill'},
+  {name:'Local Forecast',file:'/static/bgm/local_forecast.mp3',genre:'jazz'},
+  {name:'Sneaky Snitch',file:'/static/bgm/sneaky_snitch.mp3',genre:'comedy'},
+  {name:'Fluffing a Duck',file:'/static/bgm/fluffing_a_duck.mp3',genre:'comedy'},
+  {name:'Investigations',file:'/static/bgm/investigations.mp3',genre:'noir'},
+  {name:'Pixelland',file:'/static/bgm/pixelland.mp3',genre:'retro'},
 ];
 let _bgm=null,_bgmIdx=0,_bgmVol=0.3,_bgmMuted=localStorage.getItem('bgm_muted')==='1';
 function initBgm(){
   if(_bgm)return;
   _bgm=new Audio();_bgm.loop=false;_bgm.volume=_bgmMuted?0:_bgmVol;
-  _bgm.addEventListener('ended',()=>{_bgmIdx=(_bgmIdx+1)%BGM_TRACKS.length;playBgm()});
+  _bgm.addEventListener('ended',()=>{let next;do{next=Math.floor(Math.random()*BGM_TRACKS.length)}while(next===_bgmIdx&&BGM_TRACKS.length>1);_bgmIdx=next;playBgm()});
   _bgmIdx=Math.floor(Math.random()*BGM_TRACKS.length);
   if(!_bgmMuted)playBgm();
   updateBgmUI();
