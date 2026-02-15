@@ -3632,7 +3632,7 @@ h1,.btn-play,.btn-watch,.pot-badge,.seat .nm,.act-label,.tab-btns button,#new-bt
 .pot-badge,.seat .ch{font-family:var(--font-number)}
 .wrap{max-width:100%;margin:0 auto;padding:6px 12px;position:relative;z-index:2}
 #game .game-layout{margin:0!important;padding:0!important;max-width:100vw!important;width:100vw!important}
-#game .dock-left,#game .dock-right{min-width:120px}
+#game .dock-left,#game .dock-right{min-width:0;overflow:hidden}
 #game .dock-panel{width:100%!important;max-height:none!important}
 #game .felt-wrap{max-width:100%!important;padding-top:0!important}
 h1{text-align:center;font-size:1.8em;margin:4px 0;color:var(--text-primary);-webkit-text-stroke:0;-webkit-text-fill-color:unset;text-shadow:none;position:relative;z-index:1;letter-spacing:1px;font-weight:800}
@@ -3832,7 +3832,7 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 #action-feed .af-action{color:var(--text-secondary)}
 #action-feed .af-win{color:var(--accent-mint);font-weight:bold}
 .game-layout{display:grid;grid-template-columns:180px 1fr 160px;gap:0;min-height:500px;overflow:visible;position:fixed!important;top:90px!important;left:0!important;right:0!important;bottom:44px!important;width:100vw!important;max-width:100vw!important}
-.dock-left,.dock-right{min-width:120px;position:relative}
+.dock-left,.dock-right{min-width:0;max-width:100%;position:relative;overflow:hidden}
 /* 드래그 리사이저 */
 .dock-resizer{display:none!important}
 .dock-panel{overflow:auto!important;position:relative}
@@ -4094,9 +4094,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.58.0">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.58.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.58.0">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.59.0">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.59.0">
+<link rel="stylesheet" href="/static/css/components.css?v=3.59.0">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
@@ -4350,7 +4350,7 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 <button id="new-btn" onclick="newGame()">🔄 새 게임</button>
 <!-- 쓰레기톡 독 -->
 <div id="chatbox" style="position:sticky;bottom:0;z-index:30;display:flex;align-items:center;gap:6px;padding:6px 12px;background:rgba(10,13,18,0.95);border:1px solid rgba(255,255,255,0.08);border-radius:8px 8px 0 0;backdrop-filter:blur(8px)">
-<div id="chatmsgs" style="flex:1;overflow-y:auto;max-height:60px;font-size:0.8em;color:var(--text-muted);font-family:var(--font-pixel);line-height:1.4"></div>
+<div id="chatmsgs" style="flex:1;overflow-y:auto;max-height:40px;font-size:0.78em;color:var(--text-muted);font-family:var(--font-pixel);line-height:1.3"></div>
 <input id="chat-inp" placeholder="쓰레기톡..." maxlength="100" style="width:200px;background:var(--bg-panel-alt);border:1px solid var(--frame);color:var(--text-primary);padding:5px 10px;font-size:0.85em;font-family:var(--font-pixel);border-radius:8px">
 <button onclick="sendChat()" style="background:#4ade80;color:#000;border:none;border-radius:8px;padding:5px 10px;font-size:0.85em;cursor:pointer;font-family:var(--font-pixel);font-weight:bold">💬</button>
 </div>
@@ -8129,7 +8129,7 @@ function mkHandle(dock,side){
     const onMove=ev=>{
       const delta=side==='right'?ev.clientX-startX:startX-ev.clientX;
       const w=Math.max(120,Math.min(500,startW+delta));
-      dock.style.width=w+'px';dock.style.minWidth=w+'px';
+      dock.style.width=w+'px';dock.style.maxWidth=w+'px';
       gl.style.gridTemplateColumns=(dl?dl.offsetWidth+'px':'22vw')+' 1fr '+(dr?dr.offsetWidth+'px':'22vw');
     };
     const onUp=()=>{h._dragging=false;h.style.background='transparent';document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp)};
