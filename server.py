@@ -4094,9 +4094,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.64.0">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.64.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.64.0">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.65.0">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.65.0">
+<link rel="stylesheet" href="/static/css/components.css?v=3.65.0">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
@@ -6173,7 +6173,7 @@ el.className=cls;let ch='';
 const isShowdown=s.round==='showdown'||s.round==='between';
 if(p.folded||p.out){/* 폴드/아웃: 카드 안 보임 */}
 else if(p.hole)for(const c of p.hole)ch+=mkCard(c,true,isShowdown);
-else if(p.has_cards)ch+=`<div class="card card-b card-sm"><span style="color:#fff3">?</span></div>`.repeat(2);
+else if(p.has_cards&&s.round!=='preflop')ch+=`<div class="card card-b card-sm"><span style="color:#fff3">?</span></div>`.repeat(2);
 const db=i===s.dealer?'<span class="dbtn">D</span>':'';
 const bt=p.bet>0?`<div class="bet-chip">🪙${p.bet}pt</div>`:'';
 let la='';
