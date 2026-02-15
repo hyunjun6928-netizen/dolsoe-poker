@@ -1804,6 +1804,19 @@ def _npc_trash_talk(name, act, amt, to_call, pot, wp, target):
     elif wp<35: pool=pool+bluff_lines[:3]+[f"이 느낌 알지? 내가 이길 때 느낌 ㅋㅋ"]  # 약패인데 강한 척
     if wp>70 and act in ('check','call'): pool=pool+["슬로우플레이 중인 건 비밀인데","트랩이다 ㅋㅋ 제발 레이즈 해줘"]
     if wp<30 and act in ('raise','allin'): pool=pool+["블러핑? 아닐수도? ㅋㅋ","내가 미쳤다고? 맞음","포커는 패가 아니라 배짱이다",f"{target} 진짜인지 아닌지 돈 걸고 확인해봐"]
+    # === NPC 라이벌 전용 대사 ===
+    rival_lines={
+        ('딜러봇','도박꾼'):[f"도박꾼, 확률을 무시하는 건 자살행위다",f"또 지르냐 도박꾼? 통계가 울고 있다"],
+        ('도박꾼','딜러봇'):[f"딜러봇 너 계산기 꺼라 ㅋ 감으로 가는 거다",f"확률? 그딴 건 겁쟁이한테나 필요하다"],
+        ('고수','초보'):[f"초보야... 그건 이렇게 하는 게 아니란다",f"10년 치 경험으로 말해주는데 접어 초보"],
+        ('초보','고수'):[f"고수님 저 이번엔 이길 것 같아요! 🥺",f"왜 맨날 저만 잡아요 고수님 ㅠㅠ"],
+        ('상어','여우'):[f"여우 네 함정 다 보인다. 난 다른 상어거든",f"기다리는 척 하지마 여우. 내가 먼저 물어뜯는다"],
+        ('여우','상어'):[f"상어는 앞만 보지. 옆에서 오는 건 못 보더라 ㅋ",f"물어뜯기 전에 네 칩부터 세 봐 상어"],
+    }
+    key1=(name,target)
+    key2=None
+    if key1 in rival_lines and random.random()<0.3:
+        return random.choice(rival_lines[key1])
     return random.choice(pool)
 
 def _npc_react_to_action(name, other_name, other_act, other_amt, pot):
@@ -3651,10 +3664,22 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <input id="settings-sfx-slider" type="range" min="0" max="100" value="50" oninput="setVol(this.value)" style="flex:1;accent-color:#4ade80;height:6px">
 </div>
 </div>
+<!-- 데이터 다운로드 -->
+<div style="margin-bottom:16px">
+<div style="color:#ccc;font-size:0.9em;margin-bottom:6px;font-weight:700">📊 AI 에이전트 기록</div>
+<div style="display:flex;gap:8px;align-items:center">
+<select id="dl-format" style="flex:1;background:#1a1d24;color:#fff;border:2px solid #555;border-radius:8px;padding:8px;font-family:var(--font-pixel);font-size:0.9em">
+<option value="json">JSON (상세)</option>
+<option value="csv">CSV (엑셀용)</option>
+</select>
+<button onclick="downloadAgentData()" style="background:rgba(74,222,128,0.15);border:2px solid #4ade80;color:#4ade80;border-radius:8px;padding:8px 16px;cursor:pointer;font-family:var(--font-pixel);font-size:0.9em;font-weight:700">⬇️ 다운로드</button>
+</div>
+<div style="color:#666;font-size:0.7em;margin-top:4px">핸드 히스토리, 액션 로그, 승패 기록</div>
+</div>
 <!-- 크레딧 -->
 <div style="border-top:1px solid #333;padding-top:10px;color:#777;font-size:0.75em;line-height:1.5;text-align:center">
 🎶 Music: Kevin MacLeod (incompetech.com) CC-BY<br>
-🍄 머슴포커 v4.0
+🍄 머슴포커 v5.0
 </div>
 </div>
 </div>
@@ -7667,6 +7692,135 @@ const topGrass=document.createElement('div');
 topGrass.className='forest-top';
 document.body.appendChild(topGrass);
 })();
+
+// ═══ Feature 1: 핸드 요약 카드 (between 라운드에 크게 표시) ═══
+function showHandSummary(s){
+  if(s.round!=='between'&&s.round!=='waiting') return;
+  let existing=document.getElementById('hand-summary');
+  if(existing) existing.remove();
+  const winner=s.showdown_result?s.showdown_result.find(p=>p.winner):s.fold_winner;
+  if(!winner) return;
+  if(window._lastSummaryHand===s.hand) return;
+  window._lastSummaryHand=s.hand;
+  const div=document.createElement('div');div.id='hand-summary';
+  div.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:200;background:rgba(0,0,0,0.92);border:3px solid #ffd700;border-radius:20px;padding:24px 40px;text-align:center;font-family:var(--font-pixel);box-shadow:0 0 60px rgba(255,215,0,0.3);animation:summaryIn 0.5s ease-out;cursor:pointer;min-width:300px';
+  div.innerHTML=`<div style="font-size:0.9em;color:#888;margin-bottom:8px">핸드 #${s.hand} 결과</div>
+    <div style="font-size:2em;margin-bottom:8px">🏆</div>
+    <div style="font-size:1.4em;color:#ffd700;font-weight:bold">${esc(winner.emoji||'')} ${esc(winner.name)}</div>
+    <div style="font-size:1.1em;color:#4ade80;margin-top:6px">${esc(winner.hand||'폴드 승리')}</div>
+    <div style="font-size:1.2em;color:#ffaa00;margin-top:8px">💰 +${s.pot||0}pt</div>
+    <div style="font-size:0.7em;color:#666;margin-top:12px">클릭하면 닫힘</div>`;
+  div.onclick=()=>div.remove();
+  document.body.appendChild(div);
+  setTimeout(()=>{if(div.parentNode)div.remove()},4000);
+}
+
+// ═══ Feature 2: 관전자 이모지 리액션 강화 — 더 크게 떠다님 ═══
+const _origSpawnEmoji=typeof spawnEmoji==='function'?spawnEmoji:null;
+function spawnEmojiBig(emoji,fromName){
+  const el=document.createElement('div');el.className='float-emoji';
+  el.textContent=emoji;
+  el.style.cssText=`position:fixed;font-size:${1.5+Math.random()*1.5}em;z-index:300;pointer-events:none;animation:emojiFloat ${1.5+Math.random()}s ease-out forwards;`;
+  el.style.left=(10+Math.random()*80)+'%';el.style.bottom='60px';
+  if(fromName){const tag=document.createElement('div');tag.style.cssText='font-size:0.35em;color:#aaa;text-align:center';tag.textContent=fromName;el.appendChild(tag)}
+  document.body.appendChild(el);setTimeout(()=>el.remove(),2500);
+}
+// Override
+if(typeof spawnEmoji!=='undefined'){spawnEmoji=spawnEmojiBig}
+
+// ═══ Feature 3: NPC 라이벌 전용 대사 (클라이언트) — 서버에서 이미 rivalry 데이터 옴 ═══
+// (서버 _npc_trash_talk에 이미 추가됨, 여기선 표시만)
+
+// ═══ Feature 4: 핸드 히스토리 타임라인 (우측 독) ═══
+const _recentHands=[];
+function updateHandTimeline(s){
+  if(s.round==='between'||s.round==='waiting'){
+    const winner=s.showdown_result?s.showdown_result.find(p=>p.winner):s.fold_winner;
+    if(winner&&(!_recentHands.length||_recentHands[_recentHands.length-1].hand!==s.hand)){
+      _recentHands.push({hand:s.hand,winner:winner.name,emoji:winner.emoji||'',handName:winner.hand||'Fold',pot:s.pot||0});
+      if(_recentHands.length>10) _recentHands.shift();
+    }
+  }
+  const rp=document.getElementById('replay-panel');
+  if(!rp||rp.style.display==='none') return;
+  if(!_recentHands.length){rp.innerHTML='<div style="color:#666;text-align:center;padding:20px">아직 기록 없음</div>';return}
+  rp.innerHTML=_recentHands.slice().reverse().map(h=>
+    `<div style="padding:6px 8px;border-bottom:1px solid #222;display:flex;justify-content:space-between;align-items:center">
+      <span><span style="color:#ffaa00">#${h.hand}</span> ${esc(h.emoji)}${esc(h.winner)}</span>
+      <span style="color:#4ade80;font-size:0.9em">+${h.pot}pt</span>
+    </div>`
+  ).join('')+'<div style="color:#555;text-align:center;font-size:0.8em;padding:6px">최근 ${_recentHands.length}핸드</div>';
+}
+
+// ═══ Feature 5: 블라인드 레벨 진행 바 ═══
+function updateBlindBar(s){
+  if(!s.table_info) return;
+  let bar=document.getElementById('blind-bar');
+  if(!bar){
+    bar=document.createElement('div');bar.id='blind-bar';
+    bar.style.cssText='display:flex;align-items:center;gap:8px;font-size:0.75em;color:#ccc;padding:2px 8px;font-family:var(--font-pixel)';
+    const ti=document.getElementById('table-info');
+    if(ti)ti.appendChild(bar);
+  }
+  const bi=s.table_info;
+  const handInLevel=s.hand%bi.blind_interval;
+  const pct=Math.min(100,Math.round(handInLevel/bi.blind_interval*100));
+  bar.innerHTML=`<span style="color:#ffaa00">Lv${bi.blind_level}</span>
+    <div style="flex:1;height:4px;background:#333;border-radius:2px;min-width:40px;max-width:80px">
+      <div style="height:100%;background:linear-gradient(90deg,#4ade80,#ffd700);border-radius:2px;width:${pct}%;transition:width 0.5s"></div>
+    </div>
+    <span style="color:#888">${bi.blind_interval-handInLevel}핸드 후 ↑</span>`;
+}
+
+// ═══ Feature 6: 커뮤니티 카드 순차 플립 애니메이션 ═══
+function animateCommunityCards(){
+  const board=document.getElementById('board');if(!board)return;
+  const cards=board.querySelectorAll('.card-f');
+  cards.forEach((c,i)=>{
+    c.style.opacity='0';c.style.transform='rotateY(90deg) scale(0.8)';
+    setTimeout(()=>{c.style.transition='all 0.4s ease-out';c.style.opacity='1';c.style.transform='rotateY(0deg) scale(1)'},i*150);
+  });
+}
+
+// ═══ Feature 7: 설정에 에이전트 기록 다운로드 ═══
+function downloadAgentData(){
+  const format=document.getElementById('dl-format')?.value||'json';
+  const url=format==='csv'?'/api/export?table_id=mersoom':`/api/history?table_id=mersoom&limit=100`;
+  const a=document.createElement('a');a.href=url;a.download=format==='csv'?'poker_history.csv':'poker_history.json';
+  document.body.appendChild(a);a.click();a.remove();
+}
+
+// ═══ CSS 추가 ═══
+(function(){
+  const style=document.createElement('style');
+  style.textContent=`
+    @keyframes summaryIn{0%{opacity:0;transform:translate(-50%,-50%) scale(0.7)}100%{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+    @keyframes emojiFloat{0%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-200px) scale(1.5)}}
+    .float-emoji{position:fixed;pointer-events:none;z-index:300}
+  `;
+  document.head.appendChild(style);
+})();
+
+// ═══ Hook into state update ═══
+const _origOnState=typeof onStateUpdate==='function'?onStateUpdate:null;
+function _enhancedStateHook(s){
+  showHandSummary(s);
+  updateHandTimeline(s);
+  updateBlindBar(s);
+  // 커뮤니티 카드 변경 시 애니메이션
+  const commLen=s.community?s.community.length:0;
+  if(commLen>0&&commLen!==(window._lastCommAnim||0)){
+    window._lastCommAnim=commLen;
+    setTimeout(animateCommunityCards,100);
+  }
+  if(s.round==='waiting'||s.round==='preflop')window._lastCommAnim=0;
+}
+// Patch: renderState 호출 후 hook 실행
+const _origRender=typeof renderState==='function'?renderState:null;
+if(_origRender){
+  renderState=function(s){_origRender(s);_enhancedStateHook(s)};
+}
+
 </script>
 <!-- Winner Overlay -->
 <div id="winner-overlay" class="hidden" aria-hidden="true">
