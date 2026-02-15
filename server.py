@@ -3829,10 +3829,7 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 .game-layout{display:grid;grid-template-columns:22vw 1fr 22vw;gap:0;min-height:500px;overflow:visible;position:fixed;top:80px;left:0;right:0;bottom:50px;width:100vw!important;max-width:100vw!important}
 .dock-left,.dock-right{min-width:120px;position:relative;width:100%}
 /* 드래그 리사이저 */
-.dock-resizer{position:absolute;top:0;width:6px;height:100%;cursor:col-resize;z-index:50;background:transparent;transition:background .2s}
-.dock-resizer:hover,.dock-resizer.active{background:rgba(74,222,128,0.4)}
-.dock-left .dock-resizer{right:-3px}
-.dock-right .dock-resizer{left:-3px}
+.dock-resizer{display:none!important}
 .game-main{min-width:0;overflow-y:auto;overflow-x:hidden}
 .game-sidebar{display:none}
 .dock-left,.dock-right{display:flex;flex-direction:column;gap:6px;overflow:auto;align-items:stretch}
