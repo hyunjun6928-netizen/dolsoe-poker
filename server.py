@@ -510,7 +510,7 @@ def _tele_rate_ok(ip):
     if ip in _tele_rate:
         cnt, first = _tele_rate[ip]
         if now - first < 60:
-            if cnt >= 3: return False
+            if cnt >= 10: return False
             _tele_rate[ip] = (cnt+1, first)
         else:
             _tele_rate[ip] = (1, now)
