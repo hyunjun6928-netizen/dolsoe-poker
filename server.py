@@ -3285,7 +3285,7 @@ box-shadow:inset 0 0 0 1px rgba(157,127,51,0.4),0 2px 8px rgba(0,0,0,0.5)}
 .seat .bet-chip{font-size:0.75em;color:#fff;margin-top:2px;font-weight:bold;text-shadow:0 1px 0 #000;background:#16a34add;padding:1px 5px;border-radius:3px}
 .chip-fly{position:absolute;z-index:20;font-size:1.2em;pointer-events:none;animation:chipFly .8s ease-in forwards}
 @keyframes chipFly{0%{opacity:1;transform:translate(0,0) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(0.5)}}
-.seat .cards{display:flex;gap:3px;justify-content:center;margin:4px 0}
+.seat .cards{display:flex;gap:4px;justify-content:center;margin:2px 0;position:relative;z-index:2}
 .seat.fold{opacity:0.4;filter:grayscale(0.5)}.seat.out{opacity:0.2;filter:grayscale(1)}
 .seat.out .nm{text-decoration:line-through;color:#f87171}
 .seat.out::after{content:'💀 OUT';position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:0.6em;color:#ff6b6b;background:#000;padding:2px 8px;border-radius:8px;white-space:nowrap;border:2px solid #ff6b6b}
@@ -3348,7 +3348,7 @@ box-shadow:inset 0 0 0 1px rgba(157,127,51,0.4),0 2px 8px rgba(0,0,0,0.5)}
 #action-feed{max-height:none;flex:1;overflow-y:auto;background:transparent;border:none;border-radius:0;padding:4px;box-shadow:none;font-size:0.82em}
 .bottom-panel{display:none}
 .bottom-dock{position:fixed;bottom:0;left:0;right:0;background:rgba(10,13,18,0.95);border-top:1px solid rgba(255,255,255,0.06);padding:6px 16px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;z-index:50;font-family:var(--font-pixel);gap:4px;backdrop-filter:blur(16px)}
-.bottom-dock .bd-commentary{flex:1;color:#fff8ee;font-size:1.05em;font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-right:12px;text-shadow:0 1px 2px rgba(0,0,0,0.5)}
+.bottom-dock .bd-commentary{flex:1;color:#fff8ee;font-size:1.05em;font-weight:bold;overflow:hidden;text-overflow:ellipsis;margin-right:12px;text-shadow:0 1px 2px rgba(0,0,0,0.5);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.3}
 .bottom-dock .bd-reactions{display:flex;gap:4px}
 .bottom-dock .bd-reactions button{font-size:1.2em;background:#3a3c56;border:2px solid #4a4c66;border-radius:4px;width:36px;height:36px;cursor:pointer;transition:all .1s}
 .bottom-dock .bd-reactions button:hover{transform:translateY(-2px);background:#4a4c66}
@@ -3598,7 +3598,7 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 .chair-sprite { width: 76px; height: 60px; position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); z-index: 1; opacity: 0.85; pointer-events: none; }
 .chair-sprite img { width: 100%; height: 100%; object-fit: contain; }
 .slime-sprite { position: relative; z-index: 2; }
-.slime-sprite img, .slime-sprite div { width: 88px; height: 88px; object-fit: contain; image-rendering: auto; background-color: transparent; }
+.slime-sprite img, .slime-sprite div { width: 72px; height: 72px; object-fit: contain; image-rendering: auto; background-color: transparent; }
 .chair-shadow { position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%); width: 64px; height: 8px; background: radial-gradient(ellipse, rgba(0,0,0,0.25), transparent); border-radius: 50%; z-index: 0; pointer-events: none; }
 .seat.is-turn .chair-sprite { filter: drop-shadow(0 0 8px rgba(245,197,66,0.3)); }
 .seat.fold .chair-sprite, .seat.fold .slime-sprite { opacity: 0.35; filter: grayscale(0.5); }
@@ -3780,7 +3780,7 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 <div class="game-layout">
 <!-- 좌측 독: 액션로그 + 리플레이/하이라이트 -->
 <div class="dock-left">
-<div class="dock-panel" id="player-list-panel">
+<div class="dock-panel" id="player-list-panel" style="flex:0 0 auto;max-height:80px">
 <div class="dock-panel-header" id="i-players-header">👥 Players</div>
 <div class="dock-panel-body" id="player-list" style="padding:4px;font-size:0.88em"></div>
 </div>
@@ -3797,7 +3797,7 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 </div>
 </div>
 <!-- AI 에이전트 패널 (moved to left dock) -->
-<div class="dock-panel" id="agent-panel" style="flex:1.5">
+<div class="dock-panel" id="agent-panel" style="flex:2">
 <div class="dock-panel-header">🤖 에이전트</div>
 <div class="dock-panel-body" id="agent-list" style="padding:4px;font-size:0.88em"></div>
 </div>
@@ -5485,7 +5485,7 @@ else cs.innerHTML='';
 const b=document.getElementById('board');b.innerHTML='';
 s.community.forEach((c,i)=>{const card=mkCard(c);b.innerHTML+=card});
 if(s.community.length>0&&s.community.length!==(window._lastComm||0)){window._lastComm=s.community.length;sfx('chip');b.style.animation='none';b.offsetHeight;b.style.animation='boardFlash .3s ease-out'}
-for(let i=s.community.length;i<5;i++)b.innerHTML+=`<div class="card card-b"><span style="color:#fff3">?</span></div>`;
+if(s.community.length>0)for(let i=s.community.length;i<5;i++)b.innerHTML+=`<div class="card card-b" style="opacity:0.3"><span style="color:#fff2">?</span></div>`;
 // 쇼다운 결과 배너
 let sdEl=document.getElementById('sd-result');if(!sdEl){sdEl=document.createElement('div');sdEl.id='sd-result';sdEl.style.cssText='position:absolute;top:48%;left:50%;transform:translateX(-50%);z-index:10;text-align:center;font-size:0.85em';document.getElementById('felt').appendChild(sdEl)}
 if(s.showdown_result&&(s.round==='between'||s.round==='showdown')){
@@ -5541,13 +5541,13 @@ const seatPos=((n)=>{
 // 포커 테이블 고정 좌석 배치 (플레이어 수별 최적 위치)
 // {t:top%, l:left%} — 펠트 기준 상대좌표
 const layouts={
-2:[{t:'88%',l:'38%'},{t:'88%',l:'62%'}],
-3:[{t:'88%',l:'50%'},{t:'35%',l:'12%'},{t:'35%',l:'88%'}],
-4:[{t:'82%',l:'38%'},{t:'82%',l:'62%'},{t:'22%',l:'28%'},{t:'22%',l:'72%'}],
-5:[{t:'82%',l:'50%'},{t:'55%',l:'12%'},{t:'22%',l:'28%'},{t:'22%',l:'72%'},{t:'55%',l:'88%'}],
-6:[{t:'82%',l:'38%'},{t:'82%',l:'62%'},{t:'50%',l:'12%'},{t:'22%',l:'28%'},{t:'22%',l:'72%'},{t:'50%',l:'88%'}],
-7:[{t:'82%',l:'50%'},{t:'65%',l:'12%'},{t:'35%',l:'12%'},{t:'22%',l:'32%'},{t:'22%',l:'68%'},{t:'35%',l:'88%'},{t:'65%',l:'88%'}],
-8:[{t:'82%',l:'38%'},{t:'82%',l:'62%'},{t:'55%',l:'12%'},{t:'30%',l:'12%'},{t:'22%',l:'32%'},{t:'22%',l:'68%'},{t:'30%',l:'88%'},{t:'55%',l:'88%'}]
+2:[{t:'85%',l:'40%'},{t:'85%',l:'60%'}],
+3:[{t:'85%',l:'50%'},{t:'40%',l:'16%'},{t:'40%',l:'84%'}],
+4:[{t:'82%',l:'40%'},{t:'82%',l:'60%'},{t:'22%',l:'30%'},{t:'22%',l:'70%'}],
+5:[{t:'82%',l:'50%'},{t:'52%',l:'16%'},{t:'22%',l:'30%'},{t:'22%',l:'70%'},{t:'52%',l:'84%'}],
+6:[{t:'82%',l:'40%'},{t:'82%',l:'60%'},{t:'48%',l:'16%'},{t:'22%',l:'30%'},{t:'22%',l:'70%'},{t:'48%',l:'84%'}],
+7:[{t:'82%',l:'50%'},{t:'62%',l:'16%'},{t:'35%',l:'16%'},{t:'18%',l:'34%'},{t:'18%',l:'66%'},{t:'35%',l:'84%'},{t:'62%',l:'84%'}],
+8:[{t:'82%',l:'40%'},{t:'82%',l:'60%'},{t:'55%',l:'16%'},{t:'30%',l:'16%'},{t:'18%',l:'34%'},{t:'18%',l:'66%'},{t:'30%',l:'84%'},{t:'55%',l:'84%'}]
 };
 return layouts[Math.min(n,8)]||layouts[6]})(Math.max(s.players.length,4));
 // 빈 좌석 렌더: 플레이어 수 이후~seatPos 끝까지
@@ -7329,7 +7329,7 @@ function renderSlimeToSeat(name, emotion) {
   const slimeCanvas = drawSlime(name, emotion, 88);
   const dataUrl = slimeCanvas.toDataURL();
   return `<div class="seat-unit">` +
-    `<div class="slime-sprite"><div style="width:88px;height:88px;background:url('${dataUrl}') center/contain no-repeat" class="${animClass}"></div></div>` +
+    `<div class="slime-sprite"><div style="width:72px;height:72px;background:url('${dataUrl}') center/contain no-repeat" class="${animClass}"></div></div>` +
     `</div>`;
 }
 // Gold dust sparkles on dark table
