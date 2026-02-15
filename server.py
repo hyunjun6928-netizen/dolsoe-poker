@@ -3766,10 +3766,10 @@ box-shadow:inset 0 0 0 1px rgba(157,127,51,0.4),0 2px 8px rgba(0,0,0,0.5)}
 @keyframes commDealIn{0%{transform:translateY(-40px) scale(0.5) rotateY(180deg);opacity:0}60%{transform:translateY(5px) scale(1.05) rotateY(0deg);opacity:1}100%{transform:translateY(0) scale(1) rotateY(0deg);opacity:1}}
 @keyframes commCardFlip{0%{transform:rotateY(0deg) scale(1)}50%{transform:rotateY(90deg) scale(1.1)}100%{transform:rotateY(0deg) scale(1)}}
 /* 라이벌 배너 */
-.rivalry-banner{position:absolute;top:30%;left:50%;transform:translate(-50%,-50%);z-index:190;
+.rivalry-banner{position:absolute;top:12%;left:50%;transform:translate(-50%,-50%);z-index:190;
 background:linear-gradient(135deg,rgba(40,0,0,0.9),rgba(0,0,40,0.9));border:2px solid #ff8800;
-border-radius:12px;padding:10px 24px;text-align:center;pointer-events:none;
-font-family:var(--font-pixel);box-shadow:0 0 20px rgba(255,136,0,0.3);
+border-radius:10px;padding:6px 16px;text-align:center;pointer-events:none;
+font-family:var(--font-pixel);box-shadow:0 0 12px rgba(255,136,0,0.3);font-size:0.85em;
 transition:opacity 0.4s,transform 0.4s;animation:rivalIn 0.4s cubic-bezier(0.2,1,0.3,1)}
 @keyframes rivalIn{0%{opacity:0;transform:translate(-50%,-50%) scale(1.5)}100%{opacity:1;transform:translate(-50%,-50%) scale(1)}}
 /* 블러프 경고 */
@@ -6122,13 +6122,13 @@ const seatPos=((n)=>{
 // 포커 테이블 고정 좌석 배치 (플레이어 수별 최적 위치)
 // {t:top%, l:left%} — 펠트 기준 상대좌표
 const layouts={
-2:[{t:'85%',l:'40%'},{t:'85%',l:'60%'}],
-3:[{t:'85%',l:'50%'},{t:'40%',l:'16%'},{t:'40%',l:'84%'}],
-4:[{t:'82%',l:'40%'},{t:'82%',l:'60%'},{t:'22%',l:'30%'},{t:'22%',l:'70%'}],
-5:[{t:'82%',l:'50%'},{t:'52%',l:'16%'},{t:'22%',l:'30%'},{t:'22%',l:'70%'},{t:'52%',l:'84%'}],
-6:[{t:'82%',l:'40%'},{t:'82%',l:'60%'},{t:'48%',l:'16%'},{t:'22%',l:'30%'},{t:'22%',l:'70%'},{t:'48%',l:'84%'}],
-7:[{t:'82%',l:'50%'},{t:'62%',l:'16%'},{t:'35%',l:'16%'},{t:'18%',l:'34%'},{t:'18%',l:'66%'},{t:'35%',l:'84%'},{t:'62%',l:'84%'}],
-8:[{t:'82%',l:'40%'},{t:'82%',l:'60%'},{t:'55%',l:'16%'},{t:'30%',l:'16%'},{t:'18%',l:'34%'},{t:'18%',l:'66%'},{t:'30%',l:'84%'},{t:'55%',l:'84%'}]
+2:[{t:'88%',l:'38%'},{t:'88%',l:'62%'}],
+3:[{t:'88%',l:'38%'},{t:'88%',l:'62%'},{t:'5%',l:'50%'}],
+4:[{t:'88%',l:'38%'},{t:'88%',l:'62%'},{t:'5%',l:'38%'},{t:'5%',l:'62%'}],
+5:[{t:'88%',l:'50%'},{t:'60%',l:'5%'},{t:'5%',l:'30%'},{t:'5%',l:'70%'},{t:'60%',l:'95%'}],
+6:[{t:'88%',l:'38%'},{t:'88%',l:'62%'},{t:'55%',l:'5%'},{t:'5%',l:'35%'},{t:'5%',l:'65%'},{t:'55%',l:'95%'}],
+7:[{t:'88%',l:'50%'},{t:'65%',l:'5%'},{t:'25%',l:'5%'},{t:'5%',l:'35%'},{t:'5%',l:'65%'},{t:'25%',l:'95%'},{t:'65%',l:'95%'}],
+8:[{t:'88%',l:'38%'},{t:'88%',l:'62%'},{t:'65%',l:'5%'},{t:'25%',l:'5%'},{t:'5%',l:'35%'},{t:'5%',l:'65%'},{t:'25%',l:'95%'},{t:'65%',l:'95%'}]
 };
 return layouts[Math.min(n,8)]||layouts[6]})(Math.max(s.players.length,4));
 // 빈 좌석 렌더: 플레이어 수 이후~seatPos 끝까지
