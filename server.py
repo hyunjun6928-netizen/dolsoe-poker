@@ -3673,7 +3673,7 @@ box-shadow:inset 0 0 0 1px rgba(157,127,51,0.4),0 2px 8px rgba(0,0,0,0.5)}
 .card.red .r,.card.red .s{color:#D24C59}
 .card.black .r,.card.black .s{color:#050F1A}
 .card-sm{width:52px;height:74px;font-size:0.9em;border-radius:8px}.card-sm .s{font-size:1em}
-.seat{position:absolute;text-align:center;z-index:10;transition:all .3s;min-width:70px}
+.seat{position:absolute;text-align:center;z-index:10;transition:all .3s;min-width:120px}
 .seat-0{top:88%;left:64%;transform:translate(-50%,-50%)}
 .seat-1{top:88%;left:36%;transform:translate(-50%,-50%)}
 .seat-2{top:65%;left:2%;transform:translate(0,-50%)}
@@ -4069,9 +4069,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.74.0">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.74.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.74.0">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.75.0">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.75.0">
+<link rel="stylesheet" href="/static/css/components.css?v=3.75.0">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
