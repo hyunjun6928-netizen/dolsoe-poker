@@ -6173,7 +6173,7 @@ el.className=cls;let ch='';
 const isShowdown=s.round==='showdown'||s.round==='between';
 if(p.folded||p.out){/* 폴드/아웃: 카드 안 보임 */}
 else if(p.hole)for(const c of p.hole)ch+=mkCard(c,true,isShowdown);
-else if(p.has_cards&&s.round!=='preflop')ch+=`<div class="card card-b card-sm"><span style="color:#fff3">?</span></div>`.repeat(2);
+else if(p.has_cards)ch+=`<div class="card card-b card-sm"><span style="color:#fff3">?</span></div>`.repeat(2);
 const db=i===s.dealer?'<span class="dbtn">D</span>':'';
 const bt=p.bet>0?`<div class="bet-chip">🪙${p.bet}pt</div>`:'';
 let la='';
