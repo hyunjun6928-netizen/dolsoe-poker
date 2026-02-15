@@ -2335,6 +2335,9 @@ img[src*="slimes/"] {
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
 }
+#floor-agents, #floor-agents *, #floor-agents .walker-body, #floor-agents .floor-npc {
+  image-rendering: auto !important;
+}
 /* UI panels keep glass blur — separated by z-index */
 .px-panel, #lobby-banner, #lobby-log {
   backdrop-filter: blur(10px);
