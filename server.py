@@ -3660,7 +3660,7 @@ h1 b{color:var(--accent-gold);-webkit-text-fill-color:var(--accent-gold)}
 #game{display:none}
 .info-bar{position:fixed!important;top:0!important;left:0!important;right:0!important;z-index:100!important;display:flex!important;flex-wrap:wrap!important;justify-content:space-between;align-items:center;padding:4px 16px;font-size:0.8em;color:var(--text-light);background:#070A10!important;border-bottom:1px solid rgba(255,255,255,0.06);box-shadow:0 2px 8px rgba(0,0,0,0.5)!important;font-family:var(--font-pixel)}
 .info-bar #hand-timeline,.info-bar #commentary{width:100%!important;flex-basis:100%}
-.felt-wrap{position:relative;margin:0 auto 0;padding-top:10px;width:100%;flex:1;min-height:0;overflow:visible}
+.felt-wrap{position:relative;margin:0 auto 0;padding-top:0;width:100%;flex:1 1 0;min-height:0;overflow:visible}
 .felt-border{position:absolute;top:-20px;left:-20px;right:-20px;bottom:-20px;
 background:url('/static/slimes/stage_frame.png') center/100% 100% no-repeat;
 border-radius:0;border:none;image-rendering:auto;pointer-events:none;
@@ -3836,9 +3836,9 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 .dock-resizer{display:none!important}
 .dock-panel{resize:vertical;overflow:auto!important}
 .dock-panel::-webkit-resizer{background:#4ade80;border:2px solid #333;border-radius:3px}
-.game-main{min-width:0;overflow:hidden;display:flex;flex-direction:column}
+.game-main{min-width:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column}
 .game-sidebar{display:none}
-.dock-left,.dock-right{display:flex;flex-direction:column;gap:6px;overflow:auto;align-items:stretch}
+.dock-left,.dock-right{display:flex;flex-direction:column;gap:6px;overflow-y:auto;overflow-x:hidden;align-items:stretch}
 .dock-left>*,.dock-right>*{width:100%!important;box-sizing:border-box}
 .dock-panel{background:var(--bg-panel);border:1px solid var(--frame);box-shadow:var(--shadow-md);padding:0;overflow:auto!important;flex:none;display:flex;flex-direction:column;border-radius:var(--radius);min-height:40px;max-height:50vh;width:100%;resize:vertical;height:150px}
 .dock-panel-header{background:rgba(10,13,18,0.8);color:var(--text-light);padding:8px 12px;font-family:var(--font-pixel);font-size:0.8em;font-weight:600;border-bottom:1px solid rgba(255,255,255,0.06);letter-spacing:0.3px}
@@ -4093,9 +4093,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.43.0">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.43.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.43.0">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.44.0">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.44.0">
+<link rel="stylesheet" href="/static/css/components.css?v=3.44.0">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
