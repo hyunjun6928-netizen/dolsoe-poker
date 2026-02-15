@@ -3394,7 +3394,7 @@ box-shadow:inset 0 0 0 1px rgba(157,127,51,0.4),0 2px 8px rgba(0,0,0,0.5)}
 #chatinput{padding:4px 6px;border-top:1px solid #e8d0b8;display:flex;gap:3px}
 #chatinput input{flex:1;background:var(--bg-panel-alt);border:1px solid var(--frame);color:var(--text-primary);padding:6px 10px;font-size:0.8em;font-family:var(--font-pixel);border-radius:6px}
 #chatinput button{background:var(--accent-green);color:#0C0F14;border:1px solid #047857;padding:6px 12px;cursor:pointer;font-size:0.8em;border-radius:6px;font-weight:600}
-#replay-panel,#highlights-panel{display:none}
+#highlights-panel{display:none}
 .tab-btns{display:flex;gap:4px;margin-top:8px;margin-bottom:4px}
 .tab-btns button{background:var(--bg-panel-alt);color:var(--text-secondary);border:3px solid var(--frame-light);padding:var(--sp-sm) var(--sp-lg);border-radius:var(--radius);cursor:pointer;font-size:0.75em;box-shadow:0 3px 0 0 #8b6d4a;transition:all .1s}
 .tab-btns button:hover{transform:translateY(-1px);box-shadow:0 4px 0 0 #8b6d4a}
@@ -3805,7 +3805,7 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 <div class="game-layout">
 <!-- 좌측 독: 액션로그 + 리플레이/하이라이트 -->
 <div class="dock-left">
-<div class="dock-panel" id="player-list-panel" style="flex:0 0 auto;max-height:80px">
+<div class="dock-panel" id="player-list-panel" style="flex:0 0 auto;max-height:120px">
 <div class="dock-panel-header" id="i-players-header">👥 Players</div>
 <div class="dock-panel-body" id="player-list" style="padding:4px;font-size:0.88em"></div>
 </div>
@@ -3862,8 +3862,8 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 <span class="dock-tab" onclick="showRightTab('guide',this)">📖 룰</span>
 </div>
 <div class="dock-panel-body" style="padding:4px">
-<div id="replay-panel" style="font-size:0.75em"></div>
-<div id="highlights-panel" style="display:none;font-size:0.75em"></div>
+<div id="replay-panel" style="font-size:0.75em"><div style="color:#666;text-align:center;padding:12px">📋 탭 클릭 시 로드...</div></div>
+<div id="highlights-panel" style="display:none;font-size:0.75em"><div style="color:#666;text-align:center;padding:12px">🔥 탭 클릭 시 로드...</div></div>
 <div id="guide-panel" style="display:none;padding:4px;font-size:0.75em;color:var(--text-secondary);line-height:1.5">
 <b style="color:var(--text-primary)">📖 텍사스 홀덤 간단 룰</b><br>
 🃏 각 플레이어에게 홀카드 2장 → 커뮤니티 5장 공개<br>
@@ -5510,7 +5510,7 @@ else cs.innerHTML='';
 const b=document.getElementById('board');b.innerHTML='';
 s.community.forEach((c,i)=>{const card=mkCard(c);b.innerHTML+=card});
 if(s.community.length>0&&s.community.length!==(window._lastComm||0)){window._lastComm=s.community.length;sfx('chip');b.style.animation='none';b.offsetHeight;b.style.animation='boardFlash .3s ease-out'}
-if(s.community.length>0)for(let i=s.community.length;i<5;i++)b.innerHTML+=`<div class="card card-b" style="opacity:0.3"><span style="color:#fff2">?</span></div>`;
+if(s.community.length>=3)for(let i=s.community.length;i<5;i++)b.innerHTML+=`<div class="card card-b" style="opacity:0.2"><span style="color:#fff2">?</span></div>`;
 // 쇼다운 결과 배너
 let sdEl=document.getElementById('sd-result');if(!sdEl){sdEl=document.createElement('div');sdEl.id='sd-result';sdEl.style.cssText='position:absolute;top:48%;left:50%;transform:translateX(-50%);z-index:10;text-align:center;font-size:0.85em';document.getElementById('felt').appendChild(sdEl)}
 if(s.showdown_result&&(s.round==='between'||s.round==='showdown')){
