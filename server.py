@@ -3806,7 +3806,7 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 .dock-left,.dock-right{min-width:0;max-width:100%;position:relative;overflow:visible}
 /* 드래그 리사이저 */
 .dock-resizer{display:none!important}
-.dock-panel{overflow:auto!important;position:relative;cursor:default}
+.dock-panel{overflow:auto!important;position:relative;cursor:default;resize:none!important}
 .dp-resize-handle{display:none}
 .game-main{min-width:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column}
 .game-sidebar{display:none}
@@ -4068,9 +4068,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.66.0">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.66.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.66.0">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.67.0">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.67.0">
+<link rel="stylesheet" href="/static/css/components.css?v=3.67.0">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
@@ -8096,23 +8096,7 @@ document.getElementById('chat-inp').addEventListener('keydown',e=>{if(e.key==='E
 const gl=document.querySelector('.game-layout');if(!gl)return;
 const dl=document.querySelector('.dock-left');
 const dr=document.querySelector('.dock-right');
-function mkHandle(dock,side){
-  const h=document.createElement('div');
-  h.style.cssText='position:absolute;top:0;'+side+':-2px;width:4px;height:100%;cursor:ew-resize;z-index:60;background:transparent;pointer-events:auto';
-  dock.style.position='relative';dock.style.overflow='clip visible';dock.appendChild(h);
-  let startX,startW;
-  h.addEventListener('mousedown',e=>{e.preventDefault();e.stopPropagation();startX=e.clientX;startW=dock.offsetWidth;
-    const onMove=ev=>{
-      const delta=side==='right'?ev.clientX-startX:startX-ev.clientX;
-      const w=Math.max(120,Math.min(500,startW+delta));
-      dock.style.width=w+'px';dock.style.maxWidth=w+'px';
-      gl.style.gridTemplateColumns=(dl?dl.offsetWidth+'px':'22vw')+' 1fr '+(dr?dr.offsetWidth+'px':'22vw');
-    };
-    const onUp=()=>{document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp)};
-    document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp)});
-}
-if(dl)mkHandle(dl,'right');
-if(dr)mkHandle(dr,'left');
+// dock resize handles removed — fixed width layout
 })();
 // Player list collapse toggle
 (function(){const pl=document.getElementById('player-list-panel');if(pl){const h=pl.querySelector('.dock-panel-header');if(h)h.addEventListener('click',()=>pl.classList.toggle('expanded'))}})();
