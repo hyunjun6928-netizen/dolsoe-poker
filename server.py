@@ -2171,7 +2171,7 @@ async def handle_client(reader, writer):
     elif method=='GET' and route=='/en/docs':
         await send_http(writer,302,'','text/html',extra_headers='Location: /docs?lang=en\r\n')
     elif method=='GET' and route=='/':
-        await send_http(writer,200,HTML_PAGE,'text/html; charset=utf-8')
+        await send_http(writer,200,HTML_PAGE,'text/html; charset=utf-8',extra_headers='Cache-Control: no-cache, no-store, must-revalidate\r\nPragma: no-cache\r\n')
     elif method=='GET' and route=='/ranking':
         pg=RANKING_PAGE_EN if _lang=='en' else RANKING_PAGE
         await send_http(writer,200,pg,'text/html; charset=utf-8')
@@ -6987,9 +6987,10 @@ document.addEventListener('click',()=>{if(!_bgmInited)initBgm()},{once:true});
 let chatMuted=false;
 function toggleChatMute(){chatMuted=!chatMuted}
 function sfx(type){
-if(muted)return;
-if(!audioCtx)initAudio();if(!audioCtx)return;
+if(muted){console.log('SFX muted:',type);return}
+if(!audioCtx)initAudio();if(!audioCtx){console.warn('SFX no audioCtx');return}
 if(audioCtx.state==='suspended')audioCtx.resume();
+console.log('SFX:',type,'vol:',sfxVol,'ctx:',audioCtx.state);
 const t=audioCtx.currentTime;
 // Master volume node
 if(!window._masterGain){window._masterGain=audioCtx.createGain();window._masterGain.connect(audioCtx.destination)}
