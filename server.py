@@ -7996,12 +7996,14 @@ async def _tele_log_loop():
             except Exception as e: print(f"⚠️ TELE_ALERT_ERR {e}", flush=True)
 
 async def main():
-    load_leaderboard()
-    init_mersoom_table()
-    asyncio.create_task(_tele_log_loop())
+    # 포트 먼저 바인딩 (Render 타임아웃 방지)
     server = await asyncio.start_server(handle_client, '0.0.0.0', PORT)
     print(f"😈 머슴포커 {APP_VERSION}", flush=True)
     print(f"🌐 http://0.0.0.0:{PORT}", flush=True)
+    # 초기화는 포트 열린 후에
+    load_leaderboard()
+    init_mersoom_table()
+    asyncio.create_task(_tele_log_loop())
     async with server: await server.serve_forever()
 
 if __name__ == '__main__':
