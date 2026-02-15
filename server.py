@@ -3655,7 +3655,7 @@ h1 b{color:var(--accent-gold);-webkit-text-fill-color:var(--accent-gold)}
 @media(max-width:700px){.lobby-grid{grid-template-columns:1fr!important}}
 #game{display:none}
 .info-bar{position:sticky;top:0;z-index:40;display:flex;justify-content:space-between;align-items:center;padding:6px 16px;font-size:0.8em;color:var(--text-light);background:transparent;border-bottom:none;box-shadow:none;font-family:var(--font-pixel)}
-.felt-wrap{position:relative;margin:0 auto 4px;padding-top:10px;width:min(1400px,98vw);min-height:min(860px,85vh)}
+.felt-wrap{position:relative;margin:0 auto 4px;padding-top:10px;width:100%;min-height:calc(100vh - 120px)}
 .felt-border{position:absolute;top:-20px;left:-20px;right:-20px;bottom:-20px;
 background:url('/static/slimes/stage_frame.png') center/100% 100% no-repeat;
 border-radius:0;border:none;image-rendering:auto;pointer-events:none;
@@ -3666,7 +3666,7 @@ z-index:0}
 background:linear-gradient(90deg,transparent,rgba(255,255,255,0.08),transparent)}
 .felt{position:relative;
 background:url('/static/slimes/table_felt.png') center/cover no-repeat,linear-gradient(180deg,#1a1e2a 0%,#0d1018 100%);
-border:none;border-radius:18px;width:100%;padding-bottom:52%;
+border:none;border-radius:18px;width:100%;height:calc(100vh - 140px);
 box-shadow:0 0 60px rgba(245,197,66,0.08),0 8px 32px rgba(0,0,0,0.6);overflow:visible;
 image-rendering:auto}
 .felt::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;
@@ -3825,14 +3825,14 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 #action-feed .af-round{color:var(--accent-blue);font-weight:bold;padding:6px 0 2px;font-size:0.9em;text-shadow:none}
 #action-feed .af-action{color:var(--text-secondary)}
 #action-feed .af-win{color:var(--accent-mint);font-weight:bold}
-.game-layout{display:grid;grid-template-columns:18vw 1fr 18vw;gap:4px;height:calc(100vh - 100px);min-height:500px;overflow:visible}
+.game-layout{display:grid;grid-template-columns:18vw 1fr 18vw;gap:4px;height:calc(100vh - 80px);min-height:500px;overflow:visible}
 .dock-left,.dock-right{min-width:120px;position:relative}
 /* 드래그 리사이저 */
 .dock-resizer{position:absolute;top:0;width:6px;height:100%;cursor:col-resize;z-index:50;background:transparent;transition:background .2s}
 .dock-resizer:hover,.dock-resizer.active{background:rgba(74,222,128,0.4)}
 .dock-left .dock-resizer{right:-3px}
 .dock-right .dock-resizer{left:-3px}
-.game-main{min-width:0}
+.game-main{min-width:0;overflow:visible}
 .game-sidebar{display:none}
 .dock-left,.dock-right{display:flex;flex-direction:column;gap:6px;overflow:auto}
 .dock-panel{background:var(--bg-panel);border:1px solid var(--frame);box-shadow:var(--shadow-md);padding:0;overflow:hidden;flex:1;display:flex;flex-direction:column;border-radius:var(--radius);resize:vertical;min-height:60px}
