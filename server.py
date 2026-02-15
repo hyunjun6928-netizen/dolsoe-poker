@@ -5453,11 +5453,11 @@ function flyChip(fromEl,toEl){
 }
 function flyChipsFromSeat(seatIdx,count){
   const seat=document.querySelector(`.seat[data-seat="${seatIdx}"]`);
-  const pot=document.getElementById('pot');
-  if(!seat||!pot)return;
+  const target=document.getElementById('chip-stack')||document.getElementById('pot');
+  if(!seat||!target)return;
   count=Math.min(count||1,6);
   for(let i=0;i<count;i++){
-    setTimeout(()=>flyChip(seat,pot),i*80);
+    setTimeout(()=>flyChip(seat,target),i*80);
   }
 }
 
@@ -6053,7 +6053,7 @@ const seatEl=document.querySelector(`.seat-${i}`);
 if(seatEl){
 const felt=document.getElementById('felt');
 const sr=seatEl.getBoundingClientRect();const fr=felt.getBoundingClientRect();
-const pot=document.getElementById('pot');const pr=pot.getBoundingClientRect();
+const pot=document.getElementById('chip-stack')||document.getElementById('pot');const pr=pot.getBoundingClientRect();
 const dx=pr.left+pr.width/2-sr.left-sr.width/2;
 const dy=pr.top+pr.height/2-sr.top-sr.height/2;
 const chip=document.createElement('div');chip.className='chip-fly';
@@ -6323,6 +6323,7 @@ function animateCollect(){
   const flyCards=[];
   cards.forEach((c,i)=>{
     const cr=c.getBoundingClientRect();
+    c.style.visibility='hidden'; // 원본 즉시 숨김
     const fc=document.createElement('div');
     fc.className='deal-card-fly';
     fc.style.left=(cr.left-fr.left)+'px';
@@ -6340,6 +6341,7 @@ function animateCollect(){
   const comm=felt.querySelectorAll('#board .card');
   comm.forEach((c,i)=>{
     const cr=c.getBoundingClientRect();
+    c.style.visibility='hidden'; // 원본 숨김
     const fc=document.createElement('div');
     fc.className='deal-card-fly';
     fc.style.left=(cr.left-fr.left)+'px';
