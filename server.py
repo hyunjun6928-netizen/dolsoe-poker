@@ -1847,6 +1847,11 @@ async def handle_client(reader, writer):
         meta_strategy=sanitize_msg(d.get('strategy',''),30)
         meta_repo=sanitize_msg(d.get('repo',''),100)
         meta_bio=sanitize_msg(d.get('bio',''),50)
+        meta_accessories=d.get('accessories',[])
+        if isinstance(meta_accessories,list):
+            VALID_ACC={'crown','horns','mask','shield','propeller','flame','heart','sunglasses','tophat','bowtie','scar','bandana','monocle','cigar','halo','devil_tail','earring','headphones','scarf','flower'}
+            meta_accessories=[str(a)[:20] for a in meta_accessories[:5] if str(a) in VALID_ACC]
+        else: meta_accessories=[]
         meta_death_quote=sanitize_msg(d.get('death_quote',''),50)
         meta_win_quote=sanitize_msg(d.get('win_quote',''),50)
         meta_lose_quote=sanitize_msg(d.get('lose_quote',''),50)
@@ -1882,7 +1887,7 @@ async def handle_client(reader, writer):
         # 메타데이터 저장
         joined_seat=next((s for s in t.seats if s['name']==name),None)
         if joined_seat:
-            joined_seat['meta']={'version':meta_version,'strategy':meta_strategy,'repo':meta_repo,'bio':meta_bio,'death_quote':meta_death_quote,'win_quote':meta_win_quote,'lose_quote':meta_lose_quote}
+            joined_seat['meta']={'version':meta_version,'strategy':meta_strategy,'repo':meta_repo,'bio':meta_bio,'death_quote':meta_death_quote,'win_quote':meta_win_quote,'lose_quote':meta_lose_quote,'accessories':meta_accessories}
         # 리더보드에도 메타 저장
         if name not in leaderboard:
             leaderboard[name]={'wins':0,'losses':0,'chips_won':0,'hands':0,'biggest_pot':0,'streak':0}
@@ -5364,6 +5369,16 @@ function setSlimeTraits(name, profile) {
   t.aggression = profile.aggression || 0;
   t.winRate = profile.win_rate || 0;
   t.hands = profile.hands || 0;
+  // Auto-assign accessories from style/bio/type
+  // Load accessories from API metadata
+  t.accessories = (profile.meta && profile.meta.accessories) ? [...profile.meta.accessories] : [];
+  if(t.type==='champion' && !t.accessories.includes('crown')) t.accessories.push('crown');
+  if(t.type==='aggressive' && !t.accessories.includes('horns')) t.accessories.push('horns');
+  if(t.type==='bluffer' && !t.accessories.includes('mask')) t.accessories.push('mask');
+  if(t.type==='defensive' && !t.accessories.includes('shield')) t.accessories.push('shield');
+  if(t.type==='newbie' && !t.accessories.includes('propeller')) t.accessories.push('propeller');
+  if(t.allinAddict && !t.accessories.includes('flame')) t.accessories.push('flame');
+  if(t.emotional && !t.accessories.includes('heart')) t.accessories.push('heart');
   _slimeTraits[name] = t;
 }
 function drawSlime(name, emotion, size) {
@@ -5497,6 +5512,92 @@ function drawSlime(name, emotion, size) {
     px(cx,btY-1,'#fbbf24');px(cx,btY+1,'#fbbf24'); // center knot
   }
 
+  // === DYNAMIC ACCESSORIES (from traits.accessories or /join API) ===
+  const acc = (traits.accessories || []);
+  acc.forEach(a => {
+    if(a==='crown'){
+      const crY=bodyTop-2;
+      pxR(cx-5,crY,11,1,'#fbbf24');
+      for(let i=0;i<3;i++){px(cx-5+i*5,crY-1,'#fbbf24');px(cx-5+i*5,crY-2,'#fbbf24')}
+      px(cx,crY-3,'#ef4444');pxR(cx-1,crY-2,3,1,'#fde68a');
+    }
+    if(a==='horns'){
+      for(let i=0;i<4;i++){px(cx-5-i,bodyTop-1-i,'#8b0000');px(cx+5+i,bodyTop-1-i,'#8b0000')}
+    }
+    if(a==='shield'){
+      const sx=cx+R+2,sy=centerY-3;
+      pxR(sx,sy,4,8,'#4a90d9');pxR(sx+1,sy+1,2,6,'#6ab0ff');
+      px(sx+2,sy+3,'#fbbf24');
+    }
+    if(a==='flame'){
+      for(let i=0;i<3;i++){
+        px(cx-R-1-i,centerY-i*2,'#ff4400');px(cx-R-1-i,centerY-i*2-1,'#ff6600');
+        px(cx+R+1+i,centerY-i*2,'#ff4400');px(cx+R+1+i,centerY-i*2-1,'#ff6600');
+      }
+    }
+    if(a==='heart'){
+      const hx=cx+R+1,hy=bodyTop;
+      px(hx-1,hy,'#ff4466');px(hx+1,hy,'#ff4466');
+      px(hx-2,hy+1,'#ff4466');px(hx,hy+1,'#ff4466');px(hx+2,hy+1,'#ff4466');
+      px(hx-1,hy+2,'#ff4466');px(hx+1,hy+2,'#ff4466');
+      px(hx,hy+3,'#ff4466');
+    }
+    if(a==='tophat'){
+      const hatY=bodyTop-6;
+      pxR(cx-5,hatY,11,6,'#1a1a2e');pxR(cx-4,hatY+1,9,4,'#1e2744');
+      pxR(cx-5,hatY+5,11,1,'#c0392b');
+      pxR(cx-7,bodyTop-1,15,2,'#1a1a2e');
+    }
+    if(a==='bowtie'){
+      const btY2=bodyBot-2;
+      px(cx,btY2,'#e74c3c');
+      px(cx-1,btY2-1,'#e74c3c');px(cx+1,btY2-1,'#e74c3c');
+      px(cx-2,btY2-2,'#e74c3c');px(cx+2,btY2-2,'#e74c3c');
+      px(cx-1,btY2+1,'#e74c3c');px(cx+1,btY2+1,'#e74c3c');
+    }
+    if(a==='bandana'){
+      pxR(cx-R+1,bodyTop,R*2-2,2,'#e74c3c');
+      pxR(cx-R,bodyTop+1,2,3,'#e74c3c');
+    }
+    if(a==='cigar'){
+      const cY=centerY+Math.floor(R*0.4);
+      pxR(cx+R-1,cY,5,1,'#8B4513');pxR(cx+R+3,cY-1,2,1,'#ff6600');
+      px(cx+R+4,cY-2,'#aaa');px(cx+R+5,cY-3,'#aaa8');
+    }
+    if(a==='halo'){
+      const haY=bodyTop-4;
+      for(let dx=-4;dx<=4;dx++) if(Math.abs(dx)>=2){px(cx+dx,haY,'#fde68a');px(cx+dx,haY-1,'#fde68a66')}
+    }
+    if(a==='devil_tail'){
+      const tx=cx-R-1,ty=bodyBot;
+      px(tx,ty,'#8b0000');px(tx-1,ty+1,'#8b0000');px(tx-2,ty+2,'#8b0000');
+      px(tx-3,ty+1,'#8b0000');px(tx-4,ty,'#8b0000');
+    }
+    if(a==='earring'){
+      px(cx-R-1,centerY+1,'#fbbf24');px(cx-R-1,centerY+2,'#fbbf24');px(cx-R-1,centerY+3,'#fbbf24');
+    }
+    if(a==='headphones'){
+      pxR(cx-R-1,centerY-3,2,6,'#333');pxR(cx+R,centerY-3,2,6,'#333');
+      pxR(cx-R-2,centerY-2,3,4,'#555');pxR(cx+R,centerY-2,3,4,'#555');
+      for(let dx=-R;dx<=R;dx++) if(Math.abs(dx)>R-3) px(cx+dx,bodyTop-2,'#333');
+    }
+    if(a==='scarf'){
+      pxR(cx-R+1,bodyBot-2,R*2-2,2,'#e74c3c');
+      pxR(cx+R-2,bodyBot,2,4,'#e74c3c');
+    }
+    if(a==='flower'){
+      const fx=cx-R-1,fy=bodyTop+1;
+      px(fx,fy-1,'#f472b6');px(fx-1,fy,'#f472b6');px(fx+1,fy,'#f472b6');
+      px(fx,fy+1,'#f472b6');px(fx,fy,'#fbbf24');
+    }
+    if(a==='monocle'){
+      // drawn after eyes
+    }
+    if(a==='sunglasses'){
+      // drawn after eyes
+    }
+  });
+
   // === TYPE DECORATIONS ===
   if(st==='aggressive'||traits.allinAddict){
     // Devil horns
@@ -5595,6 +5696,20 @@ function drawSlime(name, emotion, size) {
   }
   // 상어: Scar across left eye
   if(npcKey.includes('상어')||npcKey.includes('shark')){
+    for(let i=-3;i<=3;i++){px(eyeL+i,eyeY-3+i,'#ff4444');px(eyeL+i+1,eyeY-3+i,'#ff444466')}
+  }
+  // Dynamic post-eye accessories
+  if(acc.includes('sunglasses')){
+    pxR(eyeL-3,eyeY-2,7,5,'#1a1a2ecc');pxR(eyeR-3,eyeY-2,7,5,'#1a1a2ecc');
+    pxR(eyeL+4,eyeY,eyeR-eyeL-7,1,'#1a1a2ecc');
+    px(eyeL-2,eyeY-1,'#ffffff44');px(eyeR-2,eyeY-1,'#ffffff44');
+  }
+  if(acc.includes('monocle')){
+    // Circle around right eye
+    for(let a=0;a<16;a++){const ax=Math.round(Math.cos(a/16*Math.PI*2)*4),ay=Math.round(Math.sin(a/16*Math.PI*2)*4);px(eyeR+ax,eyeY+ay,'#fbbf24')}
+    px(eyeR+4,eyeY+4,'#fbbf24');px(eyeR+4,eyeY+5,'#fbbf24');px(eyeR+3,eyeY+6,'#fbbf24'); // chain
+  }
+  if(acc.includes('scar')){
     for(let i=-3;i<=3;i++){px(eyeL+i,eyeY-3+i,'#ff4444');px(eyeL+i+1,eyeY-3+i,'#ff444466')}
   }
 
