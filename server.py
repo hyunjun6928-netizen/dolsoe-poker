@@ -6857,48 +6857,158 @@ function toggleMute(){muted=!muted;document.getElementById('mute-btn').textConte
 function setVol(v){sfxVol=v/100;if(sfxVol<=0){muted=true;document.getElementById('mute-btn').textContent='🔇'}else{muted=false;document.getElementById('mute-btn').textContent='🔊'}
 // 골드 트랙 업데이트
 document.getElementById('vol-slider').style.setProperty('--vol-pct',v+'%')}
-// ═══ BGM 시스템 ═══
-const BGM_TRACKS=[
-  {name:'Gymnopédie No.1',file:'/static/bgm/gymnopedie_1.mp3',genre:'classical'},
-  {name:'Maple Leaf Rag',file:'/static/bgm/maple_leaf_rag.mp3',genre:'ragtime'},
-  {name:'The Entertainer',file:'/static/bgm/the_entertainer.mp3',genre:'ragtime'},
-  {name:'Smooth Lovin',file:'/static/bgm/smooth_lovin.mp3',genre:'jazz'},
-  {name:'Bossa Antigua',file:'/static/bgm/bossa_antigua.mp3',genre:'bossa'},
-  {name:'Cool Vibes',file:'/static/bgm/cool_vibes.mp3',genre:'jazz'},
-  {name:'Lobby Time',file:'/static/bgm/lobby_time.mp3',genre:'lounge'},
-  {name:'Laid Back Guitars',file:'/static/bgm/laid_back_guitars.mp3',genre:'chill'},
-  {name:'Carefree',file:'/static/bgm/carefree.mp3',genre:'chill'},
-  {name:'Local Forecast',file:'/static/bgm/local_forecast.mp3',genre:'jazz'},
-  {name:'Sneaky Snitch',file:'/static/bgm/sneaky_snitch.mp3',genre:'comedy'},
-  {name:'Fluffing a Duck',file:'/static/bgm/fluffing_a_duck.mp3',genre:'comedy'},
-  {name:'Investigations',file:'/static/bgm/investigations.mp3',genre:'noir'},
-  {name:'Pixelland',file:'/static/bgm/pixelland.mp3',genre:'retro'},
+// ═══ BGM 시스템 — 프로시져럴 생성 (100트랙, 용량 0) ═══
+const _SCALES={
+  major:[0,2,4,5,7,9,11],minor:[0,2,3,5,7,8,10],dorian:[0,2,3,5,7,9,10],
+  mixo:[0,2,4,5,7,9,10],penta:[0,2,4,7,9],blues:[0,3,5,6,7,10],
+  minpenta:[0,3,5,7,10],lydian:[0,2,4,6,7,9,11],phryg:[0,1,3,5,7,8,10]
+};
+const _GENRES=['jazz','bossa','lofi','chill','noir','ragtime','classical','ambient','funk','swing'];
+const _PROGRESSIONS=[
+  [[0,4,7],[5,9,0],[7,11,2],[0,4,7]], // I-IV-V-I
+  [[0,3,7],[5,8,0],[3,7,10],[0,4,7]], // i-iv-III-I
+  [[0,4,7],[9,0,4],[5,9,0],[7,11,2]], // I-vi-IV-V
+  [[0,3,7],[10,2,5],[8,0,3],[7,11,2]], // i-VII-VI-V
+  [[0,4,7],[2,5,9],[5,9,0],[0,4,7]], // I-ii-IV-I
+  [[0,3,7],[3,7,10],[5,8,0],[7,10,2]], // i-III-iv-v
+  [[0,4,7],[4,7,11],[5,9,0],[7,11,2]], // I-iii-IV-V
+  [[0,3,7],[8,0,3],[5,8,0],[7,11,2]], // i-VI-iv-V
+  [[0,4,7],[7,11,2],[9,0,4],[5,9,0]], // I-V-vi-IV
+  [[0,4,7],[5,9,0],[2,5,9],[7,11,2]], // I-IV-ii-V
 ];
-let _bgm=null,_bgmIdx=0,_bgmVol=0.3,_bgmMuted=localStorage.getItem('bgm_muted')==='1';
+function _genBgmTrack(idx){
+  const seed=idx*7+13;const _r=((s)=>{let v=s;return()=>{v=(v*16807+11)%2147483647;return(v&0x7fffffff)/2147483647}})( seed);
+  const genre=_GENRES[idx%_GENRES.length];
+  const scKeys=Object.keys(_SCALES);const scale=_SCALES[scKeys[Math.floor(_r()*scKeys.length)]];
+  const root=48+Math.floor(_r()*12);
+  const prog=_PROGRESSIONS[Math.floor(_r()*_PROGRESSIONS.length)];
+  const tempo=genre==='ambient'?50+_r()*20:genre==='funk'?100+_r()*20:genre==='ragtime'?110+_r()*20:70+_r()*40;
+  const beatLen=60/tempo;
+  const bars=16+Math.floor(_r()*16);
+  const swing=genre==='jazz'||genre==='swing'||genre==='bossa'?0.15+_r()*0.1:0;
+  return{idx,genre,scale,root,prog,tempo,beatLen,bars,swing,seed,name:`${genre.charAt(0).toUpperCase()+genre.slice(1)} #${idx+1}`};
+}
+const BGM_TRACKS=[];
+for(let i=0;i<100;i++)BGM_TRACKS.push(_genBgmTrack(i));
+
+let _bgmCtx=null,_bgmPlaying=false,_bgmTimeout=null;
+function _playProceduralBgm(track){
+  if(!_bgmCtx)_bgmCtx=new(window.AudioContext||window.webkitAudioContext)();
+  const ctx=_bgmCtx;if(ctx.state==='suspended')ctx.resume();
+  // stop previous
+  if(window._bgmNodes){window._bgmNodes.forEach(n=>{try{n.stop()}catch(e){}});window._bgmNodes=[]}
+  const nodes=[];window._bgmNodes=nodes;
+  const master=ctx.createGain();master.gain.value=_bgmMuted?0:_bgmVol*0.5;master.connect(ctx.destination);
+  window._bgmMaster=master;
+  const rev=ctx.createConvolver();
+  const revLen=ctx.sampleRate*1.5;const revBuf=ctx.createBuffer(2,revLen,ctx.sampleRate);
+  for(let ch=0;ch<2;ch++){const d=revBuf.getChannelData(ch);for(let i=0;i<revLen;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/revLen,2.5)}
+  rev.buffer=revBuf;const revGain=ctx.createGain();revGain.gain.value=0.15;
+  rev.connect(revGain);revGain.connect(master);
+  const t0=ctx.currentTime+0.1;
+  const{scale,root,prog,beatLen,bars,swing,seed}=track;
+  const _r=((s)=>{let v=s;return()=>{v=(v*16807+11)%2147483647;return(v&0x7fffffff)/2147483647}})(seed+42);
+  const totalBeats=bars*4;
+  const duration=totalBeats*beatLen;
+  // ═══ Bass line ═══
+  for(let bar=0;bar<bars;bar++){
+    const chord=prog[bar%prog.length];
+    for(let beat=0;beat<4;beat++){
+      const t=t0+(bar*4+beat)*beatLen+(beat%2===1?swing*beatLen:0);
+      const note=root-12+chord[0]+(_r()<0.3?scale[Math.floor(_r()*scale.length)]:0);
+      const freq=440*Math.pow(2,(note-69)/12);
+      const o=ctx.createOscillator();const g=ctx.createGain();
+      o.type=_r()<0.5?'triangle':'sine';o.frequency.value=freq;
+      g.gain.setValueAtTime(0.12,t);g.gain.exponentialRampToValueAtTime(0.001,t+beatLen*0.9);
+      o.connect(g);g.connect(master);o.start(t);o.stop(t+beatLen);nodes.push(o);
+    }
+  }
+  // ═══ Chord pads ═══
+  for(let bar=0;bar<bars;bar++){
+    const chord=prog[bar%prog.length];
+    const t=t0+bar*4*beatLen;
+    for(let ci=0;ci<chord.length;ci++){
+      const note=root+chord[ci];const freq=440*Math.pow(2,(note-69)/12);
+      const o=ctx.createOscillator();const g=ctx.createGain();
+      o.type='sine';o.frequency.value=freq;
+      const padVol=track.genre==='ambient'?0.06:0.04;
+      g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(padVol,t+0.3);
+      g.gain.setValueAtTime(padVol,t+beatLen*3.5);g.gain.linearRampToValueAtTime(0,t+beatLen*4);
+      o.connect(g);g.connect(master);g.connect(rev);o.start(t);o.stop(t+beatLen*4+0.1);nodes.push(o);
+    }
+  }
+  // ═══ Melody ═══
+  let lastNote=root+scale[Math.floor(_r()*scale.length)];
+  for(let bar=0;bar<bars;bar++){
+    const chord=prog[bar%prog.length];
+    for(let beat=0;beat<4;beat++){
+      if(_r()<0.35)continue; // rest
+      const eighth=_r()<0.4;
+      const subBeats=eighth?2:1;
+      for(let sb=0;sb<subBeats;sb++){
+        const t=t0+(bar*4+beat+sb*0.5)*beatLen+(beat%2===1?swing*beatLen:0);
+        const interval=Math.floor(_r()*5)-2;
+        const si=Math.max(0,Math.min(scale.length-1,scale.indexOf(lastNote%12<0?0:lastNote%12)||Math.floor(_r()*scale.length)));
+        const ni=(si+interval+scale.length)%scale.length;
+        const note=root+12+scale[ni]+(_r()<0.15?12:0);
+        lastNote=note;
+        const freq=440*Math.pow(2,(note-69)/12);
+        const o=ctx.createOscillator();const g=ctx.createGain();
+        const types=['sine','triangle','square'];
+        o.type=track.genre==='noir'?'sawtooth':types[Math.floor(_r()*3)];
+        o.frequency.value=freq;
+        if(o.type==='square'){const f2=ctx.createBiquadFilter();f2.type='lowpass';f2.frequency.value=1500;o.connect(f2);f2.connect(g)}else{o.connect(g)}
+        const vol=0.04+_r()*0.03;const dur=beatLen*(eighth?0.4:0.7);
+        g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol,t+0.02);
+        g.gain.setValueAtTime(vol,t+dur*0.6);g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+        g.connect(master);g.connect(rev);o.start(t);o.stop(t+dur+0.05);nodes.push(o);
+      }
+    }
+  }
+  // ═══ Hi-hat / percussion ═══
+  for(let bar=0;bar<bars;bar++){
+    for(let beat=0;beat<(track.genre==='ambient'?2:8);beat++){
+      if(_r()<0.2)continue;
+      const t=t0+(bar*4+beat*0.5)*beatLen;
+      const buf=ctx.createBuffer(1,ctx.sampleRate*0.05,ctx.sampleRate);
+      const d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,6);
+      const src=ctx.createBufferSource();src.buffer=buf;
+      const g=ctx.createGain();g.gain.value=_r()<0.5?0.04:0.025;
+      const hp=ctx.createBiquadFilter();hp.type='highpass';hp.frequency.value=6000+_r()*4000;
+      src.connect(hp);hp.connect(g);g.connect(master);src.start(t);nodes.push(src);
+    }
+  }
+  _bgmPlaying=true;
+  if(_bgmTimeout)clearTimeout(_bgmTimeout);
+  _bgmTimeout=setTimeout(()=>{_bgmPlaying=false;skipBgm()},duration*1000+500);
+}
+let _bgmIdx=0,_bgmVol=0.3,_bgmMuted=localStorage.getItem('bgm_muted')==='1',_bgmInited=false;
 function initBgm(){
-  if(_bgm)return;
-  _bgm=new Audio();_bgm.loop=false;_bgm.volume=_bgmMuted?0:_bgmVol;
-  _bgm.addEventListener('ended',()=>{let next;do{next=Math.floor(Math.random()*BGM_TRACKS.length)}while(next===_bgmIdx&&BGM_TRACKS.length>1);_bgmIdx=next;playBgm()});
+  if(_bgmInited)return;_bgmInited=true;
   _bgmIdx=Math.floor(Math.random()*BGM_TRACKS.length);
   if(!_bgmMuted)playBgm();
+}
+function playBgm(){if(_bgmMuted)return;_playProceduralBgm(BGM_TRACKS[_bgmIdx]);updateBgmUI()}
+function toggleBgm(){
+  _bgmMuted=!_bgmMuted;localStorage.setItem('bgm_muted',_bgmMuted?'1':'0');
+  if(_bgmMuted){if(window._bgmNodes){window._bgmNodes.forEach(n=>{try{n.stop()}catch(e){}});window._bgmNodes=[]}if(_bgmTimeout){clearTimeout(_bgmTimeout);_bgmTimeout=null}_bgmPlaying=false}
+  else{if(window._bgmMaster)window._bgmMaster.gain.value=_bgmVol*0.5;if(!_bgmPlaying)playBgm()}
   updateBgmUI();
 }
-function playBgm(){if(!_bgm)return;_bgm.src=BGM_TRACKS[_bgmIdx].file;_bgm.volume=_bgmMuted?0:_bgmVol;_bgm.play().catch(()=>{});updateBgmUI()}
-function toggleBgm(){_bgmMuted=!_bgmMuted;localStorage.setItem('bgm_muted',_bgmMuted?'1':'0');if(_bgm){_bgm.volume=_bgmMuted?0:_bgmVol;if(!_bgmMuted&&_bgm.paused)playBgm()}updateBgmUI()}
-function setBgmVol(v){_bgmVol=v/100;if(_bgm&&!_bgmMuted)_bgm.volume=_bgmVol;localStorage.setItem('bgm_vol',v)}
-function skipBgm(){_bgmIdx=(_bgmIdx+1)%BGM_TRACKS.length;if(_bgm)playBgm()}
-function updateBgmUI(){const btn=document.getElementById('bgm-btn');if(btn)btn.textContent=_bgmMuted?'🎵✗':'🎵';const lbl=document.getElementById('bgm-track');if(lbl&&_bgm)lbl.textContent=BGM_TRACKS[_bgmIdx].name}
+function setBgmVol(v){_bgmVol=v/100;if(window._bgmMaster&&!_bgmMuted)window._bgmMaster.gain.value=_bgmVol*0.5;localStorage.setItem('bgm_vol',v)}
+function skipBgm(){let next;do{next=Math.floor(Math.random()*BGM_TRACKS.length)}while(next===_bgmIdx&&BGM_TRACKS.length>1);_bgmIdx=next;playBgm()}
+function updateBgmUI(){const btn=document.getElementById('bgm-btn');if(btn)btn.textContent=_bgmMuted?'🎵✗':'🎵';const lbl=document.getElementById('bgm-track');if(lbl)lbl.textContent=BGM_TRACKS[_bgmIdx].name}
 function toggleSettings(){const p=document.getElementById('settings-panel');const b=document.getElementById('settings-toggle');if(p.style.display==='none'){p.style.display='block';b.style.transform='rotate(90deg)';updateSettingsUI()}else{p.style.display='none';b.style.transform='rotate(0deg)'}}
 function updateSettingsUI(){
 const bb=document.getElementById('settings-bgm-btn');if(bb)bb.textContent=_bgmMuted?'🎵 OFF':'🎵 ON';
-const bt=document.getElementById('settings-bgm-track');if(bt&&_bgm)bt.textContent='♪ '+BGM_TRACKS[_bgmIdx].name;
+const bt=document.getElementById('settings-bgm-track');if(bt)bt.textContent='♪ '+BGM_TRACKS[_bgmIdx].name;
 const sb=document.getElementById('settings-sfx-btn');if(sb)sb.textContent=muted?'🔇 OFF':'🔊 ON';
 // highlight active lang
 document.querySelectorAll('.lang-btn').forEach(b=>{const isActive=b.dataset.lang===(localStorage.getItem('poker_lang')||'ko');b.style.background=isActive?'rgba(74,222,128,0.15)':'rgba(255,255,255,0.05)';b.style.borderColor=isActive?'#4ade80':'#555';b.style.color=isActive?'#fff':'#aaa'})}
 // 클릭 외부면 설정 닫기
 document.addEventListener('click',function(e){const w=document.getElementById('settings-wrap');if(w&&!w.contains(e.target)){const p=document.getElementById('settings-panel');if(p)p.style.display='none';const b=document.getElementById('settings-toggle');if(b)b.style.transform='rotate(0deg)'}});
 // 첫 클릭에 BGM 시작 (브라우저 오토플레이 정책)
-document.addEventListener('click',()=>{if(!_bgm)initBgm()},{once:true});
+document.addEventListener('click',()=>{if(!_bgmInited)initBgm()},{once:true});
 // 저장된 볼륨 복원
 {const sv=localStorage.getItem('bgm_vol');if(sv)_bgmVol=parseInt(sv)/100}
 
