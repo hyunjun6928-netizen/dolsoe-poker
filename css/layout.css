@@ -287,9 +287,9 @@ body.in-game #commentary {
 
 /* Table stage: FILL the viewport */
 body.in-game .felt-wrap {
-  max-width: min(1200px, 96vw);
+  max-width: 100%;
   margin: 0 auto;
-  padding-top: 40px;
+  padding-top: 0;
 }
 body.in-game .felt, body.in-game .felt#felt {
   padding-bottom: 52%;
@@ -385,9 +385,9 @@ body.is-lobby .lobby-right .px-panel:nth-child(n+2) {
 /* ===== 12. RESPONSIVE — DESKTOP WIDE (>1400px) ===== */
 @media (min-width: 1401px) {
   .game-layout {
-    grid-template-columns: 180px 1fr 260px;
-    max-width: 1600px;
-    margin: 0 auto;
+    grid-template-columns: 22vw 1fr 22vw;
+    max-width: 100vw;
+    margin: 0;
   }
 }
 
