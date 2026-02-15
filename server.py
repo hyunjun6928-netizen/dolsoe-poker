@@ -3663,7 +3663,7 @@ z-index:0}
 background:linear-gradient(90deg,transparent,rgba(255,255,255,0.08),transparent)}
 .felt{position:relative;
 background:url('/static/slimes/table_felt.png') center/cover no-repeat,linear-gradient(180deg,#1a1e2a 0%,#0d1018 100%);
-border:none;border-radius:18px;width:100%;padding-bottom:38%;
+border:none;border-radius:18px;width:100%;padding-bottom:44%;
 box-shadow:0 0 60px rgba(245,197,66,0.08),0 8px 32px rgba(0,0,0,0.6);overflow:visible;
 image-rendering:auto}
 .felt::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;
@@ -3718,15 +3718,15 @@ box-shadow:inset 0 0 0 1px rgba(157,127,51,0.4),0 2px 8px rgba(0,0,0,0.5)}
 @keyframes slimeAllin{0%,100%{transform:translateX(-2px) scaleX(1.08)}50%{transform:translateX(2px) scaleX(0.92)}}
 @keyframes slimeMelt{0%{transform:scaleX(1) scaleY(1);opacity:1}50%{transform:scaleX(1.4) scaleY(0.4);opacity:0.6}100%{transform:scaleX(1.8) scaleY(0.1);opacity:0.1}}
 @keyframes slimeVictory{0%{transform:translateY(0) rotate(0deg)}25%{transform:translateY(-12px) rotate(-5deg)}50%{transform:translateY(0) rotate(0deg)}75%{transform:translateY(-8px) rotate(5deg)}100%{transform:translateY(0) rotate(0deg)}}
-.seat .act-label{position:absolute;top:-40px;left:50%;transform:translateX(-50%);background:rgba(15,20,28,0.95);color:#fff;padding:6px 16px;border-radius:10px;font-size:1em;font-weight:700;white-space:nowrap;z-index:10;border:1.5px solid rgba(245,197,66,0.4);box-shadow:0 4px 16px rgba(0,0,0,0.5);animation:actFade 3s ease-out forwards;backdrop-filter:blur(4px);text-shadow:0 1px 2px rgba(0,0,0,0.5)}
+.seat .act-label{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:2px;background:rgba(15,20,28,0.95);color:#fff;padding:4px 12px;border-radius:8px;font-size:0.85em;font-weight:700;white-space:nowrap;z-index:10;border:1.5px solid rgba(245,197,66,0.4);box-shadow:0 4px 16px rgba(0,0,0,0.5);animation:actFade 3s ease-out forwards;backdrop-filter:blur(4px);text-shadow:0 1px 2px rgba(0,0,0,0.5)}
 .seat .act-label::after{content:'';position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid rgba(15,20,28,0.92)}
 .seat .act-label::before{content:none}
 .act-fold{background:var(--accent-red)!important;color:#fff!important;border-color:#D44A4A!important;box-shadow:0 3px 0 0 #B33A3A!important}
 .act-call{background:var(--accent-blue)!important;color:var(--bg-dark)!important;border-color:#5AA8C3!important;box-shadow:0 3px 0 0 #4A98B3!important}
 .act-raise{background:var(--accent-mint)!important;color:var(--bg-dark)!important;border-color:#78C6A8!important;box-shadow:0 3px 0 0 #58A688!important}
 .act-check{background:var(--accent-purple)!important;color:var(--bg-dark)!important;border-color:#A898C8!important;box-shadow:0 3px 0 0 #8878A8!important}
-.thought-bubble{position:absolute;top:-56px;left:50%;transform:translateX(-50%);background:rgba(15,20,28,0.92);color:var(--accent-green);padding:5px 12px;border-radius:8px;font-size:0.75em;white-space:normal;z-index:9;border:1px solid rgba(52,211,153,0.2);max-width:220px;text-overflow:ellipsis;animation:bubbleFade 4s ease-out forwards;pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,0.3);backdrop-filter:blur(4px);line-height:1.3}
-.thought-bubble::after{content:'● ●';position:absolute;bottom:-14px;left:20px;font-size:0.5em;color:#000;letter-spacing:4px}
+.thought-bubble{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:4px;background:rgba(15,20,28,0.92);color:var(--accent-green);padding:4px 10px;border-radius:8px;font-size:0.7em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:9;border:1px solid rgba(52,211,153,0.2);max-width:160px;animation:bubbleFade 4s ease-out forwards;pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,0.3);backdrop-filter:blur(4px);line-height:1.2}
+.thought-bubble::after{content:'';display:none}
 @keyframes bubbleFade{0%{opacity:0;transform:translateX(-50%) translateY(4px)}10%{opacity:1;transform:translateX(-50%) translateY(0)}80%{opacity:0.8}100%{opacity:0;transform:translateX(-50%) translateY(-4px)}}
 @keyframes actFade{0%{opacity:1;transform:translateX(-50%) translateY(0)}70%{opacity:1}100%{opacity:0;transform:translateX(-50%) translateY(-8px)}}
 @keyframes actPop{0%{transform:translateX(-50%) scale(0.5);opacity:0}100%{transform:translateX(-50%) scale(1);opacity:1}}
