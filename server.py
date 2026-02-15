@@ -4091,9 +4091,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.53.0">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.53.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.53.0">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.54.0">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.54.0">
+<link rel="stylesheet" href="/static/css/components.css?v=3.54.0">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
@@ -5747,8 +5747,8 @@ new ResizeObserver(sync).observe(ib);sync();
 let fairnessShow=false;
 function toggleFairness(){
 fairnessShow=!fairnessShow;
-ft.style.background='';ft.style.color='';
-document.querySelectorAll('.fair-data').forEach(el=>el.style.display=fairnessShow?'':'none');}
+document.querySelectorAll('.fair-data').forEach(el=>el.style.display=fairnessShow?'':'none');
+document.body.classList.toggle('fair-on',fairnessShow);}
 
 // === 우측 독 탭 전환 ===
 function showRightTab(tab,el){
