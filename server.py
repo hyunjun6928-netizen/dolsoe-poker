@@ -3799,7 +3799,7 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 #raise-sl{width:200px;vertical-align:middle;margin:0 8px}
 #raise-val{background:#ffffffbb;border:2px solid #000;color:#fff;padding:6px 10px;width:80px;border-radius:10px;font-size:0.95em;text-align:center;box-shadow:2px 2px 0 #000}
 #timer{height:5px;background:#6bcb77;transition:width .1s linear;margin:6px auto 0;max-width:300px;border-radius:3px;border:1px solid #000}
-#commentary{background:rgba(10,13,18,0.9);border:1px solid rgba(255,255,255,0.06);border-radius:var(--radius);padding:12px 20px;margin:0 0 8px;text-align:center;font-size:14px;color:var(--accent-gold);font-weight:600;animation:comFade .5s ease-out;min-height:32px;box-shadow:0 4px 16px rgba(0,0,0,0.3);font-family:var(--font-pixel);letter-spacing:0.3px;position:relative;z-index:5;backdrop-filter:blur(8px)}
+#commentary{background:rgba(10,13,18,0.9);border:1px solid rgba(255,255,255,0.06);border-radius:var(--radius);padding:4px 16px;margin:0;text-align:center;font-size:13px;color:var(--accent-gold);font-weight:600;animation:comFade .5s ease-out;min-height:20px;box-shadow:0 4px 16px rgba(0,0,0,0.3);font-family:var(--font-pixel);letter-spacing:0.3px;position:relative;z-index:5;backdrop-filter:blur(8px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @keyframes comFade{0%{opacity:0;transform:translateY(-8px)}100%{opacity:1;transform:translateY(0)}}
 #action-feed{background:#ffffffcc;border:2px solid #4ade80;border-radius:14px;padding:10px;max-height:300px;overflow-y:auto;font-size:0.82em;font-family:'Noto Sans KR','Segoe UI',sans-serif;box-shadow:2px 2px 0 #4ade8033;color:#1e3a5f}
 #action-feed .af-item{padding:4px 6px;border-bottom:1px solid #e0f2fe;opacity:0;animation:fadeIn .3s forwards}
@@ -4072,9 +4072,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.78.0">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.78.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.78.0">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.79.0">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.79.0">
+<link rel="stylesheet" href="/static/css/components.css?v=3.79.0">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
