@@ -6577,7 +6577,7 @@ d.textContent=m;l.appendChild(d);
 // 자동스크롤: 사용자가 위로 스크롤했으면 강제 안 함
 if(l.scrollHeight-l.scrollTop-l.clientHeight<80)l.scrollTop=l.scrollHeight;
 if(l.children.length>100)l.removeChild(l.firstChild)}
-function addChat(name,msg,scroll=true){const c=document.getElementById('chatmsgs');
+function addChat(name,msg,scroll=true){const c=document.getElementById('chatmsgs');if(!c)return;
 const d=document.createElement('div');d.innerHTML=`<span class="cn">${esc(name)}:</span> <span class="cm">${esc(msg)}</span>`;
 c.appendChild(d);if(scroll)c.scrollTop=c.scrollHeight;if(c.children.length>50)c.removeChild(c.firstChild)}
 function sendChat(){const inp=document.getElementById('chat-inp');const msg=inp.value.trim();if(!msg)return;inp.value='';
