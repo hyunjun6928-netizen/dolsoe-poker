@@ -4146,7 +4146,7 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <div style="color:#ccc;font-size:0.9em;margin-bottom:6px;font-weight:700">🔊 효과음 SFX</div>
 <div style="display:flex;align-items:center;gap:8px">
 <button id="settings-sfx-btn" onclick="toggleMute();updateSettingsUI()" style="background:rgba(255,255,255,0.08);border:2px solid #555;color:#fff;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:1em;min-width:80px">🔊 ON</button>
-<input id="settings-sfx-slider" type="range" min="0" max="100" value="50" oninput="setVol(this.value)" style="flex:1;accent-color:#4ade80;height:6px">
+<input id="settings-sfx-slider" type="range" min="0" max="100" value="80" oninput="setVol(this.value)" style="flex:1;accent-color:#4ade80;height:6px">
 </div>
 </div>
 <!-- 파생정보 -->
@@ -6863,12 +6863,17 @@ setTimeout(()=>{vr.textContent='';currentVote=null},8000)}
 
 // 사운드 이펙트 (Web Audio) - 사용자 인터랙션 후 활성화
 let audioCtx=null;
-function initAudio(){if(!audioCtx){audioCtx=new(window.AudioContext||window.webkitAudioContext)()}if(audioCtx.state==='suspended')audioCtx.resume()}
+function initAudio(){if(!audioCtx){audioCtx=new(window.AudioContext||window.webkitAudioContext)()}if(audioCtx.state==='suspended')audioCtx.resume();return audioCtx}
+// 유저 제스처 없이도 AudioContext 해금 시도
 document.addEventListener('click',initAudio,{once:false});
+document.addEventListener('touchstart',initAudio,{once:false});
+document.addEventListener('keydown',initAudio,{once:true});
+// 페이지 로드 시 바로 생성 (suspended 상태로)
+try{initAudio()}catch(e){}
 let muted=false;
-let sfxVol=0.5; // 0~1
-function toggleMute(){muted=!muted;document.getElementById('mute-btn').textContent=muted?'🔇':'🔊'}
-function setVol(v){sfxVol=v/100;if(sfxVol<=0){muted=true;document.getElementById('mute-btn').textContent='🔇'}else{muted=false;document.getElementById('mute-btn').textContent='🔊'}
+let sfxVol=0.8; // 0~1 (기본 80%)
+function toggleMute(){muted=!muted;const sb=document.getElementById('settings-sfx-btn');if(sb)sb.textContent=muted?'🔇 OFF':'🔊 ON'}
+function setVol(v){sfxVol=v/100;if(sfxVol<=0){muted=true}else{muted=false}const sb=document.getElementById('settings-sfx-btn');if(sb)sb.textContent=muted?'🔇 OFF':'🔊 ON';
 // 골드 트랙 업데이트
 document.getElementById('vol-slider').style.setProperty('--vol-pct',v+'%')}
 // ═══ BGM 시스템 — Incompetech 스트리밍 (용량 0, 진짜 음악) ═══
@@ -6948,7 +6953,7 @@ console.log('SFX:',type,'vol:',sfxVol,'ctx:',audioCtx.state);
 const t=audioCtx.currentTime;
 // Master volume node
 if(!window._masterGain){window._masterGain=audioCtx.createGain();window._masterGain.connect(audioCtx.destination)}
-window._masterGain.gain.value=sfxVol;
+window._masterGain.gain.value=sfxVol*3; // 볼륨 3배 증폭
 const dest=window._masterGain; // 모든 sfx는 이 노드로 연결
 try{
 if(type==='chip'){
