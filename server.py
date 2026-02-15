@@ -3855,9 +3855,9 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 .pl-item .pl-name{font-weight:bold;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pl-item .pl-chips{color:var(--accent-gold);font-size:0.9em}
 .pl-item .pl-status{font-size:0.8em}
-.dock-tab{cursor:pointer;padding:2px 6px;margin-right:4px;opacity:0.6;font-size:0.9em}
+.dock-tab{cursor:pointer;padding:2px 6px;margin-right:4px;opacity:0.5;font-size:0.9em;border-bottom:2px solid transparent}
 .dock-tab.active{opacity:1;border-bottom:2px solid #fff8ee}
-.dock-tab:hover{opacity:0.9}
+.dock-tab:hover{opacity:0.8}
 #chatmsgs{flex:1;overflow-y:auto;font-size:0.82em;padding:6px;line-height:1.5}
 #quick-chat{padding:4px 6px;display:flex;gap:3px;flex-wrap:wrap;border-top:1px solid #e8d0b8}
 #quick-chat button{background:var(--bg-panel-alt);border:1px solid var(--frame);border-radius:6px;padding:3px 10px;font-size:0.75em;cursor:pointer;font-family:var(--font-pixel);color:var(--text-secondary);transition:all .15s}
@@ -4071,9 +4071,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 @keyframes delayPulse{0%,100%{opacity:1}50%{opacity:0.6}}
 #delay-badge{animation:delayPulse 3s ease-in-out infinite}
 /* ═══ RIGHT DOCK TABS ═══ */
-.dock-tab{cursor:pointer;padding:2px 6px;margin-right:4px;opacity:0.6;font-size:0.9em}
+.dock-tab{cursor:pointer;padding:2px 6px;margin-right:4px;opacity:0.5;font-size:0.9em;border-bottom:2px solid transparent}
 .dock-tab.active{opacity:1;border-bottom:2px solid var(--text-light)}
-.dock-tab:hover{opacity:0.9}
+.dock-tab:hover{opacity:0.8}
 </style>
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
