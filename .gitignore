@@ -5,6 +5,8 @@ assets/slimes/*/
 !assets/slimes/*.png
 !assets/fonts/
 !assets/fonts/*.woff2
+!assets/bgm/
+!assets/bgm/*.mp3
 gen_sprites.py
 gen_sprites_v2.py
 sprites.js
