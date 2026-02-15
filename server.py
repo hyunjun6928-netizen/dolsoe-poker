@@ -5078,7 +5078,7 @@ return layouts[Math.min(n,8)]||layouts[6]})(Math.max(s.players.length,4));
 const maxSeats=seatPos?seatPos.length:0;
 for(let ei=s.players.length;ei<maxSeats;ei++){
 const ee=document.createElement('div');ee.className='seat seat-'+ei+' empty-seat';
-ee.innerHTML='<div class="seat-unit"><div class="chair-shadow"></div><div class="chair-sprite"><img src="/static/slimes/casino_chair.png" alt="" loading="lazy" onerror="this.remove()"></div><div class="slime-sprite"></div></div><div class="nm" style="border-style:dashed">—</div>';
+ee.innerHTML='<div class="seat-unit"><div class="slime-sprite"></div></div><div class="nm" style="border-style:dashed">—</div>';
 if(seatPos&&seatPos[ei]){ee.style.position='absolute';ee.style.top=seatPos[ei].t;ee.style.left=seatPos[ei].l;ee.style.bottom='auto';ee.style.right='auto';ee.style.transform='translate(-50%,-50%)';ee.style.textAlign='center'}
 f.appendChild(ee)}
 s.players.forEach((p,i)=>{const el=document.createElement('div');
@@ -6769,7 +6769,7 @@ function cleanSlimeSrc(src, cb) {
   return src;
 }
 (function(){
-  const all = Object.values(SLIME_PNG_MAP).concat(GENERIC_SLIMES).concat(Object.values(FLOOR_SLIMES||{})).concat(FLOOR_GENERIC||[]).concat(['/static/slimes/casino_chair.png']);
+  const all = Object.values(SLIME_PNG_MAP).concat(GENERIC_SLIMES).concat(Object.values(FLOOR_SLIMES||{})).concat(FLOOR_GENERIC||[]).concat([]);
   [...new Set(all)].forEach(src => cleanSlimeSrc(src));
 })();
 
@@ -6785,7 +6785,6 @@ function renderSlimeToSeat(name, emotion) {
   const slimeCanvas = drawSlime(name, emotion, 88);
   const dataUrl = slimeCanvas.toDataURL();
   return `<div class="seat-unit">` +
-    `<div class="chair-shadow"></div>` +
     `<div class="slime-sprite"><div style="width:88px;height:88px;background:url('${dataUrl}') center/contain no-repeat" class="${animClass}"></div></div>` +
     `</div>`;
 }
