@@ -3726,14 +3726,14 @@ box-shadow:inset 0 0 0 1px rgba(157,127,51,0.4),0 2px 8px rgba(0,0,0,0.5)}
 @keyframes slimeAllin{0%,100%{transform:translateX(-2px) scaleX(1.08)}50%{transform:translateX(2px) scaleX(0.92)}}
 @keyframes slimeMelt{0%{transform:scaleX(1) scaleY(1);opacity:1}50%{transform:scaleX(1.4) scaleY(0.4);opacity:0.6}100%{transform:scaleX(1.8) scaleY(0.1);opacity:0.1}}
 @keyframes slimeVictory{0%{transform:translateY(0) rotate(0deg)}25%{transform:translateY(-12px) rotate(-5deg)}50%{transform:translateY(0) rotate(0deg)}75%{transform:translateY(-8px) rotate(5deg)}100%{transform:translateY(0) rotate(0deg)}}
-.seat .act-label{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:1px;background:rgba(15,20,28,0.92);color:#fff;padding:3px 10px;border-radius:6px;font-size:0.65em;font-weight:700;white-space:normal;word-break:keep-all;max-width:260px;min-width:60px;z-index:25;border:1px solid rgba(245,197,66,0.3);box-shadow:0 1px 4px rgba(0,0,0,0.4);animation:actFade 2.5s ease-out forwards;text-shadow:0 1px 1px rgba(0,0,0,0.5)}
+.seat .act-label{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:1px;background:rgba(15,20,28,0.92);color:#fff;padding:4px 12px;border-radius:6px;font-size:0.85em;font-weight:700;white-space:normal;word-break:keep-all;max-width:260px;min-width:60px;z-index:25;border:1px solid rgba(245,197,66,0.3);box-shadow:0 1px 4px rgba(0,0,0,0.4);animation:actFade 2.5s ease-out forwards;text-shadow:0 1px 1px rgba(0,0,0,0.5)}
 .seat .act-label::after{display:none}
 .seat .act-label::before{content:none}
 .act-fold{background:var(--accent-red)!important;color:#fff!important;border-color:#D44A4A!important;box-shadow:0 3px 0 0 #B33A3A!important}
 .act-call{background:var(--accent-blue)!important;color:var(--bg-dark)!important;border-color:#5AA8C3!important;box-shadow:0 3px 0 0 #4A98B3!important}
 .act-raise{background:var(--accent-mint)!important;color:var(--bg-dark)!important;border-color:#78C6A8!important;box-shadow:0 3px 0 0 #58A688!important}
 .act-check{background:var(--accent-purple)!important;color:var(--bg-dark)!important;border-color:#A898C8!important;box-shadow:0 3px 0 0 #8878A8!important}
-.thought-bubble{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:18px;background:rgba(15,20,28,0.9);color:var(--accent-green);padding:4px 10px;border-radius:6px;font-size:0.6em;white-space:normal;word-break:keep-all;z-index:24;border:1px solid rgba(52,211,153,0.15);max-width:280px;min-width:80px;animation:bubbleFade 4s ease-out forwards;pointer-events:none;box-shadow:0 1px 4px rgba(0,0,0,0.3);line-height:1.3}
+.thought-bubble{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:18px;background:rgba(15,20,28,0.9);color:var(--accent-green);padding:5px 12px;border-radius:6px;font-size:0.8em;white-space:normal;word-break:keep-all;z-index:24;border:1px solid rgba(52,211,153,0.15);max-width:280px;min-width:80px;animation:bubbleFade 4s ease-out forwards;pointer-events:none;box-shadow:0 1px 4px rgba(0,0,0,0.3);line-height:1.3}
 .thought-bubble::after{content:'';display:none}
 /* 좌우 사이드 좌석: 대사를 옆에 표시 */
 .seat-side-left .act-label,.seat-side-right .act-label{bottom:100%;top:auto;left:50%;right:auto;transform:translateX(-50%);margin-bottom:1px;margin-left:0;margin-right:0}
@@ -3741,10 +3741,10 @@ box-shadow:inset 0 0 0 1px rgba(157,127,51,0.4),0 2px 8px rgba(0,0,0,0.5)}
 @keyframes bubbleFade{0%{opacity:0;transform:translateX(-50%) translateY(4px)}10%{opacity:1;transform:translateX(-50%) translateY(0)}80%{opacity:0.8}100%{opacity:0;transform:translateX(-50%) translateY(-4px)}}
 @keyframes actFade{0%{opacity:1;transform:translateX(-50%)}70%{opacity:1}100%{opacity:0;transform:translateX(-50%) translateY(-6px)}}
 @keyframes actPop{0%{transform:translateX(-50%) scale(0.5);opacity:0}100%{transform:translateX(-50%) scale(1);opacity:1}}
-.seat .nm{font-size:0.8em;font-weight:700;white-space:nowrap;background:rgba(15,20,28,0.9);color:#fff;padding:2px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);display:inline-block;box-shadow:0 1px 6px rgba(0,0,0,0.4);letter-spacing:0.3px;text-shadow:0 1px 2px rgba(0,0,0,0.5)}
-.seat .ch{font-size:0.8em;color:var(--accent-gold);font-weight:700;background:rgba(15,20,28,0.9);padding:2px 8px;border-radius:5px;border:1px solid rgba(245,197,66,0.3);text-shadow:0 1px 2px rgba(0,0,0,0.5)}
+.seat .nm{font-size:0.95em;font-weight:700;white-space:nowrap;background:rgba(15,20,28,0.9);color:#fff;padding:2px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);display:inline-block;box-shadow:0 1px 6px rgba(0,0,0,0.4);letter-spacing:0.3px;text-shadow:0 1px 2px rgba(0,0,0,0.5)}
+.seat .ch{font-size:0.95em;color:var(--accent-gold);font-weight:700;background:rgba(15,20,28,0.9);padding:2px 8px;border-radius:5px;border:1px solid rgba(245,197,66,0.3);text-shadow:0 1px 2px rgba(0,0,0,0.5)}
 .seat .st{display:none}
-.seat .bet-chip{font-size:0.75em;color:#fff;margin-top:2px;font-weight:bold;text-shadow:0 1px 0 #000;background:#16a34add;padding:1px 5px;border-radius:3px}
+.seat .bet-chip{font-size:0.9em;color:#fff;margin-top:2px;font-weight:bold;text-shadow:0 1px 0 #000;background:#16a34add;padding:1px 5px;border-radius:3px}
 .chip-fly{position:absolute;z-index:20;font-size:1.2em;pointer-events:none;animation:chipFly .8s ease-in forwards}
 @keyframes chipFly{0%{opacity:1;transform:translate(0,0) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(0.5)}}
 .seat .cards{display:flex;gap:4px;justify-content:center;margin:2px 0;position:relative;z-index:2}
@@ -4091,9 +4091,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.52.0">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.52.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.52.0">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.53.0">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.53.0">
+<link rel="stylesheet" href="/static/css/components.css?v=3.53.0">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
@@ -6198,7 +6198,7 @@ const ringColor=p.win_pct!=null&&!p.folded&&!p.out?(p.win_pct>50?'#44ff88':p.win
 const ringPct=p.win_pct!=null&&!p.folded&&!p.out?p.win_pct:0;
 const avaRing=ringPct>0?`<div class="ava-ring" style="background:conic-gradient(${ringColor} ${ringPct*3.6}deg, #333 ${ringPct*3.6}deg)"></div>`:'';
 /* 에쿼티 바 + 핸드 네임 */
-const eqBar=ringPct>0?`<div style="position:relative;width:80%;max-width:80px;height:5px;background:#222;border-radius:3px;margin:1px auto;overflow:hidden;border:1px solid #444"><div style="height:100%;width:${ringPct}%;background:linear-gradient(90deg,${ringColor},${p.win_pct>50?'#88ffbb':p.win_pct>25?'#ffcc44':'#ff6666'});border-radius:2px;transition:width .5s ease"></div></div><div style="font-size:0.6em;font-weight:700;color:${ringColor};text-align:center">${p.win_pct}%</div>`:''
+const eqBar=ringPct>0?`<div style="position:relative;width:80%;max-width:80px;height:5px;background:#222;border-radius:3px;margin:1px auto;overflow:hidden;border:1px solid #444"><div style="height:100%;width:${ringPct}%;background:linear-gradient(90deg,${ringColor},${p.win_pct>50?'#88ffbb':p.win_pct>25?'#ffcc44':'#ff6666'});border-radius:2px;transition:width .5s ease"></div></div><div style="font-size:0.75em;font-weight:700;color:${ringColor};text-align:center">${p.win_pct}%</div>`:''
 const hn=p.hand_name&&!p.folded&&!p.out?p.hand_name:'';
 const hnEn=p.hand_name_en&&!p.folded&&!p.out?p.hand_name_en:'';
 const handTag=hn?`<div style="font-size:0.55em;color:#ffcc00;text-align:center;font-weight:600">${lang==='en'?hnEn:hn}</div>`:'';
