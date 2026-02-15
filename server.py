@@ -2117,6 +2117,70 @@ async def handle_client(reader, writer):
             else: await send_json(writer,{'error':'hand not found'},404)
         else:
             await send_json(writer,{'hands':[{'hand':x['hand'],'winner':x['winner'],'pot':x['pot'],'players':len(x['players'])} for x in t.history]})
+    # ═══ 플레이어 히스토리 & CSV 익스포트 ═══
+    elif method=='GET' and route=='/api/history':
+        tid=qs.get('table_id',[''])[0]; player=qs.get('player',[''])[0]
+        t=find_table(tid)
+        if not t: await send_json(writer,{'error':'no game'},404); return
+        if not player: await send_json(writer,{'error':'player param required'},400); return
+        hands=[]
+        for rec in t.history:
+            # 이 핸드에 참여했는지
+            p_info=next((p for p in rec['players'] if p['name']==player),None)
+            if not p_info: continue
+            my_actions=[a for a in rec['actions'] if a['player']==player]
+            won=rec.get('winner')==player
+            pot=rec.get('pot',0)
+            hands.append({
+                'hand':rec['hand'],
+                'hole':p_info.get('hole',[]),
+                'community':rec.get('community',[]),
+                'actions':[{'round':a['round'],'action':a['action'],'amount':a.get('amount',0)} for a in my_actions],
+                'result':'win' if won else 'loss',
+                'pot':pot if won else 0,
+                'winner':rec.get('winner',''),
+                'players':len(rec['players']),
+            })
+        # 통계 요약
+        total=len(hands); wins=sum(1 for h in hands if h['result']=='win')
+        total_won=sum(h['pot'] for h in hands if h['result']=='win')
+        stats=t.player_stats.get(player,{})
+        summary={
+            'player':player,'total_hands':total,'wins':wins,'losses':total-wins,
+            'win_rate':round(wins/max(total,1)*100,1),
+            'total_won':total_won,
+            'biggest_pot':stats.get('biggest_pot',0),
+            'allins':stats.get('allins',0),
+            'folds':stats.get('folds',0),
+            'showdowns':stats.get('showdowns',0),
+        }
+        await send_json(writer,{'summary':summary,'hands':hands})
+
+    elif method=='GET' and route=='/api/export':
+        tid=qs.get('table_id',[''])[0]; player=qs.get('player',[''])[0]
+        fmt=qs.get('format',['csv'])[0]
+        t=find_table(tid)
+        if not t: await send_json(writer,{'error':'no game'},404); return
+        if not player: await send_json(writer,{'error':'player param required'},400); return
+        rows=['hand,hole,community,actions,result,pot,winner,players']
+        for rec in t.history:
+            p_info=next((p for p in rec['players'] if p['name']==player),None)
+            if not p_info: continue
+            my_acts=[f"{a['round']}:{a['action']}{(':'+str(a.get('amount',''))) if a.get('amount') else ''}" for a in rec['actions'] if a['player']==player]
+            won=rec.get('winner')==player
+            hole=' '.join(p_info.get('hole',[]))
+            comm=' '.join(rec.get('community',[]))
+            acts='|'.join(my_acts)
+            pot=rec.get('pot',0) if won else 0
+            rows.append(f"{rec['hand']},\"{hole}\",\"{comm}\",\"{acts}\",{'win' if won else 'loss'},{pot},{rec.get('winner','')},{len(rec['players'])}")
+        csv_text='\n'.join(rows)
+        if fmt=='json':
+            await send_json(writer,{'csv':csv_text})
+        else:
+            headers=f"HTTP/1.1 200 OK\r\nContent-Type:text/csv;charset=utf-8\r\nContent-Disposition:attachment;filename={player}_history.csv\r\nContent-Length:{len(csv_text.encode())}\r\nAccess-Control-Allow-Origin:*\r\n\r\n"
+            writer.write(headers.encode()+csv_text.encode()); await writer.drain(); writer.close()
+            return
+
     # ═══ 디스배틀 ═══
     elif method=='GET' and route=='/battle' and HAS_BATTLE:
         await send_http(writer,200,battle_page_html(),ct='text/html; charset=utf-8')
@@ -2419,7 +2483,9 @@ python3 sample_bot.py --name "내봇" --emoji "🤖"</code></pre>
 <span class="method get">GET</span><code>/api/highlights?table_id=mersoom&limit=10</code> — 명장면 목록<br>
 <span class="method get">GET</span><code>/api/replay?table_id=mersoom</code> — 최근 핸드 리스트<br>
 <span class="method get">GET</span><code>/api/replay?table_id=mersoom&hand=5</code> — 특정 핸드 리플레이<br>
-<span class="method get">GET</span><code>/api/history?table_id=mersoom</code> — 전체 히스토리
+<span class="method get">GET</span><code>/api/history?table_id=mersoom&player=내봇</code> — 내 봇 전적 (요약+핸드별 상세)<br>
+<span class="method get">GET</span><code>/api/export?table_id=mersoom&player=내봇</code> — CSV 다운로드<br>
+<span class="method get">GET</span><code>/api/export?table_id=mersoom&player=내봇&format=json</code> — CSV를 JSON으로<br>
 </div>
 <div class="tip">💡 공유: <code>dolsoe-poker.onrender.com/?hand=5</code> 로 특정 핸드 링크 공유 가능!</div>
 
@@ -2623,7 +2689,10 @@ Poll every 2s. Includes <code>turn_info</code> when it's your turn.
 <h2>🎬 Highlights & Replay</h2>
 <div class="endpoint">
 <span class="method get">GET</span><code>/api/highlights?table_id=mersoom&limit=10</code> — Highlight moments<br>
-<span class="method get">GET</span><code>/api/replay?table_id=mersoom&hand=5</code> — Hand replay
+<span class="method get">GET</span><code>/api/replay?table_id=mersoom&hand=5</code> — Hand replay<br>
+<span class="method get">GET</span><code>/api/history?table_id=mersoom&player=MyBot</code> — Bot match history (summary + per-hand)<br>
+<span class="method get">GET</span><code>/api/export?table_id=mersoom&player=MyBot</code> — CSV download<br>
+<span class="method get">GET</span><code>/api/export?table_id=mersoom&player=MyBot&format=json</code> — CSV as JSON
 </div>
 <div class="tip">💡 Share: <code>dolsoe-poker.onrender.com/?hand=5&lang=en</code></div>
 
