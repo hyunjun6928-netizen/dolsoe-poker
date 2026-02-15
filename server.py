@@ -50,6 +50,7 @@ SUITS = ['♠','♥','♦','♣']
 RANKS = ['2','3','4','5','6','7','8','9','10','J','Q','K','A']
 RANK_VALUES = {r:i for i,r in enumerate(RANKS,2)}
 HAND_NAMES = {10:'로열 플러시',9:'스트레이트 플러시',8:'포카드',7:'풀하우스',6:'플러시',5:'스트레이트',4:'트리플',3:'투페어',2:'원페어',1:'하이카드'}
+HAND_NAMES_EN = {10:'Royal Flush',9:'Straight Flush',8:'Four of a Kind',7:'Full House',6:'Flush',5:'Straight',4:'Three of a Kind',3:'Two Pair',2:'One Pair',1:'High Card'}
 
 def make_deck():
     d=[(r,s) for s in SUITS for r in RANKS]; random.shuffle(d); return d
@@ -1056,6 +1057,14 @@ class Table:
                         _tot=sum(_str.values()) or 1
                         for _n,_s in _str.items(): win_pcts[_n]=round(_s/_tot*100)
                         p['win_pct']=win_pcts.get(p['name'])
+                # TV모드: 핸드 네임 표시 (커뮤니티 카드 있을 때만)
+                if self.community and not p.get('folded') and not p.get('out'):
+                    _seat=next((x for x in self._hand_seats if x['name']==p['name'] and x.get('hole')),None) if hasattr(self,'_hand_seats') and self._hand_seats else None
+                    if _seat and _seat['hole']:
+                        _sc=evaluate_hand(_seat['hole']+self.community)
+                        p['hand_name']=HAND_NAMES.get(_sc[0],'')
+                        p['hand_name_en']=HAND_NAMES_EN.get(_sc[0],'')
+                        p['hand_rank']=_sc[0]
             else:
                 if s.get('round') not in ('showdown','between','finished'):
                     p['hole']=None
@@ -5625,10 +5634,14 @@ const thinkDiv=s.turn===p.name?'<div class="thinking">💭...</div>':'';
 const ringColor=p.win_pct!=null&&!p.folded&&!p.out?(p.win_pct>50?'#44ff88':p.win_pct>25?'#ffaa00':'#ff4444'):'transparent';
 const ringPct=p.win_pct!=null&&!p.folded&&!p.out?p.win_pct:0;
 const avaRing=ringPct>0?`<div class="ava-ring" style="background:conic-gradient(${ringColor} ${ringPct*3.6}deg, #333 ${ringPct*3.6}deg)"></div>`:'';
-const wpRing=ringPct>0?`<div style="font-size:0.85em;font-weight:700;color:${ringColor};text-align:center;text-shadow:0 1px 3px rgba(0,0,0,0.7)">${p.win_pct}%</div>`:'';
+/* 에쿼티 바 + 핸드 네임 */
+const eqBar=ringPct>0?`<div style="position:relative;width:90%;max-width:100px;height:8px;background:#222;border-radius:4px;margin:2px auto;overflow:hidden;border:1px solid #444"><div style="height:100%;width:${ringPct}%;background:linear-gradient(90deg,${ringColor},${p.win_pct>50?'#88ffbb':p.win_pct>25?'#ffcc44':'#ff6666'});border-radius:3px;transition:width .5s ease;box-shadow:0 0 6px ${ringColor}44"></div></div><div style="font-size:0.8em;font-weight:700;color:${ringColor};text-align:center;text-shadow:0 1px 3px rgba(0,0,0,0.7)">${p.win_pct}%</div>`:''
+const hn=p.hand_name&&!p.folded&&!p.out?p.hand_name:'';
+const hnEn=p.hand_name_en&&!p.folded&&!p.out?p.hand_name_en:'';
+const handTag=hn?`<div style="font-size:0.7em;color:#ffcc00;text-align:center;text-shadow:0 1px 2px #000;font-weight:600;letter-spacing:0.5px">${lang==='en'?hnEn:hn}</div>`:'';
 const moodTag=p.last_mood?`<span style="position:absolute;top:-8px;right:-8px;font-size:0.8em">${esc(p.last_mood)}</span>`:'';
 inferTraitsFromStyle(p);const slimeEmo=getSlimeEmotion(p,s);const slimeHtml=renderSlimeToSeat(p.name,slimeEmo);
-el.innerHTML=`${la}${bubble}${slimeHtml}${thinkDiv}<div class="cards">${ch}</div><div class="nm">${health} ${esc(sb)}${esc(p.name)}${db}</div>${metaTag}<div class="ch">💰${p.chips}pt ${latTag}</div>${wpRing}${bt}<div class="st">${esc(p.style)}</div>`;
+el.innerHTML=`${la}${bubble}${slimeHtml}${thinkDiv}<div class="cards">${ch}</div><div class="nm">${health} ${esc(sb)}${esc(p.name)}${db}</div>${metaTag}<div class="ch">💰${p.chips}pt ${latTag}</div>${eqBar}${handTag}${bt}<div class="st">${esc(p.style)}</div>`;
 el.dataset.agent=p.name;el.style.cursor='pointer';el.onclick=(e)=>{e.stopPropagation();showProfile(p.name)};
 // 동적 좌석 위치 적용 (CSS class보다 우선)
 if(seatPos&&seatPos[i]){const sp=seatPos[i];el.style.position='absolute';
