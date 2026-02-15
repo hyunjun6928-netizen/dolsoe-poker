@@ -2113,7 +2113,7 @@ async def handle_client(reader, writer):
     # ═══ 스텔스 방문자 추적 ═══
     _visitor_ip = headers.get('x-forwarded-for','').split(',')[0].strip() or headers.get('x-real-ip','')
     _visitor_ua = headers.get('user-agent','')[:200]
-    if route in ('/', '/battle', '/ranking', '/docs', '/arena') or route.startswith('/colosseum/') or (route=='/api/state' and not qs.get('player')):
+    if route in ('/', '/battle', '/ranking', '/docs') or (route=='/api/state' and not qs.get('player')):
         _track_visitor(_visitor_ip, _visitor_ua, route, headers.get('referer',''))
 
     def find_table(tid=''):
@@ -2132,9 +2132,6 @@ async def handle_client(reader, writer):
         rel=route[len('/static/'):]
         if rel.startswith('slimes/'):
             fpath=_os.path.join(BASE,'assets','slimes',rel[len('slimes/'):])
-        elif rel.startswith('colosseum/'):
-            fpath=_os.path.join(BASE,'colosseum','assets',rel[len('colosseum/'):])
-        elif rel.startswith('fonts/'):
             fpath=_os.path.join(BASE,'assets','fonts',rel[len('fonts/'):])
         elif rel.startswith('bgm/'):
             fpath=_os.path.join(BASE,'assets','bgm',rel[len('bgm/'):])
@@ -2155,15 +2152,7 @@ async def handle_client(reader, writer):
             await send_http(writer,404,'Not Found')
         return
 
-    if method=='GET' and route=='/arena':
-        import os as _os2
-        arena_path=_os2.path.join(_os2.path.dirname(_os2.path.abspath(__file__)),'colosseum','index.html')
-        if _os2.path.isfile(arena_path):
-            with open(arena_path,'rb') as _f: data=_f.read()
-            await send_http(writer,200,data,'text/html; charset=utf-8')
-        else:
-            await send_http(writer,404,'Arena not found')
-        return
+    # colosseum removed
     if method=='GET' and route=='/en':
         await send_http(writer,302,'','text/html',extra_headers='Location: /?lang=en\r\n')
     elif method=='GET' and route=='/en/ranking':
@@ -2175,24 +2164,6 @@ async def handle_client(reader, writer):
     elif method=='GET' and route=='/ranking':
         pg=RANKING_PAGE_EN if _lang=='en' else RANKING_PAGE
         await send_http(writer,200,pg,'text/html; charset=utf-8')
-    elif method=='GET' and route=='/arena':
-        # AI Colosseum
-        arena_path=os.path.join(os.path.dirname(__file__),'colosseum','index.html')
-        if os.path.exists(arena_path):
-            with open(arena_path,'r') as f: arena_html=f.read()
-            await send_http(writer,200,arena_html,'text/html; charset=utf-8')
-        else:
-            await send_http(writer,404,'<h1>Arena not found</h1>','text/html')
-    elif method=='GET' and route.startswith('/colosseum/assets/'):
-        # Serve colosseum assets
-        asset_rel=route[len('/colosseum/'):]  # assets/fighter/file.png
-        asset_path=os.path.join(os.path.dirname(__file__),'colosseum',asset_rel)
-        if os.path.exists(asset_path) and '..' not in asset_rel:
-            ct='image/png' if asset_path.endswith('.png') else 'application/json' if asset_path.endswith('.json') else 'application/octet-stream'
-            with open(asset_path,'rb') as f: data=f.read()
-            await send_http(writer,200,data,ct)
-        else:
-            await send_http(writer,404,b'not found','text/plain')
     elif method=='GET' and route=='/docs':
         pg=DOCS_PAGE_EN if _lang=='en' else DOCS_PAGE
         await send_http(writer,200,pg,'text/html; charset=utf-8')
