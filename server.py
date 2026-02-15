@@ -5117,7 +5117,7 @@ document.getElementById('reactions').style.display='flex';
 document.getElementById('new-btn').style.display='none';
 document.getElementById('actions').style.display='none';
 document.body.classList.add('is-spectator');
-startPolling();tryWS();fetchCoins();}
+startPolling();tryWS();fetchCoins();loadReplays();loadHighlights();}
 
 // === 🔒 Fairness toggle (파생정보 OFF 기본) ===
 let fairnessShow=false;
@@ -5132,11 +5132,13 @@ document.querySelectorAll('.fair-data').forEach(el=>el.style.display=fairnessSho
 
 // === 우측 독 탭 전환 ===
 function showRightTab(tab,el){
-document.querySelectorAll('.dock-right .dock-panel:not(#action-stack) .dock-tab').forEach(t=>t.classList.remove('active'));
+document.querySelectorAll('.dock-right .dock-panel:not(#action-stack):not(:last-child) .dock-tab').forEach(t=>t.classList.remove('active'));
 if(el)el.classList.add('active');
 const rp=document.getElementById('replay-panel');if(rp)rp.style.display=tab==='replay'?'block':'none';
 const hp=document.getElementById('highlights-panel');if(hp)hp.style.display=tab==='highlights'?'block':'none';
 const gp=document.getElementById('guide-panel');if(gp)gp.style.display=tab==='guide'?'block':'none';
+if(tab==='replay')loadReplays();
+if(tab==='highlights')loadHighlights();
 }
 
 // === 에이전트 패널 렌더 ===
