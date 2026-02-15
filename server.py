@@ -4034,7 +4034,7 @@ h1{display:none}
 #darkhorse-overlay .dh-text{font-size:2.8em;font-weight:900;color:#6bcb77;-webkit-text-stroke:2px #000;text-shadow:3px 3px 0 #000;animation:allinPulse .4s ease-in-out 3}
 #mvp-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:radial-gradient(circle,#ffd93d44,#000000dd);display:none;align-items:center;justify-content:center;z-index:100}
 #mvp-overlay .mvp-text{font-size:2.8em;font-weight:900;color:#ffd93d;-webkit-text-stroke:2px #000;text-shadow:3px 3px 0 #000;animation:allinPulse .4s ease-in-out 3}
-#vote-panel{background:#ffffffcc;border:2.5px solid #000;border-radius:14px;padding:8px;margin-top:4px;text-align:center;display:none;box-shadow:3px 3px 0 #000}
+#vote-panel{display:none!important}
 #vote-panel .vp-title{color:#6b7050;font-size:0.85em;margin-bottom:4px}
 #vote-panel .vp-btns{display:flex;gap:4px;flex-wrap:wrap;justify-content:center}
 #vote-panel .vp-btn{background:#ffffffbb;border:2px solid #000;color:#333;padding:4px 12px;border-radius:10px;cursor:pointer;font-size:0.8em;box-shadow:2px 2px 0 #000;transition:all .1s}
