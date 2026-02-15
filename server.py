@@ -7790,13 +7790,135 @@ function downloadAgentData(){
   document.body.appendChild(a);a.click();a.remove();
 }
 
+// ═══ Feature 8: 킬캠 리플레이 — 올인/큰팟 종료 후 미니 재현 ═══
+function showKillCam(state){
+  if(!state.showdown_result||state.showdown_result.length<2) return;
+  const pot=state.pot||0;
+  if(pot<100&&!state.showdown_result.some(p=>p.winner)) return; // 작은 팟 스킵
+  const winner=state.showdown_result.find(p=>p.winner);
+  const loser=state.showdown_result.find(p=>!p.winner);
+  if(!winner||!loser) return;
+  if(window._lastKillCam===state.hand) return;
+  window._lastKillCam=state.hand;
+  const comm=state.community||[];
+  const kcDiv=document.createElement('div');kcDiv.id='killcam';
+  kcDiv.style.cssText='position:fixed;bottom:80px;right:20px;z-index:250;background:rgba(0,0,0,0.92);border:2px solid #ff4444;border-radius:14px;padding:16px 20px;font-family:var(--font-pixel);min-width:280px;box-shadow:0 0 30px rgba(255,68,68,0.3);animation:kcSlideIn 0.4s ease-out;cursor:pointer';
+  kcDiv.onclick=()=>kcDiv.remove();
+  // 커뮤니티 카드 HTML
+  let commHtml='';
+  comm.forEach((c,i)=>{
+    const rank=c.rank||c[0]||'?';const suit=c.suit||c[1]||'?';
+    const red=['♥','♦'].includes(suit);
+    commHtml+=`<span class="kc-card" style="display:inline-block;background:#F09858;border:1px solid #9D7F33;border-radius:4px;padding:2px 4px;margin:1px;font-size:0.85em;color:${red?'#D24C59':'#050F1A'};opacity:0;animation:kcCardFlip 0.3s ${0.5+i*0.4}s forwards">${rank}${suit}</span>`;
+  });
+  // 홀카드
+  const wCards=(winner.hole||[]).map(c=>{const r=c.rank||c[0]||'?';const s=c.suit||c[1]||'?';return r+s}).join(' ');
+  const lCards=(loser.hole||[]).map(c=>{const r=c.rank||c[0]||'?';const s=c.suit||c[1]||'?';return r+s}).join(' ');
+  kcDiv.innerHTML=`
+    <div style="color:#ff4444;font-size:0.75em;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">
+      <span>🎬 KILL CAM</span><span style="color:#666">핸드 #${state.hand}</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+      <div style="text-align:center">
+        <div style="color:#ffd700;font-weight:bold;font-size:0.9em">${esc(winner.emoji)} ${esc(winner.name)}</div>
+        <div style="color:#4ade80;font-size:0.8em;opacity:0;animation:kcCardFlip 0.3s 2.5s forwards">${wCards}</div>
+      </div>
+      <div style="color:#ff4444;font-size:1.2em;align-self:center">⚔️</div>
+      <div style="text-align:center">
+        <div style="color:#888;font-size:0.9em">${esc(loser.emoji)} ${esc(loser.name)}</div>
+        <div style="color:#ff6666;font-size:0.8em;opacity:0;animation:kcCardFlip 0.3s 2.8s forwards">${lCards}</div>
+      </div>
+    </div>
+    <div style="text-align:center;margin-bottom:6px">${commHtml}</div>
+    <div style="text-align:center;opacity:0;animation:kcCardFlip 0.3s 3.2s forwards">
+      <span style="color:#ffd700;font-weight:bold;font-size:1em">🏆 ${esc(winner.hand||'Win')} +${pot}pt</span>
+    </div>
+    <div style="color:#555;font-size:0.6em;text-align:center;margin-top:6px">클릭하면 닫힘</div>`;
+  document.body.appendChild(kcDiv);
+  setTimeout(()=>{if(kcDiv.parentNode)kcDiv.remove()},8000);
+}
+
+// ═══ Feature 9: 모바일 스와이프 바텀 시트 ═══
+function initMobileSheet(){
+  if(window.innerWidth>700) return;
+  let sheet=document.getElementById('mobile-sheet');
+  if(sheet) return; // 이미 생성됨
+  sheet=document.createElement('div');sheet.id='mobile-sheet';
+  sheet.style.cssText='position:fixed;bottom:52px;left:0;right:0;z-index:100;background:rgba(10,13,20,0.96);border-top:2px solid #4ade80;border-radius:16px 16px 0 0;transform:translateY(100%);transition:transform 0.3s ease;max-height:45vh;overflow:hidden;display:flex;flex-direction:column;backdrop-filter:blur(12px)';
+  // 핸들
+  const handle=document.createElement('div');
+  handle.style.cssText='text-align:center;padding:8px;cursor:pointer;flex-shrink:0';
+  handle.innerHTML='<div style="width:40px;height:4px;background:#4ade80;border-radius:2px;margin:0 auto"></div>';
+  // 탭 버튼
+  const tabs=document.createElement('div');
+  tabs.style.cssText='display:flex;gap:0;flex-shrink:0;border-bottom:1px solid #222';
+  tabs.innerHTML=`
+    <button class="ms-tab active" data-tab="chat" style="flex:1;background:transparent;border:none;color:#4ade80;padding:8px;font-family:var(--font-pixel);font-size:0.8em;cursor:pointer;border-bottom:2px solid #4ade80">💬 채팅</button>
+    <button class="ms-tab" data-tab="log" style="flex:1;background:transparent;border:none;color:#888;padding:8px;font-family:var(--font-pixel);font-size:0.8em;cursor:pointer">📜 로그</button>
+    <button class="ms-tab" data-tab="agents" style="flex:1;background:transparent;border:none;color:#888;padding:8px;font-family:var(--font-pixel);font-size:0.8em;cursor:pointer">🤖 AI</button>`;
+  // 콘텐츠
+  const content=document.createElement('div');content.id='ms-content';
+  content.style.cssText='flex:1;overflow-y:auto;padding:8px;font-size:0.85em;color:#ccc;font-family:var(--font-pixel)';
+  sheet.appendChild(handle);sheet.appendChild(tabs);sheet.appendChild(content);
+  document.body.appendChild(sheet);
+  // 탭 전환
+  let activeTab='chat';
+  tabs.querySelectorAll('.ms-tab').forEach(btn=>{
+    btn.onclick=()=>{
+      activeTab=btn.dataset.tab;
+      tabs.querySelectorAll('.ms-tab').forEach(b=>{b.style.color='#888';b.style.borderBottom='none'});
+      btn.style.color='#4ade80';btn.style.borderBottom='2px solid #4ade80';
+      updateMobileSheet(activeTab);
+    };
+  });
+  // 스와이프 토글
+  let isOpen=false;
+  handle.onclick=()=>{
+    isOpen=!isOpen;
+    sheet.style.transform=isOpen?'translateY(0)':'translateY(100%)';
+    if(isOpen) updateMobileSheet(activeTab);
+  };
+  // 터치 스와이프
+  let startY=0;
+  handle.ontouchstart=(e)=>{startY=e.touches[0].clientY};
+  handle.ontouchend=(e)=>{
+    const dy=e.changedTouches[0].clientY-startY;
+    if(dy<-30){isOpen=true;sheet.style.transform='translateY(0)';updateMobileSheet(activeTab)}
+    else if(dy>30){isOpen=false;sheet.style.transform='translateY(100%)'}
+  };
+  // 콘텐츠 업데이트
+  window._mobileSheetTab=()=>activeTab;
+  window._mobileSheetOpen=()=>isOpen;
+}
+function updateMobileSheet(tab){
+  const content=document.getElementById('ms-content');if(!content) return;
+  if(tab==='chat'){
+    const chatEl=document.getElementById('chatmsgs');
+    content.innerHTML=chatEl?chatEl.innerHTML:'<div style="color:#666">채팅 없음</div>';
+  }else if(tab==='log'){
+    const logEl=document.getElementById('log');
+    content.innerHTML=logEl?logEl.innerHTML:'<div style="color:#666">로그 없음</div>';
+  }else if(tab==='agents'){
+    const agentEl=document.getElementById('agent-list');
+    content.innerHTML=agentEl?agentEl.innerHTML:'<div style="color:#666">에이전트 없음</div>';
+  }
+}
+// 모바일 시트 초기화
+if(document.readyState==='complete')initMobileSheet();
+else window.addEventListener('load',initMobileSheet);
+window.addEventListener('resize',initMobileSheet);
+
 // ═══ CSS 추가 ═══
 (function(){
   const style=document.createElement('style');
   style.textContent=`
     @keyframes summaryIn{0%{opacity:0;transform:translate(-50%,-50%) scale(0.7)}100%{opacity:1;transform:translate(-50%,-50%) scale(1)}}
     @keyframes emojiFloat{0%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-200px) scale(1.5)}}
+    @keyframes kcSlideIn{0%{opacity:0;transform:translateX(100px)}100%{opacity:1;transform:translateX(0)}}
+    @keyframes kcCardFlip{0%{opacity:0;transform:rotateY(90deg)}100%{opacity:1;transform:rotateY(0deg)}}
     .float-emoji{position:fixed;pointer-events:none;z-index:300}
+    #mobile-sheet{-webkit-overflow-scrolling:touch}
+    @media(min-width:701px){#mobile-sheet{display:none!important}}
   `;
   document.head.appendChild(style);
 })();
@@ -7807,6 +7929,10 @@ function _enhancedStateHook(s){
   showHandSummary(s);
   updateHandTimeline(s);
   updateBlindBar(s);
+  // 킬캠: 쇼다운 후 팟 100+ 시 자동 재생
+  if((s.round==='between'||s.round==='showdown')&&s.showdown_result){
+    setTimeout(()=>showKillCam(s),1500);
+  }
   // 커뮤니티 카드 변경 시 애니메이션
   const commLen=s.community?s.community.length:0;
   if(commLen>0&&commLen!==(window._lastCommAnim||0)){
@@ -7814,6 +7940,10 @@ function _enhancedStateHook(s){
     setTimeout(animateCommunityCards,100);
   }
   if(s.round==='waiting'||s.round==='preflop')window._lastCommAnim=0;
+  // 모바일 시트 업데이트
+  if(window._mobileSheetOpen&&window._mobileSheetOpen()){
+    updateMobileSheet(window._mobileSheetTab?window._mobileSheetTab():'chat');
+  }
 }
 // Patch: renderState 호출 후 hook 실행
 const _origRender=typeof renderState==='function'?renderState:null;
