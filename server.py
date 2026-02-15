@@ -5370,9 +5370,9 @@ function drawSlime(name, emotion, size) {
   const traits = _slimeTraits[name] || {type:'balanced'};
   const key = name+'_'+emotion+'_'+size+'_'+traits.type;
   if (_slimeCache[key]) return _slimeCache[key];
-  const PX = 3; // pixel size for chunky look
+  const PX = 2; // v4: HD pixel size
   const sz = size || 80;
-  const G = Math.floor(sz/PX); // grid size
+  const G = Math.floor(sz/PX);
   const c = document.createElement('canvas');
   c.width = sz; c.height = sz;
   const g = c.getContext('2d');
@@ -5381,134 +5381,263 @@ function drawSlime(name, emotion, size) {
   const st = traits.type;
   function px(x,y,color){if(x>=0&&x<G&&y>=0&&y<G){g.fillStyle=color;g.fillRect(x*PX,y*PX,PX,PX)}}
   function pxR(x,y,w,h,color){g.fillStyle=color;g.fillRect(x*PX,y*PX,w*PX,h*PX)}
-  // --- Joody 돔 슬라임 (캔버스 중앙 배치) ---
+
+  // --- HD Joody Dome Slime (PX=2, 40x40 grid for 80px) ---
   const cx=Math.floor(G/2);
-  const R=Math.floor(G*0.35); // 돔 반지름
-  const centerY=Math.floor(G*0.45); // 돔 중심 (약간 위쪽)
-  const bodyTop=centerY-R; // 몸 꼭대기
-  const bodyBot=centerY+Math.floor(R*0.6); // 몸 바닥 (아래쪽은 좀 더 짧게)
-  // 몸체 그리기: 위는 반원, 아래는 부드럽게 퍼진 형태
+  const R=Math.floor(G*0.34);
+  const centerY=Math.floor(G*0.46);
+  const bodyTop=centerY-R;
+  const bodyBot=centerY+Math.floor(R*0.65);
+
+  // Body: dome top + slightly flared bottom
   for(let y=bodyTop;y<=bodyBot;y++){
     const dy=y-centerY;
     let hw;
     if(dy<=0){
-      // 상단: 원형
       hw=Math.floor(Math.sqrt(Math.max(R*R-dy*dy,0)));
     } else {
-      // 하단: 약간 벌어지는 형태 (주디 스타일)
       const t=dy/Math.max(bodyBot-centerY,1);
-      hw=R+Math.floor(t*2); // 아래로 갈수록 살짝 넓어짐
+      hw=R+Math.floor(t*3);
     }
-    if(st==='newbie'){hw=Math.max(Math.floor(hw*0.75),2)}
+    if(st==='newbie') hw=Math.max(Math.floor(hw*0.8),3);
     for(let dx=-hw;dx<=hw;dx++){
       let cc=col.body;
-      if(Math.abs(dx)>=hw){cc=col.dark} // 양옆 테두리
-      else if(y<=bodyTop+1&&Math.abs(dx)<hw-1){cc=col.light} // 꼭대기 하이라이트
-      else if(y>=bodyBot-1){cc=col.dark} // 바닥 테두리
-      else if(dy<-R*0.3&&dx>-hw+2&&dx<-hw/3){cc=col.light} // 왼쪽 상단 하이라이트 밴드
+      // Outline
+      if(Math.abs(dx)>=hw) cc=col.dark;
+      else if(y<=bodyTop+1) cc=col.dark;
+      else if(y>=bodyBot) cc=col.dark;
+      // Lighting: left highlight band
+      else if(dy<-R*0.2 && dx>-hw+2 && dx<-hw/4) cc=col.light;
+      // Top highlight
+      else if(y<=bodyTop+3 && Math.abs(dx)<hw-2) cc=col.light;
+      // Bottom shadow
+      else if(y>=bodyBot-2) cc=col.dark;
+      // Right shadow edge
+      else if(dx>=hw-2) { const a=0.15+0.1*((dx-hw+2)/2); cc=_mixColor(col.body,col.dark,a); }
       px(cx+dx,y,cc);
     }
   }
-  // 큰 하이라이트 점 (주디 특유 — 왼쪽 상단)
-  pxR(cx-Math.floor(R*0.5),centerY-Math.floor(R*0.6),2,3,'#ffffffbb');
-  px(cx-Math.floor(R*0.3),centerY-Math.floor(R*0.5),'#ffffff88');
-  // === TYPE DECORATIONS (pixel art) ===
+  // Inner body fill (smooth gradient)
+  for(let y=bodyTop+2;y<bodyBot-1;y++){
+    const dy=y-centerY;
+    let hw;
+    if(dy<=0) hw=Math.floor(Math.sqrt(Math.max(R*R-dy*dy,0)))-1;
+    else { const t=dy/Math.max(bodyBot-centerY,1); hw=R+Math.floor(t*3)-1; }
+    // Subtle vertical gradient
+    const gy=(y-bodyTop)/(bodyBot-bodyTop);
+    if(gy>0.7){
+      for(let dx=-hw+1;dx<hw;dx++){
+        const a=0.08*(gy-0.7)/0.3;
+        px(cx+dx,y,_mixColor(col.body,col.dark,a));
+      }
+    }
+  }
+
+  // Big specular highlight (top-left dome)
+  const hlX=cx-Math.floor(R*0.4), hlY=centerY-Math.floor(R*0.55);
+  pxR(hlX,hlY,3,4,'#ffffffcc');
+  pxR(hlX+1,hlY-1,2,1,'#ffffffaa');
+  px(hlX+3,hlY+1,'#ffffff88');
+  px(hlX-1,hlY+2,'#ffffff66');
+  // Small secondary highlight
+  px(cx-Math.floor(R*0.15),centerY-Math.floor(R*0.7),'#ffffff77');
+
+  // === NPC-SPECIFIC ACCESSORIES ===
+  const npcKey = name.toLowerCase();
+  // 딜러봇: Dealer visor cap (green)
+  if(npcKey.includes('딜러')||npcKey.includes('dealer')){
+    const capY=bodyTop-1;
+    pxR(cx-R+1,capY,R*2-2,3,'#065f46');
+    pxR(cx-R,capY+1,R*2,2,'#065f46');
+    // Visor brim
+    pxR(cx-R-2,capY+3,R*2+4,1,'#047857');
+    pxR(cx-R-3,capY+4,R*2+6,1,'#059669');
+    // Cap highlight
+    pxR(cx-3,capY+1,4,1,'#10b981');
+  }
+  // 도박꾼: Sunglasses (cool)
+  else if(npcKey.includes('도박')||npcKey.includes('gambler')){
+    // drawn after eyes (see below)
+  }
+  // 고수/Pro: Top hat
+  else if(npcKey.includes('고수')||npcKey==='pro'){
+    const hatY=bodyTop-5;
+    pxR(cx-4,hatY,9,5,'#1a1a2e');
+    pxR(cx-3,hatY+1,7,3,'#16213e');
+    // Hat band
+    pxR(cx-4,hatY+4,9,1,'#c0392b');
+    // Brim
+    pxR(cx-6,bodyTop-1,13,2,'#1a1a2e');
+    // Highlight
+    px(cx-2,hatY+1,'#2d3a5e');
+  }
+  // 초보/Newbie: Propeller cap
+  else if(npcKey.includes('초보')||npcKey.includes('newbie')){
+    const capY=bodyTop-1;
+    pxR(cx-R+2,capY,R*2-4,2,'#3b82f6');
+    pxR(cx-R+1,capY+1,R*2-2,1,'#2563eb');
+    // Propeller
+    px(cx,capY-2,'#ef4444');
+    px(cx-2,capY-3,'#fbbf24');px(cx+2,capY-3,'#fbbf24');
+    px(cx-3,capY-2,'#fbbf24');px(cx+3,capY-2,'#fbbf24');
+    px(cx,capY-1,'#ef4444');
+  }
+  // 상어/Shark: Scar + dark look
+  else if(npcKey.includes('상어')||npcKey.includes('shark')){
+    // Scar drawn after eyes (see below)
+  }
+  // 여우/Fox: Bow tie
+  else if(npcKey.includes('여우')||npcKey.includes('fox')){
+    const btY=bodyBot-3;
+    px(cx,btY,'#ef4444');
+    px(cx-1,btY-1,'#ef4444');px(cx+1,btY-1,'#ef4444');
+    px(cx-2,btY-2,'#ef4444');px(cx+2,btY-2,'#ef4444');
+    px(cx-1,btY+1,'#ef4444');px(cx+1,btY+1,'#ef4444');
+    px(cx-2,btY+2,'#ef4444');px(cx+2,btY+2,'#ef4444');
+    px(cx,btY-1,'#fbbf24');px(cx,btY+1,'#fbbf24'); // center knot
+  }
+
+  // === TYPE DECORATIONS ===
   if(st==='aggressive'||traits.allinAddict){
-    px(cx-3,bodyTop-1,col.dark);px(cx-4,bodyTop-2,col.dark);px(cx-3,bodyTop,col.dark);
-    px(cx+3,bodyTop-1,col.dark);px(cx+4,bodyTop-2,col.dark);px(cx+3,bodyTop,col.dark);
-    if(traits.allinAddict){px(cx-2,bodyTop-1,'#ff4400');px(cx+2,bodyTop-1,'#ff4400');px(cx,bodyTop-2,'#ff6600')}
+    // Devil horns
+    for(let i=0;i<3;i++){px(cx-4-i,bodyTop-1-i,col.dark);px(cx+4+i,bodyTop-1-i,col.dark)}
+    if(traits.allinAddict){px(cx-4,bodyTop-2,'#ff4400');px(cx+4,bodyTop-2,'#ff4400');px(cx,bodyTop-3,'#ff6600')}
   }
   if(st==='champion'){
-    const crY=bodyTop-1;
-    pxR(cx-3,crY,7,1,'#fbbf24');
-    px(cx-3,crY-2,'#fbbf24');px(cx,crY-2,'#fbbf24');px(cx+3,crY-2,'#fbbf24');
-    px(cx-3,crY-1,'#fbbf24');px(cx,crY-1,'#fbbf24');px(cx+3,crY-1,'#fbbf24');
-    px(cx,crY-2,'#ef4444');
+    const crY=bodyTop-2;
+    pxR(cx-4,crY,9,1,'#fbbf24');
+    for(let i=0;i<3;i++){px(cx-4+i*4,crY-1,'#fbbf24');px(cx-4+i*4,crY-2,'#fbbf24')}
+    px(cx,crY-3,'#ef4444'); // ruby
+    pxR(cx-1,crY-2,3,1,'#fde68a'); // crown shine
   }
   if(st==='bluffer'){
-    const msk=centerY+1;
-    for(let dy=-1;dy<=1;dy++)for(let dx=1;dx<=R-2;dx++)if(dx+Math.abs(dy)<R-1)px(cx+dx,msk+dy,'#ffffffbb');
+    const msk=centerY+2;
+    for(let dy=-2;dy<=2;dy++)for(let dx=2;dx<=R-1;dx++)if(dx+Math.abs(dy)<R)px(cx+dx,msk+dy,'#ffffffaa');
   }
   if(st==='defensive'){
-    const vy=centerY-Math.floor(R*0.3);
-    for(let dx=-R+2;dx<=R-2;dx++){px(cx+dx,vy,col.dark);px(cx+dx,vy+1,col.dark+'66')}
-  }
-  if(st==='newbie'){
-    const fx=cx+Math.floor(R*0.8),fy=bodyTop;
-    px(fx,fy-1,'#f9a8d4');px(fx-1,fy,'#f9a8d4');px(fx+1,fy,'#f9a8d4');px(fx,fy+1,'#f9a8d4');px(fx,fy,'#fbbf24');
+    // Shield visor line
+    const vy=centerY-Math.floor(R*0.25);
+    for(let dx=-R+3;dx<=R-3;dx++){px(cx+dx,vy,'#334155');px(cx+dx,vy+1,'#33415566')}
   }
   if(st==='loose'){
-    px(cx-R-1,centerY,'#fde68a');px(cx+R+1,centerY-2,'#fde68a');
+    // Sparkles around
+    px(cx-R-2,centerY-2,'#fde68a');px(cx+R+2,centerY-3,'#fde68a');
+    px(cx-R-1,centerY+2,'#fde68a55');px(cx+R+1,centerY+3,'#fde68a55');
   }
-  if(traits.emotional){px(cx+R,bodyTop+2,'#ff6b8a');px(cx+R+1,bodyTop+3,'#ff6b8a')}
+  if(traits.emotional){
+    px(cx+R+1,bodyTop+2,'#ff6b8a');px(cx+R+2,bodyTop+3,'#ff6b8a');px(cx+R+1,bodyTop+4,'#ff6b8a');
+  }
 
-  // === BIG CUTE EYES (주디 스타일 — 크고 동그란 눈) ===
+  // === HD EYES (bigger, cuter, more detail) ===
   const eyeY = centerY + Math.floor(R*0.05);
-  const eyeL = cx - Math.floor(R*0.45), eyeR = cx + Math.floor(R*0.45);
-  const pupilCol1 = col.cheek; // gradient color 1 (pink-ish)
-  const pupilCol2 = col.dark;  // gradient color 2
+  const eyeL = cx - Math.floor(R*0.4), eyeR = cx + Math.floor(R*0.4);
 
   function drawBigEye(ex,ey,lookDx,lookDy){
-    // White sclera 3x4 px
-    pxR(ex-1,ey-1,3,4,'#fff');
-    // Colored pupil 2x2 offset by look direction
-    const pdx=lookDx||0, pdy=lookDy||0;
-    px(ex+pdx,ey+pdy,pupilCol1);px(ex+1+pdx,ey+pdy,pupilCol2);
-    px(ex+pdx,ey+1+pdy,pupilCol2);px(ex+1+pdx,ey+1+pdy,pupilCol1);
-    // White sparkle highlight (top-left)
-    px(ex-1,ey-1,'#fff');
+    // White sclera 5x5 rounded
+    pxR(ex-1,ey-2,4,6,'#fff');
+    px(ex-2,ey-1,'#fff');px(ex-2,ey,'#fff');px(ex-2,ey+1,'#fff');px(ex-2,ey+2,'#fff');
+    px(ex+3,ey-1,'#fff');px(ex+3,ey,'#fff');px(ex+3,ey+1,'#fff');px(ex+3,ey+2,'#fff');
+    // Outline
+    px(ex-1,ey-3,col.eye+'66');px(ex,ey-3,col.eye+'66');px(ex+1,ey-3,col.eye+'66');
+    // Iris 3x3
+    const pdx=lookDx||0,pdy=lookDy||0;
+    const ix=ex+pdx,iy=ey+pdy;
+    pxR(ix-1,iy,3,3,col.cheek);
+    px(ix,iy,col.dark);px(ix+1,iy+1,col.dark); // pupil
+    // Big sparkle
+    px(ix-1,iy,'#fff');
+    px(ix+1,iy+2,'#ffffff88');
   }
   function drawHappyEye(ex,ey){
-    // ^^ closed happy eyes
-    px(ex-1,ey,col.eye);px(ex,ey-1,col.eye);px(ex+1,ey,col.eye);
+    px(ex-2,ey+1,col.eye);px(ex-1,ey,col.eye);px(ex,ey-1,col.eye);px(ex+1,ey,col.eye);px(ex+2,ey+1,col.eye);
   }
   function drawSadEye(ex,ey){
-    px(ex,ey,col.eye);px(ex-1,ey,col.eye);
-    px(ex+1,ey+1,'#88ccff');px(ex+1,ey+2,'#88ccff'); // tear
+    px(ex-1,ey,col.eye);px(ex,ey,col.eye);px(ex+1,ey,col.eye);
+    // Tear
+    px(ex+2,ey+1,'#88ccff');px(ex+2,ey+2,'#88ccff');px(ex+2,ey+3,'#88ccff55');
+  }
+  function drawDeadEye(ex,ey){
+    px(ex-1,ey-1,col.eye);px(ex+1,ey+1,col.eye);px(ex+1,ey-1,col.eye);px(ex-1,ey+1,col.eye);px(ex,ey,col.eye);
   }
 
-  if (emotion === 'happy' || emotion === 'win') {
+  if(emotion==='happy'||emotion==='win'){
     drawHappyEye(eyeL,eyeY);drawHappyEye(eyeR,eyeY);
-  } else if (emotion === 'sad' || emotion === 'lose') {
+  } else if(emotion==='sad'||emotion==='lose'){
     drawSadEye(eyeL,eyeY);drawSadEye(eyeR,eyeY);
-  } else if (emotion === 'angry' || emotion === 'allin') {
+  } else if(emotion==='angry'||emotion==='allin'){
     drawBigEye(eyeL,eyeY,0,1);drawBigEye(eyeR,eyeY,0,1);
-    // Angry brows
-    px(eyeL-1,eyeY-2,col.eye);px(eyeL+1,eyeY-3,col.eye);
-    px(eyeR+1,eyeY-2,col.eye);px(eyeR-1,eyeY-3,col.eye);
-  } else if (emotion === 'think') {
-    drawBigEye(eyeL,eyeY,1,0);drawBigEye(eyeR,eyeY,1,0); // looking right
-    px(cx+R-1,centerY-Math.floor(R*0.4),'#88ccff');px(cx+R-1,centerY-Math.floor(R*0.3),'#88ccff'); // sweat
-  } else if (emotion === 'shock') {
-    // Extra big eyes
-    pxR(eyeL-1,eyeY-2,4,5,'#fff');pxR(eyeR-1,eyeY-2,4,5,'#fff');
-    px(eyeL,eyeY,col.eye);px(eyeR,eyeY,col.eye); // tiny pupils
+    // Angry brows (thicker)
+    for(let i=0;i<3;i++){px(eyeL-2+i,eyeY-4+Math.floor(i/2),col.eye);px(eyeR+2-i,eyeY-4+Math.floor(i/2),col.eye)}
+  } else if(emotion==='think'){
+    drawBigEye(eyeL,eyeY,1,-1);drawBigEye(eyeR,eyeY,1,-1);
+    // Sweat drop
+    px(cx+R,centerY-Math.floor(R*0.3),'#88ccff');px(cx+R,centerY-Math.floor(R*0.2),'#88ccff');
+    px(cx+R+1,centerY-Math.floor(R*0.1),'#88ccff55');
+  } else if(emotion==='shock'){
+    // Super big eyes
+    pxR(eyeL-2,eyeY-3,6,7,'#fff');pxR(eyeR-2,eyeY-3,6,7,'#fff');
+    pxR(eyeL,eyeY-1,2,2,col.eye);pxR(eyeR,eyeY-1,2,2,col.eye);
+    px(eyeL-1,eyeY-2,'#fff');px(eyeR-1,eyeY-2,'#fff');
+  } else if(emotion==='dead'){
+    drawDeadEye(eyeL,eyeY);drawDeadEye(eyeR,eyeY);
   } else {
-    // Normal big sparkly eyes
     drawBigEye(eyeL,eyeY,0,0);drawBigEye(eyeR,eyeY,0,0);
   }
 
-  // Pink cheeks (볼터치 — 주디 특유)
-  const chkY = eyeY + 3;
-  pxR(eyeL-2,chkY,2,1,col.cheek+'77');
-  pxR(eyeR+1,chkY,2,1,col.cheek+'77');
+  // Post-eye accessories
+  // 도박꾼: Sunglasses over eyes
+  if(npcKey.includes('도박')||npcKey.includes('gambler')){
+    pxR(eyeL-3,eyeY-2,7,5,'#1a1a2ecc');
+    pxR(eyeR-3,eyeY-2,7,5,'#1a1a2ecc');
+    pxR(eyeL+4,eyeY,eyeR-eyeL-7,1,'#1a1a2ecc'); // bridge
+    // Lens shine
+    px(eyeL-2,eyeY-1,'#ffffff44');px(eyeR-2,eyeY-1,'#ffffff44');
+  }
+  // 상어: Scar across left eye
+  if(npcKey.includes('상어')||npcKey.includes('shark')){
+    for(let i=-3;i<=3;i++){px(eyeL+i,eyeY-3+i,'#ff4444');px(eyeL+i+1,eyeY-3+i,'#ff444466')}
+  }
 
-  // Mouth
-  const my = eyeY + 4;
-  if (emotion==='happy'||emotion==='win') {
-    px(cx-1,my,col.eye);px(cx,my+1,col.eye);px(cx+1,my,col.eye); // smile
-  } else if (emotion==='sad'||emotion==='lose') {
-    px(cx-1,my+1,col.eye);px(cx,my,col.eye);px(cx+1,my+1,col.eye); // frown
-  } else if (emotion==='shock') {
-    px(cx,my,col.eye);px(cx,my+1,col.eye); // O mouth
-  } else if (emotion==='angry'||emotion==='allin') {
-    px(cx-1,my,col.eye);px(cx,my,col.eye);px(cx+1,my,col.eye); // flat line
+  // Pink cheeks (bigger, softer)
+  const chkY = eyeY + 4;
+  pxR(eyeL-3,chkY,3,2,col.cheek+'55');
+  pxR(eyeR+1,chkY,3,2,col.cheek+'55');
+
+  // Mouth (more expressive)
+  const my = eyeY + 6;
+  if(emotion==='happy'||emotion==='win'){
+    px(cx-2,my,col.eye);px(cx-1,my+1,col.eye);px(cx,my+1,col.eye);px(cx+1,my+1,col.eye);px(cx+2,my,col.eye);
+  } else if(emotion==='sad'||emotion==='lose'){
+    px(cx-2,my+1,col.eye);px(cx-1,my,col.eye);px(cx,my,col.eye);px(cx+1,my,col.eye);px(cx+2,my+1,col.eye);
+  } else if(emotion==='shock'){
+    pxR(cx-1,my,3,2,col.eye);
+  } else if(emotion==='angry'||emotion==='allin'){
+    pxR(cx-2,my,5,1,col.eye);px(cx-2,my-1,col.eye);px(cx+2,my-1,col.eye);
   } else {
-    px(cx,my,col.eye); // tiny dot mouth
+    px(cx-1,my,col.eye);px(cx,my,col.eye);px(cx+1,my,col.eye);
+  }
+
+  // Tiny feet/base
+  const ftY=bodyBot+1;
+  pxR(cx-Math.floor(R*0.5),ftY,3,1,col.dark);
+  pxR(cx+Math.floor(R*0.3),ftY,3,1,col.dark);
+
+  // Drop shadow
+  const shY=bodyBot+2;
+  for(let dx=-R;dx<=R;dx++){
+    const a=Math.max(0,0.2-Math.abs(dx)/(R*2));
+    if(a>0.01) px(cx+dx,shY,`rgba(0,0,0,${a})`);
   }
 
   _slimeCache[key] = c;
   return c;
+}
+// Color mixing util
+function _mixColor(c1,c2,t){
+  const p=s=>{const m=s.match(/[0-9a-f]{2}/gi);return m?m.map(h=>parseInt(h,16)):[128,128,128]};
+  const a=p(c1),b=p(c2);
+  const r=i=>Math.round(a[i]+(b[i]-a[i])*t);
+  return `rgb(${r(0)},${r(1)},${r(2)})`;
 }
 function getSlimeEmotion(p, state) {
   if (p.last_action && (p.last_action.includes('파산') || p.last_action.includes('Busted'))) return 'lose';
