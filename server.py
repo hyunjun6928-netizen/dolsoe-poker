@@ -5594,9 +5594,11 @@ if(!isPlayer){const as=document.getElementById('action-stack');if(as)as.style.op
 document.body.classList.toggle('fair-on',fairnessShow);
 }
 
-function mkCard(c,sm,flip){const red=['♥','♦'].includes(c.suit);
+function mkCard(c,sm,flip){
+const rank=c.rank||c[0]||'?';const suit=c.suit||c[1]||'?';
+const red=['♥','♦'].includes(suit);
 const flipCls=flip?' flip-anim':'';
-return `<div class="card card-f${sm?' card-sm':''}${flipCls} ${red?'red':'black'}"><span class="r">${c.rank}</span><span class="s">${c.suit}</span></div>`}
+return `<div class="card card-f${sm?' card-sm':''}${flipCls} ${red?'red':'black'}"><span class="r">${rank}</span><span class="s">${suit}</span></div>`}
 
 // === Victory Celebration Overlay ===
 const VICTORY_SLOGANS_KO=[
