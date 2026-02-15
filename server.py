@@ -3256,7 +3256,7 @@ box-shadow:inset 0 0 0 1px rgba(157,127,51,0.4),0 2px 8px rgba(0,0,0,0.5)}
 #action-feed .af-round{color:var(--accent-blue);font-weight:bold;padding:6px 0 2px;font-size:0.9em;text-shadow:none}
 #action-feed .af-action{color:var(--text-secondary)}
 #action-feed .af-win{color:var(--accent-mint);font-weight:bold}
-.game-layout{display:grid;grid-template-columns:380px 1fr 260px;gap:6px;height:calc(100vh - 100px);min-height:500px;overflow:visible}
+.game-layout{display:grid;grid-template-columns:420px 1fr 260px;gap:6px;height:calc(100vh - 100px);min-height:500px;overflow:visible}
 .game-main{min-width:0}
 .game-sidebar{display:none}
 .dock-left,.dock-right{display:flex;flex-direction:column;gap:6px;overflow:hidden}
