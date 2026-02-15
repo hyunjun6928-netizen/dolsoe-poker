@@ -2228,6 +2228,14 @@ async def handle_client(reader, writer):
             remaining=result.split(':')[1]
             await send_json(writer,{'error':f'파산 쿨다운 중! {remaining}초 후 재참가 가능','cooldown':int(remaining)},429); return
         if not result:
+            # 중복 닉네임이면 새 토큰 재발급 (토큰 분실 복구)
+            existing_seat=next((s for s in t.seats if s['name']==name and not s.get('out')),None)
+            if existing_seat and not existing_seat['is_bot']:
+                token=generate_token(name)
+                await send_json(writer,{'ok':True,'table_id':t.id,'your_seat':t.seats.index(existing_seat),
+                    'players':[s['name'] for s in t.seats],'token':token,'reconnected':True})
+                await t.add_log(f"🔄 {existing_seat['emoji']} {name} 재접속!")
+                return
             await send_json(writer,{'error':'테이블 꽉참 or 중복 닉네임'},400); return
         # 메타데이터 저장
         joined_seat=next((s for s in t.seats if s['name']==name),None)
