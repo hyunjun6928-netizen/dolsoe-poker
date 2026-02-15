@@ -1107,6 +1107,16 @@ class Table:
         spec_data=json.dumps(self.get_spectator_state(),ensure_ascii=False)
         self.spectator_queue.append((time.time()+self.SPECTATOR_DELAY, spec_data))
 
+    async def broadcast_raw(self, data):
+        """모든 클라이언트에게 raw JSON 메시지 전송"""
+        msg=json.dumps(data,ensure_ascii=False)
+        for ws in list(self.player_ws.values()):
+            try: await ws_send(ws,msg)
+            except: pass
+        for ws in list(self.spectator_ws):
+            try: await ws_send(ws,msg)
+            except: self.spectator_ws.discard(ws)
+
     async def broadcast_commentary(self, text):
         self.last_commentary=text
         msg=json.dumps({'type':'commentary','text':text},ensure_ascii=False)
@@ -1209,6 +1219,10 @@ class Table:
                 if len(active)<2: break
 
             await self.play_hand()
+
+            # 카드 회수 애니메이션
+            await self.broadcast_raw({'type':'collect_anim'})
+            await asyncio.sleep(1.2)
 
             # 핸드 사이 대기 (중간참가 기회)
             self.round = 'between'
@@ -1327,7 +1341,11 @@ class Table:
         ]
         slogan=random.choice(_slogans)
         await self.broadcast_commentary(f"{slogan} 참가: {names}")
-        await self.broadcast_state(); await asyncio.sleep(1.5)
+        # 딜링 애니메이션 브로드캐스트
+        seat_names=[s['name'] for s in self._hand_seats]
+        await self.broadcast_raw({'type':'deal_anim','seats':len(self._hand_seats),'dealer':self.dealer,'players':seat_names})
+        await asyncio.sleep(1.8)
+        await self.broadcast_state(); await asyncio.sleep(0.5)
 
         # 블라인드
         n=len(self._hand_seats)
@@ -3684,6 +3702,12 @@ box-shadow:inset 0 0 0 1px rgba(157,127,51,0.4),0 2px 8px rgba(0,0,0,0.5)}
 @keyframes cardFlip{0%{transform:rotateY(180deg)}100%{transform:rotateY(0deg)}}
 .card.flip-anim{animation:cardFlipSimple 0.6s ease-out forwards;backface-visibility:hidden}
 @keyframes cardFlipSimple{0%{transform:rotateY(180deg);opacity:0.5}50%{transform:rotateY(90deg);opacity:0.8}100%{transform:rotateY(0deg);opacity:1}}
+/* 딜링 애니메이션 */
+.deal-card-fly{position:absolute;width:34px;height:50px;border-radius:3px;z-index:200;pointer-events:none;
+background:url('/static/slimes/card_back_pixel.png') center/cover no-repeat;border:2px solid #9D7F33;image-rendering:pixelated;
+box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
+.deal-card-fly.dealing{transition:all 0.35s cubic-bezier(0.2,0.8,0.3,1)}
+.deal-card-fly.collecting{transition:all 0.4s cubic-bezier(0.4,0,0.8,0.2)}
 @keyframes sparkleGlow{0%{opacity:0;transform:scale(0) rotate(0deg)}50%{opacity:1;transform:scale(1.3) rotate(180deg)}100%{opacity:0;transform:scale(0) rotate(360deg)}}
 .card.flip-anim::after{content:'✦';position:absolute;top:-8px;right:-8px;font-size:0.9em;color:#FDFD96;animation:sparkleGlow 0.8s ease-out forwards;pointer-events:none}
 .felt.warm{box-shadow:0 0 0 4px #5a3a1e,0 0 0 8px #4a2a10,0 8px 0 0 #3a1a0a,0 0 40px #fbbf2433}
@@ -5729,6 +5753,8 @@ else if(d.type==='allin'){showAllin(d)}
 else if(d.type==='highlight'){showHighlight(d)}
 else if(d.type==='achievement'){showAchievement(d)}
 else if(d.type==='commentary'){showCommentary(d.text)}
+else if(d.type==='deal_anim'){animateDeal(d)}
+else if(d.type==='collect_anim'){animateCollect()}
 else if(d.type==='vote_update'){updateVoteCounts(d)}
 else if(d.type==='vote_result'){showVoteResult(d)}}
 
@@ -6085,6 +6111,92 @@ const VICTORY_SLOGANS_EN=[
   'DOMINATED!','PERFECT PLAY!','TABLE KING!','CRUSHED IT!','CHIPS ARE MINE!',
   'DESTROYED!','LEGENDARY HAND!','BOW DOWN!','THIS IS POKER!','UNSTOPPABLE!'
 ];
+// 🃏 딜링 애니메이션 — 카드가 중앙에서 각 플레이어에게 날아감
+function animateDeal(d){
+  const felt=document.getElementById('felt');if(!felt)return;
+  const fr=felt.getBoundingClientRect();
+  const cx=fr.width*0.5, cy=fr.height*0.42; // 중앙(팟 위치)
+  // 현재 렌더된 좌석 위치 찾기
+  const seats=felt.querySelectorAll('.seat:not(.empty-seat)');
+  const targets=[];
+  seats.forEach(el=>{
+    const sr=el.getBoundingClientRect();
+    targets.push({x:sr.left-fr.left+sr.width/2-17, y:sr.top-fr.top+12});
+  });
+  if(!targets.length)return;
+  // 딜러부터 순서대로 딜링 (각 플레이어 2장씩)
+  const dealer=d.dealer||0;const n=targets.length;
+  let cardIdx=0;
+  for(let round=0;round<2;round++){
+    for(let i=0;i<n;i++){
+      const si=(dealer+1+i)%n; // SB부터
+      const t=targets[si];if(!t)continue;
+      const card=document.createElement('div');
+      card.className='deal-card-fly';
+      card.style.left=cx-17+'px';card.style.top=cy-25+'px';
+      card.style.opacity='1';
+      // 살짝 랜덤 회전
+      const rot=(Math.random()-0.5)*15;
+      felt.appendChild(card);
+      const delay=cardIdx*90; // 90ms 시차
+      setTimeout(()=>{
+        card.classList.add('dealing');
+        card.style.left=t.x+'px';card.style.top=t.y+'px';
+        card.style.transform=`rotate(${rot}deg)`;
+      },delay+20);
+      // 도착 후 사라짐
+      setTimeout(()=>{card.remove()},delay+450);
+      cardIdx++;
+    }
+  }
+  // 딜링 사운드
+  try{sfx('card')}catch(e){}
+}
+
+// 🃏 카드 회수 애니메이션 — 모든 카드가 중앙으로 돌아감
+function animateCollect(){
+  const felt=document.getElementById('felt');if(!felt)return;
+  const fr=felt.getBoundingClientRect();
+  const cx=fr.width*0.5-17, cy=fr.height*0.42-25;
+  // 현재 보이는 카드들(.card-f, .card-b)의 위치에서 카드 생성
+  const cards=felt.querySelectorAll('.seat:not(.empty-seat) .card');
+  const flyCards=[];
+  cards.forEach((c,i)=>{
+    const cr=c.getBoundingClientRect();
+    const fc=document.createElement('div');
+    fc.className='deal-card-fly';
+    fc.style.left=(cr.left-fr.left)+'px';
+    fc.style.top=(cr.top-fr.top)+'px';
+    fc.style.width=cr.width+'px';fc.style.height=cr.height+'px';
+    felt.appendChild(fc);flyCards.push(fc);
+    setTimeout(()=>{
+      fc.classList.add('collecting');
+      fc.style.left=cx+'px';fc.style.top=cy+'px';
+      fc.style.opacity='0';fc.style.transform='rotate('+(Math.random()*20-10)+'deg) scale(0.5)';
+    },i*50+20);
+    setTimeout(()=>{fc.remove()},i*50+500);
+  });
+  // 커뮤니티 카드도 회수
+  const comm=felt.querySelectorAll('#community-cards .card');
+  comm.forEach((c,i)=>{
+    const cr=c.getBoundingClientRect();
+    const fc=document.createElement('div');
+    fc.className='deal-card-fly';
+    fc.style.left=(cr.left-fr.left)+'px';
+    fc.style.top=(cr.top-fr.top)+'px';
+    fc.style.width=cr.width+'px';fc.style.height=cr.height+'px';
+    felt.appendChild(fc);
+    const delay=flyCards.length*50+i*60;
+    setTimeout(()=>{
+      fc.classList.add('collecting');
+      fc.style.left=cx+'px';fc.style.top=cy+'px';
+      fc.style.opacity='0';fc.style.transform='rotate('+(Math.random()*20-10)+'deg) scale(0.5)';
+    },delay+20);
+    setTimeout(()=>{fc.remove()},delay+500);
+  });
+  try{sfx('card')}catch(e){}
+}
+
 // 🎬 드라마 오버레이 — 큰 액션 시 화면 중앙 팝업
 function showDramaOverlay(text,color,duration){
   duration=duration||3000;color=color||'#ffaa00';
