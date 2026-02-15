@@ -1539,6 +1539,9 @@ class Table:
 
                 if act!='fold': self.fold_streaks[s['name']]=0
                 acted.add(s['name']); await self.broadcast_state()
+                # 액션 대형 오버레이 브로드캐스트
+                _disp_act=s['last_action'] or act
+                await self.broadcast_raw({'type':'action_display','name':s['name'],'emoji':s.get('emoji',''),'action':_disp_act,'chips':s['chips'],'pot':self.pot})
                 # NPC 반응 채팅: 다른 NPC가 이 액션에 반응 (25% 확률)
                 for other in self._hand_seats:
                     if other['is_bot'] and not other['folded'] and other['name']!=s['name']:
@@ -5755,6 +5758,7 @@ else if(d.type==='achievement'){showAchievement(d)}
 else if(d.type==='commentary'){showCommentary(d.text)}
 else if(d.type==='deal_anim'){animateDeal(d)}
 else if(d.type==='collect_anim'){animateCollect()}
+else if(d.type==='action_display'){showActionBanner(d)}
 else if(d.type==='vote_update'){updateVoteCounts(d)}
 else if(d.type==='vote_result'){showVoteResult(d)}}
 
@@ -6111,6 +6115,36 @@ const VICTORY_SLOGANS_EN=[
   'DOMINATED!','PERFECT PLAY!','TABLE KING!','CRUSHED IT!','CHIPS ARE MINE!',
   'DESTROYED!','LEGENDARY HAND!','BOW DOWN!','THIS IS POKER!','UNSTOPPABLE!'
 ];
+// 📢 액션 배너 — 플레이어 액션을 큰 글씨로 펠트 위에 표시
+function showActionBanner(d){
+  const felt=document.getElementById('felt');if(!felt)return;
+  let old=document.getElementById('action-banner');if(old)old.remove();
+  const act=d.action||'';
+  // 색상 결정
+  let color='#fff';let bg='rgba(0,0,0,0.7)';let icon='';
+  if(act.includes('폴드')||act.includes('FOLD')){color='#888';bg='rgba(40,40,40,0.8)';icon='❌'}
+  else if(act.includes('ALL IN')){color='#ff4444';bg='rgba(80,0,0,0.85)';icon='🔥'}
+  else if(act.includes('레이즈')||act.includes('RAISE')){color='#ffaa00';bg='rgba(60,40,0,0.8)';icon='⬆️'}
+  else if(act.includes('콜')||act.includes('CALL')){color='#44cc44';bg='rgba(0,50,0,0.8)';icon='📞'}
+  else if(act.includes('체크')||act.includes('CHECK')){color='#88bbff';bg='rgba(0,30,70,0.8)';icon='✋'}
+  const b=document.createElement('div');b.id='action-banner';
+  b.style.cssText=`position:absolute;top:38%;left:50%;transform:translate(-50%,-50%) scale(0.3);z-index:180;
+    padding:10px 28px;border-radius:12px;background:${bg};border:2px solid ${color};
+    font-family:var(--font-pixel);text-align:center;pointer-events:none;white-space:nowrap;
+    opacity:0;transition:all 0.25s cubic-bezier(0.2,1,0.3,1)`;
+  b.innerHTML=`<div style="font-size:0.75em;color:#ccc;margin-bottom:2px">${esc(d.emoji||'')} ${esc(d.name||'')}</div>
+    <div style="font-size:1.8em;font-weight:900;color:${color};text-shadow:0 0 12px ${color}">${act}</div>
+    <div style="font-size:0.7em;color:#aaa;margin-top:2px">💰 POT ${d.pot||0}pt</div>`;
+  felt.appendChild(b);
+  requestAnimationFrame(()=>{requestAnimationFrame(()=>{
+    b.style.opacity='1';b.style.transform='translate(-50%,-50%) scale(1)';
+  })});
+  setTimeout(()=>{
+    b.style.opacity='0';b.style.transform='translate(-50%,-50%) scale(0.8) translateY(-20px)';
+    setTimeout(()=>{if(b.parentNode)b.remove()},300);
+  },1800);
+}
+
 // 🃏 딜링 애니메이션 — 카드가 중앙에서 각 플레이어에게 날아감
 function animateDeal(d){
   const felt=document.getElementById('felt');if(!felt)return;
