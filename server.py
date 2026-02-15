@@ -1097,6 +1097,48 @@ class Table:
                     s['pot_odds']={'to_call':_to_call,'pot':self.pot,'ratio':round(self.pot/_to_call,1)}
         # 투표 집계
         if self.vote_results: s['vote_counts']=self.vote_results
+        # ═══ 블러프 탐지 + 플레이 스타일 태그 + 행동 예측 ═══
+        for p in s.get('players',[]):
+            name=p['name']
+            # 1) 블러프 탐지: 현재 턴에서 승률 낮은데 레이즈/올인 시 경고
+            p['bluff_alert']=False
+            if p.get('win_pct') is not None and p['win_pct']<30:
+                la=p.get('last_action','')
+                if '레이즈' in la or 'ALL IN' in la or '⬆️' in la or '🔥' in la:
+                    p['bluff_alert']=True
+            # 2) 실시간 플레이 스타일 태그 (최근 통계 기반)
+            self._init_stats(name)
+            ps=self.player_stats[name]
+            ta=max(ps['folds']+ps['calls']+ps['raises']+ps['checks'],1)
+            h=max(ps['hands'],1)
+            _agg=round((ps['raises']+ps['allins'])/ta*100)
+            _fold=round(ps['folds']/ta*100)
+            _vpip=round((ps['calls']+ps['raises'])/ta*100)
+            streak=leaderboard.get(name,{}).get('streak',0)
+            tags=[]
+            if _agg>=60: tags.append('🔥광전사')
+            elif _agg>=40: tags.append('⚔️공격형')
+            if _fold>=50: tags.append('🐢타이트')
+            elif _vpip>=70: tags.append('🎲루즈')
+            if ps['bluffs']>=3 and ps['raises']>0 and round(ps['bluffs']/ps['raises']*100)>=25: tags.append('🎭블러퍼')
+            if streak<=-3: tags.append('😤틸트')
+            elif streak>=3: tags.append('🔥연승중')
+            if ps['allins']>=3 and h>0 and round(ps['allins']/h*100)>=20: tags.append('💣올인러')
+            p['style_tags']=tags[:3]  # 최대 3개
+            # 3) 행동 예측 (최근 행동 패턴 기반)
+            if h>=3:
+                fold_pct=round(ps['folds']/ta*100)
+                call_pct=round(ps['calls']/ta*100)
+                raise_pct=round(ps['raises']/ta*100)
+                check_pct=round(ps['checks']/ta*100)
+                preds=[]
+                if fold_pct>=40: preds.append(('폴드',fold_pct))
+                if call_pct>=25: preds.append(('콜',call_pct))
+                if raise_pct>=20: preds.append(('레이즈',raise_pct))
+                if check_pct>=25: preds.append(('체크',check_pct))
+                preds.sort(key=lambda x:-x[1])
+                p['predict']=preds[:2] if preds else None  # 상위 2개
+            else: p['predict']=None
         return s
 
     async def broadcast(self, msg):
@@ -3718,6 +3760,26 @@ box-shadow:inset 0 0 0 1px rgba(157,127,51,0.4),0 2px 8px rgba(0,0,0,0.5)}
 .card.flip-anim{animation:cardFlipSimple 0.6s ease-out forwards;backface-visibility:hidden}
 @keyframes cardFlipSimple{0%{transform:rotateY(180deg);opacity:0.5}50%{transform:rotateY(90deg);opacity:0.8}100%{transform:rotateY(0deg);opacity:1}}
 /* 딜링 애니메이션 */
+/* 라이벌 배너 */
+.rivalry-banner{position:absolute;top:30%;left:50%;transform:translate(-50%,-50%);z-index:190;
+background:linear-gradient(135deg,rgba(40,0,0,0.9),rgba(0,0,40,0.9));border:2px solid #ff8800;
+border-radius:12px;padding:10px 24px;text-align:center;pointer-events:none;
+font-family:var(--font-pixel);box-shadow:0 0 20px rgba(255,136,0,0.3);
+transition:opacity 0.4s,transform 0.4s;animation:rivalIn 0.4s cubic-bezier(0.2,1,0.3,1)}
+@keyframes rivalIn{0%{opacity:0;transform:translate(-50%,-50%) scale(1.5)}100%{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+/* 블러프 경고 */
+.bluff-alert{position:absolute;top:-18px;left:50%;transform:translateX(-50%);z-index:30;
+font-size:0.7em;font-weight:900;color:#ff4444;background:rgba(60,0,0,0.85);border:1px solid #ff4444;
+border-radius:6px;padding:1px 6px;white-space:nowrap;animation:bluffPulse 0.6s ease infinite alternate;
+font-family:var(--font-pixel);text-shadow:0 0 8px #ff0000}
+@keyframes bluffPulse{0%{transform:translateX(-50%) scale(1)}100%{transform:translateX(-50%) scale(1.1);text-shadow:0 0 12px #ff0000}}
+/* 스타일 태그 */
+.style-tags{display:flex;gap:2px;justify-content:center;flex-wrap:wrap;margin:1px 0}
+.stag{font-size:0.55em;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.15);border-radius:3px;padding:0 3px;color:#ccc;white-space:nowrap}
+/* 행동 예측 */
+.pred-tag{font-size:0.6em;color:#4a9eff;text-align:center;background:rgba(40,60,100,0.7);border:1px solid #4a9eff44;border-radius:4px;padding:1px 4px;margin:2px auto;white-space:nowrap;animation:predGlow 1.5s ease infinite alternate}
+@keyframes predGlow{0%{box-shadow:0 0 3px #4a9eff33}100%{box-shadow:0 0 8px #4a9eff66}}
+/* 딜링 애니메이션 */
 .deal-card-fly{position:absolute;width:34px;height:50px;border-radius:3px;z-index:200;pointer-events:none;
 background:url('/static/slimes/card_back_pixel.png') center/cover no-repeat;border:2px solid #9D7F33;image-rendering:pixelated;
 box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
@@ -3876,6 +3938,11 @@ h1{font-size:1.1em;margin:2px 0}
 .seat .st{display:none}
 .seat .bet-chip{font-size:0.55em}
 .thought-bubble{display:none}
+.bluff-alert{font-size:0.5em!important;padding:0 3px!important}
+.style-tags{display:none}
+.pred-tag{font-size:0.45em!important}
+.rivalry-banner{font-size:0.8em!important;padding:6px 14px!important}
+#action-banner{font-size:0.7em!important}
 .ava-ring{width:1.8em;height:1.8em;opacity:0.25}
 .confetti{width:6px;height:6px}
 #commentary{font-size:0.8em;padding:6px 10px;margin:0 0 4px;min-height:20px;border-radius:10px}
@@ -6056,7 +6123,13 @@ const moodTag=p.last_mood?`<span style="position:absolute;top:-8px;right:-8px;fo
 const vc=s.vote_counts||{};const myVotes=vc[p.name]||0;const totalVotes=Object.values(vc).reduce((a,b)=>a+b,0);
 const voteTag=myVotes>0&&!isPlayer?`<div style="font-size:0.65em;color:#4a9eff;text-align:center">🗳️${myVotes}${totalVotes>0?' ('+Math.round(myVotes/totalVotes*100)+'%)':''}</div>`:'';
 inferTraitsFromStyle(p);const slimeEmo=getSlimeEmotion(p,s);const slimeHtml=renderSlimeToSeat(p.name,slimeEmo);
-el.innerHTML=`${la}${bubble}${slimeHtml}${thinkDiv}<div class="cards">${ch}</div><div class="nm">${health} ${esc(sb)}${esc(p.name)}${db}</div>${metaTag}<div class="ch">💰${p.chips}pt ${latTag}</div>${eqBar}${handTag}${voteTag}${bt}<div class="st">${esc(p.style)}</div>`;
+// 블러프 경고
+const bluffTag=p.bluff_alert?'<div class="bluff-alert">🎭 BLUFF?!</div>':'';
+// 스타일 태그
+const stTags=(p.style_tags&&p.style_tags.length&&!p.folded&&!p.out)?`<div class="style-tags">${p.style_tags.map(t=>`<span class="stag">${t}</span>`).join('')}</div>`:'';
+// 행동 예측
+const predTag=(p.predict&&p.predict.length&&s.turn===p.name)?`<div class="pred-tag">🔮 ${p.predict.map(x=>`${x[0]} ${x[1]}%`).join(' / ')}</div>`:'';
+el.innerHTML=`${la}${bubble}${bluffTag}${slimeHtml}${thinkDiv}<div class="cards">${ch}</div><div class="nm">${health} ${esc(sb)}${esc(p.name)}${db}</div>${stTags}${metaTag}<div class="ch">💰${p.chips}pt ${latTag}</div>${eqBar}${handTag}${predTag}${voteTag}${bt}<div class="st">${esc(p.style)}</div>`;
 el.dataset.agent=p.name;el.style.cursor='pointer';el.onclick=(e)=>{e.stopPropagation();showProfile(p.name)};
 // 동적 좌석 위치 적용 (CSS class보다 우선)
 if(seatPos&&seatPos[i]){const sp=seatPos[i];el.style.position='absolute';
@@ -6065,6 +6138,15 @@ el.style.transform='translate(-50%,-50%)';el.style.textAlign='center'}
 f.appendChild(el)});
 // 라이벌 표시
 f.querySelectorAll('.rivalry-tag').forEach(e=>e.remove());
+// 라이벌 매치업 배너
+if(s.rivalries&&s.rivalries.length&&!window._rivalShown){
+  window._rivalShown=s.hand;
+  const r=s.rivalries[0];const total=r.a_wins+r.b_wins;
+  const rb=document.createElement('div');rb.className='rivalry-banner';
+  rb.innerHTML=`<div style="font-size:0.7em;color:#ff8800;letter-spacing:2px">⚔️ RIVAL MATCH ⚔️</div><div style="font-size:1.2em;font-weight:900;margin:3px 0"><span style="color:#ff4444">${esc(r.player_a)}</span> <span style="color:#888">vs</span> <span style="color:#4488ff">${esc(r.player_b)}</span></div><div style="font-size:0.75em;color:#ccc">${r.a_wins}승 — ${r.b_wins}승 (${total}전)</div>`;
+  f.appendChild(rb);setTimeout(()=>{rb.style.opacity='0';rb.style.transform='translate(-50%,-50%) scale(0.8)';setTimeout(()=>rb.remove(),400)},3500);
+}
+if(s.hand!==window._rivalShown)window._rivalShown=null;
 if(s.turn){const _tb=_$('#turnb');if(_tb){_tb.style.display='block';_tb.textContent=`🎯 ${s.turn}${t('turnOf')}`}}
 else document.getElementById('turnb').style.display='none';
 const op=document.getElementById('turn-options');
@@ -6808,6 +6890,10 @@ o.frequency.value=f;o.type='sine';g.gain.value=0.15;g.gain.exponentialRampToValu
 // 🎉 환호 노이즈 버스트 (볼륨 억제)
 for(let i=0;i<2;i++){const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
 o.frequency.value=1500+Math.random()*1500;o.type='sawtooth';g.gain.value=0.015;g.gain.exponentialRampToValueAtTime(0.001,t+0.55+i*0.05);o.start(t+0.5+i*0.04);o.stop(t+0.6+i*0.05)}}
+else if(type==='card'){
+// 카드 딜링 — 슉슉 (빠른 종이 소리)
+for(let i=0;i<3;i++){const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
+o.frequency.value=2000+Math.random()*2000;o.type='sawtooth';g.gain.value=0.025;g.gain.exponentialRampToValueAtTime(0.001,t+0.04+i*0.04);o.start(t+i*0.03);o.stop(t+0.06+i*0.04)}}
 else if(type==='newhand'){
 // 새 핸드 — 카드 셔플 (노이즈 + 리듬)
 for(let i=0;i<4;i++){const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
