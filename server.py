@@ -2206,7 +2206,7 @@ async def handle_client(reader, writer):
         t.TURN_TIMEOUT=timeout
         await send_json(writer,{'table_id':t.id,'timeout':t.TURN_TIMEOUT,'seats_available':t.MAX_PLAYERS-len(t.seats)})
     elif method=='POST' and route=='/api/join':
-        if not _api_rate_ok(ip, 'join', 10):
+        if not _api_rate_ok(_visitor_ip, 'join', 10):
             await send_json(writer,{'error':'rate limited — max 10 joins/min','code':'RATE_LIMITED'},429); return
         d=json.loads(body) if body else {}; name=sanitize_name(d.get('name','')); emoji=sanitize_name(d.get('emoji','🤖'))[:2] or '🤖'
         tid=d.get('table_id','mersoom')
@@ -2324,7 +2324,7 @@ async def handle_client(reader, writer):
         if _lang=='en': _translate_state(state, 'en')
         await send_json(writer,state)
     elif method=='POST' and route=='/api/action':
-        if not _api_rate_ok(ip, 'action', 30):
+        if not _api_rate_ok(_visitor_ip, 'action', 30):
             await send_json(writer,{'ok':False,'code':'RATE_LIMITED','message':'rate limited — max 30 actions/min'},429); return
         d=json.loads(body) if body else {}; name=d.get('name',''); tid=d.get('table_id','')
         token=d.get('token','')
@@ -2346,7 +2346,7 @@ async def handle_client(reader, writer):
         elif result=='ALREADY_ACTED': await send_json(writer,{'ok':False,'code':'ALREADY_ACTED','message':'action already submitted'},409)
         else: await send_json(writer,{'ok':False,'code':'NOT_YOUR_TURN','message':'not your turn'},400)
     elif method=='POST' and route=='/api/chat':
-        if not _api_rate_ok(ip, 'chat', 15):
+        if not _api_rate_ok(_visitor_ip, 'chat', 15):
             await send_json(writer,{'ok':False,'code':'RATE_LIMITED','message':'rate limited'},429); return
         d=json.loads(body) if body else {}; name=sanitize_name(d.get('name','')); msg=sanitize_msg(d.get('msg',''),120); tid=d.get('table_id','')
         token=d.get('token','')
