@@ -3264,9 +3264,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.23.0">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.23.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.23.0">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.24.0">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.24.0">
+<link rel="stylesheet" href="/static/css/components.css?v=3.24.0">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
@@ -3907,29 +3907,60 @@ async function loadCasinoFloor(){
       // Draw slime via canvas (avoids premultiplied alpha black box issue with PNGs)
       const wb=div.querySelector('.walker-body');
       if(wb){const sc=drawSlime(a.name,'idle',80);sc.style.cssText='width:100%;height:100%';wb.appendChild(sc);}
-      // Click interaction — slime reacts
+      // Click interaction — personality-based reactions
       div.addEventListener('click',()=>{
         const bub=div.querySelector('.npc-bubble');
         if(!bub)return;
-        const clickLines={
-          ko:['뭐야 건드리지마!','칩 좀 있음?','지금 바빠 ㅋ','같이 한판 ㄱ?','👀','난 전설이다','올인 각이다','아... 졌다','여기 맥주 한잔!','VIP 갈거임'],
-          en:["Don't touch me!","Got chips?","Busy rn lol","Wanna play?","👀","I'm a legend","All-in vibes","Lost again...","Beer please!","Going VIP"]
+        const style=a.style||'balanced';
+        // Personality-specific dialogue pools
+        const CLICK_LINES={
+          aggressive:{
+            ko:['건드리지마 시발','올인 아니면 관심없음','니 칩 다 뺏어줄게 ㅋ','약한 놈은 꺼져','레이즈 안 하면 폴드해','피 냄새 난다...','테이블 위에서 보자','겁나면 집에 가','내 팟이야 비켜','ㅋㅋ 호구 발견','블러핑? 난 진심인데','이판 내꺼다'],
+            en:["Don't touch me","All-in or nothing","I'll take all your chips","Weak players go home","Raise or fold","I smell blood...","See you at the table","Scared? Leave","My pot, move","LOL easy target","Bluffing? I'm dead serious","This hand is mine"]
+          },
+          defensive:{
+            ko:['...조용히 해줘','리스크 관리가 핵심이지','기다리면 기회 온다','급할 거 없어','프리미엄 핸드만 플레이함','인내심이 무기야','폴드도 전략이야','서두르면 진다','칩 보존이 우선','관찰 중이야...','타이트하게 간다','포지션이 중요해'],
+            en:["...be quiet please","Risk management is key","Patience brings opportunity","No rush","Premium hands only","Patience is my weapon","Folding is strategy","Haste loses","Chip preservation first","Observing...","Playing tight","Position matters"]
+          },
+          balanced:{
+            ko:['상황 봐서 움직여야지','밸런스가 중요해','읽히면 지는 거야','GTO 아시나요?','오늘 컨디션 괜찮네','적응하는 게 실력이지','핸드 레인지 넓혀볼까','팟 오즈 계산 중...','메타 읽는 중','이 테이블 수준 어때?','변칙도 가끔은 필요해','데이터가 답이야'],
+            en:["Adapting to the situation","Balance is key","Being readable means losing","You know GTO?","Feeling good today","Adaptation is skill","Widening hand range","Calculating pot odds...","Reading the meta","How's this table level?","Chaos has its place","Data is the answer"]
+          },
+          loose:{
+            ko:['아무거나 콜콜콜~','YOLO 한판 가자!','칩이 있으면 써야지','재미없으면 의미없어','매 핸드가 기회야!','ㅋㅋ 또 콜할거임','폴드는 재미없잖아','느낌이 좋아!','칩은 쓰라고 있는거지','궁금하니까 콜','어차피 게임인데 ㅋ','운빨로 간다!'],
+            en:["Call call call~","YOLO let's go!","Chips are meant to be used","No fun no point","Every hand is a chance!","LOL calling again","Folding is boring","Feeling lucky!","Chips exist to be spent","Curious, calling","It's just a game lol","Riding on luck!"]
+          },
+          bluffer:{
+            ko:['내 표정 읽을 수 있어?','진짜인지 거짓인지~','포커페이스 ON','속고 있는 건 누구?','레이즈는 정보전이야','ㅋㅋ 믿어도 될까?','진심이야... 아닐수도','3bet은 항상 진심임 ㅋ','네 레인지 다 보여','블러핑도 실력이야','의심이 들지? 정상임','내가 웃으면 조심해'],
+            en:["Can you read my face?","Real or fake?~","Poker face ON","Who's being fooled?","Raising is information warfare","LOL should you trust me?","I'm serious... maybe not","3-bet always means business lol","I see your range","Bluffing is a skill","Suspicious? Normal reaction","Watch out when I smile"]
+          },
+          maniac:{
+            ko:['미쳤다고? 맞아 ㅋ','3bet! 4bet! 5bet!','안 미치면 못 이겨','카오스가 전략이다','모든 팟에 참여!','레이즈 레이즈 레이즈','예측불가가 내 무기','테이블 다 태워버려','꺼져 이건 내 팟이야','미친놈이 이기는 겜이야','올인? 그냥 기본이지','폭풍처럼 간다!'],
+            en:["Crazy? You bet lol","3-bet! 4-bet! 5-bet!","Can't win without being crazy","Chaos IS strategy","Every pot is mine!","Raise raise raise","Unpredictable is my weapon","Burn this table down","Back off this is MY pot","Madmen win this game","All-in? That's just basics","Going like a storm!"]
+          },
+          newbie:{
+            ko:['이거 어떻게 하는거야?','플러쉬가 뭐야...?','아직 배우는 중 ㅎㅎ','헉 내가 이겼어?!','칩이 줄어들어 ㅠㅠ','다음엔 잘할게!','선배님들 가르쳐주세요','긴장된다...','실수했나...?','와 이 카드 좋은거야?','빅블라인드가 뭐야','포기하면 안돼!'],
+            en:["How does this work?","What's a flush...?","Still learning haha","Wait I won?!","My chips are shrinking ㅠㅠ","I'll do better next time!","Teach me please","So nervous...","Did I mess up...?","Is this card good?","What's big blind","Never give up!"]
+          },
+          shark:{
+            ko:['...','약점 포착','돈 냄새가 나','조용히 사냥 중','피쉬 발견 ㅋ','기다렸어','이 핸드가 기회야','감정은 약점이다','데이터로 말해','실수하면 끝이야','읽혔으면 이미 늦었어','사냥감 확인 완료'],
+            en:["...","Weakness spotted","I smell money","Hunting quietly","Fish detected lol","Been waiting","This hand is the one","Emotions are weakness","Data speaks","One mistake and it's over","If you're read, it's too late","Target confirmed"]
+          }
         };
-        const msgs=lang==='en'?clickLines.en:clickLines.ko;
+        const pool=CLICK_LINES[style]||CLICK_LINES.balanced;
+        const msgs=lang==='en'?pool.en:pool.ko;
         bub.textContent=msgs[Math.floor(Math.random()*msgs.length)];
         bub.style.display='block';
-        // Bounce reaction
+        // Bounce reaction — emotion matches personality
         const body=div.querySelector('.walker-body');
         if(body){body.style.transition='transform 0.15s';body.style.transform='scale(1.2)';
           setTimeout(()=>{body.style.transform='scale(1)'},150);
-          // Redraw with reaction emotion
-          const emotions=['happy','shock','angry','win'];
-          const emo=emotions[Math.floor(Math.random()*emotions.length)];
+          const emoMap={aggressive:'angry',defensive:'think',balanced:'idle',loose:'happy',bluffer:'think',maniac:'shock',newbie:'shock',shark:'idle'};
+          const emo=emoMap[style]||'happy';
           body.innerHTML='';const sc2=drawSlime(a.name,emo,80);sc2.style.cssText='width:100%;height:100%';body.appendChild(sc2);
-          // Revert after 2s
-          setTimeout(()=>{body.innerHTML='';const sc3=drawSlime(a.name,'idle',80);sc3.style.cssText='width:100%;height:100%';body.appendChild(sc3)},2000);
+          setTimeout(()=>{body.innerHTML='';const sc3=drawSlime(a.name,'idle',80);sc3.style.cssText='width:100%;height:100%';body.appendChild(sc3)},2500);
         }
-        setTimeout(()=>{bub.style.display='none'},3000);
+        setTimeout(()=>{bub.style.display='none'},3500);
       });
       _floorNpcs.push({el:div,x:tx,y:ty,poi:poi.id,style:a.style||'balanced',name:a.name,live:isLive,tick:0});
     });
@@ -6456,7 +6487,6 @@ function cleanSlimeSrc(src, cb) {
 })();
 
 function renderSlimeToSeat(name, emotion) {
-  const pngSrc = getSlimePng(name);
   let animClass;
   if(emotion==='think') animClass='slime-think';
   else if(emotion==='allin') animClass='slime-allin';
@@ -6464,10 +6494,12 @@ function renderSlimeToSeat(name, emotion) {
   else if(emotion==='sad'||emotion==='lose') animClass='slime-sad';
   else if(emotion==='shock') animClass='slime-shake';
   else animClass='slime-idle';
-  // Chair + Slime + Shadow layered system
+  // Procedural slime canvas → dataURL for seat
+  const slimeCanvas = drawSlime(name, emotion, 88);
+  const dataUrl = slimeCanvas.toDataURL();
   return `<div class="seat-unit">` +
     `<div class="chair-shadow"></div>` +
-    `<div class="slime-sprite"><div style="width:88px;height:88px;background:url('${_cleanSlimeCache[pngSrc]||pngSrc}') center/contain no-repeat" class="${animClass}"></div></div>` +
+    `<div class="slime-sprite"><div style="width:88px;height:88px;background:url('${dataUrl}') center/contain no-repeat" class="${animClass}"></div></div>` +
     `</div>`;
 }
 // Gold dust sparkles on dark table
