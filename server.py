@@ -6066,7 +6066,7 @@ if(s.showdown_result&&(s.round==='between'||s.round==='showdown')){
 sdEl.innerHTML=`<div style="background:rgba(0,0,0,0.85);border:2px solid #ffd700;border-radius:12px;padding:10px 16px;box-shadow:0 0 20px rgba(255,215,0,0.4)">${s.showdown_result.map(p=>`<div style="padding:4px 8px;font-size:1em;${p.winner?'color:#ffd700;font-weight:bold;text-shadow:0 0 8px #ffd70088':'color:#ccc'}">${p.winner?'👑':'  '} ${esc(p.emoji)}${esc(p.name)}: ${esc(p.hand)}${p.winner?' 🏆':''}</div>`).join('')}</div>`;
 // Victory celebration overlay
 const winner=s.showdown_result.find(p=>p.winner);
-if(winner){showVictoryOverlay(winner,s)}}
+if(winner&&(!window._lastVictoryHand||window._lastVictoryHand!==s.hand)){window._lastVictoryHand=s.hand;showVictoryOverlay(winner,s)}}
 // 폴드 승리 오버레이
 if(s.fold_winner&&(s.round==='between'||s.round==='showdown')&&!s.showdown_result){
 if(!window._lastFoldWinner||window._lastFoldWinner!==s.fold_winner.name+s.hand){
@@ -8722,7 +8722,6 @@ window.addEventListener('resize',initMobileSheet);
 // ═══ Hook into state update ═══
 const _origOnState=typeof onStateUpdate==='function'?onStateUpdate:null;
 function _enhancedStateHook(s){
-  showHandSummary(s);
   updateHandTimeline(s);
   updateBlindBar(s);
   // 킬캠: 쇼다운 후 팟 100+ 시 자동 재생
