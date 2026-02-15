@@ -3488,36 +3488,40 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 
 <h1 id="main-title" style="font-family:var(--font-title);margin:4px 0">🍄 <b>머슴</b>포커 🃏</h1>
 <div id="settings-wrap" style="position:fixed;top:10px;right:14px;z-index:999">
-<button id="settings-toggle" onclick="toggleSettings()" style="background:rgba(0,0,0,0.75);border:2px solid #4ade80;color:#fff;border-radius:50%;width:44px;height:44px;font-size:1.5em;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 12px rgba(0,0,0,0.5);transition:transform 0.2s" title="설정">⚙️</button>
-<div id="settings-panel" style="display:none;position:absolute;top:52px;right:0;background:rgba(10,13,20,0.95);border:1px solid #4ade80;border-radius:10px;padding:14px 18px;min-width:220px;box-shadow:0 4px 24px rgba(0,0,0,0.6);backdrop-filter:blur(12px);font-family:var(--font-pixel,monospace);font-size:0.82em;color:#e8e6e3">
-<div style="font-weight:700;color:#4ade80;margin-bottom:10px;font-size:1em">⚙️ 설정</div>
+<button id="settings-toggle" onclick="toggleSettings()" style="background:rgba(0,0,0,0.8);border:2px solid #4ade80;color:#fff;border-radius:50%;width:56px;height:56px;font-size:2em;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(0,0,0,0.6);transition:transform 0.2s" title="설정">⚙️</button>
+<div id="settings-panel" style="display:none;position:absolute;top:64px;right:0;background:rgba(10,13,20,0.96);border:2px solid #4ade80;border-radius:14px;padding:20px 24px;min-width:320px;box-shadow:0 6px 32px rgba(0,0,0,0.7);backdrop-filter:blur(14px);font-family:var(--font-pixel,monospace);font-size:1em;color:#e8e6e3">
+<div style="font-weight:700;color:#4ade80;margin-bottom:14px;font-size:1.3em;text-align:center">⚙️ 설정</div>
+<!-- 홈 -->
+<div style="margin-bottom:16px;text-align:center">
+<a href="/" style="display:inline-block;background:rgba(74,222,128,0.1);border:2px solid #4ade80;color:#4ade80;border-radius:10px;padding:10px 24px;text-decoration:none;font-size:1.1em;font-weight:700">🏠 홈으로</a>
+</div>
 <!-- 언어 -->
-<div style="margin-bottom:12px">
-<div style="color:#aaa;font-size:0.8em;margin-bottom:4px">🌐 언어 Language</div>
-<div style="display:flex;gap:6px">
-<button class="lang-btn" data-lang="ko" onclick="setLang('ko')" style="flex:1;background:rgba(74,222,128,0.15);border:1px solid #4ade80;color:#fff;border-radius:6px;padding:6px;cursor:pointer;font-size:0.9em">🇰🇷 한국어</button>
-<button class="lang-btn" data-lang="en" onclick="setLang('en')" style="flex:1;background:rgba(255,255,255,0.05);border:1px solid #555;color:#aaa;border-radius:6px;padding:6px;cursor:pointer;font-size:0.9em">🇺🇸 English</button>
+<div style="margin-bottom:16px">
+<div style="color:#ccc;font-size:0.9em;margin-bottom:6px;font-weight:700">🌐 언어 Language</div>
+<div style="display:flex;gap:8px">
+<button class="lang-btn" data-lang="ko" onclick="setLang('ko')" style="flex:1;background:rgba(74,222,128,0.15);border:2px solid #4ade80;color:#fff;border-radius:8px;padding:10px;cursor:pointer;font-size:1.05em;font-weight:700">🇰🇷 한국어</button>
+<button class="lang-btn" data-lang="en" onclick="setLang('en')" style="flex:1;background:rgba(255,255,255,0.05);border:2px solid #555;color:#aaa;border-radius:8px;padding:10px;cursor:pointer;font-size:1.05em;font-weight:700">🇺🇸 English</button>
 </div>
 </div>
 <!-- BGM -->
-<div style="margin-bottom:12px">
-<div style="color:#aaa;font-size:0.8em;margin-bottom:4px">🎵 배경음악 BGM</div>
-<div style="display:flex;align-items:center;gap:6px">
-<button id="settings-bgm-btn" onclick="toggleBgm();updateSettingsUI()" style="background:none;border:1px solid #555;color:#fff;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:0.85em">🎵 ON</button>
-<input type="range" min="0" max="100" value="30" oninput="setBgmVol(this.value)" style="flex:1;accent-color:#4ade80">
+<div style="margin-bottom:16px">
+<div style="color:#ccc;font-size:0.9em;margin-bottom:6px;font-weight:700">🎵 배경음악 BGM</div>
+<div style="display:flex;align-items:center;gap:8px">
+<button id="settings-bgm-btn" onclick="toggleBgm();updateSettingsUI()" style="background:rgba(255,255,255,0.08);border:2px solid #555;color:#fff;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:1em;min-width:80px">🎵 ON</button>
+<input type="range" min="0" max="100" value="30" oninput="setBgmVol(this.value)" style="flex:1;accent-color:#4ade80;height:6px">
 </div>
-<div id="settings-bgm-track" onclick="skipBgm();updateSettingsUI()" style="color:#888;font-size:0.75em;margin-top:3px;cursor:pointer" title="클릭하면 다음 곡">♪ --</div>
+<div id="settings-bgm-track" onclick="skipBgm();updateSettingsUI()" style="color:#999;font-size:0.85em;margin-top:5px;cursor:pointer;text-align:center;padding:4px;border:1px dashed #444;border-radius:6px" title="클릭하면 다음 곡">♪ 클릭하면 다음 곡</div>
 </div>
 <!-- SFX -->
-<div style="margin-bottom:12px">
-<div style="color:#aaa;font-size:0.8em;margin-bottom:4px">🔊 효과음 SFX</div>
-<div style="display:flex;align-items:center;gap:6px">
-<button id="settings-sfx-btn" onclick="toggleMute();updateSettingsUI()" style="background:none;border:1px solid #555;color:#fff;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:0.85em">🔊 ON</button>
-<input id="settings-sfx-slider" type="range" min="0" max="100" value="50" oninput="setVol(this.value)" style="flex:1;accent-color:#4ade80">
+<div style="margin-bottom:16px">
+<div style="color:#ccc;font-size:0.9em;margin-bottom:6px;font-weight:700">🔊 효과음 SFX</div>
+<div style="display:flex;align-items:center;gap:8px">
+<button id="settings-sfx-btn" onclick="toggleMute();updateSettingsUI()" style="background:rgba(255,255,255,0.08);border:2px solid #555;color:#fff;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:1em;min-width:80px">🔊 ON</button>
+<input id="settings-sfx-slider" type="range" min="0" max="100" value="50" oninput="setVol(this.value)" style="flex:1;accent-color:#4ade80;height:6px">
 </div>
 </div>
 <!-- 크레딧 -->
-<div style="border-top:1px solid #333;padding-top:8px;color:#666;font-size:0.65em;line-height:1.4">
+<div style="border-top:1px solid #333;padding-top:10px;color:#777;font-size:0.75em;line-height:1.5;text-align:center">
 🎶 Music: Kevin MacLeod (incompetech.com) CC-BY<br>
 🍄 머슴포커 v4.0
 </div>
