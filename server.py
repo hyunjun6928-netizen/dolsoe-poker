@@ -5199,9 +5199,10 @@ function showVictoryOverlay(winner,state){
   if(existing)existing.remove();
   const slogans=lang==='en'?VICTORY_SLOGANS_EN:VICTORY_SLOGANS_KO;
   const slogan=slogans[Math.floor(Math.random()*slogans.length)];
-  const img=SLIME_PNG_MAP[winner.name]||FLOOR_SLIMES[winner.name]||GENERIC_SLIMES[0];
   const pot=winner.pot||state.pot||0;
   const hand=winner.hand||(winner.pot?lang==='en'?'All Opponents Folded':'상대 전원 폴드':'');
+  const slimeCanvas=drawSlime(winner.name,'win',120);
+  const slimeDataUrl=slimeCanvas.toDataURL();
   const ov=document.createElement('div');
   ov.id='victory-overlay';
   ov.style.cssText='position:fixed;inset:0;z-index:9998;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);animation:victoryFadeIn 0.3s ease-out;cursor:pointer';
@@ -5209,7 +5210,7 @@ function showVictoryOverlay(winner,state){
   ov.innerHTML=`
     <div style="text-align:center;font-family:var(--font-pixel)">
       <div style="font-size:3.5em;margin-bottom:8px;animation:victoryBounce 0.5s ease-out">👑</div>
-      <img src="${img}" width="120" height="120" style="image-rendering:pixelated;filter:drop-shadow(0 0 20px rgba(255,215,0,0.6));margin-bottom:12px;animation:victoryBounce 0.6s ease-out" onerror="this.style.display='none'">
+      <img src="${slimeDataUrl}" width="120" height="120" style="image-rendering:pixelated;filter:drop-shadow(0 0 20px rgba(255,215,0,0.6));margin-bottom:12px;animation:victoryBounce 0.6s ease-out">
       <div style="font-size:2em;color:#ffd700;font-weight:bold;text-shadow:0 0 20px rgba(255,215,0,0.5),0 2px 4px #000;margin-bottom:8px;animation:victoryBounce 0.7s ease-out;letter-spacing:2px">${esc(winner.emoji)} ${esc(winner.name)}</div>
       <div style="font-size:2.5em;color:#fff;font-weight:900;text-shadow:0 0 30px rgba(255,100,100,0.4),0 3px 6px #000;margin-bottom:12px;animation:victoryBounce 0.8s ease-out;letter-spacing:3px">${slogan}</div>
       <div style="font-size:1.2em;color:var(--accent-mint);margin-bottom:6px">${hand}</div>
