@@ -3830,6 +3830,7 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 .dock-left,.dock-right{min-width:120px;position:relative;width:100%}
 /* 드래그 리사이저 */
 .dock-resizer{display:none!important}
+.dock-panel{resize:vertical;overflow:auto!important}
 .game-main{min-width:0;overflow-y:auto;overflow-x:hidden}
 .game-sidebar{display:none}
 .dock-left,.dock-right{display:flex;flex-direction:column;gap:6px;overflow:auto;align-items:stretch}
