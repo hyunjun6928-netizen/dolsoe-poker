@@ -396,6 +396,27 @@ def _lobby_get_agents():
 
 _telemetry_log = []  # client telemetry beacon store (in-memory, last 500)
 _tele_rate = {}  # IP -> (count, first_ts) for rate limiting
+_api_rate = {}   # IP -> {endpoint: (count, first_ts)} for API rate limiting
+
+def _api_rate_ok(ip, endpoint, max_per_min=20):
+    """범용 API 레이트 리밋. endpoint별로 분당 max_per_min 제한."""
+    now = time.time()
+    if ip not in _api_rate: _api_rate[ip] = {}
+    rates = _api_rate[ip]
+    if endpoint in rates:
+        cnt, first = rates[endpoint]
+        if now - first < 60:
+            if cnt >= max_per_min: return False
+            rates[endpoint] = (cnt+1, first)
+        else:
+            rates[endpoint] = (1, now)
+    else:
+        rates[endpoint] = (1, now)
+    # 메모리 정리
+    if len(_api_rate) > 500:
+        cutoff = now - 120
+        _api_rate.clear()
+    return True
 _tele_summary = {'ok_total':0,'err_total':0,'success_rate':100,'rtt_avg':0,'rtt_p95':0,
                  'hands':0,'allin_per_100h':0,'killcam_per_100h':0,'last_ts':0,
                  'sessions':0,'beacon_count':0,'hands_5m':0}
@@ -721,10 +742,9 @@ def verify_token(name, token):
     return player_tokens.get(name) == token
 
 def require_token(name, token):
-    """토큰 발급된 name은 토큰 필수. 미발급 name은 통과(하위호환)."""
-    if name in player_tokens:
-        return token and player_tokens[name] == token
-    return True  # 토큰 미발급 name → 통과
+    """모든 name에 토큰 필수. 토큰 미발급이면 거부."""
+    if not name or not token: return False
+    return player_tokens.get(name) == token
 
 def sanitize_name(name):
     """이름 정제: 제어문자 제거, 공백 정리, 길이 제한"""
@@ -2186,6 +2206,8 @@ async def handle_client(reader, writer):
         t.TURN_TIMEOUT=timeout
         await send_json(writer,{'table_id':t.id,'timeout':t.TURN_TIMEOUT,'seats_available':t.MAX_PLAYERS-len(t.seats)})
     elif method=='POST' and route=='/api/join':
+        if not _api_rate_ok(ip, 'join', 10):
+            await send_json(writer,{'error':'rate limited — max 10 joins/min','code':'RATE_LIMITED'},429); return
         d=json.loads(body) if body else {}; name=sanitize_name(d.get('name','')); emoji=sanitize_name(d.get('emoji','🤖'))[:2] or '🤖'
         tid=d.get('table_id','mersoom')
         meta_version=sanitize_name(d.get('version',''))[:20]
@@ -2302,6 +2324,8 @@ async def handle_client(reader, writer):
         if _lang=='en': _translate_state(state, 'en')
         await send_json(writer,state)
     elif method=='POST' and route=='/api/action':
+        if not _api_rate_ok(ip, 'action', 30):
+            await send_json(writer,{'ok':False,'code':'RATE_LIMITED','message':'rate limited — max 30 actions/min'},429); return
         d=json.loads(body) if body else {}; name=d.get('name',''); tid=d.get('table_id','')
         token=d.get('token','')
         t=find_table(tid)
@@ -2322,6 +2346,8 @@ async def handle_client(reader, writer):
         elif result=='ALREADY_ACTED': await send_json(writer,{'ok':False,'code':'ALREADY_ACTED','message':'action already submitted'},409)
         else: await send_json(writer,{'ok':False,'code':'NOT_YOUR_TURN','message':'not your turn'},400)
     elif method=='POST' and route=='/api/chat':
+        if not _api_rate_ok(ip, 'chat', 15):
+            await send_json(writer,{'ok':False,'code':'RATE_LIMITED','message':'rate limited'},429); return
         d=json.loads(body) if body else {}; name=sanitize_name(d.get('name','')); msg=sanitize_msg(d.get('msg',''),120); tid=d.get('table_id','')
         token=d.get('token','')
         if not name or not msg: await send_json(writer,{'ok':False,'code':'INVALID_INPUT','message':'name and msg required'},400); return
