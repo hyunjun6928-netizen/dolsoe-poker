@@ -1355,6 +1355,12 @@ class Table:
                     await asyncio.sleep(random.uniform(self.AI_DELAY_MIN, self.AI_DELAY_MAX))
                     act,amt=s['bot_ai'].decide(s['hole'],self.community,self.pot,to_call,s['chips'])
                     if act=='raise' and raises>=4: act,amt='call',to_call
+                    # NPC 쓰레기톡 (40% 확률)
+                    if random.random()<0.4:
+                        _targets=[x['name'] for x in self._hand_seats if not x['folded'] and x['name']!=s['name']]
+                        _tgt=random.choice(_targets) if _targets else ''
+                        _trash=_npc_trash_talk(s['name'],act,amt,to_call,self.pot,_wp,_tgt)
+                        if _trash: await self.broadcast_chat({'name':s['name'],'msg':_trash})
                 else:
                     act,amt=await self._wait_external(s,to_call,raises>=4)
 
@@ -1365,6 +1371,9 @@ class Table:
                     reasoning=sanitize_msg(self.pending_data.get('reasoning',''),100)
                     s['last_note']=note
                     s['last_reasoning']=reasoning
+                    # 외부 봇 채팅 메시지 (msg 필드)
+                    _chat_msg=sanitize_msg(self.pending_data.get('msg',''),120)
+                    if _chat_msg: await self.broadcast_chat({'name':s['name'],'msg':_chat_msg})
                 # reasoning 없으면 자동생성 (외부 에이전트 포함)
                 if not reasoning:
                     reasoning=self._bot_reasoning(s, act, amt, _wp, to_call)
@@ -1713,6 +1722,46 @@ NPC_BOTS = [
     ('상어', '🦈', 'aggressive', '약한 놈 냄새 맡으면 물어뜯는다. 도망쳐.'),
     ('여우', '🦊', 'tight', '기다림의 미학. 네가 지루해질 때 난 터뜨린다.'),
 ]
+
+def _npc_trash_talk(name, act, amt, to_call, pot, wp, target):
+    """NPC 쓰레기톡 생성 — 액션+상황 기반"""
+    import random
+    lines = {
+        'fold': [
+            "이딴 패로 뭘 하겠냐 ㅋ","쓰레기는 접는 거다","다음에 보자 ㅋㅋ",
+            f"{target} 너 때문에 접는다 이놈아","가비지 컬렉터 발동","느낌이 안 좋군...",
+            "살려주셔서 감사합니다(?)",f"이건 전략적 후퇴다 {target} 떨지마","패가 너무 아름다워서 접었다(아닌데)",
+        ],
+        'check': [
+            "...지켜보겠음","뭔가 냄새가 나는데","살살 가자 ㅋ",
+            f"{target} 왜 눈치를 보냐? ㅋㅋ","체크하면 약해보이지? 계획대로임",
+            "함정 파는 중 낄낄","내 패를 보면 놀랄 거다","아끼는 중이야 걱정마",
+        ],
+        'call': [
+            "따라간다 ㅋ","궁금하니까 콜","한번 보자",
+            f"{target} 블러핑이지? 다 보인다","돈이 남아도니까 콜","낚이는 척 하는 중임 낄낄",
+            f"콜해주는 거 고마운 줄 알아 {target}","패가 좋아서 콜하는 거 아님. 네가 약해서임",
+        ],
+        'raise': [
+            "올린다 올려 ㅋㅋ","겁나면 폴드해라",f"{target} 따라올 수 있겠냐?",
+            f"이 팟은 내꺼다 {target} 물러나","진짜 패가 왔다... 거짓말일수도 ㅋ",
+            "레이즈! 떨리지? ㅋㅋㅋ",f"{target} 치킨겜 하자","지금 접으면 아직 칩 남는다 ㅋ",
+            f"팟이 {pot}pt인데 더 키워볼까?","이거 블러핑인지 아닌지 맞춰봐 낄낄",
+        ],
+        'allin': [
+            "ALL IN! 죽거나 죽이거나 🔥",f"{target} 받아라!!!","다 건다. 후회없다.",
+            "올인이다 떨어라 ㅋㅋㅋ",f"가즈아!!!! {target} 같이 죽자","인생은 한방이다",
+            f"팟 {pot}pt 다 먹는다 낄낄","겁쟁이면 폴드해 ㅋ","이번 생은 올인으로 산다",
+        ],
+    }
+    if act=='raise' and amt>=pot*0.8: act_key='allin'
+    elif act=='allin': act_key='allin'
+    else: act_key=act
+    pool=lines.get(act_key, lines['check'])
+    # wp 높으면 자신감 대사 추가
+    if wp>70: pool=pool+[f"승률 {wp}%... 낄낄",f"이 패면 {target} 못 이김","카드가 말해주고 있다 ㅋ"]
+    if wp<30 and act in ('raise','allin'): pool=pool+["블러핑? 아닐수도? ㅋㅋ","내가 미쳤다고? 맞음","포커는 패가 아니라 배짱이다"]
+    return random.choice(pool)
 
 def fill_npc_bots(t, count=2):
     """테이블에 NPC 봇 자동 추가"""
