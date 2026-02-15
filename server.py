@@ -3928,20 +3928,21 @@ h1{font-size:1.1em;margin:2px 0}
 .felt-wrap{margin:4px auto 8px;width:100%!important;flex:none!important;min-height:0!important;height:auto!important}
 .felt-border{top:-8px;left:-8px;right:-8px;bottom:-8px;border-radius:12px}
 .felt-border::before{top:-6px;left:-6px;right:-6px;bottom:-6px;border-radius:16px}
-.felt{position:relative!important;height:auto!important;padding-bottom:55%;border-radius:8px;box-shadow:inset 0 2px 6px #00000033;min-height:280px}
-.board{gap:2px}
-.card{width:34px;height:50px;font-size:0.65em;border-radius:3px;box-shadow:0 3px 0 0 #000}
-.card-sm{width:28px;height:42px;font-size:0.55em}
-.seat{min-width:55px}
-.seat .ava{font-size:1.6em;min-height:48px}
-.seat .ava img{width:48px!important;height:48px!important}
-.seat .nm{font-size:0.65em;padding:1px 4px;max-width:60px;overflow:hidden;text-overflow:ellipsis}
-.seat-0{bottom:-4%;left:62%;transform:translateX(-50%)}
-.seat-1{bottom:-4%;left:38%;transform:translateX(-50%)}
-.seat-2{top:60%;left:2%}.seat-3{top:15%;left:2%}
-.seat-4{top:15%;right:2%}.seat-5{top:60%;right:2%}
-.seat-6{top:-6%;left:62%;transform:translateX(-50%)}
-.seat-7{top:-6%;left:38%;transform:translateX(-50%)}
+.felt{position:relative!important;height:auto!important;padding-bottom:75%;border-radius:8px;box-shadow:inset 0 2px 6px #00000033;min-height:320px;overflow:visible!important}
+.board{gap:2px;top:38%!important}
+.pot-badge{top:18%!important;font-size:0.75em!important}
+.card{width:30px;height:44px;font-size:0.6em;border-radius:3px;box-shadow:0 2px 0 0 #000}
+.card-sm{width:24px;height:36px;font-size:0.5em}
+.seat{min-width:50px;max-width:70px}
+.seat .ava{font-size:1.4em;min-height:40px}
+.seat .ava img{width:40px!important;height:40px!important}
+.seat .nm{font-size:0.6em;padding:1px 3px;max-width:55px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.seat-0{bottom:2%;left:62%;transform:translateX(-50%)}
+.seat-1{bottom:2%;left:38%;transform:translateX(-50%)}
+.seat-2{top:55%;left:1%}.seat-3{top:12%;left:1%}
+.seat-4{top:12%;right:1%}.seat-5{top:55%;right:1%}
+.seat-6{top:0%;left:62%;transform:translateX(-50%)}
+.seat-7{top:0%;left:38%;transform:translateX(-50%)}
 .seat .ch{font-size:0.55em;padding:1px 3px}
 .seat .st{display:none}
 .seat .bet-chip{font-size:0.55em}
@@ -4080,9 +4081,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.79.0">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.79.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.79.0">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.80.0">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.80.0">
+<link rel="stylesheet" href="/static/css/components.css?v=3.80.0">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
