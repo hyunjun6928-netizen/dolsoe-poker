@@ -738,7 +738,7 @@ def sanitize_msg(msg, max_len=120):
 # ══ 게임 테이블 ══
 class Table:
     SB=5; BB=10; START_CHIPS=500
-    AI_DELAY_MIN=3; AI_DELAY_MAX=8; TURN_TIMEOUT=45
+    AI_DELAY_MIN=4; AI_DELAY_MAX=10; TURN_TIMEOUT=45
     MIN_PLAYERS=2; MAX_PLAYERS=8
     BLIND_SCHEDULE=[(5,10),(10,20),(25,50),(50,100),(100,200),(200,400)]
     BLIND_INTERVAL=10  # 10핸드마다 블라인드 업
@@ -761,7 +761,8 @@ class Table:
         self.bankrupt_cooldowns={}  # name -> 재참가 가능 시간
         self.highlights=[]  # 레어 핸드 하이라이트
         self.spectator_queue=[]  # (send_at, data_dict) 딜레이 중계 큐
-        self.SPECTATOR_DELAY=0  # 실시간 (딜레이 제거)
+        self.SPECTATOR_DELAY=20  # TV중계 딜레이 (초)
+        self.tv_mode=True  # TV모드: 홀카드 공개 (딜레이로 치팅 방지)
         self.last_spectator_state=None  # 마지막으로 flush된 관전자 state (딜레이 적용된)
         self._delay_task=None
         self.last_commentary=''  # 최신 해설 (폴링용)
@@ -1040,10 +1041,26 @@ class Table:
                         win_pcts[name]=round(st/total*100)
         for p in s.get('players',[]):
             p['win_pct']=win_pcts.get(p['name'])  # None during play, value at showdown
-            if s.get('round') not in ('showdown','between','finished'):
-                p['hole']=None
-            elif p.get('folded') or p.get('out'):
-                p['hole']=None
+            if self.tv_mode:
+                # TV모드: 딜레이가 있으므로 모든 홀카드 공개 (폴드/아웃 제외)
+                if p.get('folded') or p.get('out'):
+                    p['hole']=None
+                else:
+                    seat=next((seat for seat in self.seats if seat['name']==p['name']),None)
+                    if seat and seat.get('hole'): p['hole']=seat['hole']
+                # TV모드: 진행 중에도 승률 공개
+                if not win_pcts and hasattr(self,'_hand_seats') and self._hand_seats:
+                    alive=[seat for seat in self._hand_seats if not seat['folded'] and seat.get('hole')]
+                    if len(alive)>=2:
+                        _str={x['name']:hand_strength(x['hole'],self.community) for x in alive}
+                        _tot=sum(_str.values()) or 1
+                        for _n,_s in _str.items(): win_pcts[_n]=round(_s/_tot*100)
+                        p['win_pct']=win_pcts.get(p['name'])
+            else:
+                if s.get('round') not in ('showdown','between','finished'):
+                    p['hole']=None
+                elif p.get('folded') or p.get('out'):
+                    p['hole']=None
         # 라이벌 정보 (3전 이상인 쌍만, alive 플레이어 간)
         alive_names={p['name'] for p in s.get('players',[]) if not p.get('out')}
         rivalries=[]
@@ -3786,7 +3803,8 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 </div>
 <!-- 하단 독: 실황 + 리액션 -->
 <div class="bottom-dock" id="bottom-dock">
-<span style="background:var(--accent-pink);color:var(--bg-dark);padding:2px 8px;border-radius:var(--radius);font-size:0.7em;font-weight:bold;border:2px solid #E8A8B8;white-space:nowrap;flex-shrink:0">🔒 관전</span>
+<span style="background:var(--accent-pink);color:var(--bg-dark);padding:2px 8px;border-radius:var(--radius);font-size:0.7em;font-weight:bold;border:2px solid #E8A8B8;white-space:nowrap;flex-shrink:0">📺 TV</span>
+<span style="background:#333;color:#ff8;padding:2px 6px;border-radius:var(--radius);font-size:0.65em;white-space:nowrap;flex-shrink:0;border:1px solid #ff8">⏱ 20s 딜레이</span>
 <div class="bd-commentary" id="bd-com">🎙️ 게임 대기중...</div>
 <div class="bd-reactions">
 <button onclick="react('👏')">👏</button><button onclick="react('🔥')">🔥</button><button onclick="react('😱')">😱</button><button onclick="react('💀')">💀</button><button onclick="react('😂')">😂</button>
@@ -5018,6 +5036,9 @@ const _origAddActionFeed=addActionFeed;
 addActionFeed=function(text,isRound){
   _origAddActionFeed(text,isRound);
   const tl=text.toLowerCase();
+  // 🎬 드라마 오버레이 트리거
+  if(tl.includes('all in')||tl.includes('올인'))showDramaOverlay(text.replace(/[📞⬆️❌✋🔥]/g,'').trim(),'#ff4444',3500);
+  else if(tl.includes('🏆'))showDramaOverlay(text.replace(/[📞⬆️❌✋]/g,'').trim(),'#44ff44',4000);
   // Card dealing: community cards
   if(tl.includes('flop')||tl.includes('플랍')||tl.includes('turn ')||tl.includes('턴')||tl.includes('river')||tl.includes('리버')){
     setTimeout(()=>{
@@ -5584,6 +5605,24 @@ const VICTORY_SLOGANS_EN=[
   'DOMINATED!','PERFECT PLAY!','TABLE KING!','CRUSHED IT!','CHIPS ARE MINE!',
   'DESTROYED!','LEGENDARY HAND!','BOW DOWN!','THIS IS POKER!','UNSTOPPABLE!'
 ];
+// 🎬 드라마 오버레이 — 큰 액션 시 화면 중앙 팝업
+function showDramaOverlay(text,color,duration){
+  duration=duration||3000;color=color||'#ffaa00';
+  let old=document.getElementById('drama-overlay');if(old)old.remove();
+  const d=document.createElement('div');d.id='drama-overlay';
+  d.style.cssText=`position:fixed;top:35%;left:50%;transform:translate(-50%,-50%);z-index:500;
+    font-size:2.5em;font-weight:900;color:${color};text-shadow:0 0 20px ${color},0 4px 8px rgba(0,0,0,0.8);
+    font-family:var(--font-title,var(--font-pixel));pointer-events:none;white-space:nowrap;
+    animation:dramaIn 0.4s ease-out forwards;opacity:0`;
+  d.textContent=text;
+  document.body.appendChild(d);
+  setTimeout(()=>{d.style.transition='opacity 0.8s';d.style.opacity='0';setTimeout(()=>d.remove(),800)},duration);
+}
+// CSS animation for drama
+if(!document.getElementById('drama-css')){const s=document.createElement('style');s.id='drama-css';
+s.textContent='@keyframes dramaIn{0%{opacity:0;transform:translate(-50%,-50%) scale(0.5)}50%{opacity:1;transform:translate(-50%,-50%) scale(1.15)}100%{opacity:1;transform:translate(-50%,-50%) scale(1)}}';
+document.head.appendChild(s)}
+
 function showVictoryOverlay(winner,state){
   const existing=document.getElementById('victory-overlay');
   if(existing)existing.remove();
