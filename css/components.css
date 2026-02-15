@@ -1661,16 +1661,7 @@ body.fair-on .fair-commentary,
 
 /* ===== 44. EMPTY SEAT (빈 의자) ===== */
 .seat.empty-seat {
-  opacity: 0.2;
-  pointer-events: none;
-}
-.seat.empty-seat .chair-sprite { opacity: 0.4; filter: grayscale(0.6) brightness(0.7); }
-.seat.empty-seat .chair-shadow { opacity: 0.1; }
-.seat.empty-seat .nm {
-  background: rgba(12,15,20,0.6);
-  color: var(--text-muted);
-  font-size: var(--fs-xs);
-  border-style: dashed;
+  display: none !important;
 }
 
 /* ===== 45. STATE PRIORITY — 조합 충돌 방지 ===== */

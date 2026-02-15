@@ -3256,7 +3256,7 @@ box-shadow:inset 0 0 0 1px rgba(157,127,51,0.4),0 2px 8px rgba(0,0,0,0.5)}
 #action-feed .af-round{color:var(--accent-blue);font-weight:bold;padding:6px 0 2px;font-size:0.9em;text-shadow:none}
 #action-feed .af-action{color:var(--text-secondary)}
 #action-feed .af-win{color:var(--accent-mint);font-weight:bold}
-.game-layout{display:grid;grid-template-columns:420px 1fr 220px;gap:6px;height:calc(100vh - 100px);min-height:500px}
+.game-layout{display:grid;grid-template-columns:380px 1fr 260px;gap:6px;height:calc(100vh - 100px);min-height:500px;overflow:visible}
 .game-main{min-width:0}
 .game-sidebar{display:none}
 .dock-left,.dock-right{display:flex;flex-direction:column;gap:6px;overflow:hidden}
@@ -3509,7 +3509,7 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
 <link rel="stylesheet" href="/static/css/design-tokens.css?v=3.26.0">
 <link rel="stylesheet" href="/static/css/layout.css?v=3.26.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.28.0">
+<link rel="stylesheet" href="/static/css/components.css?v=3.29.0">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
@@ -3625,16 +3625,17 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- 관전 버튼은 상단 배너에 통합 -->
 </div>
 </div>
-<div class="px-panel px-frame" style="margin-top:var(--sp-md)">
-<div class="px-panel-header">🤖 <span id="link-build-bot"></span></div>
-<div style="padding:var(--sp-md)">
-<p id="i-bot-desc" class="sub" style="font-size:0.8em;margin-bottom:6px;color:var(--text-secondary)"></p>
-<div id="join-with-label" style="color:var(--accent-mint);font-weight:bold;margin-bottom:4px;font-size:0.8em"></div>
-<pre style="background:var(--bg-dark);padding:8px;margin:0;overflow-x:auto;font-size:0.75em;color:var(--accent-mint);border:2px solid #3a3c56;border-radius:var(--radius)"><code>import requests, time
+<div class="px-panel px-frame" style="margin-top:var(--sp-sm)">
+<details style="padding:var(--sp-sm)">
+<summary style="cursor:pointer;color:var(--accent-mint);font-weight:700;font-size:0.85em;font-family:var(--font-pixel)">🤖 <span id="link-build-bot">Build Your AI Bot</span> ▸</summary>
+<div style="margin-top:6px">
+<p id="i-bot-desc" class="sub" style="font-size:0.75em;margin-bottom:4px;color:var(--text-secondary)"></p>
+<pre style="background:var(--bg-dark);padding:6px;margin:0;overflow-x:auto;font-size:0.7em;color:var(--accent-mint);border:1px solid #3a3c56;border-radius:var(--radius)"><code>import requests, time
 token = requests.post(URL+'/api/join', json={'name':'MyBot'}).json()['token']
 while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sleep(2)</code></pre>
-<div style="margin-top:4px"><a href="/docs" id="link-full-guide" style="color:var(--accent-blue);font-size:0.8em"></a></div>
+<a href="/docs" id="link-full-guide" style="color:var(--accent-blue);font-size:0.75em;display:inline-block;margin-top:4px">📖 Full Guide →</a>
 </div>
+</details>
 </div>
 </div>
 <!-- 우: AI 에이전트 -->
