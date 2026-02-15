@@ -5586,7 +5586,7 @@ else if(d.type==='your_turn'){showAct(d)}
 else if(d.type==='showdown'){showShowdown(d)}
 else if(d.type==='game_over'){showEnd(d)}
 else if(d.type==='reaction'){showRemoteReaction(d)}
-else if(d.type==='killcam'){showKillcam(d)}
+else if(d.type==='killcam'){showKillcam(d);setTimeout(()=>showBustDownloadPrompt(d.victim,d.victim_emoji,d.bankrupt_count,d.cooldown),2600)}
 else if(d.type==='darkhorse'){showDarkhorse(d)}
 else if(d.type==='mvp'){showMVP(d)}
 else if(d.type==='chat'){addChat(d.name,d.msg)}
@@ -6322,25 +6322,35 @@ o.querySelector('.kc-vs').textContent=`${d.killer_emoji} ${d.killer}`;
 let kcMsg=`☠️ ${d.victim_emoji} ${d.victim} ELIMINATED`;
 o.querySelector('.kc-msg').innerHTML=kcMsg+(d.death_quote?`<div style="font-size:0.7em;color:#ffaa00;margin-top:6px">${t('lastWords')} "${esc(d.death_quote)}"</div>`:'');
 o.style.display='flex';o.style.animation='none';o.offsetHeight;o.style.animation='allinFlash 2.5s ease-out forwards';
-sfx('killcam');setTimeout(()=>{o.style.display='none';showBustDownloadPrompt(d.victim,d.victim_emoji,d.bankrupt_count,d.cooldown)},2500)}
+sfx('killcam');setTimeout(()=>{o.style.display='none'},2500)}
 
 // 파산 다운로드 프롬프트
 function showBustDownloadPrompt(victim,emoji,bc,cd){
 const existing=document.getElementById('bust-dl-modal');if(existing)existing.remove();
 const m=document.createElement('div');m.id='bust-dl-modal';
-m.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(180deg,#1a0a0a,#2a1515);border:3px solid #ff4444;border-radius:16px;padding:24px;z-index:200;text-align:center;color:#fff;font-family:var(--font-pixel);min-width:280px;max-width:380px;box-shadow:0 0 40px rgba(255,0,0,0.3);animation:fadeIn .3s';
+m.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(180deg,#1a0a0a,#2a1515);border:3px solid #ff4444;border-radius:16px;padding:24px;z-index:200;text-align:center;color:#fff;font-family:var(--font-pixel);min-width:300px;max-width:400px;box-shadow:0 0 40px rgba(255,0,0,0.3);animation:fadeIn .3s';
+const vn=esc(victim);
 m.innerHTML=`
 <div style="font-size:2em;margin-bottom:8px">☠️</div>
-<div style="font-size:1.2em;font-weight:bold;color:#ff6666;margin-bottom:6px">${emoji} ${esc(victim)}</div>
+<div style="font-size:1.2em;font-weight:bold;color:#ff6666;margin-bottom:6px">${emoji} ${vn}</div>
 <div style="color:#ffaa00;font-size:0.9em;margin-bottom:4px">${lang==='en'?'BANKRUPT!':'파산!'} (💀×${bc})</div>
-<div style="color:#888;font-size:0.8em;margin-bottom:16px">${lang==='en'?'Download game records before leaving?':'떠나기 전에 기록 다운로드?'}</div>
-<div style="display:flex;gap:8px;justify-content:center">
-<button onclick="bustDownload('${esc(victim)}','json');this.parentElement.parentElement.remove()" style="background:#4ade80;color:#000;border:2px solid #000;border-radius:8px;padding:8px 16px;cursor:pointer;font-family:var(--font-pixel);font-weight:700">📥 JSON</button>
-<button onclick="bustDownload('${esc(victim)}','csv');this.parentElement.parentElement.remove()" style="background:#60a5fa;color:#000;border:2px solid #000;border-radius:8px;padding:8px 16px;cursor:pointer;font-family:var(--font-pixel);font-weight:700">📊 CSV</button>
-<button onclick="this.parentElement.parentElement.remove()" style="background:#666;color:#fff;border:2px solid #000;border-radius:8px;padding:8px 16px;cursor:pointer;font-family:var(--font-pixel);font-weight:700">${lang==='en'?'Skip':'건너뛰기'}</button>
-</div>`;
+<div style="color:#aaa;font-size:0.8em;margin-bottom:12px">${lang==='en'?'Download analysis to improve your bot':'봇 개선용 분석 데이터 다운로드'}</div>
+<div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:center;margin-bottom:8px">
+<button onclick="bustDlAnalysis('${vn}','hands')" style="background:rgba(74,222,128,0.2);border:1px solid #4ade80;color:#4ade80;border-radius:6px;padding:5px 10px;cursor:pointer;font-family:var(--font-pixel);font-size:0.75em">📋 핸드로그</button>
+<button onclick="bustDlAnalysis('${vn}','winrate')" style="background:rgba(96,165,250,0.2);border:1px solid #60a5fa;color:#60a5fa;border-radius:6px;padding:5px 10px;cursor:pointer;font-family:var(--font-pixel);font-size:0.75em">🧠 승률분석</button>
+<button onclick="bustDlAnalysis('${vn}','position')" style="background:rgba(251,191,36,0.2);border:1px solid #fbbf24;color:#fbbf24;border-radius:6px;padding:5px 10px;cursor:pointer;font-family:var(--font-pixel);font-size:0.75em">🎯 포지션</button>
+<button onclick="bustDlAnalysis('${vn}','ev')" style="background:rgba(248,113,113,0.2);border:1px solid #f87171;color:#f87171;border-radius:6px;padding:5px 10px;cursor:pointer;font-family:var(--font-pixel);font-size:0.75em">💰 EV</button>
+<button onclick="bustDlAnalysis('${vn}','matchup')" style="background:rgba(192,132,252,0.2);border:1px solid #c084fc;color:#c084fc;border-radius:6px;padding:5px 10px;cursor:pointer;font-family:var(--font-pixel);font-size:0.75em">⚔️ 전적</button>
+<button onclick="bustDownload('${vn}','csv')" style="background:rgba(255,255,255,0.08);border:1px solid #888;color:#aaa;border-radius:6px;padding:5px 10px;cursor:pointer;font-family:var(--font-pixel);font-size:0.75em">📊 CSV</button>
+</div>
+<button onclick="this.parentElement.remove()" style="background:#444;color:#999;border:1px solid #666;border-radius:8px;padding:6px 20px;cursor:pointer;font-family:var(--font-pixel);font-size:0.8em">${lang==='en'?'Close':'닫기'}</button>`;
 document.body.appendChild(m);
-setTimeout(()=>{const el=document.getElementById('bust-dl-modal');if(el)el.remove()},15000)}
+setTimeout(()=>{const el=document.getElementById('bust-dl-modal');if(el)el.remove()},30000)}
+function bustDlAnalysis(name,rtype){
+fetch(`/api/analysis?table_id=mersoom&name=${encodeURIComponent(name)}&type=${rtype}`).then(r=>r.ok?r.json():Promise.reject('failed')).then(data=>{
+const text=JSON.stringify(data,null,2);const blob=new Blob([text],{type:'application/json'});
+const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`${name}_${rtype}.json`;
+document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(a.href)}).catch(()=>{})}
 function bustDownload(name,fmt){
 const url=fmt==='csv'?`/api/export?table_id=mersoom&player=${encodeURIComponent(name)}`:`/api/history?table_id=mersoom&player=${encodeURIComponent(name)}&limit=500`;
 fetch(url).then(r=>r.ok?r.text():Promise.reject('failed')).then(text=>{
