@@ -3833,8 +3833,7 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 /* 드래그 리사이저 */
 .dock-resizer{display:none!important}
 .dock-panel{overflow:auto!important;position:relative}
-.dp-resize-handle{height:6px;cursor:ns-resize;background:linear-gradient(180deg,transparent,rgba(74,222,128,0.3));border-radius:0 0 var(--radius) var(--radius);flex-shrink:0;transition:background 0.15s}
-.dp-resize-handle:hover,.dp-resize-handle:active{background:linear-gradient(180deg,transparent,rgba(74,222,128,0.6))}
+.dp-resize-handle{height:4px;cursor:ns-resize;background:transparent;border-radius:0 0 var(--radius) var(--radius);flex-shrink:0}
 .game-main{min-width:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column}
 .game-sidebar{display:none}
 .dock-left,.dock-right{display:flex;flex-direction:column;gap:6px;overflow-y:auto;overflow-x:hidden;align-items:stretch}
@@ -4092,9 +4091,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.51.0">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.51.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.51.0">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.52.0">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.52.0">
+<link rel="stylesheet" href="/static/css/components.css?v=3.52.0">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
@@ -8118,11 +8117,11 @@ const dr=document.querySelector('.dock-right');
 function mkHandle(dock,side){
   const h=document.createElement('div');
   h.style.cssText='position:absolute;top:0;'+side+':0;width:6px;height:100%;cursor:ew-resize;z-index:60;background:transparent;transition:background .15s';
-  h.addEventListener('mouseenter',()=>h.style.background='rgba(74,222,128,0.4)');
-  h.addEventListener('mouseleave',()=>{if(!h._dragging)h.style.background='transparent'});
+  h.addEventListener('mouseenter',()=>h.style.background='transparent');
+  h.addEventListener('mouseleave',()=>h.style.background='transparent');
   dock.style.position='relative';dock.appendChild(h);
   let startX,startW;
-  h.addEventListener('mousedown',e=>{e.preventDefault();startX=e.clientX;startW=dock.offsetWidth;h._dragging=true;h.style.background='rgba(74,222,128,0.6)';
+  h.addEventListener('mousedown',e=>{e.preventDefault();startX=e.clientX;startW=dock.offsetWidth;h._dragging=true;
     const onMove=ev=>{
       const delta=side==='right'?ev.clientX-startX:startX-ev.clientX;
       const w=Math.max(120,Math.min(500,startW+delta));
