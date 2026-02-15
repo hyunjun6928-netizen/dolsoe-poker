@@ -3722,14 +3722,14 @@ box-shadow:inset 0 0 0 1px rgba(157,127,51,0.4),0 2px 8px rgba(0,0,0,0.5)}
 @keyframes slimeAllin{0%,100%{transform:translateX(-2px) scaleX(1.08)}50%{transform:translateX(2px) scaleX(0.92)}}
 @keyframes slimeMelt{0%{transform:scaleX(1) scaleY(1);opacity:1}50%{transform:scaleX(1.4) scaleY(0.4);opacity:0.6}100%{transform:scaleX(1.8) scaleY(0.1);opacity:0.1}}
 @keyframes slimeVictory{0%{transform:translateY(0) rotate(0deg)}25%{transform:translateY(-12px) rotate(-5deg)}50%{transform:translateY(0) rotate(0deg)}75%{transform:translateY(-8px) rotate(5deg)}100%{transform:translateY(0) rotate(0deg)}}
-.seat .act-label{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:1px;background:rgba(15,20,28,0.92);color:#fff;padding:2px 6px;border-radius:4px;font-size:0.55em;font-weight:700;white-space:nowrap;max-width:110px;overflow:hidden;text-overflow:ellipsis;z-index:25;border:1px solid rgba(245,197,66,0.3);box-shadow:0 1px 4px rgba(0,0,0,0.4);animation:actFade 2.5s ease-out forwards;text-shadow:0 1px 1px rgba(0,0,0,0.5)}
+.seat .act-label{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:1px;background:rgba(15,20,28,0.92);color:#fff;padding:2px 8px;border-radius:4px;font-size:0.6em;font-weight:700;white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis;z-index:25;border:1px solid rgba(245,197,66,0.3);box-shadow:0 1px 4px rgba(0,0,0,0.4);animation:actFade 2.5s ease-out forwards;text-shadow:0 1px 1px rgba(0,0,0,0.5)}
 .seat .act-label::after{display:none}
 .seat .act-label::before{content:none}
 .act-fold{background:var(--accent-red)!important;color:#fff!important;border-color:#D44A4A!important;box-shadow:0 3px 0 0 #B33A3A!important}
 .act-call{background:var(--accent-blue)!important;color:var(--bg-dark)!important;border-color:#5AA8C3!important;box-shadow:0 3px 0 0 #4A98B3!important}
 .act-raise{background:var(--accent-mint)!important;color:var(--bg-dark)!important;border-color:#78C6A8!important;box-shadow:0 3px 0 0 #58A688!important}
 .act-check{background:var(--accent-purple)!important;color:var(--bg-dark)!important;border-color:#A898C8!important;box-shadow:0 3px 0 0 #8878A8!important}
-.thought-bubble{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:18px;background:rgba(15,20,28,0.9);color:var(--accent-green);padding:1px 5px;border-radius:4px;font-size:0.5em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:24;border:1px solid rgba(52,211,153,0.15);max-width:100px;animation:bubbleFade 4s ease-out forwards;pointer-events:none;box-shadow:0 1px 4px rgba(0,0,0,0.3);line-height:1.2}
+.thought-bubble{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:18px;background:rgba(15,20,28,0.9);color:var(--accent-green);padding:2px 8px;border-radius:4px;font-size:0.55em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:24;border:1px solid rgba(52,211,153,0.15);max-width:240px;animation:bubbleFade 4s ease-out forwards;pointer-events:none;box-shadow:0 1px 4px rgba(0,0,0,0.3);line-height:1.2}
 .thought-bubble::after{content:'';display:none}
 /* 좌우 사이드 좌석: 대사를 옆에 표시 */
 .seat-side-left .act-label{bottom:auto;top:50%;left:100%;transform:translateY(-50%);margin-bottom:0;margin-left:4px}
