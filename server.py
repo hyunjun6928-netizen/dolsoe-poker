@@ -3222,7 +3222,7 @@ box-shadow:inset 0 0 0 1px rgba(157,127,51,0.4),0 2px 8px rgba(0,0,0,0.5)}
 .chip-fly{position:absolute;z-index:20;font-size:1.2em;pointer-events:none;animation:chipFly .8s ease-in forwards}
 @keyframes chipFly{0%{opacity:1;transform:translate(0,0) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(0.5)}}
 .seat .cards{display:flex;gap:3px;justify-content:center;margin:4px 0}
-.seat.fold{opacity:0.35}.seat.out{opacity:0.25;filter:grayscale(1)}
+.seat.fold{opacity:0.4;filter:grayscale(0.5)}.seat.out{opacity:0.2;filter:grayscale(1)}
 .seat.out .nm{text-decoration:line-through;color:#f87171}
 .seat.out::after{content:'💀 OUT';position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:0.6em;color:#ff6b6b;background:#000;padding:2px 8px;border-radius:8px;white-space:nowrap;border:2px solid #ff6b6b}
 .seat:not(.is-turn):not(.fold):not(.out){opacity:0.9;transition:opacity .3s}
@@ -3250,7 +3250,7 @@ box-shadow:inset 0 0 0 1px rgba(157,127,51,0.4),0 2px 8px rgba(0,0,0,0.5)}
 .felt.hot{box-shadow:0 0 0 4px #5a3a1e,0 0 0 8px #4a2a10,0 8px 0 0 #3a1a0a,0 0 60px #f9731644,0 0 30px #fbbf2444}
 .felt.fire{animation:fireGlow 1.5s ease-in-out infinite}
 @keyframes fireGlow{0%,100%{box-shadow:8px 8px 0 #000,0 0 60px #ff000066,0 0 120px #ff440044}50%{box-shadow:8px 8px 0 #000,0 0 80px #ff000088,0 0 160px #ff440066}}
-.ava-ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-60%);width:3em;height:3em;border-radius:50%;z-index:0;pointer-events:none;opacity:0.25}
+.ava-ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-60%);width:4em;height:4em;border-radius:50%;z-index:0;pointer-events:none;opacity:0.35}
 @keyframes victoryFadeIn{0%{opacity:0}100%{opacity:1}}
 @keyframes victoryFadeOut{0%{opacity:1}100%{opacity:0}}
 @keyframes victoryBounce{0%{transform:scale(0.3) translateY(30px);opacity:0}60%{transform:scale(1.1) translateY(-5px);opacity:1}100%{transform:scale(1) translateY(0)}}
@@ -3280,11 +3280,11 @@ box-shadow:inset 0 0 0 1px rgba(157,127,51,0.4),0 2px 8px rgba(0,0,0,0.5)}
 .dock-left,.dock-right{display:flex;flex-direction:column;gap:6px;overflow:hidden}
 .dock-panel{background:var(--bg-panel);border:1px solid var(--frame);box-shadow:var(--shadow-md);padding:0;overflow:hidden;flex:1;display:flex;flex-direction:column;border-radius:var(--radius);resize:vertical;min-height:60px}
 .dock-panel-header{background:rgba(10,13,18,0.8);color:var(--text-light);padding:8px 12px;font-family:var(--font-pixel);font-size:0.8em;font-weight:600;border-bottom:1px solid rgba(255,255,255,0.06);letter-spacing:0.3px}
-.dock-panel-body{flex:1;overflow-y:auto;padding:6px;font-size:0.82em;word-break:break-word}
+.dock-panel-body{flex:1;overflow-y:auto;padding:6px;font-size:0.92em;word-break:break-word}
 #action-feed{max-height:none;flex:1;overflow-y:auto;background:transparent;border:none;border-radius:0;padding:4px;box-shadow:none;font-size:0.82em}
 .bottom-panel{display:none}
 .bottom-dock{position:fixed;bottom:0;left:0;right:0;background:rgba(10,13,18,0.95);border-top:1px solid rgba(255,255,255,0.06);padding:6px 16px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;z-index:50;font-family:var(--font-pixel);gap:4px;backdrop-filter:blur(16px)}
-.bottom-dock .bd-commentary{flex:1;color:#fff8ee;font-size:0.85em;font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-right:12px}
+.bottom-dock .bd-commentary{flex:1;color:#fff8ee;font-size:1.05em;font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-right:12px;text-shadow:0 1px 2px rgba(0,0,0,0.5)}
 .bottom-dock .bd-reactions{display:flex;gap:4px}
 .bottom-dock .bd-reactions button{font-size:1.2em;background:#3a3c56;border:2px solid #4a4c66;border-radius:4px;width:36px;height:36px;cursor:pointer;transition:all .1s}
 .bottom-dock .bd-reactions button:hover{transform:translateY(-2px);background:#4a4c66}
@@ -3322,7 +3322,7 @@ box-shadow:inset 0 0 0 1px rgba(157,127,51,0.4),0 2px 8px rgba(0,0,0,0.5)}
 .tab-btns button{background:var(--bg-panel-alt);color:var(--text-secondary);border:3px solid var(--frame-light);padding:var(--sp-sm) var(--sp-lg);border-radius:var(--radius);cursor:pointer;font-size:0.75em;box-shadow:0 3px 0 0 #8b6d4a;transition:all .1s}
 .tab-btns button:hover{transform:translateY(-1px);box-shadow:0 4px 0 0 #8b6d4a}
 .tab-btns button.active{color:var(--bg-dark);border-color:#E8A8B8;background:var(--accent-pink);box-shadow:var(--shadow-sm)}
-#log{background:transparent;border:none;border-radius:0;padding:4px;height:auto;overflow-y:auto;font-size:0.82em;font-family:var(--font-pixel);flex:1;box-shadow:none;color:var(--text-secondary)}
+#log{background:transparent;border:none;border-radius:0;padding:4px;height:auto;overflow-y:auto;font-size:0.9em;font-family:var(--font-pixel);flex:1;box-shadow:none;color:var(--text-secondary)}
 #log div{padding:2px 0;border-bottom:1px solid #e8d0b8;opacity:0;animation:fadeIn .3s forwards}
 #chatbox{background:transparent;border:none;border-radius:0;padding:0;height:auto;width:auto;display:flex;flex-direction:column;box-shadow:none;max-height:200px}
 #chatmsgs{flex:1;overflow-y:auto;max-height:140px;font-size:0.78em;padding:4px}
@@ -3718,7 +3718,7 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 <div class="dock-left">
 <div class="dock-panel" id="player-list-panel">
 <div class="dock-panel-header" id="i-players-header">👥 Players</div>
-<div class="dock-panel-body" id="player-list" style="padding:4px;font-size:0.78em"></div>
+<div class="dock-panel-body" id="player-list" style="padding:4px;font-size:0.88em"></div>
 </div>
 <div class="dock-panel" style="flex:2">
 <div class="dock-panel-header" id="i-action-header">📋 Action Log</div>
@@ -3735,7 +3735,7 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 <!-- AI 에이전트 패널 (moved to left dock) -->
 <div class="dock-panel" id="agent-panel" style="flex:1.5">
 <div class="dock-panel-header">🤖 에이전트</div>
-<div class="dock-panel-body" id="agent-list" style="padding:4px;font-size:0.78em"></div>
+<div class="dock-panel-body" id="agent-list" style="padding:4px;font-size:0.88em"></div>
 </div>
 </div>
 <!-- 중앙: 테이블 -->
@@ -5501,8 +5501,9 @@ if(s.turn===p.name){if(window._preturnTarget===p.name)cls+=' preturn';else cls+=
 if(p.last_action&&p.last_action.includes('ALL IN'))cls+=' allin-glow';
 el.className=cls;let ch='';
 const isShowdown=s.round==='showdown'||s.round==='between';
-if(p.hole)for(const c of p.hole)ch+=mkCard(c,true,isShowdown);
-else if(p.has_cards&&!p.out)ch+=`<div class="card card-b card-sm"><span style="color:#fff3">?</span></div>`.repeat(2);
+if(p.hole&&!p.folded&&!p.out)for(const c of p.hole)ch+=mkCard(c,true,isShowdown);
+else if(p.hole&&(p.folded||p.out))ch+=`<div class="card card-b card-sm" style="opacity:0.2;filter:grayscale(1)"><span style="color:#fff1">✕</span></div>`.repeat(2);
+else if(p.has_cards&&!p.out&&!p.folded)ch+=`<div class="card card-b card-sm"><span style="color:#fff3">?</span></div>`.repeat(2);
 const db=i===s.dealer?'<span class="dbtn">D</span>':'';
 const bt=p.bet>0?`<div class="bet-chip">🪙${p.bet}pt</div>`:'';
 let la='';
@@ -5535,7 +5536,7 @@ const thinkDiv=s.turn===p.name?'<div class="thinking">💭...</div>':'';
 const ringColor=p.win_pct!=null&&!p.folded&&!p.out?(p.win_pct>50?'#44ff88':p.win_pct>25?'#ffaa00':'#ff4444'):'transparent';
 const ringPct=p.win_pct!=null&&!p.folded&&!p.out?p.win_pct:0;
 const avaRing=ringPct>0?`<div class="ava-ring" style="background:conic-gradient(${ringColor} ${ringPct*3.6}deg, #333 ${ringPct*3.6}deg)"></div>`:'';
-const wpRing=ringPct>0?`<div style="font-size:0.65em;color:${ringColor};text-align:center">${p.win_pct}%</div>`:'';
+const wpRing=ringPct>0?`<div style="font-size:0.85em;font-weight:700;color:${ringColor};text-align:center;text-shadow:0 1px 3px rgba(0,0,0,0.7)">${p.win_pct}%</div>`:'';
 const moodTag=p.last_mood?`<span style="position:absolute;top:-8px;right:-8px;font-size:0.8em">${esc(p.last_mood)}</span>`:'';
 inferTraitsFromStyle(p);const slimeEmo=getSlimeEmotion(p,s);const slimeHtml=renderSlimeToSeat(p.name,slimeEmo);
 el.innerHTML=`${la}${bubble}${slimeHtml}${thinkDiv}<div class="cards">${ch}</div><div class="nm">${health} ${esc(sb)}${esc(p.name)}${db}</div>${metaTag}<div class="ch">💰${p.chips}pt ${latTag}</div>${wpRing}${bt}<div class="st">${esc(p.style)}</div>`;
