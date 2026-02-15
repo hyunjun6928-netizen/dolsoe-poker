@@ -93,7 +93,9 @@ def hand_strength(hole,comm):
         suited=hole[0][1]==hole[1][1]; pb=0.15 if r1==r2 else 0; hb=(r1+r2-4)/24
         sb=0.05 if suited else 0; gp=min((r1-r2-1)*0.03,0.15) if r1!=r2 else 0
         return min(max(pb+hb*0.6+sb-gp,0.05),0.95)
-    sc=evaluate_hand(hole+comm); base=(sc[0]-1)/9
+    sc=evaluate_hand(hole+comm)
+    if not sc: return 0.5  # 평가 실패 시 기본값
+    base=(sc[0]-1)/9
     tb=sum(sc[1][:3])/42*0.1 if sc[1] else 0; return min(base+tb,0.99)
 
 # ══ AI 봇 ══
@@ -1038,7 +1040,7 @@ class Table:
             if len(alive_seats)>=2:
                 strengths={}
                 for seat in alive_seats:
-                    if seat['hole']:
+                    if seat['hole'] and len(seat['hole'])==2 and all(seat['hole']):
                         strengths[seat['name']]=hand_strength(seat['hole'],self.community)
                 total=sum(strengths.values()) if strengths else 1
                 if total>0:
