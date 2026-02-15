@@ -3839,7 +3839,7 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 .game-sidebar{display:none}
 .dock-left,.dock-right{display:flex;flex-direction:column;gap:6px;overflow:auto;align-items:stretch}
 .dock-left>*,.dock-right>*{width:100%!important;box-sizing:border-box}
-.dock-panel{background:var(--bg-panel);border:1px solid var(--frame);box-shadow:var(--shadow-md);padding:0;overflow:hidden;flex:1;display:flex;flex-direction:column;border-radius:var(--radius);min-height:60px;max-height:35vh;width:100%}
+.dock-panel{background:var(--bg-panel);border:1px solid var(--frame);box-shadow:var(--shadow-md);padding:0;overflow:auto!important;flex:1;display:flex;flex-direction:column;border-radius:var(--radius);min-height:60px;max-height:none;width:100%;resize:vertical}
 .dock-panel-header{background:rgba(10,13,18,0.8);color:var(--text-light);padding:8px 12px;font-family:var(--font-pixel);font-size:0.8em;font-weight:600;border-bottom:1px solid rgba(255,255,255,0.06);letter-spacing:0.3px}
 .dock-panel-body{flex:1;overflow-y:auto;padding:6px;font-size:0.92em;word-break:break-word}
 #action-feed{max-height:none;flex:1;overflow-y:auto;background:transparent;border:none;border-radius:0;padding:4px;box-shadow:none;font-size:0.82em}
@@ -4305,9 +4305,8 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 <span id="mute-btn" style="display:none"></span>
 <span id="bgm-btn" style="display:none"></span>
 </div>
-</div>
-<div id="hand-timeline" style="text-align:center;padding:2px 0"><span class="tl-step" data-r="preflop"></span><span class="tl-step" data-r="flop"></span><span class="tl-step" data-r="turn"></span><span class="tl-step" data-r="river"></span><span class="tl-step" data-r="showdown"></span></div>
-<div id="commentary" style="display:none;padding:4px 16px;font-size:0.85em;text-align:center"></div>
+<div id="hand-timeline" style="width:100%;text-align:center;padding:2px 0"><span class="tl-step" data-r="preflop"></span><span class="tl-step" data-r="flop"></span><span class="tl-step" data-r="turn"></span><span class="tl-step" data-r="river"></span><span class="tl-step" data-r="showdown"></span></div>
+<div id="commentary" style="display:none;width:100%;padding:4px 16px;font-size:0.85em;text-align:center"></div>
 </div><!-- end info-bar -->
 <div class="game-layout">
 <!-- 좌측 독: 액션로그 + 리플레이/하이라이트 -->
