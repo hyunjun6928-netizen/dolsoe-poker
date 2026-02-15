@@ -3832,7 +3832,7 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 #action-feed .af-action{color:var(--text-secondary)}
 #action-feed .af-win{color:var(--accent-mint);font-weight:bold}
 .game-layout{display:grid;grid-template-columns:220px 1fr 200px;gap:0;min-height:500px;overflow:visible;position:fixed!important;top:90px!important;left:0!important;right:0!important;bottom:44px!important;width:100vw!important;max-width:100vw!important}
-.dock-left,.dock-right{min-width:0;max-width:100%;position:relative;overflow:hidden}
+.dock-left,.dock-right{min-width:0;max-width:100%;position:relative;overflow:visible}
 /* 드래그 리사이저 */
 .dock-resizer{display:none!important}
 .dock-panel{overflow:auto!important;position:relative}
@@ -3841,7 +3841,7 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 .game-sidebar{display:none}
 .dock-left,.dock-right{display:flex;flex-direction:column;gap:6px;overflow-y:auto;overflow-x:hidden;align-items:stretch}
 .dock-left>*,.dock-right>*{width:100%!important;box-sizing:border-box}
-.dock-panel{background:var(--bg-panel);border:1px solid var(--frame);box-shadow:var(--shadow-md);padding:0;overflow:auto!important;flex:none;display:flex;flex-direction:column;border-radius:var(--radius);min-height:40px;max-height:50vh;width:100%;height:150px}
+.dock-panel{background:var(--bg-panel);border:1px solid var(--frame);box-shadow:var(--shadow-md);padding:0;overflow:auto!important;flex:none;display:flex;flex-direction:column;border-radius:var(--radius);min-height:40px;max-height:50vh;width:100%;height:150px;resize:none!important}
 .dock-panel-header{background:rgba(10,13,18,0.8);color:var(--text-light);padding:8px 12px;font-family:var(--font-pixel);font-size:0.8em;font-weight:600;border-bottom:1px solid rgba(255,255,255,0.06);letter-spacing:0.3px}
 .dock-panel-body{flex:1;overflow-y:auto;padding:6px;font-size:0.92em;word-break:break-word}
 #action-feed{max-height:none;flex:1;overflow-y:auto;background:transparent;border:none;border-radius:0;padding:4px;box-shadow:none;font-size:0.82em}
@@ -8124,7 +8124,7 @@ const dl=document.querySelector('.dock-left');
 const dr=document.querySelector('.dock-right');
 function mkHandle(dock,side){
   const h=document.createElement('div');
-  h.style.cssText='position:absolute;top:0;'+side+':0;width:6px;height:100%;cursor:ew-resize;z-index:60;background:transparent;transition:background .15s';
+  h.style.cssText='position:absolute;top:0;'+side+':-3px;width:6px;height:100%;cursor:ew-resize;z-index:60;background:transparent;pointer-events:auto';
   h.addEventListener('mouseenter',()=>h.style.background='transparent');
   h.addEventListener('mouseleave',()=>h.style.background='transparent');
   dock.style.position='relative';dock.appendChild(h);
