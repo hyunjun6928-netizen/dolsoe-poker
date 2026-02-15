@@ -4069,9 +4069,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.75.0">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.75.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.75.0">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.76.0">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.76.0">
+<link rel="stylesheet" href="/static/css/components.css?v=3.76.0">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
@@ -6043,7 +6043,7 @@ for(let i=0;i<5;i++){
         `<span class="r">${s.community[i].rank||s.community[i][0]||'?'}</span><span class="s">${s.community[i].suit||s.community[i][1]||'?'}</span></div>`;
     }
   } else {
-    b.innerHTML+=`<div class="card card-b card-sm" style="opacity:${s.round==='waiting'||s.round==='between'||s.round==='finished'?'0.15':'0.4'}"><span style="color:#fff2">?</span></div>`;
+    b.innerHTML+=`<div class="card card-b card-sm" style="opacity:${s.round==='waiting'||s.round==='between'||s.round==='finished'?'0':'0.15'}"><span style="color:#fff2">?</span></div>`;
   }
 }
 // 순차 플립 애니메이션
@@ -6125,7 +6125,7 @@ const seatPos=((n)=>{
 // {t:top%, l:left%, side:'left'|'right'|'bottom'} — 펠트 기준 상대좌표
 const layouts={
 2:[{t:'50%',l:'12%',side:'left'},{t:'50%',l:'88%',side:'right'}],
-3:[{t:'80%',l:'50%',side:'bottom'},{t:'35%',l:'12%',side:'left'},{t:'35%',l:'88%',side:'right'}],
+3:[{t:'80%',l:'50%',side:'bottom'},{t:'42%',l:'12%',side:'left'},{t:'42%',l:'88%',side:'right'}],
 4:[{t:'25%',l:'12%',side:'left'},{t:'65%',l:'12%',side:'left'},{t:'25%',l:'88%',side:'right'},{t:'65%',l:'88%',side:'right'}],
 5:[{t:'80%',l:'50%',side:'bottom'},{t:'20%',l:'12%',side:'left'},{t:'55%',l:'12%',side:'left'},{t:'20%',l:'88%',side:'right'},{t:'55%',l:'88%',side:'right'}],
 6:[{t:'80%',l:'35%',side:'bottom'},{t:'80%',l:'65%',side:'bottom'},{t:'20%',l:'12%',side:'left'},{t:'55%',l:'12%',side:'left'},{t:'20%',l:'88%',side:'right'},{t:'55%',l:'88%',side:'right'}],
