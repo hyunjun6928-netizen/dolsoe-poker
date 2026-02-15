@@ -3660,7 +3660,7 @@ h1 b{color:var(--accent-gold);-webkit-text-fill-color:var(--accent-gold)}
 #game{display:none}
 .info-bar{position:fixed!important;top:0!important;left:0!important;right:0!important;z-index:100!important;display:flex!important;flex-wrap:wrap!important;justify-content:space-between;align-items:center;padding:4px 16px;font-size:0.8em;color:var(--text-light);background:#070A10!important;border-bottom:1px solid rgba(255,255,255,0.06);box-shadow:0 2px 8px rgba(0,0,0,0.5)!important;font-family:var(--font-pixel)}
 .info-bar #hand-timeline,.info-bar #commentary{width:100%!important;flex-basis:100%}
-.felt-wrap{position:relative;margin:0 auto 4px;padding-top:10px;width:100%;min-height:calc(100vh - 120px)}
+.felt-wrap{position:relative;margin:0 auto 0;padding-top:10px;width:100%;flex:1;min-height:0;overflow:visible}
 .felt-border{position:absolute;top:-20px;left:-20px;right:-20px;bottom:-20px;
 background:url('/static/slimes/stage_frame.png') center/100% 100% no-repeat;
 border-radius:0;border:none;image-rendering:auto;pointer-events:none;
@@ -3671,7 +3671,7 @@ z-index:0}
 background:linear-gradient(90deg,transparent,rgba(255,255,255,0.08),transparent)}
 .felt{position:relative;
 background:url('/static/slimes/table_felt.png') center/cover no-repeat,linear-gradient(180deg,#1a1e2a 0%,#0d1018 100%);
-border:none;border-radius:18px;width:100%;height:calc(100vh - 340px);
+border:none;border-radius:18px;width:100%;height:100%;
 box-shadow:0 0 60px rgba(245,197,66,0.08),0 8px 32px rgba(0,0,0,0.6);overflow:visible;
 image-rendering:auto}
 .felt::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;
@@ -3836,7 +3836,7 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 .dock-resizer{display:none!important}
 .dock-panel{resize:vertical;overflow:auto!important}
 .dock-panel::-webkit-resizer{background:#4ade80;border:2px solid #333;border-radius:3px}
-.game-main{min-width:0;overflow-y:auto;overflow-x:hidden}
+.game-main{min-width:0;overflow:hidden;display:flex;flex-direction:column}
 .game-sidebar{display:none}
 .dock-left,.dock-right{display:flex;flex-direction:column;gap:6px;overflow:auto;align-items:stretch}
 .dock-left>*,.dock-right>*{width:100%!important;box-sizing:border-box}
@@ -3886,7 +3886,7 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 .tab-btns button.active{color:var(--bg-dark);border-color:#E8A8B8;background:var(--accent-pink);box-shadow:var(--shadow-sm)}
 #log{background:transparent;border:none;border-radius:0;padding:4px;height:auto;overflow-y:auto;font-size:0.9em;font-family:var(--font-pixel);flex:1;box-shadow:none;color:var(--text-secondary)}
 #log div{padding:2px 0;border-bottom:1px solid #e8d0b8;opacity:0;animation:fadeIn .3s forwards}
-#chatbox{background:transparent;border:none;border-radius:0;padding:0;height:auto;width:auto;display:flex;flex-direction:column;box-shadow:none;max-height:200px}
+#chatbox{background:transparent;border:none;border-radius:0;padding:0;width:auto;display:flex;flex-direction:column;box-shadow:none;max-height:160px;flex-shrink:0}
 #chatmsgs{flex:1;overflow-y:auto;max-height:140px;font-size:0.78em;padding:4px}
 #chatmsgs{flex:1;overflow-y:auto;font-size:0.85em;margin-bottom:5px;line-height:1.5}
 #chatmsgs div{padding:2px 0;opacity:0;animation:fadeIn .3s forwards}
@@ -4093,9 +4093,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.41.0">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.41.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.41.0">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.42.0">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.42.0">
+<link rel="stylesheet" href="/static/css/components.css?v=3.42.0">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
