@@ -3658,8 +3658,8 @@ h1 b{color:var(--accent-gold);-webkit-text-fill-color:var(--accent-gold)}
 @media(max-width:900px){.lobby-grid{grid-template-columns:1fr!important}}
 @media(max-width:700px){.lobby-grid{grid-template-columns:1fr!important}}
 #game{display:none}
-.info-bar{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;padding:4px 16px;font-size:0.8em;color:var(--text-light);background:#070A10;border-bottom:1px solid rgba(255,255,255,0.06);box-shadow:0 2px 8px rgba(0,0,0,0.5);font-family:var(--font-pixel)}
-.info-bar #hand-timeline,.info-bar #commentary{width:100%;flex-basis:100%}
+.info-bar{position:fixed!important;top:0!important;left:0!important;right:0!important;z-index:100!important;display:flex!important;flex-wrap:wrap!important;justify-content:space-between;align-items:center;padding:4px 16px;font-size:0.8em;color:var(--text-light);background:#070A10!important;border-bottom:1px solid rgba(255,255,255,0.06);box-shadow:0 2px 8px rgba(0,0,0,0.5)!important;font-family:var(--font-pixel)}
+.info-bar #hand-timeline,.info-bar #commentary{width:100%!important;flex-basis:100%}
 .felt-wrap{position:relative;margin:0 auto 4px;padding-top:10px;width:100%;min-height:calc(100vh - 120px)}
 .felt-border{position:absolute;top:-20px;left:-20px;right:-20px;bottom:-20px;
 background:url('/static/slimes/stage_frame.png') center/100% 100% no-repeat;
@@ -3830,8 +3830,8 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 #action-feed .af-round{color:var(--accent-blue);font-weight:bold;padding:6px 0 2px;font-size:0.9em;text-shadow:none}
 #action-feed .af-action{color:var(--text-secondary)}
 #action-feed .af-win{color:var(--accent-mint);font-weight:bold}
-.game-layout{display:grid;grid-template-columns:22vw 1fr 22vw;gap:0;min-height:500px;overflow:visible;position:fixed;top:90px;left:0;right:0;bottom:44px;width:100vw!important;max-width:100vw!important}
-.dock-left,.dock-right{min-width:120px;position:relative;width:100%}
+.game-layout{display:grid;grid-template-columns:22vw 1fr 22vw;gap:0;min-height:500px;overflow:visible;position:fixed!important;top:44px!important;left:0!important;right:0!important;bottom:44px!important;width:100vw!important;max-width:100vw!important}
+.dock-left,.dock-right{min-width:200px!important;position:relative;width:100%!important}
 /* 드래그 리사이저 */
 .dock-resizer{display:none!important}
 .dock-panel{resize:vertical;overflow:auto!important}
