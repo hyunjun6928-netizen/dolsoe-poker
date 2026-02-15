@@ -3261,7 +3261,7 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
 <link rel="stylesheet" href="/static/css/design-tokens.css?v=3.18.0">
 <link rel="stylesheet" href="/static/css/layout.css?v=3.18.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.18.0">
+<link rel="stylesheet" href="/static/css/components.css?v=3.18.1">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
@@ -3877,7 +3877,7 @@ async function loadCasinoFloor(){
       // v3.15: unified style via CSS data-state, no inline filter
       const wr=a.hands>0?Math.round(a.wins/a.hands*100):0;
       div.innerHTML=`<div style="text-align:center;position:relative">
-        <div class="walker-body" style="width:80px;height:80px;background:url('${img}') center/contain no-repeat;image-rendering:pixelated"></div>
+        <div class="walker-body" style="width:80px;height:80px;background:url('${img}') center/contain no-repeat"></div>
         <div class="walker-shadow"></div>
         <div style="font-size:11px;color:${isLive?'#FCC88E':'#938B7B'};margin-top:2px;white-space:nowrap;text-shadow:1px 1px 0 #050F1A,-1px -1px 0 #050F1A,1px -1px 0 #050F1A,-1px 1px 0 #050F1A;max-width:80px;overflow:hidden;text-overflow:ellipsis;font-family:var(--font-pixel);background:none;padding:0;border:none">${a.name}</div>
         <div class="npc-bubble" style="display:none;position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:rgba(10,13,18,0.92);color:#eee;padding:3px 8px;border-radius:8px;font-size:0.55em;white-space:nowrap;border:1px solid rgba(245,197,66,0.2);margin-bottom:2px;backdrop-filter:blur(4px)"></div>

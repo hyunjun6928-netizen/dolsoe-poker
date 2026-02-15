@@ -2305,13 +2305,15 @@ img[src*="slimes/"] {
    ============================================ */
 
 /* === SCALE RULE: Slime = 80px base, all assets proportional === */
-.floor-npc img, .walker-body img { width: 80px; height: 80px; image-rendering: pixelated !important; }
+.floor-npc img, .walker-body img { width: 80px; height: 80px; }
+.walker-body { image-rendering: auto !important; }
 .poi-furniture img { image-rendering: pixelated !important; filter: none !important; }
 
 /* === FIX: Kill black boxes around characters === */
-.floor-npc img, .walker-body img, .poi-furniture img,
-.seat-unit img, .slime-sprite img, .chair-sprite img {
-  background: transparent !important;
+.floor-npc img, .walker-body img, .walker-body, .poi-furniture img,
+.seat-unit img, .slime-sprite img, .slime-sprite div, .chair-sprite img {
+  background-color: transparent !important;
+  image-rendering: auto !important;
 }
 
 /* === CHARACTER GROUNDING: Warm grading + AO shadow === */
