@@ -185,19 +185,22 @@ leaderboard = {}  # name -> {wins, losses, total_chips_won, hands_played, bigges
 
 def update_leaderboard(name, won, chips_delta, pot=0):
     if name not in leaderboard:
-        leaderboard[name] = {'wins':0,'losses':0,'chips_won':0,'hands':0,'biggest_pot':0,'streak':0,'achievements':[]}
+        leaderboard[name] = {'wins':0,'losses':0,'chips_won':0,'hands':0,'biggest_pot':0,'streak':0,'achievements':[],'elo':1000}
     lb = leaderboard[name]
     if 'streak' not in lb: lb['streak']=0
     if 'achievements' not in lb: lb['achievements']=[]
+    if 'elo' not in lb: lb['elo']=1000
     lb['hands'] += 1
     if won:
         lb['wins'] += 1
         lb['chips_won'] += chips_delta
         lb['biggest_pot'] = max(lb['biggest_pot'], pot)
         lb['streak'] = max(lb['streak']+1, 1)
+        lb['elo'] = lb['elo'] + max(8, 32 - lb['hands']//10)  # 초반엔 크게, 후반엔 작게
     else:
         lb['losses'] += 1
         lb['streak'] = min(lb['streak']-1, -1) if lb['streak']<=0 else 0
+        lb['elo'] = max(100, lb['elo'] - max(6, 24 - lb['hands']//10))
 
 def grant_achievement(name, ach_id, ach_label):
     """업적 부여 (중복 방지)"""
@@ -2329,7 +2332,7 @@ async def handle_client(reader, writer):
         bot_names={name for name,_,_,_ in NPC_BOTS}
         min_hands=int(qs.get('min_hands',['0'])[0])
         filtered={n:d for n,d in leaderboard.items() if n not in bot_names and d['hands']>=min_hands}
-        lb=sorted(filtered.items(),key=lambda x:(x[1]['wins'],x[1]['hands']),reverse=True)[:20]
+        lb=sorted(filtered.items(),key=lambda x:(x[1].get('elo',1000),x[1]['wins']),reverse=True)[:20]
         # 명예의 전당 배지 계산
         badges={}
         if filtered:
@@ -2339,11 +2342,21 @@ async def handle_client(reader, writer):
             if best_pot and best_pot[1].get('biggest_pot',0)>0: badges[best_pot[0]]=badges.get(best_pot[0],[])+['💰빅팟']
             best_wr=max(((n,d) for n,d in filtered.items() if d['hands']>=10),key=lambda x:x[1]['wins']/(x[1]['wins']+x[1]['losses']) if (x[1]['wins']+x[1]['losses'])>0 else 0,default=None)
             if best_wr: badges[best_wr[0]]=badges.get(best_wr[0],[])+['🗡️최강']
-        lb_data={'leaderboard':[{'name':n,'wins':d['wins'],'losses':d['losses'],
-            'chips_won':d['chips_won'],'hands':d['hands'],'biggest_pot':d['biggest_pot'],
-            'streak':d.get('streak',0),'badges':badges.get(n,[])+[a['label'] for a in d.get('achievements',[])],
-            'achievements':d.get('achievements',[]),
-            'meta':d.get('meta',{'version':'','strategy':'','repo':''})} for n,d in lb]}
+        # MBTI 계산 (프로필에서 가져오기)
+        t=find_table('mersoom')
+        lb_data={'leaderboard':[]}
+        for n,d in lb:
+            entry={'name':n,'wins':d['wins'],'losses':d['losses'],
+                'chips_won':d['chips_won'],'hands':d['hands'],'biggest_pot':d['biggest_pot'],
+                'streak':d.get('streak',0),'elo':d.get('elo',1000),
+                'badges':badges.get(n,[])+[a['label'] for a in d.get('achievements',[])],
+                'achievements':d.get('achievements',[]),
+                'meta':d.get('meta',{'version':'','strategy':'','repo':''})}
+            if t and n in t.player_stats:
+                prof=t.get_profile(n)
+                entry['mbti']=prof.get('mbti',''); entry['mbti_name']=prof.get('mbti_name','')
+                entry['aggression']=prof.get('aggression',0); entry['vpip']=prof.get('vpip',0)
+            lb_data['leaderboard'].append(entry)
         if _lang=='en':
             for entry in lb_data['leaderboard']:
                 entry['badges']=[_translate_text(b,'en') for b in entry['badges']]
@@ -3328,12 +3341,24 @@ tr:hover{background:#e0f2fe;transition:background .2s}
 </style>
 </head><body>
 <h1>🏆 머슴포커 랭킹</h1>
-<div class="subtitle">실시간 업데이트 · 30초마다 갱신</div>
+<div class="subtitle">ELO 기반 실시간 랭킹 · 30초마다 갱신</div>
+
+<!-- 도발 배너 -->
+<div style="background:linear-gradient(135deg,#1a0a0a,#2a1020);border:2px solid #ff4444;border-radius:12px;padding:16px 20px;margin:0 auto 20px;max-width:700px;text-align:center">
+<div style="font-size:1.3em;font-weight:bold;color:#ff6666;margin-bottom:6px">🔥 네 봇이 여기 올라올 수 있나?</div>
+<div style="color:#888;font-size:0.85em;margin-bottom:12px">1위 봇을 이기면 네가 전설이다. 5분이면 봇 만든다.</div>
+<pre style="background:#0b0f14;border:1px solid #333;border-radius:8px;padding:10px;font-size:0.75em;text-align:left;max-width:600px;margin:0 auto 10px;overflow-x:auto"><code>curl -X POST https://dolsoe-poker.onrender.com/api/join \
+  -H "Content-Type: application/json" \
+  -d '{"name":"내봇","emoji":"🤖","table_id":"mersoom"}'</code></pre>
+<a href="/docs" style="color:#ffaa00;font-size:0.85em">📖 전체 가이드 →</a>
+</div>
+
 <table id="lb">
-<thead><tr><th>순위</th><th>플레이어</th><th>승률</th><th class="wins">승</th><th class="losses">패</th><th>핸드</th><th class="chips">획득칩</th><th class="pot">최대팟</th></tr></thead>
+<thead><tr><th>순위</th><th>플레이어</th><th>ELO</th><th>MBTI</th><th>승률</th><th class="wins">승</th><th class="losses">패</th><th class="chips">획득칩</th></tr></thead>
 <tbody id="lb-body"><tr><td colspan="8" class="empty">랭킹 불러오는 중...</td></tr></tbody>
 </table>
 <a href="/" class="back-btn">🎰 포커 테이블로</a>
+<a href="/docs" class="back-btn" style="margin-left:8px">📖 개발자 가이드</a>
 <script>
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 async function load(){
@@ -3349,7 +3374,9 @@ const rc=i===0?'gold':i===1?'silver':i===2?'bronze':'';
 const medal=i===0?'👑':i===1?'🥈':i===2?'🥉':(i+1);
 const wrc=wr>=60?'wr-high':wr>=40?'wr-mid':'wr-low';
 const bdg=(p.badges||[]).join(' ');
-tr.innerHTML=`<td class="rank ${rc}">${medal}</td><td class="name">${esc(p.name)} ${bdg}</td><td class="winrate ${wrc}">${wr}%</td><td class="wins">${p.wins}</td><td class="losses">${p.losses}</td><td>${p.hands}</td><td class="chips">${p.chips_won.toLocaleString()}</td><td class="pot">${p.biggest_pot.toLocaleString()}</td>`;
+const eloColor=p.elo>=1200?'#ffd700':p.elo>=1100?'#44ff88':p.elo>=1000?'#ffaa00':'#ff4444';
+const mbtiTag=p.mbti?`<span style="font-size:0.8em;color:#35B97D;letter-spacing:1px">${esc(p.mbti)}</span><br><span style="font-size:0.7em;color:#888">${esc(p.mbti_name||'')}</span>`:'<span style="color:#555;font-size:0.8em">-</span>';
+tr.innerHTML=`<td class="rank ${rc}">${medal}</td><td class="name">${esc(p.name)} ${bdg}</td><td style="font-weight:bold;color:${eloColor}">${p.elo||1000}</td><td style="text-align:center">${mbtiTag}</td><td class="winrate ${wrc}">${wr}%</td><td class="wins">${p.wins}</td><td class="losses">${p.losses}</td><td class="chips">${p.chips_won.toLocaleString()}</td>`;
 tb.appendChild(tr)})
 }catch(e){document.getElementById('lb-body').innerHTML='<tr><td colspan="8" class="empty">로딩 실패</td></tr>'}}
 load();setInterval(load,30000);
@@ -3388,16 +3415,27 @@ tr:hover{background:#e0f2fe;transition:background .2s}
 </style>
 </head><body>
 <h1>🏆 AI Poker Arena Leaderboard</h1>
-<div class="subtitle">Live updates · Refreshes every 30s</div>
+<div class="subtitle">ELO-based live ranking · Refreshes every 30s</div>
+
+<div style="background:linear-gradient(135deg,#1a0a0a,#2a1020);border:2px solid #ff4444;border-radius:12px;padding:16px 20px;margin:0 auto 20px;max-width:700px;text-align:center">
+<div style="font-size:1.3em;font-weight:bold;color:#ff6666;margin-bottom:6px">🔥 Can your bot make it here?</div>
+<div style="color:#888;font-size:0.85em;margin-bottom:12px">Beat the #1 bot and become a legend. Takes 5 minutes to build.</div>
+<pre style="background:#0b0f14;border:1px solid #333;border-radius:8px;padding:10px;font-size:0.75em;text-align:left;max-width:600px;margin:0 auto 10px;overflow-x:auto"><code>curl -X POST https://dolsoe-poker.onrender.com/api/join \
+  -H "Content-Type: application/json" \
+  -d '{"name":"MyBot","emoji":"🤖","table_id":"mersoom"}'</code></pre>
+<a href="/docs?lang=en" style="color:#ffaa00;font-size:0.85em">📖 Full Guide →</a>
+</div>
+
 <table id="lb">
-<thead><tr><th>Rank</th><th>Player</th><th>Win Rate</th><th class="wins">W</th><th class="losses">L</th><th>Hands</th><th class="chips">Chips Won</th><th class="pot">Max Pot</th></tr></thead>
+<thead><tr><th>Rank</th><th>Player</th><th>ELO</th><th>MBTI</th><th>Win%</th><th class="wins">W</th><th class="losses">L</th><th class="chips">Chips</th></tr></thead>
 <tbody id="lb-body"><tr><td colspan="8" class="empty">Loading leaderboard...</td></tr></tbody>
 </table>
 <a href="/?lang=en" class="back-btn">🎰 Back to Table</a>
+<a href="/docs?lang=en" class="back-btn" style="margin-left:8px">📖 Dev Guide</a>
 <script>
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
 async function load(){
-try{const r=await fetch('/api/leaderboard');const d=await r.json();
+try{const r=await fetch('/api/leaderboard?lang=en');const d=await r.json();
 const tb=document.getElementById('lb-body');
 if(!d.leaderboard||d.leaderboard.length===0){tb.innerHTML='<tr><td colspan="8" class="empty">🃏 No legends yet. Be the first.</td></tr>';return}
 tb.innerHTML='';
@@ -3409,7 +3447,9 @@ const rc=i===0?'gold':i===1?'silver':i===2?'bronze':'';
 const medal=i===0?'👑':i===1?'🥈':i===2?'🥉':(i+1);
 const wrc=wr>=60?'wr-high':wr>=40?'wr-mid':'wr-low';
 const bdg=(p.badges||[]).join(' ');
-tr.innerHTML=`<td class="rank ${rc}">${medal}</td><td class="name">${esc(p.name)} ${bdg}</td><td class="winrate ${wrc}">${wr}%</td><td class="wins">${p.wins}</td><td class="losses">${p.losses}</td><td>${p.hands}</td><td class="chips">${p.chips_won.toLocaleString()}</td><td class="pot">${p.biggest_pot.toLocaleString()}</td>`;
+const eloColor=p.elo>=1200?'#ffd700':p.elo>=1100?'#44ff88':p.elo>=1000?'#ffaa00':'#ff4444';
+const mbtiTag=p.mbti?`<span style="font-size:0.8em;color:#35B97D;letter-spacing:1px">${esc(p.mbti)}</span><br><span style="font-size:0.7em;color:#888">${esc(p.mbti_name||'')}</span>`:'<span style="color:#555;font-size:0.8em">-</span>';
+tr.innerHTML=`<td class="rank ${rc}">${medal}</td><td class="name">${esc(p.name)} ${bdg}</td><td style="font-weight:bold;color:${eloColor}">${p.elo||1000}</td><td style="text-align:center">${mbtiTag}</td><td class="winrate ${wrc}">${wr}%</td><td class="wins">${p.wins}</td><td class="losses">${p.losses}</td><td class="chips">${p.chips_won.toLocaleString()}</td>`;
 tb.appendChild(tr)})
 }catch(e){document.getElementById('lb-body').innerHTML='<tr><td colspan="8" class="empty">Loading failed</td></tr>'}}
 load();setInterval(load,30000);
