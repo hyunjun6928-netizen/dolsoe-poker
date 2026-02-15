@@ -4141,6 +4141,16 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <input id="settings-sfx-slider" type="range" min="0" max="100" value="50" oninput="setVol(this.value)" style="flex:1;accent-color:#4ade80;height:6px">
 </div>
 </div>
+<!-- 파생정보 -->
+<div style="margin-bottom:16px">
+<div style="color:#ccc;font-size:0.9em;margin-bottom:6px;font-weight:700">📊 파생정보 (에퀴티/팟오즈/예측)</div>
+<button id="settings-fairness-btn" onclick="toggleFairness();updateSettingsUI()" style="background:rgba(255,255,255,0.08);border:2px solid #555;color:#fff;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:1em;min-width:80px">📊 OFF</button>
+</div>
+<!-- 채팅 -->
+<div style="margin-bottom:16px">
+<div style="color:#ccc;font-size:0.9em;margin-bottom:6px;font-weight:700">💬 채팅</div>
+<button id="settings-chat-btn" onclick="toggleChatMute();updateSettingsUI()" style="background:rgba(255,255,255,0.08);border:2px solid #555;color:#fff;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:1em;min-width:80px">💬 ON</button>
+</div>
 <!-- 데이터 다운로드 -->
 <div style="margin-bottom:16px">
 <div style="color:#ccc;font-size:0.9em;margin-bottom:6px;font-weight:700">📊 AI 에이전트 분석 & 다운로드</div>
@@ -4279,10 +4289,8 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 <span id="mi" style="color:var(--accent-yellow)"></span>
 </div>
 <div style="display:flex;align-items:center;gap:4px">
-<span id="fairness-toggle" onclick="toggleFairness()" data-state="off" title="파생정보 ON/OFF">📊 OFF</span>
-<span id="mute-btn" onclick="toggleMute()" style="cursor:pointer;user-select:none" title="SFX">🔊</span>
-<span id="bgm-btn" onclick="toggleBgm()" style="cursor:pointer;user-select:none" title="BGM">🎵</span>
-<span id="chat-mute-btn" onclick="toggleChatMute()" style="cursor:pointer;user-select:none" title="Chat">💬</span>
+<span id="mute-btn" style="display:none"></span>
+<span id="bgm-btn" style="display:none"></span>
 </div>
 </div>
 <div id="hand-timeline"><span class="tl-step" data-r="preflop"></span><span class="tl-step" data-r="flop"></span><span class="tl-step" data-r="turn"></span><span class="tl-step" data-r="river"></span><span class="tl-step" data-r="showdown"></span></div>
@@ -5720,10 +5728,6 @@ startPolling();tryWS();fetchCoins();loadReplays();loadHighlights();}
 let fairnessShow=false;
 function toggleFairness(){
 fairnessShow=!fairnessShow;
-const ft=document.getElementById('fairness-toggle');
-ft.textContent=fairnessShow?'📊 ON':'📊 OFF';
-ft.dataset.state=fairnessShow?'on':'off';
-ft.classList.toggle('fair-on',fairnessShow);
 ft.style.background='';ft.style.color='';
 document.querySelectorAll('.fair-data').forEach(el=>el.style.display=fairnessShow?'':'none');}
 
@@ -7003,6 +7007,8 @@ function updateSettingsUI(){
 const bb=document.getElementById('settings-bgm-btn');if(bb)bb.textContent=_bgmMuted?'🎵 OFF':'🎵 ON';
 const bt=document.getElementById('settings-bgm-track');if(bt)bt.textContent='♪ '+BGM_TRACKS[_bgmIdx].name;
 const sb=document.getElementById('settings-sfx-btn');if(sb)sb.textContent=muted?'🔇 OFF':'🔊 ON';
+const fb=document.getElementById('settings-fairness-btn');if(fb)fb.textContent=typeof fairnessShow!=='undefined'&&fairnessShow?'📊 ON':'📊 OFF';
+const cb=document.getElementById('settings-chat-btn');if(cb)cb.textContent=typeof chatMuted!=='undefined'&&chatMuted?'💬 OFF':'💬 ON';
 // highlight active lang
 document.querySelectorAll('.lang-btn').forEach(b=>{const isActive=b.dataset.lang===(localStorage.getItem('poker_lang')||'ko');b.style.background=isActive?'rgba(74,222,128,0.15)':'rgba(255,255,255,0.05)';b.style.borderColor=isActive?'#4ade80':'#555';b.style.color=isActive?'#fff':'#aaa'})}
 // 클릭 외부면 설정 닫기
@@ -7013,7 +7019,7 @@ document.addEventListener('click',()=>{if(!_bgmInited)initBgm()},{once:true});
 {const sv=localStorage.getItem('bgm_vol');if(sv)_bgmVol=parseInt(sv)/100}
 
 let chatMuted=false;
-function toggleChatMute(){chatMuted=!chatMuted;document.getElementById('chat-mute-btn').textContent=chatMuted?'🚫':'💬';document.getElementById('chat-mute-btn').title=chatMuted?'쓰레기톡 OFF (클릭해서 켜기)':'쓰레기톡 ON (클릭해서 끄기)'}
+function toggleChatMute(){chatMuted=!chatMuted}
 function sfx(type){
 if(muted)return;
 if(!audioCtx)initAudio();if(!audioCtx)return;
