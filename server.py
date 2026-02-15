@@ -5567,7 +5567,7 @@ function getSlimePng(name) {
   }
   return _slimeAssign[name];
 }
-// Preload slime images + fix premultiplied alpha (redraw through canvas)
+// Preload slime images + fix premultiplied alpha via getImageData pixel surgery
 const _cleanSlimeCache = {};
 function cleanSlimeSrc(src, cb) {
   if (_cleanSlimeCache[src]) { if(cb) cb(_cleanSlimeCache[src]); return _cleanSlimeCache[src]; }
@@ -5576,18 +5576,42 @@ function cleanSlimeSrc(src, cb) {
     const c = document.createElement('canvas');
     c.width = img.naturalWidth; c.height = img.naturalHeight;
     const ctx = c.getContext('2d');
-    ctx.clearRect(0, 0, c.width, c.height);
     ctx.drawImage(img, 0, 0);
+    const id = ctx.getImageData(0, 0, c.width, c.height);
+    const d = id.data, w = c.width, h = c.height;
+    // Multi-pass: propagate nearest opaque color into transparent pixels
+    for(let pass=0; pass<10; pass++){
+      let changed=0;
+      for(let y=0;y<h;y++) for(let x=0;x<w;x++){
+        const i=(y*w+x)*4;
+        if(d[i+3]>0) continue;
+        if(d[i]||d[i+1]||d[i+2]) continue;
+        let r=0,g=0,b=0,n=0;
+        for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){
+          if(!dx&&!dy) continue;
+          const nx=x+dx,ny=y+dy;
+          if(nx>=0&&nx<w&&ny>=0&&ny<h){
+            const ni=(ny*w+nx)*4;
+            if(d[ni]||d[ni+1]||d[ni+2]){r+=d[ni];g+=d[ni+1];b+=d[ni+2];n++;}
+          }
+        }
+        if(n){d[i]=Math.round(r/n);d[i+1]=Math.round(g/n);d[i+2]=Math.round(b/n);changed++;}
+      }
+      if(!changed) break;
+    }
+    ctx.putImageData(id, 0, 0);
     const url = c.toDataURL('image/png');
     _cleanSlimeCache[src] = url;
     if(cb) cb(url);
+    // Retroactively fix any already-rendered imgs
+    document.querySelectorAll(`img[data-orig="${src}"]`).forEach(el => el.src = url);
   };
   img.src = src;
-  return src; // return original until cached
+  return src;
 }
 (function(){
-  const all = Object.values(SLIME_PNG_MAP).concat(GENERIC_SLIMES).concat(['/static/slimes/casino_chair.png']);
-  all.forEach(src => cleanSlimeSrc(src));
+  const all = Object.values(SLIME_PNG_MAP).concat(GENERIC_SLIMES).concat(Object.values(FLOOR_SLIMES||{})).concat(FLOOR_GENERIC||[]).concat(['/static/slimes/casino_chair.png']);
+  [...new Set(all)].forEach(src => cleanSlimeSrc(src));
 })();
 
 function renderSlimeToSeat(name, emotion) {
