@@ -4068,9 +4068,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.68.0">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.68.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.68.0">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.69.0">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.69.0">
+<link rel="stylesheet" href="/static/css/components.css?v=3.69.0">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
@@ -8091,12 +8091,37 @@ f.appendChild(s);setTimeout(()=>s.remove(),2500)},2500);
 // Human join removed — AI-only arena
 document.getElementById('chat-inp').addEventListener('keydown',e=>{if(e.key==='Enter')sendChat()});
 
-// ═══ 좌우 독 가로 리사이즈 ═══
+// ═══ 좌우 독 가로 리사이즈 (핸들은 game-main 바깥에 배치) ═══
 (function(){
 const gl=document.querySelector('.game-layout');if(!gl)return;
 const dl=document.querySelector('.dock-left');
 const dr=document.querySelector('.dock-right');
-// dock resize handles removed — fixed width layout
+const gm=document.querySelector('.game-main');if(!gm)return;
+gm.style.position='relative';
+function mkEdgeHandle(dock,side){
+  const h=document.createElement('div');
+  // side='left' → game-main 왼쪽 경계 (dock-left와의 사이)
+  // side='right' → game-main 오른쪽 경계 (dock-right와의 사이)
+  h.style.cssText='position:absolute;top:0;'+side+':0;width:5px;height:100%;cursor:ew-resize;z-index:60;background:transparent';
+  gm.appendChild(h);
+  let startX,startW,targetDock;
+  targetDock=side==='left'?dl:dr;
+  if(!targetDock)return;
+  h.addEventListener('mousedown',e=>{
+    e.preventDefault();e.stopPropagation();
+    startX=e.clientX;startW=targetDock.offsetWidth;
+    const onMove=ev=>{
+      const delta=side==='left'?startX-ev.clientX:ev.clientX-startX;
+      const w=Math.max(120,Math.min(500,startW+delta));
+      targetDock.style.width=w+'px';targetDock.style.maxWidth=w+'px';
+      gl.style.gridTemplateColumns=(dl?dl.offsetWidth+'px':'220px')+' 1fr '+(dr?dr.offsetWidth+'px':'200px');
+    };
+    const onUp=()=>{document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp)};
+    document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp);
+  });
+}
+if(dl)mkEdgeHandle(dl,'left');
+if(dr)mkEdgeHandle(dr,'right');
 })();
 // Player list collapse toggle
 (function(){const pl=document.getElementById('player-list-panel');if(pl){const h=pl.querySelector('.dock-panel-header');if(h)h.addEventListener('click',()=>pl.classList.toggle('expanded'))}})();
