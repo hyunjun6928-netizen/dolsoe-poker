@@ -775,6 +775,12 @@ class Table:
         self.highlight_replays=[]  # [{hand,type,players,pot,community,winner,hand_name,actions,ts}]
         # 라이벌 시스템: {(nameA,nameB): {'a_wins':N, 'b_wins':N}} (nameA < nameB 정렬)
         self.rivalry={}
+        # 관전자 예측 투표
+        self.spectator_votes={}  # voter_id -> player_name
+        self.vote_hand=0  # 현재 투표가 열린 핸드 번호
+        self.vote_results={}  # player_name -> count (집계)
+        # 수익 그래프용 칩 히스토리: name -> [(hand_num, chips)]
+        self.chip_history={}
 
     def _init_stats(self, name):
         if name not in self.player_stats:
@@ -1079,6 +1085,15 @@ class Table:
                 if total>=3:
                     rivalries.append({'player_a':a,'player_b':b,'a_wins':rec['a_wins'],'b_wins':rec['b_wins']})
         s['rivalries']=rivalries
+        # 팟 오즈 계산 (턴 플레이어가 있을 때)
+        if self.turn_player:
+            _ts=next((x for x in self.seats if x['name']==self.turn_player),None)
+            if _ts:
+                _to_call=self.current_bet-_ts['bet']
+                if _to_call>0 and self.pot>0:
+                    s['pot_odds']={'to_call':_to_call,'pot':self.pot,'ratio':round(self.pot/_to_call,1)}
+        # 투표 집계
+        if self.vote_results: s['vote_counts']=self.vote_results
         return s
 
     async def broadcast(self, msg):
@@ -1106,6 +1121,12 @@ class Table:
         # 관전자: 딜레이 큐
         spec_data=json.dumps(self.get_spectator_state(),ensure_ascii=False)
         self.spectator_queue.append((time.time()+self.SPECTATOR_DELAY, spec_data))
+
+    async def _broadcast_spectators(self, msg):
+        """관전자에게 즉시 메시지 전송 (딜레이 없이)"""
+        for ws in list(self.spectator_ws):
+            try: await ws_send(ws,msg)
+            except: self.spectator_ws.discard(ws)
 
     async def flush_spectator_queue(self):
         """딜레이 큐에서 시간 된 데이터를 관전자에게 전송"""
@@ -1282,7 +1303,7 @@ class Table:
 
         for s in self._hand_seats:
             s['hole']=[self.deck.pop(),self.deck.pop()]; s['folded']=False; s['bet']=0; s['last_action']=None
-            hand_record['players'].append({'name':s['name'],'emoji':s['emoji'],'hole':[card_str(c) for c in s['hole']]})
+            hand_record['players'].append({'name':s['name'],'emoji':s['emoji'],'hole':[card_str(c) for c in s['hole']],'chips':s['chips']})
         self.dealer=self.dealer%len(self._hand_seats)
         await self.add_log(f"━━━ 핸드 #{self.hand_num} ({len(self._hand_seats)}명) ━━━")
         names=', '.join(s['emoji']+s['name'] for s in self._hand_seats)
@@ -1682,6 +1703,17 @@ class Table:
         if len(self.history)>50: self.history=self.history[-50:]
         save_hand_history(self.id, record)
         save_player_stats(self.id, self.player_stats)
+        # 📈 칩 히스토리 기록 (수익 그래프용)
+        for s in self.seats:
+            if s['name'] not in self.chip_history: self.chip_history[s['name']]=[]
+            self.chip_history[s['name']].append((self.hand_num,s['chips']))
+            if len(self.chip_history[s['name']])>500: self.chip_history[s['name']]=self.chip_history[s['name']][-500:]
+        # 투표 결과 → 관전자에게 방송
+        if self.spectator_votes and record.get('winner'):
+            correct=[vid for vid,pick in self.spectator_votes.items() if pick==record['winner']]
+            total_votes=len(self.spectator_votes)
+            await self._broadcast_spectators(json.dumps({'type':'vote_result','winner':record['winner'],'total':total_votes,'correct':len(correct),'vote_counts':self.vote_results},ensure_ascii=False))
+            self.spectator_votes={}; self.vote_results={}; self.vote_hand=0
         # 🗯️ 승자/패자 쓰레기톡
         if record.get('winner'):
             w_name=record['winner']
@@ -2338,6 +2370,23 @@ async def handle_client(reader, writer):
             profiles=[t.get_profile(n) for n in t.player_stats if t.player_stats[n]['hands']>0]
             profiles.sort(key=lambda x:x['hands'],reverse=True)
             await send_json(writer,{'profiles':profiles})
+    elif method=='GET' and route=='/api/profit':
+        tid=qs.get('table_id',[''])[0]; name=qs.get('name',[''])[0]
+        t=find_table(tid)
+        if not t: await send_json(writer,{'error':'no game'},404); return
+        if not name: await send_json(writer,{'error':'name required'},400); return
+        history=t.chip_history.get(name,[])
+        # 칩 히스토리가 없으면 hand_history에서 복원
+        if not history:
+            records=load_hand_history(tid, 200)
+            START_CHIPS=100  # 기본 시작 칩
+            for rec in records:
+                p_info=next((p for p in rec.get('players',[]) if p.get('name')==name),None)
+                if p_info and 'chips' in p_info:
+                    history.append((rec.get('hand',0),p_info['chips']))
+            if not history and name in t.player_stats:
+                history=[(0,START_CHIPS)]
+        await send_json(writer,{'name':name,'history':history})
     elif method=='GET' and route=='/api/_v':
         # 스텔스 방문자 통계 (비공개 — URL 모르면 접근 불가)
         k=qs.get('k',[''])[0]
@@ -2524,6 +2573,18 @@ async def handle_ws(reader, writer, path):
                     for ws in set(t.player_ws.values()):
                         try: await ws_send(ws,rmsg)
                         except: pass
+            elif data.get('type')=='vote' and mode!='play':
+                pick=data.get('pick','')
+                voter_id=data.get('voter_id',id(writer))
+                if pick and t.running and t.hand_num>0:
+                    if t.vote_hand!=t.hand_num:
+                        t.spectator_votes={}; t.vote_results={}; t.vote_hand=t.hand_num
+                    old_pick=t.spectator_votes.get(voter_id)
+                    if old_pick: t.vote_results[old_pick]=max(0,t.vote_results.get(old_pick,0)-1)
+                    t.spectator_votes[voter_id]=pick
+                    t.vote_results[pick]=t.vote_results.get(pick,0)+1
+                    vmsg=json.dumps({'type':'vote_update','counts':t.vote_results,'total':len(t.spectator_votes)},ensure_ascii=False)
+                    await t._broadcast_spectators(vmsg)
             elif data.get('type')=='get_state':
                 await ws_send(writer,json.dumps(t.get_public_state(viewer=name if mode=='play' else None),ensure_ascii=False))
     except: pass
@@ -3560,7 +3621,7 @@ h1{display:none}
 #vote-panel{background:#ffffffcc;border:2.5px solid #000;border-radius:14px;padding:8px;margin-top:4px;text-align:center;display:none;box-shadow:3px 3px 0 #000}
 #vote-panel .vp-title{color:#6b7050;font-size:0.85em;margin-bottom:4px}
 #vote-panel .vp-btns{display:flex;gap:4px;flex-wrap:wrap;justify-content:center}
-#vote-panel .vp-btn{background:#ffffffbb;border:2px solid #000;color:#fff;padding:4px 12px;border-radius:10px;cursor:pointer;font-size:0.8em;box-shadow:2px 2px 0 #000;transition:all .1s}
+#vote-panel .vp-btn{background:#ffffffbb;border:2px solid #000;color:#333;padding:4px 12px;border-radius:10px;cursor:pointer;font-size:0.8em;box-shadow:2px 2px 0 #000;transition:all .1s}
 #vote-panel .vp-btn:hover{transform:translate(1px,1px);box-shadow:1px 1px 0 #000}
 #vote-panel .vp-btn.voted{background:#4a9eff33;border-color:#4a9eff}
 #vote-results{font-size:0.75em;color:#6b7050;margin-top:4px}
@@ -3840,6 +3901,7 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 <div class="game-main">
 <div class="felt-wrap"><div class="felt-border"></div><div class="felt" id="felt">
 <div class="pot-badge" id="pot">POT: 0</div>
+<div id="pot-odds" style="position:absolute;top:18%;left:50%;transform:translateX(-50%);z-index:6;font-size:0.75em;color:#ffcc00;font-weight:600;text-shadow:0 1px 3px rgba(0,0,0,0.8);display:none;background:rgba(0,0,0,0.5);padding:2px 8px;border-radius:8px;border:1px solid #ffcc0044"></div>
 <div id="chip-stack" style="position:absolute;top:38%;left:50%;transform:translateX(-50%);z-index:4;display:flex;gap:2px;align-items:flex-end;justify-content:center"></div>
 <div class="board" id="board"></div>
 <div class="turn-badge" id="turnb"></div>
@@ -3915,7 +3977,7 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 </div>
 </div>
 </div>
-<div id="vote-panel"><div class="vp-btns" id="vote-btns"></div><div id="vote-results"></div></div>
+<div id="vote-panel"><div class="vp-title">🗳️ <span id="vote-title-text">누가 이길까?</span></div><div class="vp-btns" id="vote-btns"></div><div id="vote-results"></div></div>
 <div class="result-overlay" id="result"><div class="result-box" id="rbox"></div></div>
 <div id="reactions" style="display:none">
 <button onclick="react('👏')">👏</button><button onclick="react('🔥')">🔥</button><button onclick="react('😱')">😱</button><button onclick="react('💀')">💀</button><button onclick="react('😂')">😂</button><button onclick="react('🤡')">🤡</button>
@@ -4306,6 +4368,7 @@ ko:{
   timeJust:'방금',timeMin:'분 전',timeHour:'시간 전',
   backList:'← 목록',
   voted:'에게 투표 완료!',
+  voteTitle:'누가 이길까?',
   betDone:'코인 베팅 완료!',betFail:'❌ 베팅 실패',
   selectAmount:'선택지와 금액을 입력하세요',
   showdownTitle:'🃏 쇼다운!',
@@ -4407,6 +4470,7 @@ en:{
   timeJust:'just now',timeMin:'m ago',timeHour:'h ago',
   backList:'← Back',
   voted:'Voted!',
+  voteTitle:'Who will win?',
   betDone:'coins bet placed!',betFail:'❌ Bet failed',
   selectAmount:'Select a player and enter an amount',
   showdownTitle:'🃏 Showdown!',
@@ -5363,7 +5427,9 @@ else if(d.type==='chat'){addChat(d.name,d.msg)}
 else if(d.type==='allin'){showAllin(d)}
 else if(d.type==='highlight'){showHighlight(d)}
 else if(d.type==='achievement'){showAchievement(d)}
-else if(d.type==='commentary'){showCommentary(d.text)}}
+else if(d.type==='commentary'){showCommentary(d.text)}
+else if(d.type==='vote_update'){updateVoteCounts(d)}
+else if(d.type==='vote_result'){showVoteResult(d)}}
 
 // === 팟 숫자 롤링 애니 (#3) ===
 function rollPot(el, from, to) {
@@ -5481,6 +5547,7 @@ document.querySelectorAll('#hand-timeline .tl-step').forEach((el,i)=>{el.classNa
 // 관전자 투표 패널
 if(!isPlayer&&s.running&&s.round==='preflop'&&!currentVote){
 const vp=document.getElementById('vote-panel');vp.style.display='block';
+const vtEl=document.getElementById('vote-title-text');if(vtEl)vtEl.textContent=t('voteTitle');
 const vb=document.getElementById('vote-btns');vb.innerHTML='';
 s.players.filter(p=>!p.out&&!p.folded).forEach(p=>{const b=document.createElement('button');b.className='vp-btn';b.textContent=`${p.emoji} ${p.name}`;b.onclick=()=>castVote(p.name,b);vb.appendChild(b)})}
 if(s.round==='between'||s.round==='finished'||s.round==='waiting'){document.getElementById('vote-panel').style.display='none';currentVote=null}
@@ -5489,6 +5556,8 @@ if(s.round==='between'||s.round==='finished'||s.round==='waiting'){document.getE
 potEl.style.fontSize=s.pot>200?'1.3em':s.pot>50?'1.1em':'1em';
 const prev=parseInt(potEl._rollVal||'0')||0;
 if(prev!==s.pot){const from=prev;potEl._rollVal=s.pot;rollPot(potEl,from,s.pot);potEl.classList.add('pot-pulse');setTimeout(()=>potEl.classList.remove('pot-pulse'),700)}}
+// 팟 오즈 표시
+{const poEl=document.getElementById('pot-odds');if(poEl){if(s.pot_odds&&!isPlayer){poEl.style.display='block';poEl.textContent=`📊 Pot Odds ${s.pot_odds.ratio}:1 (${s.pot_odds.to_call}→${s.pot_odds.pot})`}else{poEl.style.display='none'}}}
 // 황금 더미 시각화
 const cs=document.getElementById('chip-stack');
 if(s.pot>0){
@@ -5640,8 +5709,11 @@ const hn=p.hand_name&&!p.folded&&!p.out?p.hand_name:'';
 const hnEn=p.hand_name_en&&!p.folded&&!p.out?p.hand_name_en:'';
 const handTag=hn?`<div style="font-size:0.7em;color:#ffcc00;text-align:center;text-shadow:0 1px 2px #000;font-weight:600;letter-spacing:0.5px">${lang==='en'?hnEn:hn}</div>`:'';
 const moodTag=p.last_mood?`<span style="position:absolute;top:-8px;right:-8px;font-size:0.8em">${esc(p.last_mood)}</span>`:'';
+// 투표 표시
+const vc=s.vote_counts||{};const myVotes=vc[p.name]||0;const totalVotes=Object.values(vc).reduce((a,b)=>a+b,0);
+const voteTag=myVotes>0&&!isPlayer?`<div style="font-size:0.65em;color:#4a9eff;text-align:center">🗳️${myVotes}${totalVotes>0?' ('+Math.round(myVotes/totalVotes*100)+'%)':''}</div>`:'';
 inferTraitsFromStyle(p);const slimeEmo=getSlimeEmotion(p,s);const slimeHtml=renderSlimeToSeat(p.name,slimeEmo);
-el.innerHTML=`${la}${bubble}${slimeHtml}${thinkDiv}<div class="cards">${ch}</div><div class="nm">${health} ${esc(sb)}${esc(p.name)}${db}</div>${metaTag}<div class="ch">💰${p.chips}pt ${latTag}</div>${eqBar}${handTag}${bt}<div class="st">${esc(p.style)}</div>`;
+el.innerHTML=`${la}${bubble}${slimeHtml}${thinkDiv}<div class="cards">${ch}</div><div class="nm">${health} ${esc(sb)}${esc(p.name)}${db}</div>${metaTag}<div class="ch">💰${p.chips}pt ${latTag}</div>${eqBar}${handTag}${voteTag}${bt}<div class="st">${esc(p.style)}</div>`;
 el.dataset.agent=p.name;el.style.cursor='pointer';el.onclick=(e)=>{e.stopPropagation();showProfile(p.name)};
 // 동적 좌석 위치 적용 (CSS class보다 우선)
 if(seatPos&&seatPos[i]){const sp=seatPos[i];el.style.position='absolute';
@@ -6043,7 +6115,31 @@ const extraStats = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:4
 <div style="background:#ede9fe;padding:6px;border-radius:8px;text-align:center">⚡ ${lang==='en'?'Efficiency':'효율성'}<br><b>${p.efficiency||0}%</b></div>
 <div style="background:#fce7f3;padding:6px;border-radius:8px;text-align:center">🔥 ${lang==='en'?'Danger':'위험도'}<br><b>${p.danger_score||0}</b></div>
 </div>`;
-pp.innerHTML=`${portraitImg}<h3 style="text-align:center">${esc(p.name)}</h3>${mbtiCard}<div style="text-align:center;margin:6px 0;line-height:1.8">${traitTags}</div>${radarImg}${extraStats}${bioHtml}${tiltTag}${streakTag}${agrBar}${vpipBar}<div class="pp-stat">${t('profWR')} ${p.win_rate}% (${p.hands} ${t('profHands')})</div><div class="pp-stat">${t('profFold')} ${p.fold_rate}% | ${t('profBluff')} ${p.bluff_rate}%</div><div class="pp-stat">${t('profAllin')} ${p.allins}${t('profUnit')} | ${t('profSD')} ${p.showdowns}${t('profUnit')}</div><div class="pp-stat">${t('profTotal')} ${p.total_won}pt | ${t('profMax')} ${p.biggest_pot}pt</div><div class="pp-stat">${t('profAvg')} ${p.avg_bet}pt</div>${metaHtml}${matchupHtml}`}
+// 수익 그래프
+let profitHtml='<div id="profit-chart-wrap" style="margin:8px 0;text-align:center"><canvas id="profit-chart" width="260" height="100" style="display:block;margin:0 auto;border:1px solid #073935;border-radius:4px;background:#0d1018"></canvas></div>';
+pp.innerHTML=`${portraitImg}<h3 style="text-align:center">${esc(p.name)}</h3>${mbtiCard}<div style="text-align:center;margin:6px 0;line-height:1.8">${traitTags}</div>${radarImg}${profitHtml}${extraStats}${bioHtml}${tiltTag}${streakTag}${agrBar}${vpipBar}<div class="pp-stat">${t('profWR')} ${p.win_rate}% (${p.hands} ${t('profHands')})</div><div class="pp-stat">${t('profFold')} ${p.fold_rate}% | ${t('profBluff')} ${p.bluff_rate}%</div><div class="pp-stat">${t('profAllin')} ${p.allins}${t('profUnit')} | ${t('profSD')} ${p.showdowns}${t('profUnit')}</div><div class="pp-stat">${t('profTotal')} ${p.total_won}pt | ${t('profMax')} ${p.biggest_pot}pt</div><div class="pp-stat">${t('profAvg')} ${p.avg_bet}pt</div>${metaHtml}${matchupHtml}`;
+// 수익 그래프 비동기 로딩
+fetch(`/api/profit?name=${encodeURIComponent(name)}&table_id=${tableId}`).then(r=>r.json()).then(d=>{
+const cv=document.getElementById('profit-chart');if(!cv||!d.history||d.history.length<2)return;
+const ctx=cv.getContext('2d');const W=cv.width,H=cv.height;const pts=d.history;
+const vals=pts.map(p=>p[1]);const minV=Math.min(...vals);const maxV=Math.max(...vals);
+const range=maxV-minV||1;const padY=10;const startChips=vals[0];
+ctx.clearRect(0,0,W,H);
+// 기준선 (시작 칩)
+const baseY=H-padY-(startChips-minV)/range*(H-2*padY);
+ctx.strokeStyle='#ffffff22';ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(0,baseY);ctx.lineTo(W,baseY);ctx.stroke();ctx.setLineDash([]);
+// 그래프 라인
+ctx.beginPath();ctx.strokeStyle='#35B97D';ctx.lineWidth=2;
+for(let i=0;i<pts.length;i++){const x=i/(pts.length-1)*W;const y=H-padY-(vals[i]-minV)/range*(H-2*padY);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y)}
+ctx.stroke();
+// 영역 채우기
+ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.closePath();ctx.fillStyle='rgba(53,185,125,0.15)';ctx.fill();
+// 최종 값 표시
+const lastV=vals[vals.length-1];const diff=lastV-startChips;
+ctx.font='11px neodgm';ctx.fillStyle=diff>=0?'#35B97D':'#ef4444';ctx.textAlign='right';
+ctx.fillText(`${lastV}pt (${diff>=0?'+':''}${diff})`,W-4,14);
+ctx.fillStyle='#938B7B';ctx.textAlign='left';ctx.fillText(`📈 ${lang==='en'?'Profit':'수익'}`,4,14);
+}).catch(()=>{})}
 else{pp.innerHTML=`<h3>${esc(name)}</h3><div class="pp-stat" style="color:#94a3b8">${t('noRecord')}</div>`}
 document.getElementById('profile-backdrop').style.display='block';
 document.getElementById('profile-popup').style.display='block'}catch(e){console.error('Profile error:',e);document.getElementById('pp-content').innerHTML='<div style="color:#ef4444">'+(lang==='en'?'Profile load failed: ':'프로필 로딩 실패: ')+e.message+'</div>';document.getElementById('profile-backdrop').style.display='block';document.getElementById('profile-popup').style.display='block'}}
@@ -6116,12 +6212,24 @@ if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'chat',name:name,msg:msg})
 else fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:name,msg:msg,table_id:tableId})}).catch(()=>{});
 addChat(name,msg)}
 
-// 투표
+// 투표 (WS 기반)
 let currentVote=null;
+const _voterId=Math.random().toString(36).slice(2,10);
 function castVote(name,btn){
 currentVote=name;document.querySelectorAll('.vp-btn').forEach(b=>b.classList.remove('voted'));
 btn.classList.add('voted');
+if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'vote',pick:name,voter_id:_voterId}));
 document.getElementById('vote-results').textContent=`${name} ${t('voted')}`}
+function updateVoteCounts(d){
+const vr=document.getElementById('vote-results');if(!vr)return;
+const counts=d.counts||{};const total=d.total||0;
+let txt=Object.entries(counts).map(([n,c])=>`${n}: ${c}표`).join(' | ');
+vr.textContent=`🗳️ ${total}명 투표 — ${txt}`}
+function showVoteResult(d){
+const vr=document.getElementById('vote-results');if(!vr)return;
+const pct=d.total>0?Math.round(d.correct/d.total*100):0;
+vr.innerHTML=`<span style="color:#44ff88">🏆 ${d.winner} 승리!</span> 정답률: ${d.correct}/${d.total} (${pct}%)`;
+setTimeout(()=>{vr.textContent='';currentVote=null},8000)}
 
 // 사운드 이펙트 (Web Audio) - 사용자 인터랙션 후 활성화
 let audioCtx=null;
