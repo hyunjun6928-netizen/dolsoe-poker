@@ -3632,7 +3632,7 @@ h1,.btn-play,.btn-watch,.pot-badge,.seat .nm,.act-label,.tab-btns button,#new-bt
 .pot-badge,.seat .ch{font-family:var(--font-number)}
 .wrap{max-width:100%;margin:0 auto;padding:6px 12px;position:relative;z-index:2}
 #game .game-layout{margin:0!important;padding:0!important;max-width:100vw!important;width:100vw!important}
-#game .dock-left,#game .dock-right{width:100%!important;min-width:200px!important}
+#game .dock-left,#game .dock-right{min-width:120px}
 #game .dock-panel{width:100%!important;max-height:none!important}
 #game .felt-wrap{max-width:100%!important;padding-top:0!important}
 h1{text-align:center;font-size:1.8em;margin:4px 0;color:var(--text-primary);-webkit-text-stroke:0;-webkit-text-fill-color:unset;text-shadow:none;position:relative;z-index:1;letter-spacing:1px;font-weight:800}
@@ -3831,7 +3831,7 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 #action-feed .af-action{color:var(--text-secondary)}
 #action-feed .af-win{color:var(--accent-mint);font-weight:bold}
 .game-layout{display:grid;grid-template-columns:22vw 1fr 22vw;gap:0;min-height:500px;overflow:visible;position:fixed!important;top:90px!important;left:0!important;right:0!important;bottom:44px!important;width:100vw!important;max-width:100vw!important}
-.dock-left,.dock-right{min-width:200px!important;position:relative;width:100%!important}
+.dock-left,.dock-right{min-width:120px;position:relative}
 /* 드래그 리사이저 */
 .dock-resizer{display:none!important}
 .dock-panel{overflow:auto!important;position:relative}
@@ -4094,9 +4094,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.47.0">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.47.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.47.0">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.48.0">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.48.0">
+<link rel="stylesheet" href="/static/css/components.css?v=3.48.0">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
