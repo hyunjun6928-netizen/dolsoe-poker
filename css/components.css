@@ -1916,9 +1916,8 @@ body.fair-on .fair-commentary,
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  /* Primary: dense casino lobby map; Fallback: carpet tile */
-  background:
-    url("/static/slimes/px_lobby_map.png") center/cover no-repeat;
+  /* Background rendered by drawCasinoFloor() procedural engine */
+  background: #0e0a14;
   image-rendering: pixelated;
 }
 /* Vignette + warm tone unifier */
@@ -1954,7 +1953,7 @@ body.in-game #casino-floor {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background: url("/static/slimes/px_ingame_map.png") center/cover no-repeat !important;
+  background: #0e0a14 !important;
   image-rendering: pixelated;
 }
 body.in-game #casino-floor #floor-agents,

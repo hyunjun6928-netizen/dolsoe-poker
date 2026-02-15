@@ -3264,9 +3264,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.18.0">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.18.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.18.3">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.19.0">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.19.0">
+<link rel="stylesheet" href="/static/css/components.css?v=3.19.0">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
@@ -3784,15 +3784,16 @@ const FLOOR_BUBBLES={
 // v3.15: CENTRAL CLUSTER — dense casino floor, no wallpaper feel
 // Layout: center mass = table+bar+slots tight together, edges = pathways only
 const POIS=[
-  // ═══ NPC movement zones only — NO furniture sprites (baked into background) ═══
-  {id:'slot',x:18,y:35,w:7,h:10,cap:3,zone:'slot'},
-  {id:'slot2',x:18,y:50,w:7,h:10,cap:2,zone:'slot'},
-  {id:'table',x:35,y:32,w:27,h:26,cap:6,zone:'table',
+  // ═══ Aligned to drawCasinoFloor() procedural layout ═══
+  {id:'slot',x:5,y:20,w:8,h:10,cap:3,zone:'slot'},
+  {id:'slot2',x:5,y:35,w:8,h:10,cap:2,zone:'slot'},
+  {id:'slot3',x:5,y:50,w:8,h:12,cap:2,zone:'slot'},
+  {id:'table',x:33,y:26,w:26,h:24,cap:6,zone:'table',
    tooltip:{ko:'🃏 관전하기',en:'🃏 Watch game'},action:'watch'},
-  {id:'bar',x:62,y:30,w:14,h:16,cap:4,zone:'bar'},
-  {id:'cocktail1',x:65,y:50,w:7,h:8,cap:2,zone:'bar'},
-  {id:'cocktail2',x:74,y:54,w:7,h:8,cap:2,zone:'bar'},
-  {id:'vip',x:38,y:8,w:20,h:12,cap:3,zone:'vip'},
+  {id:'bar',x:72,y:23,w:16,h:32,cap:4,zone:'bar'},
+  {id:'cocktail1',x:68,y:58,w:8,h:8,cap:2,zone:'bar'},
+  {id:'cocktail2',x:78,y:64,w:8,h:8,cap:2,zone:'bar'},
+  {id:'vip',x:34,y:3,w:28,h:14,cap:3,zone:'vip'},
 ];
 // Zone light pool definitions (CSS will render these)
 // v3.15: Tighter light pools — amber/gold/purple only, no cyan
@@ -3816,6 +3817,7 @@ function pickPOI(npc){
 }
 
 async function loadCasinoFloor(){
+  initCasinoFloorBg();
   const el=document.getElementById('floor-agents');if(!el)return;
   // Render zone light pools + POI furniture sprites
   const poiLayer=document.getElementById('poi-layer');
@@ -3897,6 +3899,30 @@ async function loadCasinoFloor(){
       // Draw slime via canvas (avoids premultiplied alpha black box issue with PNGs)
       const wb=div.querySelector('.walker-body');
       if(wb){const sc=drawSlime(a.name,'idle',80);sc.style.cssText='width:100%;height:100%';wb.appendChild(sc);}
+      // Click interaction — slime reacts
+      div.addEventListener('click',()=>{
+        const bub=div.querySelector('.npc-bubble');
+        if(!bub)return;
+        const clickLines={
+          ko:['뭐야 건드리지마!','칩 좀 있음?','지금 바빠 ㅋ','같이 한판 ㄱ?','👀','난 전설이다','올인 각이다','아... 졌다','여기 맥주 한잔!','VIP 갈거임'],
+          en:["Don't touch me!","Got chips?","Busy rn lol","Wanna play?","👀","I'm a legend","All-in vibes","Lost again...","Beer please!","Going VIP"]
+        };
+        const msgs=lang==='en'?clickLines.en:clickLines.ko;
+        bub.textContent=msgs[Math.floor(Math.random()*msgs.length)];
+        bub.style.display='block';
+        // Bounce reaction
+        const body=div.querySelector('.walker-body');
+        if(body){body.style.transition='transform 0.15s';body.style.transform='scale(1.2)';
+          setTimeout(()=>{body.style.transform='scale(1)'},150);
+          // Redraw with reaction emotion
+          const emotions=['happy','shock','angry','win'];
+          const emo=emotions[Math.floor(Math.random()*emotions.length)];
+          body.innerHTML='';const sc2=drawSlime(a.name,emo,80);sc2.style.cssText='width:100%;height:100%';body.appendChild(sc2);
+          // Revert after 2s
+          setTimeout(()=>{body.innerHTML='';const sc3=drawSlime(a.name,'idle',80);sc3.style.cssText='width:100%;height:100%';body.appendChild(sc3)},2000);
+        }
+        setTimeout(()=>{bub.style.display='none'},3000);
+      });
       _floorNpcs.push({el:div,x:tx,y:ty,poi:poi.id,style:a.style||'balanced',name:a.name,live:isLive,tick:0});
     });
   }catch(e){console.warn('floor load err',e)}
@@ -5748,6 +5774,418 @@ function drawSlime(name, emotion, size) {
   return c;
 }
 // Color mixing util
+// ══════════════════════════════════════════════════════════════════
+// ═══ PROCEDURAL CASINO FLOOR RENDERER (PX=2 pixel art) ═══
+// ══════════════════════════════════════════════════════════════════
+function drawCasinoFloor(targetW, targetH) {
+  const PX=2;
+  const W=Math.floor(targetW/PX), H=Math.floor(targetH/PX);
+  const c=document.createElement('canvas');
+  c.width=targetW; c.height=targetH;
+  const g=c.getContext('2d');
+  g.imageSmoothingEnabled=false;
+
+  // Palette — dark luxurious casino
+  const P={
+    carpet:'#0e0a14', carpetLight:'#140f1e', carpetAccent:'#1a132a',
+    carpetGold:'#3d2e14', carpetPattern:'#1e1628',
+    marble:'#2a2535', marbleDark:'#1a1625', marbleLight:'#3a3545',
+    marbleVein:'#352f40',
+    feltGreen:'#1a5c3a', feltLight:'#22754c', feltDark:'#124a2c',
+    feltRail:'#5c3a1a', feltRailLight:'#7a5230', feltRailDark:'#3d2810',
+    wood:'#3d2810', woodLight:'#5c3a1a', woodDark:'#2a1a08',
+    brass:'#c5993a', brassLight:'#e8c44a', brassDark:'#8a6a22',
+    neonRed:'#ff3355', neonBlue:'#4488ff', neonGold:'#ffd700',
+    neonPurple:'#aa44ff', neonGreen:'#44ff88',
+    velvet:'#5c1a2a', velvetLight:'#7a2a3a', velvetDark:'#3d0e1a',
+    leather:'#2a1a10', leatherLight:'#3d2a1a',
+    chrome:'#aabbcc', chromeDark:'#778899',
+    chipRed:'#cc2244', chipBlue:'#2244cc', chipGreen:'#22aa44',
+    chipGold:'#dda820', chipBlack:'#1a1a2e',
+    glass:'#88aacc', glassDark:'#556688',
+    stoolTop:'#4a2a12', stoolBase:'#888888',
+    wall:'#0c0818', wallTrim:'#2a1a3a',
+    floorGlow:'#1a0f2e',
+  };
+
+  function px(x,y,color){if(x>=0&&x<W&&y>=0&&y<H){g.fillStyle=color;g.fillRect(x*PX,y*PX,PX,PX)}}
+  function pxR(x,y,w,h,color){g.fillStyle=color;g.fillRect(x*PX,y*PX,w*PX,h*PX)}
+  function pxEllipse(cx,cy,rx,ry,fill,outline){
+    for(let dy=-ry;dy<=ry;dy++){
+      for(let dx=-rx;dx<=rx;dx++){
+        const nx=dx/rx, ny=dy/ry;
+        if(nx*nx+ny*ny<=1){
+          const edge=nx*nx+ny*ny>0.75;
+          px(cx+dx,cy+dy,edge&&outline?outline:fill);
+        }
+      }
+    }
+  }
+  function pxLine(x0,y0,x1,y1,color){
+    const dx=Math.abs(x1-x0), dy=Math.abs(y1-y0);
+    const sx=x0<x1?1:-1, sy=y0<y1?1:-1;
+    let err=dx-dy;
+    while(true){
+      px(x0,y0,color);
+      if(x0===x1&&y0===y1)break;
+      const e2=2*err;
+      if(e2>-dy){err-=dy;x0+=sx}
+      if(e2<dx){err+=dx;y0+=sy}
+    }
+  }
+
+  // ─── 1. CARPET BASE ───
+  for(let y=0;y<H;y++){
+    for(let x=0;x<W;x++){
+      // Diamond carpet pattern
+      const px2=((x+y)%12<1)||((x-y+200)%12<1);
+      const px3=((x+y)%24<2)&&((x-y+200)%24<2);
+      if(px3) px(x,y,P.carpetGold);
+      else if(px2) px(x,y,P.carpetPattern);
+      else if((x+y*3)%7===0) px(x,y,P.carpetLight);
+      else px(x,y,P.carpet);
+    }
+  }
+
+  // ─── 2. MARBLE BORDER / WALKWAYS ───
+  // Horizontal walkway (center)
+  const walkY=Math.floor(H*0.47), walkH=Math.floor(H*0.06);
+  for(let y=walkY;y<walkY+walkH;y++){
+    for(let x=0;x<W;x++){
+      const vein=(x*3+y*7)%19<2;
+      px(x,y,vein?P.marbleVein:((x+y)%3===0?P.marbleLight:P.marble));
+    }
+  }
+  // Marble trim lines
+  pxR(0,walkY,W,1,P.brass);
+  pxR(0,walkY+walkH-1,W,1,P.brass);
+
+  // ─── 3. POKER TABLE (center) ───
+  const tblCx=Math.floor(W*0.46), tblCy=Math.floor(H*0.38);
+  const tblRx=Math.floor(W*0.13), tblRy=Math.floor(H*0.12);
+  // Table shadow
+  pxEllipse(tblCx+2,tblCy+3,tblRx+3,tblRy+3,'rgba(0,0,0,0.4)');
+  // Wood rail (outer)
+  pxEllipse(tblCx,tblCy,tblRx+3,tblRy+3,P.feltRail,P.feltRailDark);
+  pxEllipse(tblCx,tblCy,tblRx+2,tblRy+2,P.feltRailLight,P.feltRail);
+  // Green felt (inner)
+  pxEllipse(tblCx,tblCy,tblRx,tblRy,P.feltGreen,P.feltDark);
+  // Felt highlight
+  pxEllipse(tblCx-Math.floor(tblRx*0.2),tblCy-Math.floor(tblRy*0.3),
+    Math.floor(tblRx*0.5),Math.floor(tblRy*0.4),P.feltLight);
+  // Dealer position marker
+  pxR(tblCx-2,tblCy-tblRy+2,5,1,P.brass);
+  // Center line
+  pxLine(tblCx,tblCy-tblRy+3,tblCx,tblCy+tblRy-3,P.feltDark);
+  // Chip stacks on table
+  const chipColors=[P.chipRed,P.chipBlue,P.chipGold,P.chipGreen];
+  const chipPositions=[[-6,-3],[6,-3],[-4,4],[5,4],[0,-1]];
+  chipPositions.forEach(([dx,dy],i)=>{
+    const cc=chipColors[i%chipColors.length];
+    for(let s=2;s>=0;s--){
+      pxR(tblCx+dx-1,tblCy+dy-s,3,1,cc);
+      px(tblCx+dx-1,tblCy+dy-s,P.chipBlack); // edge
+      px(tblCx+dx+1,tblCy+dy-s,P.chipBlack);
+    }
+    pxR(tblCx+dx-1,tblCy+dy-3,3,1,P.brassLight); // top shine
+  });
+  // Cards on table
+  [[tblCx-3,tblCy],[tblCx-1,tblCy],[tblCx+1,tblCy],[tblCx+3,tblCy],[tblCx+5,tblCy]].forEach(([cx,cy])=>{
+    pxR(cx,cy-1,2,3,'#e8e0d0');
+    px(cx,cy-1,'#cc2244'); // card pip
+  });
+  // Chair positions around table (8 seats)
+  const chairAngles=[0,0.25,0.5,0.75,1,1.25,1.5,1.75].map(a=>a*Math.PI);
+  chairAngles.forEach(a=>{
+    const cx=tblCx+Math.floor(Math.cos(a)*(tblRx+8));
+    const cy=tblCy+Math.floor(Math.sin(a)*(tblRy+7));
+    // Chair back
+    pxR(cx-2,cy-2,5,5,P.leather);
+    pxR(cx-1,cy-1,3,3,P.leatherLight);
+    // Seat cushion
+    pxR(cx-1,cy,3,2,P.velvet);
+  });
+
+  // ─── 4. SLOT MACHINES (left zone) ───
+  const slotX=Math.floor(W*0.08);
+  [0.22,0.38,0.55].forEach((yp,i)=>{
+    const sy=Math.floor(H*yp);
+    // Machine body
+    pxR(slotX,sy,10,16,P.chrome);
+    pxR(slotX+1,sy+1,8,14,P.chromeDark);
+    // Screen
+    pxR(slotX+2,sy+2,6,6,P.chipBlack);
+    // Reels (3 windows)
+    const reelColors=[P.neonRed,P.neonGold,P.neonGreen];
+    [0,2,4].forEach((dx,j)=>{
+      pxR(slotX+2+dx,sy+3,2,4,reelColors[j]);
+      px(slotX+2+dx,sy+4,'#ffffff'); // symbol
+    });
+    // Lever
+    pxR(slotX+10,sy+4,1,8,P.chrome);
+    px(slotX+10,sy+3,P.neonRed); // ball
+    px(slotX+10,sy+2,P.neonRed);
+    // Coin tray
+    pxR(slotX+2,sy+10,6,2,P.brassDark);
+    // Neon top
+    const neon=[P.neonRed,P.neonBlue,P.neonPurple][i];
+    pxR(slotX+1,sy-1,8,1,neon);
+    pxR(slotX+2,sy-2,6,1,neon);
+    // Light glow (scatter pixels)
+    for(let g=0;g<6;g++){
+      const gx=slotX+Math.floor(Math.random()*12)-1;
+      const gy=sy+Math.floor(Math.random()*4)-3;
+      px(gx,gy,neon+'44');
+    }
+    // Floor reflection
+    pxR(slotX+2,sy+16,6,1,neon+'22');
+  });
+
+  // ─── 5. BAR COUNTER (right zone) ───
+  const barX=Math.floor(W*0.75), barY=Math.floor(H*0.25);
+  const barW=Math.floor(W*0.15), barH=Math.floor(H*0.30);
+  // Counter body
+  pxR(barX,barY,barW,barH,P.wood);
+  pxR(barX+1,barY+1,barW-2,barH-2,P.woodLight);
+  // Counter top (brass rail)
+  pxR(barX,barY,barW,2,P.brass);
+  pxR(barX,barY,1,barH,P.brassDark);
+  pxR(barX+barW-1,barY,1,barH,P.brassDark);
+  // Shelves with bottles
+  const shelfY=barY+3;
+  pxR(barX+2,shelfY,barW-4,1,P.woodDark);
+  pxR(barX+2,shelfY+6,barW-4,1,P.woodDark);
+  // Bottles
+  const bottleColors=[P.neonRed,P.neonGreen,P.neonGold,'#884422','#2288aa','#aa44ff','#ff8844'];
+  for(let i=0;i<6;i++){
+    const bx=barX+3+i*Math.floor((barW-6)/6);
+    const bc=bottleColors[i%bottleColors.length];
+    pxR(bx,shelfY-3,1,3,bc);
+    px(bx,shelfY-4,'#cccccc'); // bottle cap
+    // Second shelf
+    if(i<5){
+      pxR(bx+1,shelfY+3,1,3,bottleColors[(i+3)%bottleColors.length]);
+      px(bx+1,shelfY+2,'#cccccc');
+    }
+  }
+  // Glasses on counter
+  for(let i=0;i<4;i++){
+    const gx=barX+3+i*Math.floor(barW/5);
+    pxR(gx,barY+1,2,1,P.glass);
+    px(gx,barY,P.glassLight||P.glass);
+  }
+  // Bar stools
+  for(let i=0;i<3;i++){
+    const sx=barX+4+i*Math.floor((barW-8)/3);
+    const sy=barY+barH+2;
+    pxR(sx,sy,3,1,P.stoolTop);
+    px(sx+1,sy+1,P.stoolBase);
+    px(sx+1,sy+2,P.stoolBase);
+    pxR(sx,sy+3,3,1,P.stoolBase);
+  }
+
+  // ─── 6. COCKTAIL TABLES (right-lower) ───
+  [[0.72,0.62],[0.82,0.68]].forEach(([xp,yp])=>{
+    const cx=Math.floor(W*xp), cy=Math.floor(H*yp);
+    // Table top (circle)
+    pxEllipse(cx,cy,4,3,P.marbleLight,P.marbleDark);
+    // Center decoration
+    px(cx,cy,P.neonGold);
+    // Leg
+    px(cx,cy+3,P.stoolBase);
+    px(cx,cy+4,P.stoolBase);
+    pxR(cx-1,cy+5,3,1,P.stoolBase);
+    // Stools around
+    [[-5,1],[5,1],[0,-5]].forEach(([dx,dy])=>{
+      pxR(cx+dx-1,cy+dy,3,2,P.velvet);
+      px(cx+dx,cy+dy+2,P.stoolBase);
+    });
+  });
+
+  // ─── 7. VIP LOUNGE (top center) ───
+  const vipX=Math.floor(W*0.35), vipY=Math.floor(H*0.04);
+  const vipW=Math.floor(W*0.26), vipH=Math.floor(H*0.14);
+  // Velvet carpet
+  for(let y=vipY;y<vipY+vipH;y++){
+    for(let x=vipX;x<vipX+vipW;x++){
+      const pat=(x+y)%4===0;
+      px(x,y,pat?P.velvetLight:P.velvet);
+    }
+  }
+  // Gold rope barriers
+  pxR(vipX,vipY+vipH,vipW,1,P.brass);
+  // Rope posts
+  [vipX,vipX+Math.floor(vipW/2),vipX+vipW-1].forEach(rx=>{
+    pxR(rx,vipY+vipH-2,1,3,P.brassLight);
+    px(rx,vipY+vipH-3,P.neonGold);
+  });
+  // Catenary rope
+  for(let i=0;i<2;i++){
+    const x0=vipX+i*Math.floor(vipW/2), x1=x0+Math.floor(vipW/2);
+    for(let x=x0;x<=x1;x++){
+      const t=(x-x0)/(x1-x0);
+      const sag=Math.floor(2*Math.sin(t*Math.PI));
+      px(x,vipY+vipH-1+sag,P.neonGold);
+    }
+  }
+  // VIP sofa
+  pxR(vipX+3,vipY+2,vipW-6,4,P.velvetDark||P.velvet);
+  pxR(vipX+4,vipY+3,vipW-8,2,P.velvetLight);
+  // VIP table
+  pxR(vipX+Math.floor(vipW/2)-3,vipY+7,6,3,P.marbleLight);
+  pxR(vipX+Math.floor(vipW/2)-2,vipY+8,4,1,P.glass);
+  // VIP sign
+  const vipSignX=vipX+Math.floor(vipW/2)-4;
+  pxR(vipSignX,vipY-2,9,2,P.chipBlack);
+  // "VIP" letters in gold
+  // V
+  px(vipSignX+1,vipY-2,P.neonGold);px(vipSignX+1,vipY-1,P.neonGold);
+  px(vipSignX+2,vipY-1,P.neonGold);px(vipSignX+3,vipY-2,P.neonGold);
+  // I
+  px(vipSignX+4,vipY-2,P.neonGold);px(vipSignX+4,vipY-1,P.neonGold);
+  // P
+  px(vipSignX+6,vipY-2,P.neonGold);px(vipSignX+6,vipY-1,P.neonGold);
+  px(vipSignX+7,vipY-2,P.neonGold);
+
+  // ─── 8. DECORATIVE COLUMNS ───
+  [[0.03,0.15],[0.03,0.65],[0.95,0.15],[0.95,0.65]].forEach(([xp,yp])=>{
+    const cx=Math.floor(W*xp), cy=Math.floor(H*yp);
+    // Column base
+    pxR(cx-2,cy+6,5,2,P.marble);
+    // Column shaft
+    for(let dy=0;dy<12;dy++){
+      pxR(cx-1,cy-dy+5,3,1,(dy%3===0)?P.marbleLight:P.marble);
+    }
+    // Capital
+    pxR(cx-2,cy-7,5,2,P.marble);
+    pxR(cx-3,cy-8,7,1,P.marbleLight);
+    // Gold trim
+    px(cx-2,cy-7,P.brass);px(cx+2,cy-7,P.brass);
+  });
+
+  // ─── 9. POTTED PLANTS ───
+  [[0.28,0.18],[0.66,0.18],[0.28,0.72],[0.66,0.72]].forEach(([xp,yp])=>{
+    const cx=Math.floor(W*xp), cy=Math.floor(H*yp);
+    // Pot
+    pxR(cx-2,cy+1,5,3,P.feltRail);
+    pxR(cx-1,cy+1,3,2,P.feltRailLight);
+    pxR(cx-3,cy,7,1,P.feltRailDark);
+    // Plant leaves
+    const leafG='#1a5c3a', leafL='#22754c';
+    px(cx,cy-3,leafG);px(cx-1,cy-2,leafL);px(cx+1,cy-2,leafL);
+    px(cx,cy-1,leafG);px(cx-2,cy-1,leafG);px(cx+2,cy-1,leafG);
+    px(cx-1,cy-3,leafL);px(cx+1,cy-3,leafL);
+    px(cx,cy-4,leafL);
+  });
+
+  // ─── 10. CHANDELIER LIGHT POOLS ───
+  [[0.46,0.38,18,14],[0.20,0.40,10,8],[0.75,0.40,12,10]].forEach(([xp,yp,rx,ry])=>{
+    const cx=Math.floor(W*xp), cy=Math.floor(H*yp);
+    // Soft light pool on floor
+    for(let dy=-ry;dy<=ry;dy++){
+      for(let dx=-rx;dx<=rx;dx++){
+        const d=(dx*dx)/(rx*rx)+(dy*dy)/(ry*ry);
+        if(d<1){
+          const a=Math.floor((1-d)*25);
+          if(a>2) px(cx+dx,cy+dy,`rgba(245,197,66,${a/255})`);
+        }
+      }
+    }
+  });
+
+  // ─── 11. NEON SIGNS (wall area) ───
+  // "DOLSOE POKER" neon at top
+  const signY=2;
+  const signText='DOLSOE POKER';
+  const signStartX=Math.floor(W/2)-Math.floor(signText.length*3/2);
+  // Simple 3x5 pixel font for neon
+  const FONT={'D':[[1,1,0],[1,0,1],[1,0,1],[1,0,1],[1,1,0]],'O':[[0,1,0],[1,0,1],[1,0,1],[1,0,1],[0,1,0]],'L':[[1,0,0],[1,0,0],[1,0,0],[1,0,0],[1,1,1]],'S':[[0,1,1],[1,0,0],[0,1,0],[0,0,1],[1,1,0]],'E':[[1,1,1],[1,0,0],[1,1,0],[1,0,0],[1,1,1]],' ':[[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0]],'P':[[1,1,0],[1,0,1],[1,1,0],[1,0,0],[1,0,0]],'K':[[1,0,1],[1,0,1],[1,1,0],[1,0,1],[1,0,1]],'R':[[1,1,0],[1,0,1],[1,1,0],[1,0,1],[1,0,1]]};
+  let nx=signStartX;
+  for(const ch of signText){
+    const glyph=FONT[ch];
+    if(glyph){
+      for(let gy=0;gy<5;gy++){
+        for(let gx=0;gx<3;gx++){
+          if(glyph[gy][gx]){
+            px(nx+gx,signY+gy,P.neonGold);
+            // Glow
+            px(nx+gx,signY+gy-1,P.neonGold+'33');
+            px(nx+gx,signY+gy+1,P.neonGold+'22');
+          }
+        }
+      }
+    }
+    nx+=4;
+  }
+
+  // ─── 12. FLOOR DETAILS ───
+  // Scattered chips
+  for(let i=0;i<15;i++){
+    const fx=Math.floor(Math.random()*W);
+    const fy=Math.floor(Math.random()*H);
+    const cc=[P.chipRed,P.chipBlue,P.chipGold,P.chipGreen][i%4];
+    px(fx,fy,cc);
+  }
+  // Card on floor
+  [[0.32,0.56],[0.58,0.72]].forEach(([xp,yp])=>{
+    const cx=Math.floor(W*xp), cy=Math.floor(H*yp);
+    pxR(cx,cy,2,3,'#e8e0d0');
+    px(cx,cy,P.chipRed);
+  });
+
+  // ─── 13. WALL DECORATION (top edge) ───
+  // Wainscoting
+  pxR(0,0,W,Math.floor(H*0.03),P.wall);
+  pxR(0,Math.floor(H*0.03),W,1,P.wallTrim);
+  // Bottom edge carpet border
+  pxR(0,H-2,W,2,P.carpetGold);
+  pxR(0,H-1,W,1,P.brassDark);
+
+  return c;
+}
+
+// ══ Procedural In-Game Map ══
+function drawIngameMap(targetW, targetH) {
+  const PX=2;
+  const W=Math.floor(targetW/PX), H=Math.floor(targetH/PX);
+  const c=document.createElement('canvas');
+  c.width=targetW; c.height=targetH;
+  const g=c.getContext('2d');
+  g.imageSmoothingEnabled=false;
+  function px(x,y,color){if(x>=0&&x<W&&y>=0&&y<H){g.fillStyle=color;g.fillRect(x*PX,y*PX,PX,PX)}}
+  function pxR(x,y,w,h,color){g.fillStyle=color;g.fillRect(x*PX,y*PX,w*PX,h*PX)}
+
+  // Dark casino floor
+  for(let y=0;y<H;y++){
+    for(let x=0;x<W;x++){
+      const pat=(x+y)%8===0?'#140f1e':'#0e0a14';
+      px(x,y,(x+y*3)%11===0?'#1a132a':pat);
+    }
+  }
+  // Subtle center spotlight
+  const cx=Math.floor(W/2),cy=Math.floor(H*0.45);
+  for(let dy=-Math.floor(H*0.3);dy<=Math.floor(H*0.3);dy++){
+    for(let dx=-Math.floor(W*0.25);dx<=Math.floor(W*0.25);dx++){
+      const d=(dx*dx)/(W*W*0.06)+(dy*dy)/(H*H*0.09);
+      if(d<1){const a=Math.floor((1-d)*20);if(a>1)px(cx+dx,cy+dy,`rgba(245,197,66,${a/255})`);}
+    }
+  }
+  return c;
+}
+
+// ══ Casino floor initialization — renders background once ══
+let _casinoFloorCanvas=null;
+function initCasinoFloorBg(){
+  const floor=document.getElementById('casino-floor');
+  if(!floor||_casinoFloorCanvas)return;
+  const w=Math.max(window.innerWidth,960);
+  const h=Math.max(window.innerHeight,540);
+  _casinoFloorCanvas=drawCasinoFloor(w,h);
+  _casinoFloorCanvas.id='casino-floor-bg';
+  _casinoFloorCanvas.style.cssText='position:absolute;inset:0;width:100%;height:100%;z-index:0;image-rendering:pixelated;pointer-events:none';
+  floor.insertBefore(_casinoFloorCanvas,floor.firstChild);
+}
+
 function _mixColor(c1,c2,t){
   const p=s=>{const m=s.match(/[0-9a-f]{2}/gi);return m?m.map(h=>parseInt(h,16)):[128,128,128]};
   const a=p(c1),b=p(c2);
