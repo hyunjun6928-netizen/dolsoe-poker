@@ -2210,7 +2210,7 @@ code, pre, #log, .log-box, [data-log] {
 .lobby-slime img,
 .slime-sprite img,
 .seat img[src*="slime"] {
-  filter: brightness(0.88) saturate(0.85) contrast(1.05) drop-shadow(2px 4px 6px rgba(0,0,0,0.5));
+  filter: brightness(0.88) saturate(0.85) contrast(1.05);
   image-rendering: pixelated;
 }
 
@@ -2256,7 +2256,7 @@ img[src*="px_"] {
 .chair-sprite img,
 .poi-furniture img,
 img[src*="slimes/"] {
-  filter: drop-shadow(0 3px 6px rgba(0,0,0,0.35)) !important;
+  filter: none !important;
   backdrop-filter: none !important;
 }
 
