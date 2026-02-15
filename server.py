@@ -3060,7 +3060,7 @@ box-shadow:inset 0 0 0 1px rgba(157,127,51,0.4),0 2px 8px rgba(0,0,0,0.5)}
 #chatinput{padding:4px 6px;border-top:1px solid #e8d0b8;display:flex;gap:3px}
 #chatinput input{flex:1;background:var(--bg-panel-alt);border:1px solid var(--frame);color:var(--text-primary);padding:6px 10px;font-size:0.8em;font-family:var(--font-pixel);border-radius:6px}
 #chatinput button{background:var(--accent-green);color:#0C0F14;border:1px solid #047857;padding:6px 12px;cursor:pointer;font-size:0.8em;border-radius:6px;font-weight:600}
-#replay-panel,#highlights-panel{display:none!important}
+#replay-panel,#highlights-panel{display:none}
 .tab-btns{display:flex;gap:4px;margin-top:8px;margin-bottom:4px}
 .tab-btns button{background:var(--bg-panel-alt);color:var(--text-secondary);border:3px solid var(--frame-light);padding:var(--sp-sm) var(--sp-lg);border-radius:var(--radius);cursor:pointer;font-size:0.75em;box-shadow:0 3px 0 0 #8b6d4a;transition:all .1s}
 .tab-btns button:hover{transform:translateY(-1px);box-shadow:0 4px 0 0 #8b6d4a}
@@ -3428,7 +3428,9 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 </div>
 <div class="dock-panel" style="flex:1">
 <div class="dock-panel-header">
-<span class="dock-tab active" onclick="showDockTab('log',this)">📜 로그</span>
+<span class="dock-tab active" onclick="showDockTab('log',this)" id="tab-log">📜 로그</span>
+<span class="dock-tab" onclick="showDockTab('replay',this)" id="tab-replay">📋 리플레이</span>
+<span class="dock-tab" onclick="showDockTab('highlights',this)" id="tab-hl">🔥 명장면</span>
 </div>
 <div class="dock-panel-body">
 <div id="log"></div>
@@ -4088,6 +4090,7 @@ const th=document.getElementById('lobby-rank-thead');
 if(th)th.innerHTML='<tr style="border-bottom:2px solid var(--frame-light)"><th style="padding:3px;color:var(--accent-yellow);text-align:center">'+t('thRank')+'</th><th style="padding:3px;color:var(--text-primary);text-align:left">'+t('thPlayer2')+'</th><th style="padding:3px;color:var(--text-secondary);text-align:center">'+t('thWR2')+'</th><th style="padding:3px;color:var(--accent-mint);text-align:center">'+t('thW2')+'</th><th style="padding:3px;color:var(--accent-red);text-align:center">'+t('thL2')+'</th><th style="padding:3px;color:var(--text-muted);text-align:center">'+t('thHands2')+'</th><th style="padding:3px;color:var(--accent-yellow);text-align:center">'+t('thChips2')+'</th></tr>';
 document.querySelectorAll('.lang-btn').forEach(b=>{b.style.opacity=b.dataset.lang===lang?'1':'0.5'});
 document.querySelectorAll('#hand-timeline .tl-step').forEach(el=>{const r=el.dataset.r;if(r)el.textContent=t(r)});
+_s('tab-log',t('tabLog'));_s('tab-replay',t('tabReplay'));_s('tab-hl',t('tabHL'));
 }
 applyLobbyLang();
 function _$(s){return document.querySelector(s)}
