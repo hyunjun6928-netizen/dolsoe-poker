@@ -3207,7 +3207,7 @@ box-shadow:inset 0 0 0 1px rgba(157,127,51,0.4),0 2px 8px rgba(0,0,0,0.5)}
 #action-feed .af-round{color:var(--accent-blue);font-weight:bold;padding:6px 0 2px;font-size:0.9em;text-shadow:none}
 #action-feed .af-action{color:var(--text-secondary)}
 #action-feed .af-win{color:var(--accent-mint);font-weight:bold}
-.game-layout{display:grid;grid-template-columns:min(50vw,600px) 1fr min(14vw,200px);gap:6px;height:calc(100vh - 100px);min-height:500px}
+.game-layout{display:grid;grid-template-columns:420px 1fr 220px;gap:6px;height:calc(100vh - 100px);min-height:500px}
 .game-main{min-width:0}
 .game-sidebar{display:none}
 .dock-left,.dock-right{display:flex;flex-direction:column;gap:6px;overflow:hidden}
@@ -3257,7 +3257,8 @@ box-shadow:inset 0 0 0 1px rgba(157,127,51,0.4),0 2px 8px rgba(0,0,0,0.5)}
 .tab-btns button.active{color:var(--bg-dark);border-color:#E8A8B8;background:var(--accent-pink);box-shadow:var(--shadow-sm)}
 #log{background:transparent;border:none;border-radius:0;padding:4px;height:auto;overflow-y:auto;font-size:0.82em;font-family:var(--font-pixel);flex:1;box-shadow:none;color:var(--text-secondary)}
 #log div{padding:2px 0;border-bottom:1px solid #e8d0b8;opacity:0;animation:fadeIn .3s forwards}
-#chatbox{background:transparent;border:none;border-radius:0;padding:0;height:auto;width:auto;display:flex;flex-direction:column;box-shadow:none;flex:1}
+#chatbox{background:transparent;border:none;border-radius:0;padding:0;height:auto;width:auto;display:flex;flex-direction:column;box-shadow:none;max-height:200px}
+#chatmsgs{flex:1;overflow-y:auto;max-height:140px;font-size:0.78em;padding:4px}
 #chatmsgs{flex:1;overflow-y:auto;font-size:0.85em;margin-bottom:5px;line-height:1.5}
 #chatmsgs div{padding:2px 0;opacity:0;animation:fadeIn .3s forwards}
 #chatmsgs .cn{color:var(--accent-green);font-weight:600}
