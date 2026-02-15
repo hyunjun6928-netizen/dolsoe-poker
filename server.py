@@ -3831,7 +3831,7 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 #action-feed .af-round{color:var(--accent-blue);font-weight:bold;padding:6px 0 2px;font-size:0.9em;text-shadow:none}
 #action-feed .af-action{color:var(--text-secondary)}
 #action-feed .af-win{color:var(--accent-mint);font-weight:bold}
-.game-layout{display:grid;grid-template-columns:180px 1fr 160px;gap:0;min-height:500px;overflow:visible;position:fixed!important;top:90px!important;left:0!important;right:0!important;bottom:44px!important;width:100vw!important;max-width:100vw!important}
+.game-layout{display:grid;grid-template-columns:220px 1fr 200px;gap:0;min-height:500px;overflow:visible;position:fixed!important;top:90px!important;left:0!important;right:0!important;bottom:44px!important;width:100vw!important;max-width:100vw!important}
 .dock-left,.dock-right{min-width:0;max-width:100%;position:relative;overflow:hidden}
 /* 드래그 리사이저 */
 .dock-resizer{display:none!important}
@@ -4094,9 +4094,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.62.0">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.62.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.62.0">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.63.0">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.63.0">
+<link rel="stylesheet" href="/static/css/components.css?v=3.63.0">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
@@ -4348,12 +4348,7 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 <div id="table-info"></div>
 <div id="actions"><div id="timer"></div><div id="actbtns"></div></div>
 <button id="new-btn" onclick="newGame()">🔄 새 게임</button>
-<!-- 쓰레기톡 독 -->
-<div id="chatbox" style="position:sticky;bottom:0;z-index:30;display:flex;align-items:center;gap:6px;padding:6px 12px;background:rgba(10,13,18,0.95);border:1px solid rgba(255,255,255,0.08);border-radius:8px 8px 0 0;backdrop-filter:blur(8px)">
-<div id="chatmsgs" style="flex:1;overflow-y:auto;max-height:80px;font-size:0.95em;color:var(--text-light);font-family:var(--font-pixel);line-height:1.5"></div>
-<input id="chat-inp" placeholder="쓰레기톡..." maxlength="100" style="width:200px;background:var(--bg-panel-alt);border:1px solid var(--frame);color:var(--text-primary);padding:5px 10px;font-size:0.85em;font-family:var(--font-pixel);border-radius:8px">
-<button onclick="sendChat()" style="background:#4ade80;color:#000;border:none;border-radius:8px;padding:5px 10px;font-size:0.85em;cursor:pointer;font-family:var(--font-pixel);font-weight:bold">💬</button>
-</div>
+<!-- 쓰레기톡: 우측 독으로 이동 -->
 </div>
 </div>
 <!-- 우측 독: 채팅 -->
@@ -4391,7 +4386,17 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 </div>
 </div>
 </div>
-<!-- 채팅 → 테이블 하단으로 이동됨 -->
+<!-- 쓰레기톡 -->
+<div class="dock-panel" style="flex:1;min-height:80px">
+<div class="dock-panel-header">💬 쓰레기톡</div>
+<div class="dock-panel-body" style="padding:4px;display:flex;flex-direction:column">
+<div id="chatmsgs" style="flex:1;overflow-y:auto;font-size:0.85em;color:var(--text-light);font-family:var(--font-pixel);line-height:1.5;max-height:200px"></div>
+<div style="display:flex;gap:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,0.06)">
+<input id="chat-inp" placeholder="쓰레기톡..." maxlength="100" style="flex:1;background:var(--bg-panel-alt);border:1px solid var(--frame);color:var(--text-primary);padding:4px 8px;font-size:0.85em;font-family:var(--font-pixel);border-radius:6px">
+<button onclick="sendChat()" style="background:#4ade80;color:#000;border:none;border-radius:6px;padding:4px 8px;font-size:0.85em;cursor:pointer;font-family:var(--font-pixel);font-weight:bold">💬</button>
+</div>
+</div>
+</div>
 </div>
 </div>
 <!-- 하단 독: 실황 + 리액션 -->

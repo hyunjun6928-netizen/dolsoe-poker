@@ -108,7 +108,7 @@ h1 b { color: var(--accent-gold); }
 /* ===== 7. GAME LAYOUT — 3-COL GRID (v3.14: log narrower, table dominant) ===== */
 .game-layout {
   display: grid;
-  grid-template-columns: 240px 1fr 120px;
+  grid-template-columns: 220px 1fr 200px;
   gap: var(--sp-sm);
   height: calc(100vh - 120px);
   min-height: 500px;
@@ -385,7 +385,7 @@ body.is-lobby .lobby-right .px-panel:nth-child(n+2) {
 /* ===== 12. RESPONSIVE — DESKTOP WIDE (>1400px) ===== */
 @media (min-width: 1401px) {
   .game-layout {
-    grid-template-columns: 240px 1fr 120px;
+    grid-template-columns: 220px 1fr 200px;
     max-width: 100vw;
     margin: 0;
   }
