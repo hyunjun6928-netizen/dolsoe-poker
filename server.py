@@ -3834,8 +3834,9 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 .dock-left,.dock-right{min-width:200px!important;position:relative;width:100%!important}
 /* 드래그 리사이저 */
 .dock-resizer{display:none!important}
-.dock-panel{resize:vertical;overflow:auto!important}
-.dock-panel::-webkit-resizer{background:#4ade80;border:2px solid #333;border-radius:3px}
+.dock-panel{overflow:auto!important;position:relative}
+.dp-resize-handle{height:6px;cursor:ns-resize;background:linear-gradient(180deg,transparent,rgba(74,222,128,0.3));border-radius:0 0 var(--radius) var(--radius);flex-shrink:0;transition:background 0.15s}
+.dp-resize-handle:hover,.dp-resize-handle:active{background:linear-gradient(180deg,transparent,rgba(74,222,128,0.6))}
 .game-main{min-width:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column}
 .game-sidebar{display:none}
 .dock-left,.dock-right{display:flex;flex-direction:column;gap:6px;overflow-y:auto;overflow-x:hidden;align-items:stretch}
@@ -4093,9 +4094,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.44.0">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.44.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.44.0">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.45.0">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.45.0">
+<link rel="stylesheet" href="/static/css/components.css?v=3.45.0">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
@@ -4347,14 +4348,7 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 <div id="table-info"></div>
 <div id="actions"><div id="timer"></div><div id="actbtns"></div></div>
 <button id="new-btn" onclick="newGame()">🔄 새 게임</button>
-<!-- 채팅: 테이블 하단 -->
-<div id="chatbox" style="margin-top:4px;background:var(--bg-panel);border:1px solid var(--frame);border-radius:var(--radius);max-height:160px;display:flex;flex-direction:column">
-<div id="chatmsgs" style="flex:1;overflow-y:auto;font-size:0.8em;padding:4px 6px;max-height:90px"></div>
-<div id="quick-chat">
-<button onclick="qChat('ㅋㅋㅋ')">ㅋㅋㅋ</button><button onclick="qChat('사기?')">사기?</button><button onclick="qChat('올인!')">올인!</button><button onclick="qChat('GG')">GG</button><button onclick="qChat('낄낄')">낄낄</button>
-</div>
-<div id="chatinput"><input id="chat-inp" placeholder="쓰레기톡..." maxlength="100"><button onclick="sendChat()">💬</button></div>
-</div>
+<!-- 채팅: bottom-dock으로 이동 -->
 </div>
 </div>
 <!-- 우측 독: 채팅 -->
@@ -4407,6 +4401,10 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 <button onclick="qChat('ㅋㅋ')" style="background:#3a3c56;color:#fff;border:1px solid #4a4c66;border-radius:var(--radius);padding:2px 8px;font-size:0.75em;cursor:pointer;font-family:var(--font-pixel)">ㅋㅋ</button>
 <button onclick="qChat('GG')" style="background:#3a3c56;color:#fff;border:1px solid #4a4c66;border-radius:var(--radius);padding:2px 8px;font-size:0.75em;cursor:pointer;font-family:var(--font-pixel)">GG</button>
 <button onclick="qChat('사기!')" style="background:#3a3c56;color:#fff;border:1px solid #4a4c66;border-radius:var(--radius);padding:2px 8px;font-size:0.75em;cursor:pointer;font-family:var(--font-pixel)">사기!</button>
+</div>
+<div id="chatbox" style="display:flex;align-items:center;gap:4px;flex-shrink:0">
+<input id="chat-inp" placeholder="쓰레기톡..." maxlength="100" style="width:180px;background:var(--bg-panel-alt);border:1px solid var(--frame);color:var(--text-primary);padding:4px 8px;font-size:0.75em;font-family:var(--font-pixel);border-radius:6px">
+<button onclick="sendChat()" style="background:#4ade80;color:#000;border:none;border-radius:6px;padding:4px 8px;font-size:0.75em;cursor:pointer;font-family:var(--font-pixel)">💬</button>
 </div>
 </div>
 </div>
@@ -8112,29 +8110,16 @@ f.appendChild(s);setTimeout(()=>s.remove(),2500)},2500);
 // Human join removed — AI-only arena
 document.getElementById('chat-inp').addEventListener('keydown',e=>{if(e.key==='Enter')sendChat()});
 
-// ═══ 독 드래그 리사이즈 ═══
+// ═══ 독 패널 세로 리사이즈 ═══
 (function(){
-const gl=document.querySelector('.game-layout');if(!gl)return;
-const dl=document.querySelector('.dock-left');
-const dr=document.querySelector('.dock-right');
-if(dl){
-  const rL=document.createElement('div');rL.className='dock-resizer';dl.appendChild(rL);
-  let startX,startW;
-  rL.addEventListener('mousedown',e=>{e.preventDefault();startX=e.clientX;startW=dl.offsetWidth;rL.classList.add('active');
-    const onMove=ev=>{const w=Math.max(120,Math.min(600,startW+(ev.clientX-startX)));dl.style.width=w+'px';dl.style.minWidth=w+'px';
-      gl.style.gridTemplateColumns=w+'px 1fr '+(dr?dr.offsetWidth+'px':'17vw')};
-    const onUp=()=>{rL.classList.remove('active');document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp)};
+document.querySelectorAll('.dock-panel:not(#player-list-panel)').forEach(panel=>{
+  const h=document.createElement('div');h.className='dp-resize-handle';panel.appendChild(h);
+  let startY,startH;
+  h.addEventListener('mousedown',e=>{e.preventDefault();startY=e.clientY;startH=panel.offsetHeight;
+    const onMove=ev=>{panel.style.height=Math.max(40,startH+(ev.clientY-startY))+'px'};
+    const onUp=()=>{document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp)};
     document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp)});
-}
-if(dr){
-  const rR=document.createElement('div');rR.className='dock-resizer';dr.appendChild(rR);
-  let startX,startW;
-  rR.addEventListener('mousedown',e=>{e.preventDefault();startX=e.clientX;startW=dr.offsetWidth;rR.classList.add('active');
-    const onMove=ev=>{const w=Math.max(120,Math.min(600,startW-(ev.clientX-startX)));dr.style.width=w+'px';dr.style.minWidth=w+'px';
-      gl.style.gridTemplateColumns=(dl?dl.offsetWidth+'px':'28vw')+' 1fr '+w+'px'};
-    const onUp=()=>{rR.classList.remove('active');document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp)};
-    document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp)});
-}
+});
 })();
 // Player list collapse toggle
 (function(){const pl=document.getElementById('player-list-panel');if(pl){const h=pl.querySelector('.dock-panel-header');if(h)h.addEventListener('click',()=>pl.classList.toggle('expanded'))}})();
