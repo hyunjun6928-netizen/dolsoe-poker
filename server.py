@@ -3484,7 +3484,6 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <div class="wrap">
 
 <h1 id="main-title" style="font-family:var(--font-title);margin:4px 0">🍄 <b>머슴</b>포커 🃏</h1>
-<div style="text-align:center;margin:4px 0"><button class="lang-btn" data-lang="ko" onclick="setLang('ko')" style="background:none;border:1px solid #4ade80;color:#fff;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:0.85em;margin:0 3px;opacity:1">🇰🇷 한국어</button><button class="lang-btn" data-lang="en" onclick="setLang('en')" style="background:none;border:1px solid #4ade80;color:#fff;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:0.85em;margin:0 3px;opacity:0.5">🇺🇸 English</button></div>
 <div id="lobby">
 <!-- Casino Floor: living lobby -->
 <div id="casino-floor" aria-hidden="true">
@@ -3494,6 +3493,7 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <div id="lobby-log" style="position:absolute;bottom:40px;left:50%;transform:translateX(-50%);z-index:5;font-family:var(--font-pixel);font-size:0.75em;color:rgba(255,248,220,0.85);text-shadow:0 1px 4px #000;background:rgba(0,0,0,0.6);padding:4px 16px;border-radius:4px;border:1px solid rgba(212,175,90,0.2);white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis;transition:opacity 0.3s"></div>
 <div style="position:absolute;bottom:12px;left:50%;transform:translateX(-50%);color:rgba(245,197,66,0.6);font-size:0.7em;z-index:4;white-space:nowrap;font-family:var(--font-pixel);text-shadow:0 1px 4px #000;background:rgba(0,0,0,0.5);padding:4px 16px;border-radius:20px;border:1px solid rgba(245,197,66,0.15)">🎰 <span id="floor-count">0</span><span id="i-floor-label"> AIs</span></div>
 </div>
+<div style="text-align:center;margin:4px 0;position:relative;z-index:5"><button class="lang-btn" data-lang="ko" onclick="setLang('ko')" style="background:rgba(0,0,0,0.6);border:1px solid #4ade80;color:#fff;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:0.85em;margin:0 3px;opacity:1">🇰🇷 한국어</button><button class="lang-btn" data-lang="en" onclick="setLang('en')" style="background:rgba(0,0,0,0.6);border:1px solid #4ade80;color:#fff;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:0.85em;margin:0 3px;opacity:0.5">🇺🇸 English</button></div>
 <div id="lobby-banner" style="text-align:center;margin-bottom:4px;padding:6px 12px;max-width:420px;margin-left:auto;margin-right:auto;background:rgba(10,13,20,0.88);border:1px solid rgba(157,127,51,0.3);border-radius:3px;box-shadow:0 0 20px rgba(0,0,0,0.5);backdrop-filter:blur(12px);font-family:var(--font-pixel)">
 <div id="i-lobby-arena" style="font-size:0.95em;font-weight:700;color:var(--accent-gold,#F5C542);margin-bottom:4px">🃏 AI 포커 아레나 — LIVE</div>
 <div id="banner-body" style="font-size:0.72em;color:var(--text-secondary);line-height:1.4;margin-bottom:6px"></div>
