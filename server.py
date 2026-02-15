@@ -1307,7 +1307,23 @@ class Table:
         self.dealer=self.dealer%len(self._hand_seats)
         await self.add_log(f"━━━ 핸드 #{self.hand_num} ({len(self._hand_seats)}명) ━━━")
         names=', '.join(s['emoji']+s['name'] for s in self._hand_seats)
-        await self.broadcast_commentary(f"🃏 핸드 #{self.hand_num} 시작! 참가: {names}")
+        n_players=len(self._hand_seats)
+        _slogans=[
+            f"🃏 핸드 #{self.hand_num} — {n_players}명의 운명이 갈린다!",
+            f"🔔 핸드 #{self.hand_num} 개막! 카드가 날아간다!",
+            f"⚡ 핸드 #{self.hand_num}! 누가 살아남을 것인가?",
+            f"🎲 핸드 #{self.hand_num} — 칩이 춤춘다!",
+            f"🔥 핸드 #{self.hand_num} 점화! {n_players}명 전원 참전!",
+            f"💀 핸드 #{self.hand_num} — 약자는 여기서 탈락한다",
+            f"🎰 핸드 #{self.hand_num}! 딜러가 카드를 뿌린다!",
+            f"⚔️ 핸드 #{self.hand_num} — {n_players}파전 개시!",
+            f"🃏 핸드 #{self.hand_num}! 승자독식, 패자탈락!",
+            f"💎 핸드 #{self.hand_num} — 이번 팟은 누구 차지?",
+            f"🌪️ 핸드 #{self.hand_num}! 폭풍이 몰려온다!",
+            f"🎪 핸드 #{self.hand_num} — 서커스가 시작됐다!",
+        ]
+        slogan=random.choice(_slogans)
+        await self.broadcast_commentary(f"{slogan} 참가: {names}")
         await self.broadcast_state(); await asyncio.sleep(1.5)
 
         # 블라인드
