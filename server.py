@@ -3946,7 +3946,9 @@ h1{font-size:1.1em;margin:2px 0}
 /* ═══ 모바일 게임 ═══ */
 .game-layout{position:relative!important;display:flex!important;flex-direction:column!important;top:auto!important;left:auto!important;right:auto!important;bottom:auto!important;width:100%!important;max-width:100vw!important;height:auto!important;min-height:0!important;padding:0 2px;grid-template-columns:none!important}
 .dock-left,.dock-right{display:none!important}
-.game-main{flex:none!important;overflow:visible!important}
+.game-main{flex:none!important;overflow:hidden!important;-ms-overflow-style:none!important;scrollbar-width:none!important}
+.game-main::-webkit-scrollbar{display:none!important}
+.felt-wrap{overflow:hidden!important}
 .bottom-dock{position:fixed;bottom:0;left:0;right:0;padding:4px 6px;z-index:50}
 .bottom-dock .bd-reactions{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .bottom-dock .bd-reactions::-webkit-scrollbar{display:none}
@@ -3954,21 +3956,27 @@ h1{font-size:1.1em;margin:2px 0}
 .felt-wrap{margin:4px auto 8px;width:100%!important;flex:none!important;min-height:0!important;height:auto!important}
 .felt-border{top:-8px;left:-8px;right:-8px;bottom:-8px;border-radius:12px}
 .felt-border::before{top:-6px;left:-6px;right:-6px;bottom:-6px;border-radius:16px}
-.felt{position:relative!important;height:auto!important;padding-bottom:75%;border-radius:8px;box-shadow:inset 0 2px 6px #00000033;min-height:320px;overflow:visible!important}
-.board{gap:2px;top:38%!important}
-.pot-badge{top:18%!important;font-size:0.75em!important}
-.card{width:30px;height:44px;font-size:0.6em;border-radius:3px;box-shadow:0 2px 0 0 #000}
-.card-sm{width:24px;height:36px;font-size:0.5em}
-.seat{min-width:50px;max-width:70px}
-.seat .ava{font-size:1.4em;min-height:40px}
-.seat .ava img{width:40px!important;height:40px!important}
+.felt{position:relative!important;height:60vw!important;max-height:380px!important;min-height:250px!important;border-radius:8px;box-shadow:inset 0 2px 6px #00000033;overflow:hidden!important;padding-bottom:0!important}
+.board{gap:3px;top:35%!important;z-index:20!important}
+.pot-badge{top:12%!important;font-size:0.75em!important}
+.card{width:32px;height:46px;font-size:0.6em;border-radius:3px;box-shadow:0 2px 0 0 #000}
+.card-sm{width:26px;height:38px;font-size:0.5em}
+.seat{min-width:50px!important;max-width:72px!important;position:absolute!important}
+.seat .ava{font-size:1.3em;min-height:36px}
+.seat .ava img{width:36px!important;height:36px!important}
 .seat .nm{font-size:0.6em;padding:1px 3px;max-width:55px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.seat-0{bottom:2%;left:62%;transform:translateX(-50%)}
-.seat-1{bottom:2%;left:38%;transform:translateX(-50%)}
-.seat-2{top:55%;left:1%}.seat-3{top:12%;left:1%}
-.seat-4{top:12%;right:1%}.seat-5{top:55%;right:1%}
-.seat-6{top:0%;left:62%;transform:translateX(-50%)}
-.seat-7{top:0%;left:38%;transform:translateX(-50%)}
+.seat .ch{font-size:0.55em!important}
+.seat .eq-bar{display:none!important}
+.seat .hand-name{font-size:0.5em!important}
+.seat-0{bottom:1%!important;left:60%!important;transform:translateX(-50%)!important;top:auto!important;right:auto!important}
+.seat-1{bottom:1%!important;left:35%!important;transform:translateX(-50%)!important;top:auto!important;right:auto!important}
+.seat-2{top:50%!important;left:0%!important;right:auto!important;bottom:auto!important;transform:none!important}
+.seat-3{top:5%!important;left:0%!important;right:auto!important;bottom:auto!important;transform:none!important}
+.seat-4{top:5%!important;right:0%!important;left:auto!important;bottom:auto!important;transform:none!important}
+.seat-5{top:50%!important;right:0%!important;left:auto!important;bottom:auto!important;transform:none!important}
+.seat-6{top:0%!important;left:60%!important;transform:translateX(-50%)!important;bottom:auto!important;right:auto!important}
+.seat-7{top:0%!important;left:35%!important;transform:translateX(-50%)!important;bottom:auto!important;right:auto!important}
+.comm-reveal-slot{display:none!important}
 .seat .ch{font-size:0.55em;padding:1px 3px}
 .seat .st{display:none}
 .seat .bet-chip{font-size:0.55em}
@@ -4107,9 +4115,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.80.0">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.80.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.80.0">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.81.0">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.81.0">
+<link rel="stylesheet" href="/static/css/components.css?v=3.81.0">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
