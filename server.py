@@ -3264,9 +3264,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.20.0">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.20.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.20.0">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.21.0">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.21.0">
+<link rel="stylesheet" href="/static/css/components.css?v=3.21.0">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
@@ -3784,16 +3784,25 @@ const FLOOR_BUBBLES={
 // v3.15: CENTRAL CLUSTER — dense casino floor, no wallpaper feel
 // Layout: center mass = table+bar+slots tight together, edges = pathways only
 const POIS=[
-  // ═══ Aligned to drawCasinoFloor() procedural layout ═══
-  {id:'slot',x:5,y:20,w:8,h:10,cap:3,zone:'slot'},
-  {id:'slot2',x:5,y:35,w:8,h:10,cap:2,zone:'slot'},
-  {id:'slot3',x:5,y:50,w:8,h:12,cap:2,zone:'slot'},
-  {id:'table',x:33,y:26,w:26,h:24,cap:6,zone:'table',
+  // ═══ Dense layout — aligned to drawCasinoFloor() v2 ═══
+  {id:'slot',x:2,y:14,w:8,h:10,cap:2,zone:'slot'},
+  {id:'slot2',x:2,y:24,w:8,h:10,cap:2,zone:'slot'},
+  {id:'slot3',x:2,y:34,w:8,h:10,cap:2,zone:'slot'},
+  {id:'slot4',x:2,y:54,w:8,h:10,cap:1,zone:'slot'},
+  {id:'slot5',x:2,y:64,w:8,h:10,cap:1,zone:'slot'},
+  {id:'table',x:36,y:23,w:24,h:20,cap:6,zone:'table',
    tooltip:{ko:'🃏 관전하기',en:'🃏 Watch game'},action:'watch'},
-  {id:'bar',x:72,y:23,w:16,h:32,cap:4,zone:'bar'},
-  {id:'cocktail1',x:68,y:58,w:8,h:8,cap:2,zone:'bar'},
-  {id:'cocktail2',x:78,y:64,w:8,h:8,cap:2,zone:'bar'},
-  {id:'vip',x:34,y:3,w:28,h:14,cap:3,zone:'vip'},
+  {id:'table2',x:54,y:64,w:16,h:16,cap:4,zone:'table'},
+  {id:'blackjack',x:8,y:64,w:16,h:14,cap:3,zone:'table'},
+  {id:'roulette',x:72,y:22,w:18,h:14,cap:3,zone:'table'},
+  {id:'bar',x:78,y:15,w:16,h:36,cap:5,zone:'bar'},
+  {id:'cocktail1',x:36,y:56,w:8,h:8,cap:2,zone:'bar'},
+  {id:'cocktail2',x:48,y:60,w:8,h:8,cap:2,zone:'bar'},
+  {id:'cocktail3',x:64,y:52,w:8,h:8,cap:2,zone:'bar'},
+  {id:'cocktail4',x:71,y:58,w:8,h:8,cap:2,zone:'bar'},
+  {id:'cocktail5',x:51,y:82,w:8,h:8,cap:2,zone:'bar'},
+  {id:'vip',x:32,y:13,w:30,h:15,cap:4,zone:'vip'},
+  {id:'cashier',x:3,y:82,w:10,h:10,cap:2,zone:'wander'},
 ];
 // Zone light pool definitions (CSS will render these)
 // v3.15: Tighter light pools — amber/gold/purple only, no cyan
@@ -5894,312 +5903,302 @@ function drawCasinoFloor(targetW, targetH) {
     }
   }
 
-  // ─── 1. CARPET BASE ───
+  // ─── 1. CARPET BASE — ornate repeating pattern ───
   for(let y=0;y<H;y++){
     for(let x=0;x<W;x++){
-      // Diamond carpet pattern
-      const px2=((x+y)%12<1)||((x-y+200)%12<1);
-      const px3=((x+y)%24<2)&&((x-y+200)%24<2);
-      if(px3) px(x,y,P.carpetGold);
-      else if(px2) px(x,y,P.carpetPattern);
-      else if((x+y*3)%7===0) px(x,y,P.carpetLight);
+      const d1=((x+y)%8<1)||((x-y+400)%8<1); // fine diamond grid
+      const d2=((x+y)%16<1)||((x-y+400)%16<1); // medium diamond
+      const d3=((x+y)%32<2)&&((x-y+400)%32<2); // large diamond intersect
+      const border=x<2||x>=W-2||y<2||y>=H-2; // edge trim
+      if(border) px(x,y,P.brass);
+      else if(d3) px(x,y,P.brassLight);
+      else if(d2) px(x,y,P.carpetGold);
+      else if(d1) px(x,y,P.carpetPattern);
+      else if((x*7+y*13)%23<3) px(x,y,P.carpetLight);
+      else if((x*3+y*5)%17<2) px(x,y,P.carpetAccent);
       else px(x,y,P.carpet);
     }
   }
 
-  // ─── 2. MARBLE BORDER / WALKWAYS ───
-  // Horizontal walkway (center)
-  const walkY=Math.floor(H*0.47), walkH=Math.floor(H*0.06);
-  for(let y=walkY;y<walkY+walkH;y++){
-    for(let x=0;x<W;x++){
-      const vein=(x*3+y*7)%19<2;
-      px(x,y,vein?P.marbleVein:((x+y)%3===0?P.marbleLight:P.marble));
+  // ─── 2. WALL ZONE (top 12%) — paneled wood + wainscoting ───
+  const wallH=Math.floor(H*0.12);
+  for(let y=3;y<wallH;y++){
+    for(let x=3;x<W-3;x++){
+      const panel=x%20<1;
+      px(x,y,panel?P.wallTrim:(y%3===0?P.wall:P.marbleDark));
     }
   }
-  // Marble trim lines
-  pxR(0,walkY,W,1,P.brass);
-  pxR(0,walkY+walkH-1,W,1,P.brass);
+  pxR(3,wallH,W-6,1,P.brass);
+  pxR(3,wallH+1,W-6,1,P.brassDark);
 
-  // ─── 3. POKER TABLE (center) ───
-  const tblCx=Math.floor(W*0.46), tblCy=Math.floor(H*0.38);
-  const tblRx=Math.floor(W*0.13), tblRy=Math.floor(H*0.12);
-  // Table shadow
-  pxEllipse(tblCx+2,tblCy+3,tblRx+3,tblRy+3,'rgba(0,0,0,0.4)');
-  // Wood rail (outer)
-  pxEllipse(tblCx,tblCy,tblRx+3,tblRy+3,P.feltRail,P.feltRailDark);
-  pxEllipse(tblCx,tblCy,tblRx+2,tblRy+2,P.feltRailLight,P.feltRail);
-  // Green felt (inner)
-  pxEllipse(tblCx,tblCy,tblRx,tblRy,P.feltGreen,P.feltDark);
-  // Felt highlight
-  pxEllipse(tblCx-Math.floor(tblRx*0.2),tblCy-Math.floor(tblRy*0.3),
-    Math.floor(tblRx*0.5),Math.floor(tblRy*0.4),P.feltLight);
-  // Dealer position marker
-  pxR(tblCx-2,tblCy-tblRy+2,5,1,P.brass);
-  // Center line
-  pxLine(tblCx,tblCy-tblRy+3,tblCx,tblCy+tblRy-3,P.feltDark);
-  // Chip stacks on table
-  const chipColors=[P.chipRed,P.chipBlue,P.chipGold,P.chipGreen];
-  const chipPositions=[[-6,-3],[6,-3],[-4,4],[5,4],[0,-1]];
-  chipPositions.forEach(([dx,dy],i)=>{
-    const cc=chipColors[i%chipColors.length];
-    for(let s=2;s>=0;s--){
-      pxR(tblCx+dx-1,tblCy+dy-s,3,1,cc);
-      px(tblCx+dx-1,tblCy+dy-s,P.chipBlack); // edge
-      px(tblCx+dx+1,tblCy+dy-s,P.chipBlack);
-    }
-    pxR(tblCx+dx-1,tblCy+dy-3,3,1,P.brassLight); // top shine
-  });
-  // Cards on table
-  [[tblCx-3,tblCy],[tblCx-1,tblCy],[tblCx+1,tblCy],[tblCx+3,tblCy],[tblCx+5,tblCy]].forEach(([cx,cy])=>{
-    pxR(cx,cy-1,2,3,'#e8e0d0');
-    px(cx,cy-1,'#cc2244'); // card pip
-  });
-  // Chair positions around table (8 seats)
-  const chairAngles=[0,0.25,0.5,0.75,1,1.25,1.5,1.75].map(a=>a*Math.PI);
-  chairAngles.forEach(a=>{
-    const cx=tblCx+Math.floor(Math.cos(a)*(tblRx+8));
-    const cy=tblCy+Math.floor(Math.sin(a)*(tblRy+7));
-    // Chair back
-    pxR(cx-2,cy-2,5,5,P.leather);
-    pxR(cx-1,cy-1,3,3,P.leatherLight);
-    // Seat cushion
-    pxR(cx-1,cy,3,2,P.velvet);
+  // Wall paintings
+  [[0.12,0.04,14,8],[0.35,0.03,18,9],[0.58,0.03,18,9],[0.82,0.04,14,8]].forEach(([xp,yp,pw,ph])=>{
+    const fx=Math.floor(W*xp), fy=Math.floor(H*yp);
+    pxR(fx-1,fy-1,pw+2,ph+2,P.brass);
+    pxR(fx,fy,pw,ph,'#1a2820');
+    for(let i=0;i<12;i++){px(fx+1+Math.floor(Math.random()*(pw-2)),fy+1+Math.floor(Math.random()*(ph-2)),
+      ['#aa3344','#44aaff','#ffcc30','#44dd88','#cc66ff'][i%5])}
   });
 
-  // ─── 4. SLOT MACHINES (left zone) ───
-  const slotX=Math.floor(W*0.08);
-  [0.22,0.38,0.55].forEach((yp,i)=>{
-    const sy=Math.floor(H*yp);
-    // Machine body
-    pxR(slotX,sy,10,16,P.chrome);
-    pxR(slotX+1,sy+1,8,14,P.chromeDark);
-    // Screen
-    pxR(slotX+2,sy+2,6,6,P.chipBlack);
-    // Reels (3 windows)
-    const reelColors=[P.neonRed,P.neonGold,P.neonGreen];
-    [0,2,4].forEach((dx,j)=>{
-      pxR(slotX+2+dx,sy+3,2,4,reelColors[j]);
-      px(slotX+2+dx,sy+4,'#ffffff'); // symbol
+  // Wall sconces between paintings
+  [0.06,0.24,0.47,0.70,0.88].forEach(xp=>{
+    const sx=Math.floor(W*xp), sy=Math.floor(H*0.04);
+    pxR(sx-1,sy,3,3,P.brass);px(sx,sy-1,P.neonGold);
+    for(let dy=0;dy<8;dy++){const sp=Math.floor(dy*0.5);
+      for(let dx=-sp;dx<=sp;dx++){const a=Math.max(0,25-dy*3-Math.abs(dx)*4);
+        if(a>0)px(sx+dx,sy+3+dy,`rgba(255,220,100,${a/255})`);}}
+  });
+
+  // ─── 3. MARBLE WALKWAYS — grid pattern dividing zones ───
+  function drawMarbleStrip(x0,y0,w,h){
+    for(let y=y0;y<y0+h;y++){for(let x=x0;x<x0+w;x++){
+      const v=(x*3+y*7)%13<2;
+      px(x,y,v?P.marbleVein:((x+y)%3===0?P.marbleLight:P.marble));
+    }}
+    pxR(x0,y0,w,1,P.brassDark);pxR(x0,y0+h-1,w,1,P.brassDark);
+  }
+  // Horizontal main walkway
+  const mwY=Math.floor(H*0.50);
+  drawMarbleStrip(3,mwY,W-6,Math.floor(H*0.04));
+  // Vertical walkway
+  const mvX=Math.floor(W*0.30);
+  drawMarbleStrip(mvX,wallH+2,Math.floor(W*0.03),H-wallH-6);
+
+  // ─── 4. MAIN POKER TABLE (center-left) ───
+  function drawPokerTable(tcx,tcy,rx,ry){
+    pxEllipse(tcx+1,tcy+2,rx+3,ry+3,'rgba(0,0,0,0.3)');
+    pxEllipse(tcx,tcy,rx+3,ry+3,P.feltRail,P.feltRailDark);
+    pxEllipse(tcx,tcy,rx+2,ry+2,P.feltRailLight,P.feltRail);
+    pxEllipse(tcx,tcy,rx,ry,P.feltGreen,P.feltDark);
+    pxEllipse(tcx-Math.floor(rx*0.2),tcy-Math.floor(ry*0.3),Math.floor(rx*0.4),Math.floor(ry*0.35),P.feltLight);
+    pxR(tcx-2,tcy-ry+2,5,1,P.brass);
+    pxLine(tcx,tcy-ry+3,tcx,tcy+ry-3,P.feltDark);
+    // Chips
+    [[-5,-2],[5,-2],[-3,3],[4,3],[0,0]].forEach(([dx,dy],i)=>{
+      const cc=[P.chipRed,P.chipBlue,P.chipGold,P.chipGreen,P.chipRed][i];
+      for(let s=2;s>=0;s--){pxR(tcx+dx-1,tcy+dy-s,3,1,cc);px(tcx+dx-1,tcy+dy-s,P.chipBlack);px(tcx+dx+1,tcy+dy-s,P.chipBlack)}
+      pxR(tcx+dx-1,tcy+dy-3,3,1,P.brassLight);
     });
-    // Lever
-    pxR(slotX+10,sy+4,1,8,P.chrome);
-    px(slotX+10,sy+3,P.neonRed); // ball
-    px(slotX+10,sy+2,P.neonRed);
-    // Coin tray
-    pxR(slotX+2,sy+10,6,2,P.brassDark);
-    // Neon top
-    const neon=[P.neonRed,P.neonBlue,P.neonPurple][i];
-    pxR(slotX+1,sy-1,8,1,neon);
-    pxR(slotX+2,sy-2,6,1,neon);
-    // Light glow (scatter pixels)
-    for(let g=0;g<6;g++){
-      const gx=slotX+Math.floor(Math.random()*12)-1;
-      const gy=sy+Math.floor(Math.random()*4)-3;
-      px(gx,gy,neon+'44');
-    }
-    // Floor reflection
-    pxR(slotX+2,sy+16,6,1,neon+'22');
+    // Cards
+    for(let i=-2;i<=2;i++){pxR(tcx+i*2,tcy-1,2,3,'#e8e0d0');px(tcx+i*2,tcy-1,'#cc2244')}
+    // Chairs
+    [0,0.25,0.5,0.75,1,1.25,1.5,1.75].forEach(a=>{
+      const ca=a*Math.PI;
+      const cx=tcx+Math.floor(Math.cos(ca)*(rx+7));
+      const cy=tcy+Math.floor(Math.sin(ca)*(ry+6));
+      pxR(cx-2,cy-2,5,4,P.leather);pxR(cx-1,cy-1,3,2,P.leatherLight);pxR(cx-1,cy+1,3,1,P.velvet);
+    });
+  }
+  const tblCx=Math.floor(W*0.48), tblCy=Math.floor(H*0.33);
+  drawPokerTable(tblCx,tblCy,Math.floor(W*0.11),Math.floor(H*0.10));
+
+  // ─── 5. SECONDARY POKER TABLE (lower-right) ───
+  drawPokerTable(Math.floor(W*0.62),Math.floor(H*0.72),Math.floor(W*0.08),Math.floor(H*0.08));
+
+  // ─── 6. BLACKJACK TABLE (lower-left) ───
+  const bjCx=Math.floor(W*0.15), bjCy=Math.floor(H*0.72);
+  const bjRx=Math.floor(W*0.08), bjRy=Math.floor(H*0.07);
+  // Half-circle table
+  pxEllipse(bjCx+1,bjCy+1,bjRx+2,bjRy+2,'rgba(0,0,0,0.3)');
+  for(let dy=-bjRy-2;dy<=0;dy++){for(let dx=-bjRx-2;dx<=bjRx+2;dx++){
+    const n=dx/(bjRx+2),ny=dy/(bjRy+2);if(n*n+ny*ny<=1)px(bjCx+dx,bjCy+dy,(n*n+ny*ny>0.75)?P.feltRailDark:P.feltRail);
+  }}
+  for(let dy=-bjRy;dy<=0;dy++){for(let dx=-bjRx;dx<=bjRx;dx++){
+    const n=dx/bjRx,ny=dy/bjRy;if(n*n+ny*ny<=1)px(bjCx+dx,bjCy+dy,(n*n+ny*ny>0.8)?P.feltDark:P.feltGreen);
+  }}
+  pxR(bjCx-bjRx,bjCy,bjRx*2+1,2,P.feltRail);
+  // Betting circles
+  for(let i=-2;i<=2;i++){const bx=bjCx+i*Math.floor(bjRx*0.35),by=bjCy-Math.floor(bjRy*0.5);
+    for(let a=0;a<12;a++){const ax=Math.round(Math.cos(a/12*Math.PI*2)*3),ay=Math.round(Math.sin(a/12*Math.PI*2)*2);
+      px(bx+ax,by+ay,P.feltLight)}}
+  // Dealer chip tray
+  pxR(bjCx-4,bjCy+2,9,2,P.woodDark);
+
+  // ─── 7. ROULETTE TABLE (upper-right) ───
+  const rtCx=Math.floor(W*0.78), rtCy=Math.floor(H*0.30);
+  // Wheel
+  pxEllipse(rtCx,rtCy,8,7,P.woodDark,P.wood);
+  pxEllipse(rtCx,rtCy,6,5,P.chipBlack,'#333');
+  // Wheel segments (alternating red/black)
+  for(let a=0;a<12;a++){const ax=Math.round(Math.cos(a/12*Math.PI*2)*4),ay=Math.round(Math.sin(a/12*Math.PI*2)*3);
+    px(rtCx+ax,rtCy+ay,a%2===0?P.chipRed:'#222');px(rtCx+ax,rtCy+ay,a%3===0?P.neonGreen:undefined)}
+  px(rtCx,rtCy,P.brass); // center pin
+  // Betting layout (rectangle extending right)
+  pxR(rtCx+10,rtCy-6,20,13,P.feltGreen);
+  pxR(rtCx+10,rtCy-6,20,1,P.feltRail);pxR(rtCx+10,rtCy+6,20,1,P.feltRail);
+  pxR(rtCx+10,rtCy-6,1,13,P.feltRail);pxR(rtCx+29,rtCy-6,1,13,P.feltRail);
+  // Number grid
+  for(let r=0;r<3;r++){for(let c=0;c<6;c++){
+    pxR(rtCx+12+c*3,rtCy-4+r*4,2,3,c%2===r%2?P.chipRed:P.chipBlack);
+  }}
+
+  // ─── 8. SLOT MACHINES (left wall — 5 machines) ───
+  function drawSlotMachine(sx,sy,neon){
+    pxR(sx,sy,10,16,P.chrome);pxR(sx+1,sy+1,8,14,P.chromeDark);
+    pxR(sx+2,sy+2,6,6,P.chipBlack);
+    [0,2,4].forEach((dx,j)=>{pxR(sx+2+dx,sy+3,2,4,[P.neonRed,P.neonGold,P.neonGreen][j]);
+      px(sx+2+dx,sy+4,'#ffffff')});
+    pxR(sx+10,sy+4,1,8,P.chrome);px(sx+10,sy+3,P.neonRed);px(sx+10,sy+2,P.neonRed);
+    pxR(sx+2,sy+10,6,2,P.brassDark);
+    pxR(sx+1,sy-1,8,1,neon);pxR(sx+2,sy-2,6,1,neon);
+    // Stool in front
+    pxR(sx+3,sy+17,4,1,P.stoolTop);px(sx+4,sy+18,P.stoolBase);px(sx+5,sy+18,P.stoolBase);
+    pxR(sx+3,sy+19,4,1,P.stoolBase);
+  }
+  const slotBaseX=Math.floor(W*0.04);
+  [0.16,0.26,0.36,0.56,0.66].forEach((yp,i)=>{
+    drawSlotMachine(slotBaseX,Math.floor(H*yp),[P.neonRed,P.neonBlue,P.neonPurple,P.neonGreen,P.neonGold][i]);
   });
 
-  // ─── 5. BAR COUNTER (right zone) ───
-  const barX=Math.floor(W*0.75), barY=Math.floor(H*0.25);
-  const barW=Math.floor(W*0.15), barH=Math.floor(H*0.30);
-  // Counter body
-  pxR(barX,barY,barW,barH,P.wood);
-  pxR(barX+1,barY+1,barW-2,barH-2,P.woodLight);
-  // Counter top (brass rail)
-  pxR(barX,barY,barW,2,P.brass);
-  pxR(barX,barY,1,barH,P.brassDark);
-  pxR(barX+barW-1,barY,1,barH,P.brassDark);
-  // Shelves with bottles
-  const shelfY=barY+3;
-  pxR(barX+2,shelfY,barW-4,1,P.woodDark);
-  pxR(barX+2,shelfY+6,barW-4,1,P.woodDark);
-  // Bottles
-  const bottleColors=[P.neonRed,P.neonGreen,P.neonGold,'#884422','#2288aa','#aa44ff','#ff8844'];
-  for(let i=0;i<6;i++){
-    const bx=barX+3+i*Math.floor((barW-6)/6);
-    const bc=bottleColors[i%bottleColors.length];
-    pxR(bx,shelfY-3,1,3,bc);
-    px(bx,shelfY-4,'#cccccc'); // bottle cap
-    // Second shelf
-    if(i<5){
-      pxR(bx+1,shelfY+3,1,3,bottleColors[(i+3)%bottleColors.length]);
-      px(bx+1,shelfY+2,'#cccccc');
+  // ─── 9. BAR COUNTER (right zone — L-shaped) ───
+  const barX=Math.floor(W*0.82), barY=Math.floor(H*0.16);
+  const barW=Math.floor(W*0.14), barH=Math.floor(H*0.35);
+  // Main counter (vertical)
+  pxR(barX,barY,barW,barH,P.wood);pxR(barX+1,barY+1,barW-2,barH-2,P.woodLight);
+  pxR(barX,barY,barW,2,P.brass);pxR(barX,barY,1,barH,P.brassDark);pxR(barX+barW-1,barY,1,barH,P.brassDark);
+  // Back shelf (3 rows)
+  for(let sh=0;sh<3;sh++){
+    const sy=barY+3+sh*8;
+    pxR(barX+2,sy,barW-4,1,P.woodDark);
+    for(let i=0;i<Math.floor(barW/3);i++){
+      const bx=barX+2+i*3;
+      const bc=['#ff4466','#55ffaa','#ffe040','#55aaff','#cc66ff','#ff8844','#44ddaa'][((i+sh*3)%7)];
+      pxR(bx,sy-3,1,3,bc);px(bx,sy-4,'#cccccc');
     }
   }
-  // Glasses on counter
-  for(let i=0;i<4;i++){
-    const gx=barX+3+i*Math.floor(barW/5);
-    pxR(gx,barY+1,2,1,P.glass);
-    px(gx,barY,P.glassLight||P.glass);
-  }
-  // Bar stools
-  for(let i=0;i<3;i++){
-    const sx=barX+4+i*Math.floor((barW-8)/3);
-    const sy=barY+barH+2;
-    pxR(sx,sy,3,1,P.stoolTop);
-    px(sx+1,sy+1,P.stoolBase);
-    px(sx+1,sy+2,P.stoolBase);
-    pxR(sx,sy+3,3,1,P.stoolBase);
-  }
+  // Glasses & drinks on counter top
+  for(let i=0;i<5;i++){const gx=barX+2+i*Math.floor(barW/6);
+    pxR(gx,barY+1,2,1,P.glass);px(gx,barY,P.glassLight);
+    if(i%2===0){px(gx+1,barY-1,P.neonRed)}} // cocktail umbrella
+  // Bar stools (5)
+  for(let i=0;i<5;i++){const sx=barX-4, sy=barY+4+i*Math.floor(barH/5);
+    pxR(sx,sy,3,1,P.stoolTop);px(sx+1,sy+1,P.stoolBase);px(sx+1,sy+2,P.stoolBase);pxR(sx,sy+3,3,1,P.stoolBase)}
+  // L extension (horizontal)
+  const barLX=barX-Math.floor(W*0.08), barLY=barY+barH;
+  pxR(barLX,barLY,Math.floor(W*0.08)+barW,Math.floor(H*0.06),P.wood);
+  pxR(barLX,barLY,Math.floor(W*0.08)+barW,1,P.brass);
 
-  // ─── 6. COCKTAIL TABLES (right-lower) ───
-  [[0.72,0.62],[0.82,0.68]].forEach(([xp,yp])=>{
-    const cx=Math.floor(W*xp), cy=Math.floor(H*yp);
-    // Table top (circle)
+  // ─── 10. COCKTAIL TABLES (scattered, 5 total) ───
+  function drawCocktailTable(cx,cy){
     pxEllipse(cx,cy,4,3,P.marbleLight,P.marbleDark);
-    // Center decoration
-    px(cx,cy,P.neonGold);
-    // Leg
-    px(cx,cy+3,P.stoolBase);
-    px(cx,cy+4,P.stoolBase);
-    pxR(cx-1,cy+5,3,1,P.stoolBase);
-    // Stools around
-    [[-5,1],[5,1],[0,-5]].forEach(([dx,dy])=>{
-      pxR(cx+dx-1,cy+dy,3,2,P.velvet);
-      px(cx+dx,cy+dy+2,P.stoolBase);
-    });
+    px(cx,cy,P.neonGold);px(cx,cy+3,P.stoolBase);px(cx,cy+4,P.stoolBase);pxR(cx-1,cy+5,3,1,P.stoolBase);
+    [[-5,0],[5,0],[0,-5]].forEach(([dx,dy])=>{pxR(cx+dx-1,cy+dy,3,2,P.velvet);px(cx+dx,cy+dy+2,P.stoolBase)});
+  }
+  [[0.40,0.60],[0.52,0.64],[0.68,0.56],[0.75,0.62],[0.55,0.86]].forEach(([xp,yp])=>{
+    drawCocktailTable(Math.floor(W*xp),Math.floor(H*yp));
   });
 
-  // ─── 7. VIP LOUNGE (top center) ───
-  const vipX=Math.floor(W*0.35), vipY=Math.floor(H*0.04);
-  const vipW=Math.floor(W*0.26), vipH=Math.floor(H*0.14);
-  // Velvet carpet
-  for(let y=vipY;y<vipY+vipH;y++){
-    for(let x=vipX;x<vipX+vipW;x++){
-      const pat=(x+y)%4===0;
-      px(x,y,pat?P.velvetLight:P.velvet);
-    }
-  }
-  // Gold rope barriers
+  // ─── 11. VIP LOUNGE (top center, larger) ───
+  const vipX=Math.floor(W*0.33), vipY=wallH+3;
+  const vipW=Math.floor(W*0.30), vipH=Math.floor(H*0.14);
+  for(let y=vipY;y<vipY+vipH;y++){for(let x=vipX;x<vipX+vipW;x++){
+    px(x,y,(x+y)%4===0?P.velvetLight:P.velvet)}}
+  // Gold rope on 3 sides
   pxR(vipX,vipY+vipH,vipW,1,P.brass);
+  pxR(vipX,vipY,1,vipH,P.brass);pxR(vipX+vipW-1,vipY,1,vipH,P.brass);
   // Rope posts
-  [vipX,vipX+Math.floor(vipW/2),vipX+vipW-1].forEach(rx=>{
-    pxR(rx,vipY+vipH-2,1,3,P.brassLight);
-    px(rx,vipY+vipH-3,P.neonGold);
-  });
-  // Catenary rope
-  for(let i=0;i<2;i++){
-    const x0=vipX+i*Math.floor(vipW/2), x1=x0+Math.floor(vipW/2);
-    for(let x=x0;x<=x1;x++){
-      const t=(x-x0)/(x1-x0);
-      const sag=Math.floor(2*Math.sin(t*Math.PI));
-      px(x,vipY+vipH-1+sag,P.neonGold);
-    }
-  }
-  // VIP sofa
-  pxR(vipX+3,vipY+2,vipW-6,4,P.velvetDark||P.velvet);
-  pxR(vipX+4,vipY+3,vipW-8,2,P.velvetLight);
-  // VIP table
-  pxR(vipX+Math.floor(vipW/2)-3,vipY+7,6,3,P.marbleLight);
-  pxR(vipX+Math.floor(vipW/2)-2,vipY+8,4,1,P.glass);
+  [0,0.25,0.5,0.75,1].forEach(t=>{const rx=vipX+Math.floor(t*vipW);
+    pxR(rx,vipY+vipH-2,1,3,P.brassLight);px(rx,vipY+vipH-3,P.neonGold)});
+  // VIP furniture — 2 sofas + table
+  pxR(vipX+3,vipY+2,Math.floor(vipW*0.35),4,P.velvetDark);pxR(vipX+4,vipY+3,Math.floor(vipW*0.35)-2,2,P.velvetLight);
+  pxR(vipX+vipW-Math.floor(vipW*0.35)-3,vipY+2,Math.floor(vipW*0.35),4,P.velvetDark);
+  pxR(vipX+Math.floor(vipW/2)-4,vipY+7,8,4,P.marbleLight);
+  pxR(vipX+Math.floor(vipW/2)-3,vipY+8,6,2,P.glass);
+  // Champagne bucket
+  pxR(vipX+Math.floor(vipW/2)+2,vipY+7,3,3,P.chrome);px(vipX+Math.floor(vipW/2)+3,vipY+6,P.neonGold);
   // VIP sign
-  const vipSignX=vipX+Math.floor(vipW/2)-4;
-  pxR(vipSignX,vipY-2,9,2,P.chipBlack);
-  // "VIP" letters in gold
-  // V
-  px(vipSignX+1,vipY-2,P.neonGold);px(vipSignX+1,vipY-1,P.neonGold);
-  px(vipSignX+2,vipY-1,P.neonGold);px(vipSignX+3,vipY-2,P.neonGold);
-  // I
-  px(vipSignX+4,vipY-2,P.neonGold);px(vipSignX+4,vipY-1,P.neonGold);
-  // P
-  px(vipSignX+6,vipY-2,P.neonGold);px(vipSignX+6,vipY-1,P.neonGold);
-  px(vipSignX+7,vipY-2,P.neonGold);
+  pxR(vipX+Math.floor(vipW/2)-5,vipY-1,11,2,P.chipBlack);
+  // V I P in neon
+  const vs=vipX+Math.floor(vipW/2)-4;
+  px(vs,vipY-1,P.neonGold);px(vs+1,vipY,P.neonGold);px(vs+2,vipY-1,P.neonGold);
+  px(vs+4,vipY-1,P.neonGold);px(vs+4,vipY,P.neonGold);
+  px(vs+6,vipY-1,P.neonGold);px(vs+7,vipY-1,P.neonGold);px(vs+6,vipY,P.neonGold);
 
-  // ─── 8. DECORATIVE COLUMNS ───
-  [[0.03,0.15],[0.03,0.65],[0.95,0.15],[0.95,0.65]].forEach(([xp,yp])=>{
-    const cx=Math.floor(W*xp), cy=Math.floor(H*yp);
-    // Column base
+  // ─── 12. DECORATIVE COLUMNS (8 total, lining walkways) ───
+  function drawColumn(cx,cy){
     pxR(cx-2,cy+6,5,2,P.marble);
-    // Column shaft
-    for(let dy=0;dy<12;dy++){
-      pxR(cx-1,cy-dy+5,3,1,(dy%3===0)?P.marbleLight:P.marble);
-    }
-    // Capital
-    pxR(cx-2,cy-7,5,2,P.marble);
-    pxR(cx-3,cy-8,7,1,P.marbleLight);
-    // Gold trim
-    px(cx-2,cy-7,P.brass);px(cx+2,cy-7,P.brass);
+    for(let dy=0;dy<14;dy++)pxR(cx-1,cy-dy+5,3,1,(dy%3===0)?P.marbleLight:P.marble);
+    pxR(cx-2,cy-9,5,2,P.marble);pxR(cx-3,cy-10,7,1,P.marbleLight);
+    px(cx-2,cy-9,P.brass);px(cx+2,cy-9,P.brass);
+  }
+  [[0.03,0.25],[0.03,0.50],[0.03,0.75],[0.97,0.25],[0.97,0.50],[0.97,0.75],
+   [mvX/W-0.02,0.30],[mvX/W-0.02,0.70]].forEach(([xp,yp])=>{
+    drawColumn(Math.floor(W*xp),Math.floor(H*yp))});
+
+  // ─── 13. POTTED PLANTS (8 total) ───
+  function drawPlant(cx,cy){
+    pxR(cx-2,cy+1,5,3,P.feltRail);pxR(cx-1,cy+1,3,2,P.feltRailLight);pxR(cx-3,cy,7,1,P.feltRailDark);
+    const lg='#2a8855',ll='#35aa68';
+    px(cx,cy-4,ll);px(cx-1,cy-3,lg);px(cx+1,cy-3,lg);px(cx,cy-2,ll);
+    px(cx-2,cy-2,lg);px(cx+2,cy-2,lg);px(cx,cy-1,lg);
+    px(cx-3,cy-1,ll);px(cx+3,cy-1,ll);px(cx-1,cy-4,lg);px(cx+1,cy-4,lg);
+  }
+  [[0.22,0.20],[0.22,0.80],[0.65,0.16],[0.65,0.88],
+   [0.38,0.50],[0.58,0.50],[0.78,0.55],[0.90,0.80]].forEach(([xp,yp])=>{
+    drawPlant(Math.floor(W*xp),Math.floor(H*yp))});
+
+  // ─── 14. CHANDELIER LIGHT POOLS (6 pools) ───
+  [[0.48,0.33,20,16],[0.15,0.35,10,8],[0.78,0.30,12,10],
+   [0.62,0.72,12,10],[0.15,0.72,10,8],[0.50,0.86,8,6]].forEach(([xp,yp,rx,ry])=>{
+    const cx=Math.floor(W*xp),cy=Math.floor(H*yp);
+    for(let dy=-ry;dy<=ry;dy++){for(let dx=-rx;dx<=rx;dx++){
+      const d=(dx*dx)/(rx*rx)+(dy*dy)/(ry*ry);
+      if(d<1){const a=Math.floor((1-d)*30);if(a>2)px(cx+dx,cy+dy,`rgba(255,210,100,${a/255})`)}
+    }}
   });
 
-  // ─── 9. POTTED PLANTS ───
-  [[0.28,0.18],[0.66,0.18],[0.28,0.72],[0.66,0.72]].forEach(([xp,yp])=>{
-    const cx=Math.floor(W*xp), cy=Math.floor(H*yp);
-    // Pot
-    pxR(cx-2,cy+1,5,3,P.feltRail);
-    pxR(cx-1,cy+1,3,2,P.feltRailLight);
-    pxR(cx-3,cy,7,1,P.feltRailDark);
-    // Plant leaves
-    const leafG='#1a5c3a', leafL='#22754c';
-    px(cx,cy-3,leafG);px(cx-1,cy-2,leafL);px(cx+1,cy-2,leafL);
-    px(cx,cy-1,leafG);px(cx-2,cy-1,leafG);px(cx+2,cy-1,leafG);
-    px(cx-1,cy-3,leafL);px(cx+1,cy-3,leafL);
-    px(cx,cy-4,leafL);
-  });
-
-  // ─── 10. CHANDELIER LIGHT POOLS ───
-  [[0.46,0.38,18,14],[0.20,0.40,10,8],[0.75,0.40,12,10]].forEach(([xp,yp,rx,ry])=>{
-    const cx=Math.floor(W*xp), cy=Math.floor(H*yp);
-    // Soft light pool on floor
-    for(let dy=-ry;dy<=ry;dy++){
-      for(let dx=-rx;dx<=rx;dx++){
-        const d=(dx*dx)/(rx*rx)+(dy*dy)/(ry*ry);
-        if(d<1){
-          const a=Math.floor((1-d)*25);
-          if(a>2) px(cx+dx,cy+dy,`rgba(245,197,66,${a/255})`);
-        }
-      }
-    }
-  });
-
-  // ─── 11. NEON SIGNS (wall area) ───
-  // "DOLSOE POKER" neon at top
-  const signY=2;
-  const signText='DOLSOE POKER';
-  const signStartX=Math.floor(W/2)-Math.floor(signText.length*3/2);
-  // Simple 3x5 pixel font for neon
+  // ─── 15. NEON SIGN — "DOLSOE POKER" ───
+  const signY=Math.floor(H*0.01)+1;
   const FONT={'D':[[1,1,0],[1,0,1],[1,0,1],[1,0,1],[1,1,0]],'O':[[0,1,0],[1,0,1],[1,0,1],[1,0,1],[0,1,0]],'L':[[1,0,0],[1,0,0],[1,0,0],[1,0,0],[1,1,1]],'S':[[0,1,1],[1,0,0],[0,1,0],[0,0,1],[1,1,0]],'E':[[1,1,1],[1,0,0],[1,1,0],[1,0,0],[1,1,1]],' ':[[0,0,0],[0,0,0],[0,0,0],[0,0,0],[0,0,0]],'P':[[1,1,0],[1,0,1],[1,1,0],[1,0,0],[1,0,0]],'K':[[1,0,1],[1,0,1],[1,1,0],[1,0,1],[1,0,1]],'R':[[1,1,0],[1,0,1],[1,1,0],[1,0,1],[1,0,1]]};
-  let nx=signStartX;
-  for(const ch of signText){
-    const glyph=FONT[ch];
-    if(glyph){
-      for(let gy=0;gy<5;gy++){
-        for(let gx=0;gx<3;gx++){
-          if(glyph[gy][gx]){
-            px(nx+gx,signY+gy,P.neonGold);
-            // Glow
-            px(nx+gx,signY+gy-1,P.neonGold+'33');
-            px(nx+gx,signY+gy+1,P.neonGold+'22');
-          }
-        }
-      }
-    }
-    nx+=4;
-  }
+  const signText='DOLSOE POKER';
+  let nx=Math.floor(W/2)-Math.floor(signText.length*2);
+  for(const ch of signText){const gl=FONT[ch];if(gl){
+    for(let gy=0;gy<5;gy++){for(let gx=0;gx<3;gx++){if(gl[gy][gx]){
+      px(nx+gx,signY+gy,P.neonGold);
+      // Glow halo
+      for(let hdy=-1;hdy<=1;hdy++){for(let hdx=-1;hdx<=1;hdx++){
+        if(hdx!==0||hdy!==0)px(nx+gx+hdx,signY+gy+hdy,`rgba(255,224,64,0.15)`);
+      }}
+    }}}
+  }nx+=4}
 
-  // ─── 12. FLOOR DETAILS ───
-  // Scattered chips
-  for(let i=0;i<15;i++){
-    const fx=Math.floor(Math.random()*W);
-    const fy=Math.floor(Math.random()*H);
-    const cc=[P.chipRed,P.chipBlue,P.chipGold,P.chipGreen][i%4];
-    px(fx,fy,cc);
-  }
-  // Card on floor
-  [[0.32,0.56],[0.58,0.72]].forEach(([xp,yp])=>{
-    const cx=Math.floor(W*xp), cy=Math.floor(H*yp);
-    pxR(cx,cy,2,3,'#e8e0d0');
-    px(cx,cy,P.chipRed);
-  });
+  // ─── 16. FLOOR SCATTER — chips, cards, drink stains ───
+  // Chips (30+)
+  for(let i=0;i<35;i++){const fx=5+Math.floor(Math.random()*(W-10)),fy=wallH+5+Math.floor(Math.random()*(H-wallH-10));
+    const cc=[P.chipRed,P.chipBlue,P.chipGold,P.chipGreen][i%4];px(fx,fy,cc);if(i%3===0)px(fx+1,fy,cc)}
+  // Cards (6)
+  [[0.20,0.55],[0.58,0.48],[0.42,0.80],[0.72,0.44],[0.85,0.70],[0.35,0.38]].forEach(([xp,yp])=>{
+    const cx=Math.floor(W*xp),cy=Math.floor(H*yp);
+    pxR(cx,cy,2,3,'#e8e0d0');px(cx,cy,['#cc2244','#222','#cc2244','#222'][Math.floor(Math.random()*4)])});
+  // Drink rings
+  [[0.40,0.62],[0.72,0.58],[0.55,0.90]].forEach(([xp,yp])=>{
+    const cx=Math.floor(W*xp),cy=Math.floor(H*yp);
+    for(let a=0;a<10;a++){const ax=Math.round(Math.cos(a/10*Math.PI*2)*2),ay=Math.round(Math.sin(a/10*Math.PI*2)*1);
+      px(cx+ax,cy+ay,P.carpetAccent)}});
 
-  // ─── 13. WALL DECORATION (top edge) ───
-  // Wainscoting
-  pxR(0,0,W,Math.floor(H*0.03),P.wall);
-  pxR(0,Math.floor(H*0.03),W,1,P.wallTrim);
-  // Bottom edge carpet border
-  pxR(0,H-2,W,2,P.carpetGold);
-  pxR(0,H-1,W,1,P.brassDark);
+  // ─── 17. CARPET BORDER & TRIM ───
+  pxR(3,H-3,W-6,1,P.carpetGold);
+  pxR(3,H-2,W-6,1,P.brassDark);
+
+  // ─── 18. CASHIER WINDOW (bottom-left corner) ───
+  const cashX=Math.floor(W*0.05), cashY=Math.floor(H*0.85);
+  pxR(cashX,cashY,16,10,P.marble);pxR(cashX+1,cashY+1,14,8,P.marbleDark);
+  pxR(cashX+2,cashY+2,12,3,P.glass); // window
+  pxR(cashX+2,cashY+2,12,1,P.glassLight);
+  pxR(cashX,cashY,16,1,P.brass); // top rail
+  // "CASHIER" mini text
+  pxR(cashX+4,cashY-1,8,1,P.chipBlack);
+  for(let i=0;i<4;i++)px(cashX+5+i*2,cashY-1,P.neonGold);
+
+  // ─── 19. ENTRANCE ARCHWAY (bottom-center) ───
+  const archCx=Math.floor(W*0.50), archY=H-4;
+  pxR(archCx-10,archY,21,3,P.marble);
+  pxR(archCx-8,archY-2,17,2,P.marbleLight);
+  pxR(archCx-10,archY-4,2,6,P.marble);pxR(archCx+9,archY-4,2,6,P.marble);
+  // Carpet runner leading in
+  for(let dy=0;dy<6;dy++){pxR(archCx-3,archY-dy,7,1,(dy%2===0)?P.velvet:P.velvetLight)}
+  // "ENTER" sign
+  for(let i=0;i<3;i++)px(archCx-1+i,archY-3,P.neonGreen);
 
   return c;
 }
