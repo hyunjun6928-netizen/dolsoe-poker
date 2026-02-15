@@ -3882,7 +3882,7 @@ async function loadCasinoFloor(){
       // v3.15: unified style via CSS data-state, no inline filter
       const wr=a.hands>0?Math.round(a.wins/a.hands*100):0;
       div.innerHTML=`<div style="text-align:center;position:relative">
-        <div class="walker-body" style="width:80px;height:80px"><img src="${img}" style="width:100%;height:100%;object-fit:contain" alt=""></div>
+        <div class="walker-body" style="width:80px;height:80px"><img src="${_cleanSlimeCache[img]||img}" style="width:100%;height:100%;object-fit:contain" alt="" data-orig="${img}"></div>
         <div class="walker-shadow"></div>
         <div style="font-size:11px;color:${isLive?'#FCC88E':'#938B7B'};margin-top:2px;white-space:nowrap;text-shadow:1px 1px 0 #050F1A,-1px -1px 0 #050F1A,1px -1px 0 #050F1A,-1px 1px 0 #050F1A;max-width:80px;overflow:hidden;text-overflow:ellipsis;font-family:var(--font-pixel);background:none;padding:0;border:none">${a.name}</div>
         <div class="npc-bubble" style="display:none;position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:rgba(10,13,18,0.92);color:#eee;padding:3px 8px;border-radius:8px;font-size:0.55em;white-space:nowrap;border:1px solid rgba(245,197,66,0.2);margin-bottom:2px;backdrop-filter:blur(4px)"></div>
@@ -5567,10 +5567,27 @@ function getSlimePng(name) {
   }
   return _slimeAssign[name];
 }
-// Preload slime images
+// Preload slime images + fix premultiplied alpha (redraw through canvas)
+const _cleanSlimeCache = {};
+function cleanSlimeSrc(src, cb) {
+  if (_cleanSlimeCache[src]) { if(cb) cb(_cleanSlimeCache[src]); return _cleanSlimeCache[src]; }
+  const img = new Image();
+  img.onload = function() {
+    const c = document.createElement('canvas');
+    c.width = img.naturalWidth; c.height = img.naturalHeight;
+    const ctx = c.getContext('2d');
+    ctx.clearRect(0, 0, c.width, c.height);
+    ctx.drawImage(img, 0, 0);
+    const url = c.toDataURL('image/png');
+    _cleanSlimeCache[src] = url;
+    if(cb) cb(url);
+  };
+  img.src = src;
+  return src; // return original until cached
+}
 (function(){
   const all = Object.values(SLIME_PNG_MAP).concat(GENERIC_SLIMES).concat(['/static/slimes/casino_chair.png']);
-  all.forEach(src => { const img = new Image(); img.src = src; });
+  all.forEach(src => cleanSlimeSrc(src));
 })();
 
 function renderSlimeToSeat(name, emotion) {
@@ -5585,7 +5602,7 @@ function renderSlimeToSeat(name, emotion) {
   // Chair + Slime + Shadow layered system
   return `<div class="seat-unit">` +
     `<div class="chair-shadow"></div>` +
-    `<div class="slime-sprite"><div style="width:88px;height:88px;background:url('${pngSrc}') center/contain no-repeat;image-rendering:pixelated" class="${animClass}"></div></div>` +
+    `<div class="slime-sprite"><div style="width:88px;height:88px;background:url('${_cleanSlimeCache[pngSrc]||pngSrc}') center/contain no-repeat" class="${animClass}"></div></div>` +
     `</div>`;
 }
 // Gold dust sparkles on dark table
