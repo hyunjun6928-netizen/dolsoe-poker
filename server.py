@@ -4094,9 +4094,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.60.0">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.60.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.60.0">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.61.0">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.61.0">
+<link rel="stylesheet" href="/static/css/components.css?v=3.61.0">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
@@ -4350,7 +4350,7 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 <button id="new-btn" onclick="newGame()">🔄 새 게임</button>
 <!-- 쓰레기톡 독 -->
 <div id="chatbox" style="position:sticky;bottom:0;z-index:30;display:flex;align-items:center;gap:6px;padding:6px 12px;background:rgba(10,13,18,0.95);border:1px solid rgba(255,255,255,0.08);border-radius:8px 8px 0 0;backdrop-filter:blur(8px)">
-<div id="chatmsgs" style="flex:1;overflow-y:auto;max-height:40px;font-size:0.78em;color:var(--text-muted);font-family:var(--font-pixel);line-height:1.3"></div>
+<div id="chatmsgs" style="flex:1;overflow-y:auto;max-height:80px;font-size:0.95em;color:var(--text-light);font-family:var(--font-pixel);line-height:1.5"></div>
 <input id="chat-inp" placeholder="쓰레기톡..." maxlength="100" style="width:200px;background:var(--bg-panel-alt);border:1px solid var(--frame);color:var(--text-primary);padding:5px 10px;font-size:0.85em;font-family:var(--font-pixel);border-radius:8px">
 <button onclick="sendChat()" style="background:#4ade80;color:#000;border:none;border-radius:8px;padding:5px 10px;font-size:0.85em;cursor:pointer;font-family:var(--font-pixel);font-weight:bold">💬</button>
 </div>
