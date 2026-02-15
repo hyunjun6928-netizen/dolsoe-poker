@@ -3826,7 +3826,7 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 #action-feed .af-round{color:var(--accent-blue);font-weight:bold;padding:6px 0 2px;font-size:0.9em;text-shadow:none}
 #action-feed .af-action{color:var(--text-secondary)}
 #action-feed .af-win{color:var(--accent-mint);font-weight:bold}
-.game-layout{display:grid;grid-template-columns:22vw 1fr 22vw;gap:0;height:calc(100vh - 80px);min-height:500px;overflow:visible;width:100vw;margin-left:calc(-50vw + 50%)}
+.game-layout{display:grid;grid-template-columns:22vw 1fr 22vw;gap:0;height:calc(100vh - 80px);min-height:500px;overflow:visible;position:fixed;top:80px;left:0;right:0;bottom:0;width:100vw}
 .dock-left,.dock-right{min-width:120px;position:relative;width:100%}
 /* 드래그 리사이저 */
 .dock-resizer{position:absolute;top:0;width:6px;height:100%;cursor:col-resize;z-index:50;background:transparent;transition:background .2s}
