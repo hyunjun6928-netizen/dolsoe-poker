@@ -1103,8 +1103,8 @@ class Table:
             # 1) 블러프 탐지: 현재 턴에서 승률 낮은데 레이즈/올인 시 경고
             p['bluff_alert']=False
             if p.get('win_pct') is not None and p['win_pct']<30:
-                la=p.get('last_action','')
-                if '레이즈' in la or 'ALL IN' in la or '⬆️' in la or '🔥' in la:
+                la=p.get('last_action') or ''
+                if la and ('레이즈' in la or 'ALL IN' in la or '⬆️' in la or '🔥' in la):
                     p['bluff_alert']=True
             # 2) 실시간 플레이 스타일 태그 (최근 통계 기반)
             self._init_stats(name)
