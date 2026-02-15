@@ -3631,6 +3631,7 @@ pointer-events:none;z-index:0}
 h1,.btn-play,.btn-watch,.pot-badge,.seat .nm,.act-label,.tab-btns button,#new-btn,.tbl-card .tbl-name,#commentary,.bp-title,.vp-title,#log,#replay-panel,#highlight-panel,.sidebar-label,#turn-options,#chatbox{font-family:var(--font-pixel)}
 .pot-badge,.seat .ch{font-family:var(--font-number)}
 .wrap{max-width:100%;margin:0 auto;padding:6px 12px;position:relative;z-index:2}
+#game .game-layout{margin:0;padding:0}
 h1{text-align:center;font-size:1.8em;margin:4px 0;color:var(--text-primary);-webkit-text-stroke:0;-webkit-text-fill-color:unset;text-shadow:none;position:relative;z-index:1;letter-spacing:1px;font-weight:800}
 h1 b{color:var(--accent-gold);-webkit-text-fill-color:var(--accent-gold)}
 #lobby{text-align:center;padding:0 20px;position:relative;z-index:1}
@@ -3825,7 +3826,7 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 #action-feed .af-round{color:var(--accent-blue);font-weight:bold;padding:6px 0 2px;font-size:0.9em;text-shadow:none}
 #action-feed .af-action{color:var(--text-secondary)}
 #action-feed .af-win{color:var(--accent-mint);font-weight:bold}
-.game-layout{display:grid;grid-template-columns:18vw 1fr 18vw;gap:4px;height:calc(100vh - 80px);min-height:500px;overflow:visible}
+.game-layout{display:grid;grid-template-columns:22vw 1fr 22vw;gap:0;height:calc(100vh - 80px);min-height:500px;overflow:visible;width:100vw;margin-left:calc(-50vw + 50%)}
 .dock-left,.dock-right{min-width:120px;position:relative}
 /* 드래그 리사이저 */
 .dock-resizer{position:absolute;top:0;width:6px;height:100%;cursor:col-resize;z-index:50;background:transparent;transition:background .2s}
