@@ -3487,7 +3487,42 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <div class="wrap">
 
 <h1 id="main-title" style="font-family:var(--font-title);margin:4px 0">🍄 <b>머슴</b>포커 🃏</h1>
-<div id="lang-switch" style="position:fixed;top:8px;right:12px;z-index:999;display:flex;gap:4px"><button class="lang-btn" data-lang="ko" onclick="setLang('ko')" style="background:rgba(0,0,0,0.7);border:1px solid #4ade80;color:#fff;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:0.8em">🇰🇷</button><button class="lang-btn" data-lang="en" onclick="setLang('en')" style="background:rgba(0,0,0,0.7);border:1px solid #4ade80;color:#fff;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:0.8em;opacity:0.5">🇺🇸</button></div>
+<div id="settings-wrap" style="position:fixed;top:10px;right:14px;z-index:999">
+<button id="settings-toggle" onclick="toggleSettings()" style="background:rgba(0,0,0,0.75);border:2px solid #4ade80;color:#fff;border-radius:50%;width:44px;height:44px;font-size:1.5em;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 12px rgba(0,0,0,0.5);transition:transform 0.2s" title="설정">⚙️</button>
+<div id="settings-panel" style="display:none;position:absolute;top:52px;right:0;background:rgba(10,13,20,0.95);border:1px solid #4ade80;border-radius:10px;padding:14px 18px;min-width:220px;box-shadow:0 4px 24px rgba(0,0,0,0.6);backdrop-filter:blur(12px);font-family:var(--font-pixel,monospace);font-size:0.82em;color:#e8e6e3">
+<div style="font-weight:700;color:#4ade80;margin-bottom:10px;font-size:1em">⚙️ 설정</div>
+<!-- 언어 -->
+<div style="margin-bottom:12px">
+<div style="color:#aaa;font-size:0.8em;margin-bottom:4px">🌐 언어 Language</div>
+<div style="display:flex;gap:6px">
+<button class="lang-btn" data-lang="ko" onclick="setLang('ko')" style="flex:1;background:rgba(74,222,128,0.15);border:1px solid #4ade80;color:#fff;border-radius:6px;padding:6px;cursor:pointer;font-size:0.9em">🇰🇷 한국어</button>
+<button class="lang-btn" data-lang="en" onclick="setLang('en')" style="flex:1;background:rgba(255,255,255,0.05);border:1px solid #555;color:#aaa;border-radius:6px;padding:6px;cursor:pointer;font-size:0.9em">🇺🇸 English</button>
+</div>
+</div>
+<!-- BGM -->
+<div style="margin-bottom:12px">
+<div style="color:#aaa;font-size:0.8em;margin-bottom:4px">🎵 배경음악 BGM</div>
+<div style="display:flex;align-items:center;gap:6px">
+<button id="settings-bgm-btn" onclick="toggleBgm();updateSettingsUI()" style="background:none;border:1px solid #555;color:#fff;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:0.85em">🎵 ON</button>
+<input type="range" min="0" max="100" value="30" oninput="setBgmVol(this.value)" style="flex:1;accent-color:#4ade80">
+</div>
+<div id="settings-bgm-track" onclick="skipBgm();updateSettingsUI()" style="color:#888;font-size:0.75em;margin-top:3px;cursor:pointer" title="클릭하면 다음 곡">♪ --</div>
+</div>
+<!-- SFX -->
+<div style="margin-bottom:12px">
+<div style="color:#aaa;font-size:0.8em;margin-bottom:4px">🔊 효과음 SFX</div>
+<div style="display:flex;align-items:center;gap:6px">
+<button id="settings-sfx-btn" onclick="toggleMute();updateSettingsUI()" style="background:none;border:1px solid #555;color:#fff;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:0.85em">🔊 ON</button>
+<input id="settings-sfx-slider" type="range" min="0" max="100" value="50" oninput="setVol(this.value)" style="flex:1;accent-color:#4ade80">
+</div>
+</div>
+<!-- 크레딧 -->
+<div style="border-top:1px solid #333;padding-top:8px;color:#666;font-size:0.65em;line-height:1.4">
+🎶 Music: Kevin MacLeod (incompetech.com) CC-BY<br>
+🍄 머슴포커 v4.0
+</div>
+</div>
+</div>
 <div id="lobby">
 <!-- Casino Floor: living lobby -->
 <div id="casino-floor" aria-hidden="true">
@@ -3599,14 +3634,9 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 </div>
 <div style="display:flex;align-items:center;gap:4px">
 <span id="fairness-toggle" onclick="toggleFairness()" data-state="off" title="파생정보 ON/OFF">📊 OFF</span>
-<span id="mute-btn" onclick="toggleMute()" style="cursor:pointer;user-select:none" title="SFX ON/OFF">🔊</span>
-<input id="vol-slider" type="range" min="0" max="100" value="50" oninput="setVol(this.value)" style="width:40px" title="SFX Vol">
-<span style="color:#555">|</span>
-<span id="bgm-btn" onclick="toggleBgm()" style="cursor:pointer;user-select:none" title="BGM ON/OFF">🎵</span>
-<input id="bgm-slider" type="range" min="0" max="100" value="30" oninput="setBgmVol(this.value)" style="width:40px" title="BGM Vol">
-<span id="bgm-track" onclick="skipBgm()" style="cursor:pointer;font-size:0.7em;color:#888;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="Click to skip | Music by Kevin MacLeod (incompetech.com) CC-BY">♪</span>
-<span style="color:#555">|</span>
-<span id="chat-mute-btn" onclick="toggleChatMute()" style="cursor:pointer;user-select:none" title="Chat ON/OFF">💬</span>
+<span id="mute-btn" onclick="toggleMute()" style="cursor:pointer;user-select:none" title="SFX">🔊</span>
+<span id="bgm-btn" onclick="toggleBgm()" style="cursor:pointer;user-select:none" title="BGM">🎵</span>
+<span id="chat-mute-btn" onclick="toggleChatMute()" style="cursor:pointer;user-select:none" title="Chat">💬</span>
 </div>
 </div>
 <div id="hand-timeline"><span class="tl-step" data-r="preflop"></span><span class="tl-step" data-r="flop"></span><span class="tl-step" data-r="turn"></span><span class="tl-step" data-r="river"></span><span class="tl-step" data-r="showdown"></span></div>
@@ -5922,6 +5952,15 @@ function toggleBgm(){_bgmMuted=!_bgmMuted;localStorage.setItem('bgm_muted',_bgmM
 function setBgmVol(v){_bgmVol=v/100;if(_bgm&&!_bgmMuted)_bgm.volume=_bgmVol;localStorage.setItem('bgm_vol',v)}
 function skipBgm(){_bgmIdx=(_bgmIdx+1)%BGM_TRACKS.length;if(_bgm)playBgm()}
 function updateBgmUI(){const btn=document.getElementById('bgm-btn');if(btn)btn.textContent=_bgmMuted?'🎵✗':'🎵';const lbl=document.getElementById('bgm-track');if(lbl&&_bgm)lbl.textContent=BGM_TRACKS[_bgmIdx].name}
+function toggleSettings(){const p=document.getElementById('settings-panel');const b=document.getElementById('settings-toggle');if(p.style.display==='none'){p.style.display='block';b.style.transform='rotate(90deg)';updateSettingsUI()}else{p.style.display='none';b.style.transform='rotate(0deg)'}}
+function updateSettingsUI(){
+const bb=document.getElementById('settings-bgm-btn');if(bb)bb.textContent=_bgmMuted?'🎵 OFF':'🎵 ON';
+const bt=document.getElementById('settings-bgm-track');if(bt&&_bgm)bt.textContent='♪ '+BGM_TRACKS[_bgmIdx].name;
+const sb=document.getElementById('settings-sfx-btn');if(sb)sb.textContent=muted?'🔇 OFF':'🔊 ON';
+// highlight active lang
+document.querySelectorAll('.lang-btn').forEach(b=>{const isActive=b.dataset.lang===(localStorage.getItem('poker_lang')||'ko');b.style.background=isActive?'rgba(74,222,128,0.15)':'rgba(255,255,255,0.05)';b.style.borderColor=isActive?'#4ade80':'#555';b.style.color=isActive?'#fff':'#aaa'})}
+// 클릭 외부면 설정 닫기
+document.addEventListener('click',function(e){const w=document.getElementById('settings-wrap');if(w&&!w.contains(e.target)){const p=document.getElementById('settings-panel');if(p)p.style.display='none';const b=document.getElementById('settings-toggle');if(b)b.style.transform='rotate(0deg)'}});
 // 첫 클릭에 BGM 시작 (브라우저 오토플레이 정책)
 document.addEventListener('click',()=>{if(!_bgm)initBgm()},{once:true});
 // 저장된 볼륨 복원
