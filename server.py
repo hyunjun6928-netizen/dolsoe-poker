@@ -3816,13 +3816,15 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 #action-feed .af-action{color:var(--text-secondary)}
 #action-feed .af-win{color:var(--accent-mint);font-weight:bold}
 .game-layout{display:grid;grid-template-columns:28vw 1fr 17vw;gap:4px;height:calc(100vh - 100px);min-height:500px;overflow:visible}
-.dock-left,.dock-right{min-width:120px}
-.dock-left{resize:horizontal;overflow:auto}
-.dock-right{resize:horizontal;overflow:auto;direction:rtl}
-.dock-right>*{direction:ltr}
+.dock-left,.dock-right{min-width:120px;position:relative}
+/* 드래그 리사이저 */
+.dock-resizer{position:absolute;top:0;width:6px;height:100%;cursor:col-resize;z-index:50;background:transparent;transition:background .2s}
+.dock-resizer:hover,.dock-resizer.active{background:rgba(74,222,128,0.4)}
+.dock-left .dock-resizer{right:-3px}
+.dock-right .dock-resizer{left:-3px}
 .game-main{min-width:0}
 .game-sidebar{display:none}
-.dock-left,.dock-right{display:flex;flex-direction:column;gap:6px;overflow:hidden}
+.dock-left,.dock-right{display:flex;flex-direction:column;gap:6px;overflow:auto}
 .dock-panel{background:var(--bg-panel);border:1px solid var(--frame);box-shadow:var(--shadow-md);padding:0;overflow:hidden;flex:1;display:flex;flex-direction:column;border-radius:var(--radius);resize:vertical;min-height:60px}
 .dock-panel-header{background:rgba(10,13,18,0.8);color:var(--text-light);padding:8px 12px;font-family:var(--font-pixel);font-size:0.8em;font-weight:600;border-bottom:1px solid rgba(255,255,255,0.06);letter-spacing:0.3px}
 .dock-panel-body{flex:1;overflow-y:auto;padding:6px;font-size:0.92em;word-break:break-word}
@@ -8045,6 +8047,31 @@ s.style.cssText=`position:absolute;width:${sz}px;height:${sz}px;background:${c};
 f.appendChild(s);setTimeout(()=>s.remove(),2500)},2500);
 // Human join removed — AI-only arena
 document.getElementById('chat-inp').addEventListener('keydown',e=>{if(e.key==='Enter')sendChat()});
+
+// ═══ 독 드래그 리사이즈 ═══
+(function(){
+const gl=document.querySelector('.game-layout');if(!gl)return;
+const dl=document.querySelector('.dock-left');
+const dr=document.querySelector('.dock-right');
+if(dl){
+  const rL=document.createElement('div');rL.className='dock-resizer';dl.appendChild(rL);
+  let startX,startW;
+  rL.addEventListener('mousedown',e=>{e.preventDefault();startX=e.clientX;startW=dl.offsetWidth;rL.classList.add('active');
+    const onMove=ev=>{const w=Math.max(120,Math.min(600,startW+(ev.clientX-startX)));dl.style.width=w+'px';dl.style.minWidth=w+'px';
+      gl.style.gridTemplateColumns=w+'px 1fr '+(dr?dr.offsetWidth+'px':'17vw')};
+    const onUp=()=>{rL.classList.remove('active');document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp)};
+    document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp)});
+}
+if(dr){
+  const rR=document.createElement('div');rR.className='dock-resizer';dr.appendChild(rR);
+  let startX,startW;
+  rR.addEventListener('mousedown',e=>{e.preventDefault();startX=e.clientX;startW=dr.offsetWidth;rR.classList.add('active');
+    const onMove=ev=>{const w=Math.max(120,Math.min(600,startW-(ev.clientX-startX)));dr.style.width=w+'px';dr.style.minWidth=w+'px';
+      gl.style.gridTemplateColumns=(dl?dl.offsetWidth+'px':'28vw')+' 1fr '+w+'px'};
+    const onUp=()=>{rR.classList.remove('active');document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp)};
+    document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp)});
+}
+})();
 // Player list collapse toggle
 (function(){const pl=document.getElementById('player-list-panel');if(pl){const h=pl.querySelector('.dock-panel-header');if(h)h.addEventListener('click',()=>pl.classList.toggle('expanded'))}})();
 
