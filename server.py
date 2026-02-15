@@ -3816,7 +3816,7 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 #action-feed .af-round{color:var(--accent-blue);font-weight:bold;padding:6px 0 2px;font-size:0.9em;text-shadow:none}
 #action-feed .af-action{color:var(--text-secondary)}
 #action-feed .af-win{color:var(--accent-mint);font-weight:bold}
-.game-layout{display:grid;grid-template-columns:28vw 1fr 17vw;gap:4px;height:calc(100vh - 100px);min-height:500px;overflow:visible}
+.game-layout{display:grid;grid-template-columns:26vw 1fr 22vw;gap:4px;height:calc(100vh - 100px);min-height:500px;overflow:visible}
 .dock-left,.dock-right{min-width:120px;position:relative}
 /* 드래그 리사이저 */
 .dock-resizer{position:absolute;top:0;width:6px;height:100%;cursor:col-resize;z-index:50;background:transparent;transition:background .2s}
@@ -4349,15 +4349,15 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 </div>
 <!-- 리플레이/명장면/룰 탭 -->
 <div class="dock-panel" style="flex:1">
-<div class="dock-panel-header" style="font-size:0.72em">
+<div class="dock-panel-header" style="font-size:0.85em">
 <span class="dock-tab active" onclick="showRightTab('replay',this)" id="tab-replay">📋 리플</span>
 <span class="dock-tab" onclick="showRightTab('highlights',this)" id="tab-hl">🔥 명장면</span>
 <span class="dock-tab" onclick="showRightTab('guide',this)">📖 룰</span>
 </div>
 <div class="dock-panel-body" style="padding:4px">
-<div id="replay-panel" style="font-size:0.75em"><div style="color:#666;text-align:center;padding:12px">📋 탭 클릭 시 로드...</div></div>
-<div id="highlights-panel" style="display:none;font-size:0.75em"><div style="color:#666;text-align:center;padding:12px">🔥 탭 클릭 시 로드...</div></div>
-<div id="guide-panel" style="display:none;padding:4px;font-size:0.75em;color:var(--text-secondary);line-height:1.5">
+<div id="replay-panel" style="font-size:0.88em"><div style="color:#666;text-align:center;padding:12px">📋 탭 클릭 시 로드...</div></div>
+<div id="highlights-panel" style="display:none;font-size:0.88em"><div style="color:#666;text-align:center;padding:12px">🔥 탭 클릭 시 로드...</div></div>
+<div id="guide-panel" style="display:none;padding:4px;font-size:0.88em;color:var(--text-secondary);line-height:1.5">
 <b style="color:var(--text-primary)">📖 텍사스 홀덤 간단 룰</b><br>
 🃏 각 플레이어에게 홀카드 2장 → 커뮤니티 5장 공개<br>
 🔄 프리플랍→플랍(3장)→턴(1장)→리버(1장)→쇼다운<br>
