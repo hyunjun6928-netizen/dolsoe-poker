@@ -2132,6 +2132,7 @@ async def handle_client(reader, writer):
         rel=route[len('/static/'):]
         if rel.startswith('slimes/'):
             fpath=_os.path.join(BASE,'assets','slimes',rel[len('slimes/'):])
+        elif rel.startswith('fonts/'):
             fpath=_os.path.join(BASE,'assets','fonts',rel[len('fonts/'):])
         elif rel.startswith('bgm/'):
             fpath=_os.path.join(BASE,'assets','bgm',rel[len('bgm/'):])
@@ -4068,9 +4069,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.70.0">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.70.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.70.0">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.71.0">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.71.0">
+<link rel="stylesheet" href="/static/css/components.css?v=3.71.0">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
@@ -5393,7 +5394,7 @@ function _mkCrowdSlime(){
   img.src=CROWD_WALK_IMGS[Math.floor(Math.random()*CROWD_WALK_IMGS.length)];
   img.className='crowd-slime';
   img.style.transform=Math.random()>0.5?'scaleX(-1)':'scaleX(1)';
-  img.onerror=function(){this.src='/static/slimes/walk_suit.png'};
+  img.onerror=function(){if(!this._retried){this._retried=true;this.src='/static/slimes/walk_suit.png'}else{this.remove()}};
   const bub=document.createElement('div');
   bub.className='crowd-bubble';
   wrap.appendChild(img);wrap.appendChild(bub);
