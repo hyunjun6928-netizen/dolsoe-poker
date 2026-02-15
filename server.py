@@ -1436,8 +1436,20 @@ class Table:
                     _wp=round(_strengths.get(s['name'],0)/_total*100)
 
                 if s['is_bot']:
-                    await asyncio.sleep(random.uniform(self.AI_DELAY_MIN, self.AI_DELAY_MAX))
                     act,amt=s['bot_ai'].decide(s['hole'],self.community,self.pot,to_call,s['chips'])
+                    # 사람 패턴 딜레이: 액션 무게에 따라 다름
+                    if act=='fold': _delay=random.uniform(1.0,3.5)
+                    elif act=='check': _delay=random.uniform(1.5,4.0)
+                    elif act=='call':
+                        _delay=random.uniform(3.0,7.0)
+                        if to_call>s['chips']*0.3: _delay=random.uniform(5.0,10.0)  # 큰 콜
+                    elif act=='raise':
+                        _delay=random.uniform(4.0,9.0)
+                        if s['chips']<=amt+to_call: _delay=random.uniform(8.0,15.0)  # 올인급
+                    else: _delay=random.uniform(3.0,7.0)
+                    # 라운드 초반은 좀 더 빠름 (프리플랍 첫 액션들)
+                    if self.round=='preflop' and len(acted)<2: _delay*=0.7
+                    await asyncio.sleep(_delay)
                     if act=='raise' and raises>=4: act,amt='call',to_call
                     # NPC 심리전 채팅 (55% 확률)
                     if random.random()<0.55:
