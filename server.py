@@ -3701,7 +3701,7 @@ box-shadow:inset 0 0 0 1px rgba(157,127,51,0.4),0 2px 8px rgba(0,0,0,0.5)}
 .seat-5{top:62%;right:4%;transform:translate(50%,-50%)}
 .seat-6{top:4%;left:65%;transform:translate(-50%,-50%)}
 .seat-7{top:4%;left:35%;transform:translate(-50%,-50%)}
-.seat .ava{font-size:3em;line-height:1;filter:drop-shadow(2px 2px 0 rgba(0,0,0,0.1));min-height:72px;display:flex;align-items:center;justify-content:center}
+.seat .ava{font-size:2.5em;line-height:1;filter:drop-shadow(1px 1px 0 rgba(0,0,0,0.1));min-height:56px;display:flex;align-items:center;justify-content:center}
 .slime-idle{animation:slimeBounce 2s ease-in-out infinite}
 .slime-think{animation:slimeThink 1.5s ease-in-out infinite}
 .slime-angry{animation:slimeShake 0.3s ease-in-out infinite}
@@ -3730,9 +3730,9 @@ box-shadow:inset 0 0 0 1px rgba(157,127,51,0.4),0 2px 8px rgba(0,0,0,0.5)}
 @keyframes bubbleFade{0%{opacity:0;transform:translateX(-50%) translateY(4px)}10%{opacity:1;transform:translateX(-50%) translateY(0)}80%{opacity:0.8}100%{opacity:0;transform:translateX(-50%) translateY(-4px)}}
 @keyframes actFade{0%{opacity:1;transform:translateX(-50%) translateY(0)}70%{opacity:1}100%{opacity:0;transform:translateX(-50%) translateY(-8px)}}
 @keyframes actPop{0%{transform:translateX(-50%) scale(0.5);opacity:0}100%{transform:translateX(-50%) scale(1);opacity:1}}
-.seat .nm{font-size:1em;font-weight:700;white-space:nowrap;background:rgba(15,20,28,0.9);color:#fff;padding:5px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);display:inline-block;box-shadow:0 2px 10px rgba(0,0,0,0.4);letter-spacing:0.5px;backdrop-filter:blur(4px);text-shadow:0 1px 2px rgba(0,0,0,0.5)}
-.seat .ch{font-size:1.05em;color:var(--accent-gold);font-weight:700;background:rgba(15,20,28,0.9);padding:4px 10px;border-radius:6px;border:1px solid rgba(245,197,66,0.3);text-shadow:0 1px 2px rgba(0,0,0,0.5)}
-.seat .st{font-size:0.65em;color:#6b7050;font-style:italic}
+.seat .nm{font-size:0.8em;font-weight:700;white-space:nowrap;background:rgba(15,20,28,0.9);color:#fff;padding:2px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);display:inline-block;box-shadow:0 1px 6px rgba(0,0,0,0.4);letter-spacing:0.3px;text-shadow:0 1px 2px rgba(0,0,0,0.5)}
+.seat .ch{font-size:0.8em;color:var(--accent-gold);font-weight:700;background:rgba(15,20,28,0.9);padding:2px 8px;border-radius:5px;border:1px solid rgba(245,197,66,0.3);text-shadow:0 1px 2px rgba(0,0,0,0.5)}
+.seat .st{display:none}
 .seat .bet-chip{font-size:0.75em;color:#fff;margin-top:2px;font-weight:bold;text-shadow:0 1px 0 #000;background:#16a34add;padding:1px 5px;border-radius:3px}
 .chip-fly{position:absolute;z-index:20;font-size:1.2em;pointer-events:none;animation:chipFly .8s ease-in forwards}
 @keyframes chipFly{0%{opacity:1;transform:translate(0,0) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(0.5)}}
@@ -3776,10 +3776,10 @@ border-radius:6px;padding:1px 6px;white-space:nowrap;animation:bluffPulse 0.6s e
 font-family:var(--font-pixel);text-shadow:0 0 8px #ff0000}
 @keyframes bluffPulse{0%{transform:translateX(-50%) scale(1)}100%{transform:translateX(-50%) scale(1.1);text-shadow:0 0 12px #ff0000}}
 /* 스타일 태그 */
-.style-tags{display:flex;gap:2px;justify-content:center;flex-wrap:wrap;margin:1px 0}
-.stag{font-size:0.55em;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.15);border-radius:3px;padding:0 3px;color:#ccc;white-space:nowrap}
+.style-tags{display:flex;gap:1px;justify-content:center;flex-wrap:nowrap;margin:0}
+.stag{font-size:0.45em;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);border-radius:2px;padding:0 2px;color:#aaa;white-space:nowrap}
 /* 행동 예측 */
-.pred-tag{font-size:0.6em;color:#4a9eff;text-align:center;background:rgba(40,60,100,0.7);border:1px solid #4a9eff44;border-radius:4px;padding:1px 4px;margin:2px auto;white-space:nowrap;animation:predGlow 1.5s ease infinite alternate}
+.pred-tag{font-size:0.45em;color:#4a9eff;text-align:center;background:rgba(40,60,100,0.6);border:1px solid #4a9eff33;border-radius:3px;padding:0 3px;margin:0 auto;white-space:nowrap}
 @keyframes predGlow{0%{box-shadow:0 0 3px #4a9eff33}100%{box-shadow:0 0 8px #4a9eff66}}
 /* 딜링 애니메이션 */
 .deal-card-fly{position:absolute;width:34px;height:50px;border-radius:3px;z-index:200;pointer-events:none;
@@ -6173,20 +6173,20 @@ const sb=p.streak_badge||'';
 const health=p.timeout_count>=2?'🔴':p.timeout_count>=1?'🟡':'🟢';
 const latTag=p.latency_ms!=null?(p.latency_ms<0?'<span style="color:#ff4444;font-size:0.7em">⏰ timeout</span>':`<span style="color:#888;font-size:0.7em">⚡${p.latency_ms}ms</span>`):'';
 /* win_pct bar replaced by ava-ring */
-const metaTag=(p.meta&&(p.meta.version||p.meta.strategy))?`<div style="font-size:0.6em;color:#888;margin-top:1px">${esc(p.meta.version||'')}${p.meta.version&&p.meta.strategy?' · ':''}${esc(p.meta.strategy||'')}</div>`:'';
+const metaTag='';
 const thinkDiv=s.turn===p.name?'<div class="thinking">💭...</div>':'';
 const ringColor=p.win_pct!=null&&!p.folded&&!p.out?(p.win_pct>50?'#44ff88':p.win_pct>25?'#ffaa00':'#ff4444'):'transparent';
 const ringPct=p.win_pct!=null&&!p.folded&&!p.out?p.win_pct:0;
 const avaRing=ringPct>0?`<div class="ava-ring" style="background:conic-gradient(${ringColor} ${ringPct*3.6}deg, #333 ${ringPct*3.6}deg)"></div>`:'';
 /* 에쿼티 바 + 핸드 네임 */
-const eqBar=ringPct>0?`<div style="position:relative;width:90%;max-width:100px;height:8px;background:#222;border-radius:4px;margin:2px auto;overflow:hidden;border:1px solid #444"><div style="height:100%;width:${ringPct}%;background:linear-gradient(90deg,${ringColor},${p.win_pct>50?'#88ffbb':p.win_pct>25?'#ffcc44':'#ff6666'});border-radius:3px;transition:width .5s ease;box-shadow:0 0 6px ${ringColor}44"></div></div><div style="font-size:0.8em;font-weight:700;color:${ringColor};text-align:center;text-shadow:0 1px 3px rgba(0,0,0,0.7)">${p.win_pct}%</div>`:''
+const eqBar=ringPct>0?`<div style="position:relative;width:80%;max-width:80px;height:5px;background:#222;border-radius:3px;margin:1px auto;overflow:hidden;border:1px solid #444"><div style="height:100%;width:${ringPct}%;background:linear-gradient(90deg,${ringColor},${p.win_pct>50?'#88ffbb':p.win_pct>25?'#ffcc44':'#ff6666'});border-radius:2px;transition:width .5s ease"></div></div><div style="font-size:0.6em;font-weight:700;color:${ringColor};text-align:center">${p.win_pct}%</div>`:''
 const hn=p.hand_name&&!p.folded&&!p.out?p.hand_name:'';
 const hnEn=p.hand_name_en&&!p.folded&&!p.out?p.hand_name_en:'';
-const handTag=hn?`<div style="font-size:0.7em;color:#ffcc00;text-align:center;text-shadow:0 1px 2px #000;font-weight:600;letter-spacing:0.5px">${lang==='en'?hnEn:hn}</div>`:'';
+const handTag=hn?`<div style="font-size:0.55em;color:#ffcc00;text-align:center;font-weight:600">${lang==='en'?hnEn:hn}</div>`:'';
 const moodTag=p.last_mood?`<span style="position:absolute;top:-8px;right:-8px;font-size:0.8em">${esc(p.last_mood)}</span>`:'';
 // 투표 표시
 const vc=s.vote_counts||{};const myVotes=vc[p.name]||0;const totalVotes=Object.values(vc).reduce((a,b)=>a+b,0);
-const voteTag=myVotes>0&&!isPlayer?`<div style="font-size:0.65em;color:#4a9eff;text-align:center">🗳️${myVotes}${totalVotes>0?' ('+Math.round(myVotes/totalVotes*100)+'%)':''}</div>`:'';
+const voteTag=myVotes>0&&!isPlayer?`<div style="font-size:0.5em;color:#4a9eff;text-align:center">🗳️${myVotes}</div>`:'';
 inferTraitsFromStyle(p);const slimeEmo=getSlimeEmotion(p,s);const slimeHtml=renderSlimeToSeat(p.name,slimeEmo);
 // 블러프 경고
 const bluffTag=p.bluff_alert?'<div class="bluff-alert">🎭 BLUFF?!</div>':'';
