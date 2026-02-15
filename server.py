@@ -3729,11 +3729,10 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 <div class="turn-badge" id="turnb"></div>
 <div id="turn-options" style="display:none;background:#fff8ee;border:2px solid #8b5e3c;border-radius:4px;padding:8px 12px;margin:6px auto;max-width:600px;font-size:0.82em;text-align:center;color:#4a3520"></div>
 </div>
-</div>
-</div>
 <div id="table-info"></div>
 <div id="actions"><div id="timer"></div><div id="actbtns"></div></div>
 <button id="new-btn" onclick="newGame()">🔄 새 게임</button>
+</div>
 </div>
 <!-- 우측 독: 채팅 -->
 <div class="dock-right">
