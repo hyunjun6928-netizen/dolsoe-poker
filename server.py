@@ -3655,7 +3655,7 @@ h1 b{color:var(--accent-gold);-webkit-text-fill-color:var(--accent-gold)}
 @media(max-width:700px){.lobby-grid{grid-template-columns:1fr!important}}
 #game{display:none}
 .info-bar{position:sticky;top:0;z-index:40;display:flex;justify-content:space-between;align-items:center;padding:6px 16px;font-size:0.8em;color:var(--text-light);background:transparent;border-bottom:none;box-shadow:none;font-family:var(--font-pixel)}
-.felt-wrap{position:relative;margin:0 auto 4px;padding-top:10px;width:min(1100px,96vw);min-height:min(780px,80vh)}
+.felt-wrap{position:relative;margin:0 auto 4px;padding-top:10px;width:min(1400px,98vw);min-height:min(860px,85vh)}
 .felt-border{position:absolute;top:-20px;left:-20px;right:-20px;bottom:-20px;
 background:url('/static/slimes/stage_frame.png') center/100% 100% no-repeat;
 border-radius:0;border:none;image-rendering:auto;pointer-events:none;
@@ -3666,7 +3666,7 @@ z-index:0}
 background:linear-gradient(90deg,transparent,rgba(255,255,255,0.08),transparent)}
 .felt{position:relative;
 background:url('/static/slimes/table_felt.png') center/cover no-repeat,linear-gradient(180deg,#1a1e2a 0%,#0d1018 100%);
-border:none;border-radius:18px;width:100%;padding-bottom:44%;
+border:none;border-radius:18px;width:100%;padding-bottom:52%;
 box-shadow:0 0 60px rgba(245,197,66,0.08),0 8px 32px rgba(0,0,0,0.6);overflow:visible;
 image-rendering:auto}
 .felt::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;
@@ -3730,6 +3730,11 @@ box-shadow:inset 0 0 0 1px rgba(157,127,51,0.4),0 2px 8px rgba(0,0,0,0.5)}
 .act-check{background:var(--accent-purple)!important;color:var(--bg-dark)!important;border-color:#A898C8!important;box-shadow:0 3px 0 0 #8878A8!important}
 .thought-bubble{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:18px;background:rgba(15,20,28,0.9);color:var(--accent-green);padding:1px 5px;border-radius:4px;font-size:0.5em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:24;border:1px solid rgba(52,211,153,0.15);max-width:100px;animation:bubbleFade 4s ease-out forwards;pointer-events:none;box-shadow:0 1px 4px rgba(0,0,0,0.3);line-height:1.2}
 .thought-bubble::after{content:'';display:none}
+/* 좌우 사이드 좌석: 대사를 옆에 표시 */
+.seat-side-left .act-label{bottom:auto;top:50%;left:100%;transform:translateY(-50%);margin-bottom:0;margin-left:4px}
+.seat-side-left .thought-bubble{bottom:auto;top:20%;left:100%;transform:none;margin-bottom:0;margin-left:4px}
+.seat-side-right .act-label{bottom:auto;top:50%;left:auto;right:100%;transform:translateY(-50%);margin-bottom:0;margin-right:4px}
+.seat-side-right .thought-bubble{bottom:auto;top:20%;left:auto;right:100%;transform:none;margin-bottom:0;margin-right:4px}
 @keyframes bubbleFade{0%{opacity:0;transform:translateX(-50%) translateY(4px)}10%{opacity:1;transform:translateX(-50%) translateY(0)}80%{opacity:0.8}100%{opacity:0;transform:translateX(-50%) translateY(-4px)}}
 @keyframes actFade{0%{opacity:1;transform:translateX(-50%)}70%{opacity:1}100%{opacity:0;transform:translateX(-50%) translateY(-6px)}}
 @keyframes actPop{0%{transform:translateX(-50%) scale(0.5);opacity:0}100%{transform:translateX(-50%) scale(1);opacity:1}}
@@ -3820,7 +3825,7 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 #action-feed .af-round{color:var(--accent-blue);font-weight:bold;padding:6px 0 2px;font-size:0.9em;text-shadow:none}
 #action-feed .af-action{color:var(--text-secondary)}
 #action-feed .af-win{color:var(--accent-mint);font-weight:bold}
-.game-layout{display:grid;grid-template-columns:26vw 1fr 22vw;gap:4px;height:calc(100vh - 100px);min-height:500px;overflow:visible}
+.game-layout{display:grid;grid-template-columns:18vw 1fr 18vw;gap:4px;height:calc(100vh - 100px);min-height:500px;overflow:visible}
 .dock-left,.dock-right{min-width:120px;position:relative}
 /* 드래그 리사이저 */
 .dock-resizer{position:absolute;top:0;width:6px;height:100%;cursor:col-resize;z-index:50;background:transparent;transition:background .2s}
@@ -6119,16 +6124,16 @@ if(elapsed<800){setTimeout(()=>{if(wm)wm.classList.add('fade-out');setTimeout(()
 else{wm.classList.add('fade-out');setTimeout(()=>{if(wm)wm.style.display='none'},200)}}}
 // 동적 좌석 배치 — 타원형 테이블 위에 균등 분포
 const seatPos=((n)=>{
-// 포커 테이블 고정 좌석 배치 (플레이어 수별 최적 위치)
-// {t:top%, l:left%} — 펠트 기준 상대좌표
+// 포커 테이블 좌석 배치 — 좌우 사이드 중심
+// {t:top%, l:left%, side:'left'|'right'|'bottom'} — 펠트 기준 상대좌표
 const layouts={
-2:[{t:'88%',l:'38%'},{t:'88%',l:'62%'}],
-3:[{t:'88%',l:'38%'},{t:'88%',l:'62%'},{t:'5%',l:'50%'}],
-4:[{t:'88%',l:'38%'},{t:'88%',l:'62%'},{t:'5%',l:'38%'},{t:'5%',l:'62%'}],
-5:[{t:'88%',l:'50%'},{t:'60%',l:'5%'},{t:'5%',l:'30%'},{t:'5%',l:'70%'},{t:'60%',l:'95%'}],
-6:[{t:'88%',l:'38%'},{t:'88%',l:'62%'},{t:'55%',l:'5%'},{t:'5%',l:'35%'},{t:'5%',l:'65%'},{t:'55%',l:'95%'}],
-7:[{t:'88%',l:'50%'},{t:'65%',l:'5%'},{t:'25%',l:'5%'},{t:'5%',l:'35%'},{t:'5%',l:'65%'},{t:'25%',l:'95%'},{t:'65%',l:'95%'}],
-8:[{t:'88%',l:'38%'},{t:'88%',l:'62%'},{t:'65%',l:'5%'},{t:'25%',l:'5%'},{t:'5%',l:'35%'},{t:'5%',l:'65%'},{t:'25%',l:'95%'},{t:'65%',l:'95%'}]
+2:[{t:'65%',l:'-2%',side:'left'},{t:'65%',l:'102%',side:'right'}],
+3:[{t:'85%',l:'50%',side:'bottom'},{t:'50%',l:'-2%',side:'left'},{t:'50%',l:'102%',side:'right'}],
+4:[{t:'35%',l:'-2%',side:'left'},{t:'65%',l:'-2%',side:'left'},{t:'35%',l:'102%',side:'right'},{t:'65%',l:'102%',side:'right'}],
+5:[{t:'85%',l:'50%',side:'bottom'},{t:'30%',l:'-2%',side:'left'},{t:'60%',l:'-2%',side:'left'},{t:'30%',l:'102%',side:'right'},{t:'60%',l:'102%',side:'right'}],
+6:[{t:'85%',l:'38%',side:'bottom'},{t:'85%',l:'62%',side:'bottom'},{t:'25%',l:'-2%',side:'left'},{t:'55%',l:'-2%',side:'left'},{t:'25%',l:'102%',side:'right'},{t:'55%',l:'102%',side:'right'}],
+7:[{t:'85%',l:'50%',side:'bottom'},{t:'22%',l:'-2%',side:'left'},{t:'48%',l:'-2%',side:'left'},{t:'74%',l:'-2%',side:'left'},{t:'22%',l:'102%',side:'right'},{t:'48%',l:'102%',side:'right'},{t:'74%',l:'102%',side:'right'}],
+8:[{t:'85%',l:'38%',side:'bottom'},{t:'85%',l:'62%',side:'bottom'},{t:'20%',l:'-2%',side:'left'},{t:'45%',l:'-2%',side:'left'},{t:'70%',l:'-2%',side:'left'},{t:'20%',l:'102%',side:'right'},{t:'45%',l:'102%',side:'right'},{t:'70%',l:'102%',side:'right'}]
 };
 return layouts[Math.min(n,8)]||layouts[6]})(Math.max(s.players.length,4));
 // 빈 좌석 렌더: 플레이어 수 이후~seatPos 끝까지
@@ -6137,7 +6142,7 @@ for(let ei=s.players.length;ei<maxSeats;ei++){
 continue; /* 빈 좌석 숨김 — 관전 가시성 개선 */
 const ee=document.createElement('div');ee.className='seat seat-'+ei+' empty-seat';
 ee.innerHTML='<div class="seat-unit"></div><div class="nm" style="opacity:0">—</div>';
-if(seatPos&&seatPos[ei]){ee.style.position='absolute';ee.style.top=seatPos[ei].t;ee.style.left=seatPos[ei].l;ee.style.bottom='auto';ee.style.right='auto';ee.style.transform='translate(-50%,-50%)';ee.style.textAlign='center'}
+if(seatPos&&seatPos[ei]){const esp=seatPos[ei];ee.style.position='absolute';ee.style.top=esp.t;ee.style.left=esp.l;ee.style.bottom='auto';ee.style.right='auto';ee.style.transform='translate(-50%,-50%)';ee.style.textAlign='center'}
 f.appendChild(ee)}
 s.players.forEach((p,i)=>{const el=document.createElement('div');
 let cls=`seat seat-${i}`;if(p.folded)cls+=' fold';if(p.out)cls+=' out';
@@ -6201,8 +6206,10 @@ el.innerHTML=`${la}${bubble}${bluffTag}${slimeHtml}${thinkDiv}<div class="cards"
 el.dataset.agent=p.name;el.style.cursor='pointer';el.onclick=(e)=>{e.stopPropagation();showProfile(p.name)};
 // 동적 좌석 위치 적용 (CSS class보다 우선)
 if(seatPos&&seatPos[i]){const sp=seatPos[i];el.style.position='absolute';
-el.style.top=sp.t||'auto';el.style.left=sp.l||'auto';el.style.bottom='auto';el.style.right='auto';
-el.style.transform='translate(-50%,-50%)';el.style.textAlign='center'}
+el.style.top=sp.t||'auto';el.style.bottom='auto';
+if(sp.side==='left'){el.style.left=sp.l;el.style.right='auto';el.style.transform='translate(-50%,-50%)';el.style.textAlign='right';el.classList.add('seat-side-left')}
+else if(sp.side==='right'){el.style.left=sp.l;el.style.right='auto';el.style.transform='translate(-50%,-50%)';el.style.textAlign='left';el.classList.add('seat-side-right')}
+else{el.style.left=sp.l||'auto';el.style.right='auto';el.style.transform='translate(-50%,-50%)';el.style.textAlign='center'}}
 f.appendChild(el)});
 // 라이벌 표시
 f.querySelectorAll('.rivalry-tag').forEach(e=>e.remove());
