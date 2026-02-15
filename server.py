@@ -6961,88 +6961,27 @@ const t=audioCtx.currentTime;
 const dest=audioCtx.destination;
 const VOL=sfxVol*5; // 볼륨 배수
 try{
-if(type==='chip'){
-// 칩 놓는 소리 — 짧은 딸깍
-const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
-o.frequency.value=800;o.type='sine';g.gain.value=VOL*0.12;g.gain.exponentialRampToValueAtTime(0.01,t+0.1);o.start(t);o.stop(t+0.1)}
-else if(type==='bet'){
-// 칩 던지는 소리 — 짤랑짤랑 (기본)
-[900,1100,700].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
-o.frequency.value=f;o.type='sine';g.gain.value=VOL*0.1;g.gain.exponentialRampToValueAtTime(0.01,t+0.08+i*0.06);o.start(t+i*0.05);o.stop(t+0.1+i*0.06)})}
-else if(type==='raise'){
-// 레이즈 — 강하게 올라가는 칩 소리
-[600,800,1000,1200].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
-o.frequency.value=f;o.type='triangle';g.gain.value=VOL*0.13;g.gain.exponentialRampToValueAtTime(0.01,t+0.12+i*0.07);o.start(t+i*0.06);o.stop(t+0.15+i*0.07)})}
-else if(type==='call'){
-// 콜 — 차분하게 따라가는 칩 소리
-[700,650].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
-o.frequency.value=f;o.type='sine';g.gain.value=VOL*0.1;g.gain.exponentialRampToValueAtTime(0.01,t+0.12+i*0.08);o.start(t+i*0.07);o.stop(t+0.15+i*0.08)})}
-else if(type==='fold'){
-// 카드 버리는 소리 — 스윽
-const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
-o.frequency.value=300;o.frequency.exponentialRampToValueAtTime(100,t+0.15);o.type='sawtooth';g.gain.value=VOL*0.06;g.gain.exponentialRampToValueAtTime(0.01,t+0.15);o.start(t);o.stop(t+0.15)}
-else if(type==='check'){
-// 탁 — 짧은 노크
-const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
-o.frequency.value=400;o.type='square';g.gain.value=VOL*0.1;g.gain.exponentialRampToValueAtTime(0.01,t+0.06);o.start(t);o.stop(t+0.06)}
-else if(type==='allin'){
-// 올인 — 심장 쿵쿵 + 경고음
-[200,250,300,400].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
-o.frequency.value=f;o.type='sawtooth';g.gain.value=VOL*0.12;g.gain.exponentialRampToValueAtTime(0.01,t+0.4+i*0.1);o.start(t+i*0.08);o.stop(t+0.5+i*0.1)});
-// 💓 심장 쿵쿵 (저음 펄스 2회 — 볼륨 낮춤, 80Hz로 조정)
-[0,0.35].forEach(d=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
-o.frequency.value=80;o.type='sine';g.gain.setValueAtTime(0.08,t+0.5+d);g.gain.exponentialRampToValueAtTime(0.01,t+0.65+d);o.start(t+0.5+d);o.stop(t+0.7+d)})}
-else if(type==='showdown'){
-// 쇼다운 — 두둥! 드럼롤 느낌
-[523,587,659].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
-o.frequency.value=f;o.type='triangle';g.gain.value=VOL*0.15;g.gain.exponentialRampToValueAtTime(0.01,t+0.5);o.start(t+i*0.15);o.stop(t+0.5+i*0.15)})}
-else if(type==='win'){
-// 승리 팡파레 — 도레미솔 + 환호 심벌즈
-[523,587,659,784,1047].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
-o.frequency.value=f;o.type='sine';g.gain.value=VOL*0.15;g.gain.exponentialRampToValueAtTime(0.01,t+0.3+i*0.12);o.start(t+i*0.12);o.stop(t+0.4+i*0.12)});
-// 🎉 환호 노이즈 버스트 (볼륨 억제)
-for(let i=0;i<2;i++){const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
-o.frequency.value=1500+Math.random()*1500;o.type='sawtooth';g.gain.value=VOL*0.015;g.gain.exponentialRampToValueAtTime(0.001,t+0.55+i*0.05);o.start(t+0.5+i*0.04);o.stop(t+0.6+i*0.05)}}
-else if(type==='clink'){
-// 동전 부딪치는 소리 — 찰칵 (고음 금속음 2~3겹)
-const baseF=3000+Math.random()*2000;
-[0,0.02,0.04].forEach((d,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
-o.frequency.value=baseF-i*400;o.type='sine';g.gain.value=VOL*0.06-i*0.015;g.gain.exponentialRampToValueAtTime(0.001,t+0.06+d);o.start(t+d);o.stop(t+0.08+d)});
-// 딸깍 노이즈
-const o2=audioCtx.createOscillator();const g2=audioCtx.createGain();o2.connect(g2);g2.connect(dest);
-o2.frequency.value=8000;o2.type='square';g2.gain.value=VOL*0.02;g2.gain.exponentialRampToValueAtTime(0.001,t+0.03);o2.start(t);o2.stop(t+0.04)}
-else if(type==='card'){
-// 카드 딜링 — 슉슉 (빠른 종이 소리)
-for(let i=0;i<3;i++){const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
-o.frequency.value=2000+Math.random()*2000;o.type='sawtooth';g.gain.value=VOL*0.025;g.gain.exponentialRampToValueAtTime(0.001,t+0.04+i*0.04);o.start(t+i*0.03);o.stop(t+0.06+i*0.04)}}
-else if(type==='newhand'){
-// 새 핸드 — 카드 셔플 (노이즈 + 리듬)
-for(let i=0;i<4;i++){const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
-o.frequency.value=600+Math.random()*400;o.type='sawtooth';g.gain.value=VOL*0.04;g.gain.exponentialRampToValueAtTime(0.01,t+0.05+i*0.08);o.start(t+i*0.07);o.stop(t+0.08+i*0.08)}}
-else if(type==='killcam'){
-const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
-o.frequency.value=150;o.frequency.exponentialRampToValueAtTime(50,t+0.8);o.type='square';g.gain.value=VOL*0.1;g.gain.exponentialRampToValueAtTime(0.01,t+0.8);o.start(t);o.stop(t+0.8)}
-else if(type==='darkhorse'){
-const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
-o.frequency.value=440;o.frequency.exponentialRampToValueAtTime(880,t+0.4);o.type='triangle';g.gain.value=VOL*0.12;g.gain.exponentialRampToValueAtTime(0.01,t+0.6);o.start(t);o.stop(t+0.6)}
-else if(type==='mvp'){
-[660,784,880,1047].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
-o.frequency.value=f;o.type='sine';g.gain.value=VOL*0.12;g.gain.exponentialRampToValueAtTime(0.01,t+0.4+i*0.15);o.start(t+i*0.15);o.stop(t+0.5+i*0.15)})}
-else if(type==='join'){
-// 입장 — 밝은 상승 멜로디 (도미솔도!)
-[523,659,784,1047].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
-o.frequency.value=f;o.type='sine';g.gain.value=VOL*0.13;g.gain.exponentialRampToValueAtTime(0.01,t+0.25+i*0.1);o.start(t+i*0.1);o.stop(t+0.3+i*0.1)})}
-else if(type==='leave'){
-// 퇴장 — 하강 멜로디 (솔미도)
-[784,659,523,392].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
-o.frequency.value=f;o.type='triangle';g.gain.value=VOL*0.1;g.gain.exponentialRampToValueAtTime(0.01,t+0.3+i*0.12);o.start(t+i*0.12);o.stop(t+0.35+i*0.12)})}
-else if(type==="bankrupt"){
-// 파산 — 코믹 추락 (하강 음계 + 부앙 효과음)
-[600,500,400,300,200,100].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);o.frequency.value=f;o.type="triangle";g.gain.value=VOL*0.1;g.gain.exponentialRampToValueAtTime(0.01,t+0.15+i*0.1);o.start(t+i*0.08);o.stop(t+0.2+i*0.1)});
-// 부앙~ (comic spring — 볼륨 억제)
-const bw=audioCtx.createOscillator();const bg=audioCtx.createGain();bw.connect(bg);bg.connect(dest);
-bw.frequency.setValueAtTime(250,t+0.6);bw.frequency.exponentialRampToValueAtTime(80,t+1.0);bw.type='sine';bg.gain.value=VOL*0.06;bg.gain.exponentialRampToValueAtTime(0.01,t+1.0);bw.start(t+0.6);bw.stop(t+1.0)}
-else if(type==="rare"){[523,659,784,1047,784,659].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);o.frequency.value=f;o.type="sine";g.gain.value=VOL*0.12;g.gain.exponentialRampToValueAtTime(0.01,t+0.2+i*0.1);o.start(t+i*0.08);o.stop(t+0.25+i*0.1)})}
+const G=1.0; // gain — 모든 소리 풀볼륨
+const _n=(f,type,gain,dur)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);o.frequency.value=f;o.type=type||'sine';g.gain.value=gain;g.gain.exponentialRampToValueAtTime(0.01,t+dur);o.start(t);o.stop(t+dur);return o};
+if(type==='chip'){_n(800,'sine',G,0.3)}
+else if(type==='bet'){[900,1100,700].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);o.frequency.value=f;o.type='sine';g.gain.value=G*0.8;g.gain.exponentialRampToValueAtTime(0.01,t+0.4);o.start(t+i*0.1);o.stop(t+0.5)})}
+else if(type==='raise'){[600,800,1000,1200].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);o.frequency.value=f;o.type='triangle';g.gain.value=G*0.8;g.gain.exponentialRampToValueAtTime(0.01,t+0.5);o.start(t+i*0.1);o.stop(t+0.6)})}
+else if(type==='call'){[700,650].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);o.frequency.value=f;o.type='sine';g.gain.value=G*0.7;g.gain.exponentialRampToValueAtTime(0.01,t+0.4);o.start(t+i*0.12);o.stop(t+0.5)})}
+else if(type==='fold'){_n(300,'sawtooth',G*0.5,0.4)}
+else if(type==='check'){_n(400,'square',G*0.6,0.2)}
+else if(type==='allin'){[200,300,400,500].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);o.frequency.value=f;o.type='sawtooth';g.gain.value=G;g.gain.exponentialRampToValueAtTime(0.01,t+0.8);o.start(t+i*0.1);o.stop(t+1.0)})}
+else if(type==='showdown'){[523,587,659].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);o.frequency.value=f;o.type='triangle';g.gain.value=G;g.gain.exponentialRampToValueAtTime(0.01,t+0.8);o.start(t+i*0.2);o.stop(t+1.0)})}
+else if(type==='win'){[523,587,659,784,1047].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);o.frequency.value=f;o.type='sine';g.gain.value=G;g.gain.exponentialRampToValueAtTime(0.01,t+0.5+i*0.15);o.start(t+i*0.15);o.stop(t+0.6+i*0.15)})}
+else if(type==='clink'){[3000,2600,2200].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);o.frequency.value=f;o.type='sine';g.gain.value=G*0.6;g.gain.exponentialRampToValueAtTime(0.01,t+0.3);o.start(t+i*0.04);o.stop(t+0.35)})}
+else if(type==='card'){_n(1500+Math.random()*1000,'sawtooth',G*0.5,0.2)}
+else if(type==='newhand'){[600,700,800,900].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);o.frequency.value=f;o.type='sawtooth';g.gain.value=G*0.5;g.gain.exponentialRampToValueAtTime(0.01,t+0.3);o.start(t+i*0.08);o.stop(t+0.35)})}
+else if(type==='killcam'){_n(150,'square',G,1.0)}
+else if(type==='darkhorse'){_n(440,'triangle',G*0.8,0.8)}
+else if(type==='mvp'){[660,784,880,1047].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);o.frequency.value=f;o.type='sine';g.gain.value=G;g.gain.exponentialRampToValueAtTime(0.01,t+0.6);o.start(t+i*0.15);o.stop(t+0.7)})}
+else if(type==='join'){[523,659,784,1047].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);o.frequency.value=f;o.type='sine';g.gain.value=G;g.gain.exponentialRampToValueAtTime(0.01,t+0.5);o.start(t+i*0.12);o.stop(t+0.6)})}
+else if(type==='leave'){[784,659,523,392].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);o.frequency.value=f;o.type='triangle';g.gain.value=G*0.8;g.gain.exponentialRampToValueAtTime(0.01,t+0.5);o.start(t+i*0.12);o.stop(t+0.6)})}
+else if(type==='bankrupt'){[600,500,400,300,200,100].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);o.frequency.value=f;o.type='triangle';g.gain.value=G;g.gain.exponentialRampToValueAtTime(0.01,t+0.5);o.start(t+i*0.1);o.stop(t+0.6)})}
+else if(type==='rare'){[523,659,784,1047,784,659].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);o.frequency.value=f;o.type='sine';g.gain.value=G;g.gain.exponentialRampToValueAtTime(0.01,t+0.4);o.start(t+i*0.1);o.stop(t+0.5)})}
 }catch(e){}}
 
 // 기존 이벤트에 사운드 추가
