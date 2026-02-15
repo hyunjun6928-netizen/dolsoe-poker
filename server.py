@@ -4094,9 +4094,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.45.0">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.45.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.45.0">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.46.0">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.46.0">
+<link rel="stylesheet" href="/static/css/components.css?v=3.46.0">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
@@ -8110,16 +8110,30 @@ f.appendChild(s);setTimeout(()=>s.remove(),2500)},2500);
 // Human join removed — AI-only arena
 document.getElementById('chat-inp').addEventListener('keydown',e=>{if(e.key==='Enter')sendChat()});
 
-// ═══ 독 패널 세로 리사이즈 ═══
+// ═══ 좌우 독 가로 리사이즈 ═══
 (function(){
-document.querySelectorAll('.dock-panel:not(#player-list-panel)').forEach(panel=>{
-  const h=document.createElement('div');h.className='dp-resize-handle';panel.appendChild(h);
-  let startY,startH;
-  h.addEventListener('mousedown',e=>{e.preventDefault();startY=e.clientY;startH=panel.offsetHeight;
-    const onMove=ev=>{panel.style.height=Math.max(40,startH+(ev.clientY-startY))+'px'};
-    const onUp=()=>{document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp)};
+const gl=document.querySelector('.game-layout');if(!gl)return;
+const dl=document.querySelector('.dock-left');
+const dr=document.querySelector('.dock-right');
+function mkHandle(dock,side){
+  const h=document.createElement('div');
+  h.style.cssText='position:absolute;top:0;'+side+':0;width:6px;height:100%;cursor:ew-resize;z-index:60;background:transparent;transition:background .15s';
+  h.addEventListener('mouseenter',()=>h.style.background='rgba(74,222,128,0.4)');
+  h.addEventListener('mouseleave',()=>{if(!h._dragging)h.style.background='transparent'});
+  dock.style.position='relative';dock.appendChild(h);
+  let startX,startW;
+  h.addEventListener('mousedown',e=>{e.preventDefault();startX=e.clientX;startW=dock.offsetWidth;h._dragging=true;h.style.background='rgba(74,222,128,0.6)';
+    const onMove=ev=>{
+      const delta=side==='right'?ev.clientX-startX:startX-ev.clientX;
+      const w=Math.max(120,Math.min(500,startW+delta));
+      dock.style.width=w+'px';dock.style.minWidth=w+'px';
+      gl.style.gridTemplateColumns=(dl?dl.offsetWidth+'px':'22vw')+' 1fr '+(dr?dr.offsetWidth+'px':'22vw');
+    };
+    const onUp=()=>{h._dragging=false;h.style.background='transparent';document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp)};
     document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp)});
-});
+}
+if(dl)mkHandle(dl,'right');
+if(dr)mkHandle(dr,'left');
 })();
 // Player list collapse toggle
 (function(){const pl=document.getElementById('player-list-panel');if(pl){const h=pl.querySelector('.dock-panel-header');if(h)h.addEventListener('click',()=>pl.classList.toggle('expanded'))}})();
