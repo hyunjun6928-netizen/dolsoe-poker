@@ -3835,6 +3835,7 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 /* 드래그 리사이저 */
 .dock-resizer{display:none!important}
 .dock-panel{resize:vertical;overflow:auto!important}
+.dock-panel::-webkit-resizer{background:#4ade80;border:2px solid #333;border-radius:3px}
 .game-main{min-width:0;overflow-y:auto;overflow-x:hidden}
 .game-sidebar{display:none}
 .dock-left,.dock-right{display:flex;flex-direction:column;gap:6px;overflow:auto;align-items:stretch}
@@ -6958,7 +6959,7 @@ console.log('SFX:',type,'vol:',sfxVol,'ctx:',audioCtx.state);
 const t=audioCtx.currentTime;
 // Master volume node
 if(!window._masterGain){window._masterGain=audioCtx.createGain();window._masterGain.connect(audioCtx.destination)}
-window._masterGain.gain.value=sfxVol*3; // 볼륨 3배 증폭
+window._masterGain.gain.value=sfxVol*10; // 볼륨 10배 증폭
 const dest=window._masterGain; // 모든 sfx는 이 노드로 연결
 try{
 if(type==='chip'){
