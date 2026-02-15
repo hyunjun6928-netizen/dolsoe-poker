@@ -3744,7 +3744,7 @@ box-shadow:inset 0 0 0 1px rgba(157,127,51,0.4),0 2px 8px rgba(0,0,0,0.5)}
 @keyframes bubbleFade{0%{opacity:0;transform:translateX(-50%) translateY(4px)}10%{opacity:1;transform:translateX(-50%) translateY(0)}80%{opacity:0.8}100%{opacity:0;transform:translateX(-50%) translateY(-4px)}}
 @keyframes actFade{0%{opacity:1;transform:translateX(-50%)}70%{opacity:1}100%{opacity:0;transform:translateX(-50%) translateY(-6px)}}
 @keyframes actPop{0%{transform:translateX(-50%) scale(0.5);opacity:0}100%{transform:translateX(-50%) scale(1);opacity:1}}
-.seat .nm{font-size:0.95em;font-weight:700;white-space:nowrap;background:rgba(15,20,28,0.9);color:#fff;padding:2px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);display:inline-block;box-shadow:0 1px 6px rgba(0,0,0,0.4);letter-spacing:0.3px;text-shadow:0 1px 2px rgba(0,0,0,0.5)}
+.seat .nm{font-size:0.95em;font-weight:700;white-space:nowrap;background:rgba(15,20,28,0.9);color:#fff;padding:2px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.15);display:block;text-align:center;box-shadow:0 1px 6px rgba(0,0,0,0.4);letter-spacing:0.3px;text-shadow:0 1px 2px rgba(0,0,0,0.5)}
 .seat .ch{font-size:0.95em;color:var(--accent-gold);font-weight:700;background:rgba(15,20,28,0.9);padding:2px 8px;border-radius:5px;border:1px solid rgba(245,197,66,0.3);text-shadow:0 1px 2px rgba(0,0,0,0.5)}
 .seat .st{display:none}
 .seat .bet-chip{font-size:0.9em;color:#fff;margin-top:2px;font-weight:bold;text-shadow:0 1px 0 #000;background:#16a34add;padding:1px 5px;border-radius:3px}
@@ -4094,9 +4094,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.63.0">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.63.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.63.0">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.64.0">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.64.0">
+<link rel="stylesheet" href="/static/css/components.css?v=3.64.0">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
@@ -6210,7 +6210,7 @@ const avaRing=ringPct>0?`<div class="ava-ring" style="background:conic-gradient(
 const eqBar=ringPct>0?`<div style="position:relative;width:90%;max-width:100px;height:7px;background:#222;border-radius:3px;margin:1px auto;overflow:hidden;border:1px solid #444"><div style="height:100%;width:${ringPct}%;background:linear-gradient(90deg,${ringColor},${p.win_pct>50?'#88ffbb':p.win_pct>25?'#ffcc44':'#ff6666'});border-radius:2px;transition:width .5s ease"></div></div><div style="font-size:0.75em;font-weight:700;color:${ringColor};text-align:center">${p.win_pct}%</div>`:''
 const hn=p.hand_name&&!p.folded&&!p.out?p.hand_name:'';
 const hnEn=p.hand_name_en&&!p.folded&&!p.out?p.hand_name_en:'';
-const handTag=hn?`<div style="font-size:0.55em;color:#ffcc00;text-align:center;font-weight:600">${lang==='en'?hnEn:hn}</div>`:'';
+const handTag=hn?`<div style="font-size:0.75em;color:#ffcc00;text-align:center;font-weight:600">${lang==='en'?hnEn:hn}</div>`:'';
 const moodTag=p.last_mood?`<span style="position:absolute;top:-8px;right:-8px;font-size:0.8em">${esc(p.last_mood)}</span>`:'';
 // 투표 표시
 const vc=s.vote_counts||{};const myVotes=vc[p.name]||0;const totalVotes=Object.values(vc).reduce((a,b)=>a+b,0);
