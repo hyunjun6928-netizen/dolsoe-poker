@@ -3211,7 +3211,7 @@ box-shadow:inset 0 0 0 1px rgba(157,127,51,0.4),0 2px 8px rgba(0,0,0,0.5)}
 .game-main{min-width:0}
 .game-sidebar{display:none}
 .dock-left,.dock-right{display:flex;flex-direction:column;gap:6px;overflow:hidden}
-.dock-panel{background:var(--bg-panel);border:1px solid var(--frame);box-shadow:var(--shadow-md);padding:0;overflow:hidden;flex:1;display:flex;flex-direction:column;border-radius:var(--radius)}
+.dock-panel{background:var(--bg-panel);border:1px solid var(--frame);box-shadow:var(--shadow-md);padding:0;overflow:hidden;flex:1;display:flex;flex-direction:column;border-radius:var(--radius);resize:vertical;min-height:60px}
 .dock-panel-header{background:rgba(10,13,18,0.8);color:var(--text-light);padding:8px 12px;font-family:var(--font-pixel);font-size:0.8em;font-weight:600;border-bottom:1px solid rgba(255,255,255,0.06);letter-spacing:0.3px}
 .dock-panel-body{flex:1;overflow-y:auto;padding:6px;font-size:0.82em;word-break:break-word}
 #action-feed{max-height:none;flex:1;overflow-y:auto;background:transparent;border:none;border-radius:0;padding:4px;box-shadow:none;font-size:0.82em}
