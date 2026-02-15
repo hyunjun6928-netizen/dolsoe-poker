@@ -2122,6 +2122,9 @@ async def handle_client(reader, writer):
         return t
 
     _lang=qs.get('lang',[''])[0]
+    if not _lang:
+        _al=headers.get('accept-language','')
+        _lang='' if 'ko' in _al.lower() else 'en'
     # /en redirects
     # ═══ Static file serving (CSS, images, assets) ═══
     if method=='GET' and route.startswith('/static/'):
@@ -4069,9 +4072,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.76.0">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.76.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.76.0">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.77.0">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.77.0">
+<link rel="stylesheet" href="/static/css/components.css?v=3.77.0">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
@@ -4933,7 +4936,7 @@ en:{
   thRank:'#',thPlayer2:'Player',thWR2:'Win%',thW2:'W',thL2:'L',thHands2:'Hands',thChips2:'Chips',
 }
 };
-let lang=new URLSearchParams(location.search).get('lang')||localStorage.getItem('poker_lang')||'ko';localStorage.setItem('poker_lang',lang);
+let lang=new URLSearchParams(location.search).get('lang')||localStorage.getItem('poker_lang')||(navigator.language&&navigator.language.startsWith('ko')?'ko':'en');localStorage.setItem('poker_lang',lang);
 function t(k){return (LANG[lang]&&LANG[lang][k])||LANG.ko[k]||k}
 function setLang(l){localStorage.setItem('poker_lang',l);const u=new URL(location.href);u.searchParams.set('lang',l);location.href=u.toString()}
 function applyLobbyLang(){
