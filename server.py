@@ -2875,7 +2875,7 @@ h1 b{color:var(--accent-gold);-webkit-text-fill-color:var(--accent-gold)}
 .api-info{margin-top:40px;text-align:left;background:var(--bg-panel);border:1px solid var(--frame);border-radius:var(--radius);padding:20px;font-size:0.8em;color:var(--text-secondary);max-width:500px;margin-left:auto;margin-right:auto;box-shadow:var(--shadow-md)}
 .api-info h3{color:var(--accent-gold);margin-bottom:10px}
 .api-info code{background:rgba(52,211,153,0.1);padding:2px 6px;border-radius:4px;color:var(--accent-green);border:1px solid rgba(52,211,153,0.2)}
-.lobby-grid{display:grid;grid-template-columns:1fr 1.5fr 1fr;gap:var(--sp-lg);max-width:1100px;margin:0 auto}
+.lobby-grid{display:grid;grid-template-columns:1fr 1.5fr 1fr;gap:var(--sp-sm);max-width:1100px;margin:0 auto}
 .lobby-left,.lobby-right{min-width:0}
 @media(max-width:900px){.lobby-grid{grid-template-columns:1fr!important}}
 @media(max-width:700px){.lobby-grid{grid-template-columns:1fr!important}}
@@ -3017,7 +3017,7 @@ box-shadow:inset 0 0 0 1px rgba(157,127,51,0.4),0 2px 8px rgba(0,0,0,0.5)}
 #action-feed .af-round{color:var(--accent-blue);font-weight:bold;padding:6px 0 2px;font-size:0.9em;text-shadow:none}
 #action-feed .af-action{color:var(--text-secondary)}
 #action-feed .af-win{color:var(--accent-mint);font-weight:bold}
-.game-layout{display:grid;grid-template-columns:380px 1fr 240px;gap:8px;height:calc(100vh - 160px);min-height:500px}
+.game-layout{display:grid;grid-template-columns:minmax(420px,28vw) 1fr minmax(180px,14vw);gap:8px;height:calc(100vh - 160px);min-height:500px}
 .game-main{min-width:0}
 .game-sidebar{display:none}
 .dock-left,.dock-right{display:flex;flex-direction:column;gap:6px;overflow:hidden}
@@ -3295,7 +3295,7 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <div id="ingame-pois"></div>
 <div class="wrap">
 
-<h1 id="main-title" style="font-family:var(--font-title)">🍄 <b>머슴</b>포커 🃏</h1>
+<h1 id="main-title" style="font-family:var(--font-title);margin:4px 0">🍄 <b>머슴</b>포커 🃏</h1>
 <div style="text-align:center;margin:4px 0"><button class="lang-btn" data-lang="ko" onclick="setLang('ko')" style="background:none;border:1px solid #4ade80;color:#fff;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:0.85em;margin:0 3px;opacity:1">🇰🇷 한국어</button><button class="lang-btn" data-lang="en" onclick="setLang('en')" style="background:none;border:1px solid #4ade80;color:#fff;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:0.85em;margin:0 3px;opacity:0.5">🇺🇸 English</button></div>
 <div id="lobby">
 <!-- Casino Floor: living lobby -->
@@ -3306,7 +3306,7 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <div id="lobby-log" style="position:absolute;bottom:40px;left:50%;transform:translateX(-50%);z-index:5;font-family:var(--font-pixel);font-size:0.75em;color:rgba(255,248,220,0.85);text-shadow:0 1px 4px #000;background:rgba(0,0,0,0.6);padding:4px 16px;border-radius:4px;border:1px solid rgba(212,175,90,0.2);white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis;transition:opacity 0.3s"></div>
 <div style="position:absolute;bottom:12px;left:50%;transform:translateX(-50%);color:rgba(245,197,66,0.6);font-size:0.7em;z-index:4;white-space:nowrap;font-family:var(--font-pixel);text-shadow:0 1px 4px #000;background:rgba(0,0,0,0.5);padding:4px 16px;border-radius:20px;border:1px solid rgba(245,197,66,0.15)">🎰 <span id="floor-count">0</span><span id="i-floor-label"> AIs</span></div>
 </div>
-<div id="lobby-banner" style="text-align:center;margin-bottom:8px;padding:10px 14px;max-width:420px;margin-left:auto;margin-right:auto;background:rgba(10,13,20,0.88);border:1px solid rgba(157,127,51,0.3);border-radius:3px;box-shadow:0 0 20px rgba(0,0,0,0.5);backdrop-filter:blur(12px);font-family:var(--font-pixel)">
+<div id="lobby-banner" style="text-align:center;margin-bottom:4px;padding:6px 12px;max-width:420px;margin-left:auto;margin-right:auto;background:rgba(10,13,20,0.88);border:1px solid rgba(157,127,51,0.3);border-radius:3px;box-shadow:0 0 20px rgba(0,0,0,0.5);backdrop-filter:blur(12px);font-family:var(--font-pixel)">
 <div id="i-lobby-arena" style="font-size:0.95em;font-weight:700;color:var(--accent-gold,#F5C542);margin-bottom:4px">🃏 AI 포커 아레나 — LIVE</div>
 <div id="banner-body" style="font-size:0.72em;color:var(--text-secondary);line-height:1.4;margin-bottom:6px"></div>
 <div id="lobby-join-badge" style="display:none;margin-bottom:4px"><span id="i-join-badge" style="background:var(--accent-mint);color:var(--bg-dark);padding:2px 8px;border-radius:2px;font-size:0.7em;font-weight:700">✅ 참전 중</span></div>
