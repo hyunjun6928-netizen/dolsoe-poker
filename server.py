@@ -6142,7 +6142,31 @@ o.querySelector('.kc-vs').textContent=`${d.killer_emoji} ${d.killer}`;
 let kcMsg=`☠️ ${d.victim_emoji} ${d.victim} ELIMINATED`;
 o.querySelector('.kc-msg').innerHTML=kcMsg+(d.death_quote?`<div style="font-size:0.7em;color:#ffaa00;margin-top:6px">${t('lastWords')} "${esc(d.death_quote)}"</div>`:'');
 o.style.display='flex';o.style.animation='none';o.offsetHeight;o.style.animation='allinFlash 2.5s ease-out forwards';
-sfx('killcam');setTimeout(()=>{o.style.display='none'},2500)}
+sfx('killcam');setTimeout(()=>{o.style.display='none';showBustDownloadPrompt(d.victim,d.victim_emoji,d.bankrupt_count,d.cooldown)},2500)}
+
+// 파산 다운로드 프롬프트
+function showBustDownloadPrompt(victim,emoji,bc,cd){
+const existing=document.getElementById('bust-dl-modal');if(existing)existing.remove();
+const m=document.createElement('div');m.id='bust-dl-modal';
+m.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(180deg,#1a0a0a,#2a1515);border:3px solid #ff4444;border-radius:16px;padding:24px;z-index:200;text-align:center;color:#fff;font-family:var(--font-pixel);min-width:280px;max-width:380px;box-shadow:0 0 40px rgba(255,0,0,0.3);animation:fadeIn .3s';
+m.innerHTML=`
+<div style="font-size:2em;margin-bottom:8px">☠️</div>
+<div style="font-size:1.2em;font-weight:bold;color:#ff6666;margin-bottom:6px">${emoji} ${esc(victim)}</div>
+<div style="color:#ffaa00;font-size:0.9em;margin-bottom:4px">${lang==='en'?'BANKRUPT!':'파산!'} (💀×${bc})</div>
+<div style="color:#888;font-size:0.8em;margin-bottom:16px">${lang==='en'?'Download game records before leaving?':'떠나기 전에 기록 다운로드?'}</div>
+<div style="display:flex;gap:8px;justify-content:center">
+<button onclick="bustDownload('${esc(victim)}','json');this.parentElement.parentElement.remove()" style="background:#4ade80;color:#000;border:2px solid #000;border-radius:8px;padding:8px 16px;cursor:pointer;font-family:var(--font-pixel);font-weight:700">📥 JSON</button>
+<button onclick="bustDownload('${esc(victim)}','csv');this.parentElement.parentElement.remove()" style="background:#60a5fa;color:#000;border:2px solid #000;border-radius:8px;padding:8px 16px;cursor:pointer;font-family:var(--font-pixel);font-weight:700">📊 CSV</button>
+<button onclick="this.parentElement.parentElement.remove()" style="background:#666;color:#fff;border:2px solid #000;border-radius:8px;padding:8px 16px;cursor:pointer;font-family:var(--font-pixel);font-weight:700">${lang==='en'?'Skip':'건너뛰기'}</button>
+</div>`;
+document.body.appendChild(m);
+setTimeout(()=>{const el=document.getElementById('bust-dl-modal');if(el)el.remove()},15000)}
+function bustDownload(name,fmt){
+const url=fmt==='csv'?`/api/export?table_id=mersoom&player=${encodeURIComponent(name)}`:`/api/history?table_id=mersoom&player=${encodeURIComponent(name)}&limit=500`;
+fetch(url).then(r=>r.ok?r.text():Promise.reject('failed')).then(text=>{
+const blob=new Blob([text],{type:fmt==='csv'?'text/csv':'application/json'});
+const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`${name}_records.${fmt}`;
+document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(a.href)}).catch(()=>{})}
 
 // 다크호스
 function showDarkhorse(d){
