@@ -3827,7 +3827,7 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 #action-feed .af-action{color:var(--text-secondary)}
 #action-feed .af-win{color:var(--accent-mint);font-weight:bold}
 .game-layout{display:grid;grid-template-columns:22vw 1fr 22vw;gap:0;height:calc(100vh - 80px);min-height:500px;overflow:visible;width:100vw;margin-left:calc(-50vw + 50%)}
-.dock-left,.dock-right{min-width:120px;position:relative}
+.dock-left,.dock-right{min-width:120px;position:relative;width:100%}
 /* 드래그 리사이저 */
 .dock-resizer{position:absolute;top:0;width:6px;height:100%;cursor:col-resize;z-index:50;background:transparent;transition:background .2s}
 .dock-resizer:hover,.dock-resizer.active{background:rgba(74,222,128,0.4)}
@@ -3836,7 +3836,7 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 .game-main{min-width:0;overflow:visible}
 .game-sidebar{display:none}
 .dock-left,.dock-right{display:flex;flex-direction:column;gap:6px;overflow:auto}
-.dock-panel{background:var(--bg-panel);border:1px solid var(--frame);box-shadow:var(--shadow-md);padding:0;overflow:hidden;flex:1;display:flex;flex-direction:column;border-radius:var(--radius);min-height:60px;max-height:35vh}
+.dock-panel{background:var(--bg-panel);border:1px solid var(--frame);box-shadow:var(--shadow-md);padding:0;overflow:hidden;flex:1;display:flex;flex-direction:column;border-radius:var(--radius);min-height:60px;max-height:35vh;width:100%}
 .dock-panel-header{background:rgba(10,13,18,0.8);color:var(--text-light);padding:8px 12px;font-family:var(--font-pixel);font-size:0.8em;font-weight:600;border-bottom:1px solid rgba(255,255,255,0.06);letter-spacing:0.3px}
 .dock-panel-body{flex:1;overflow-y:auto;padding:6px;font-size:0.92em;word-break:break-word}
 #action-feed{max-height:none;flex:1;overflow-y:auto;background:transparent;border:none;border-radius:0;padding:4px;box-shadow:none;font-size:0.82em}
