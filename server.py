@@ -3261,7 +3261,7 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
 <link rel="stylesheet" href="/static/css/design-tokens.css?v=3.18.0">
 <link rel="stylesheet" href="/static/css/layout.css?v=3.18.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.18.2">
+<link rel="stylesheet" href="/static/css/components.css?v=3.18.3">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
