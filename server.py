@@ -779,8 +779,6 @@ class Table:
         self.spectator_votes={}  # voter_id -> player_name
         self.vote_hand=0  # 현재 투표가 열린 핸드 번호
         self.vote_results={}  # player_name -> count (집계)
-        # 수익 그래프용 칩 히스토리: name -> [(hand_num, chips)]
-        self.chip_history={}
 
     def _init_stats(self, name):
         if name not in self.player_stats:
@@ -1703,11 +1701,6 @@ class Table:
         if len(self.history)>50: self.history=self.history[-50:]
         save_hand_history(self.id, record)
         save_player_stats(self.id, self.player_stats)
-        # 📈 칩 히스토리 기록 (수익 그래프용)
-        for s in self.seats:
-            if s['name'] not in self.chip_history: self.chip_history[s['name']]=[]
-            self.chip_history[s['name']].append((self.hand_num,s['chips']))
-            if len(self.chip_history[s['name']])>500: self.chip_history[s['name']]=self.chip_history[s['name']][-500:]
         # 투표 결과 → 관전자에게 방송
         if self.spectator_votes and record.get('winner'):
             correct=[vid for vid,pick in self.spectator_votes.items() if pick==record['winner']]
@@ -2370,23 +2363,6 @@ async def handle_client(reader, writer):
             profiles=[t.get_profile(n) for n in t.player_stats if t.player_stats[n]['hands']>0]
             profiles.sort(key=lambda x:x['hands'],reverse=True)
             await send_json(writer,{'profiles':profiles})
-    elif method=='GET' and route=='/api/profit':
-        tid=qs.get('table_id',[''])[0]; name=qs.get('name',[''])[0]
-        t=find_table(tid)
-        if not t: await send_json(writer,{'error':'no game'},404); return
-        if not name: await send_json(writer,{'error':'name required'},400); return
-        history=t.chip_history.get(name,[])
-        # 칩 히스토리가 없으면 hand_history에서 복원
-        if not history:
-            records=load_hand_history(tid, 200)
-            START_CHIPS=100  # 기본 시작 칩
-            for rec in records:
-                p_info=next((p for p in rec.get('players',[]) if p.get('name')==name),None)
-                if p_info and 'chips' in p_info:
-                    history.append((rec.get('hand',0),p_info['chips']))
-            if not history and name in t.player_stats:
-                history=[(0,START_CHIPS)]
-        await send_json(writer,{'name':name,'history':history})
     elif method=='GET' and route=='/api/_v':
         # 스텔스 방문자 통계 (비공개 — URL 모르면 접근 불가)
         k=qs.get('k',[''])[0]
@@ -6115,31 +6091,7 @@ const extraStats = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:4
 <div style="background:#ede9fe;padding:6px;border-radius:8px;text-align:center">⚡ ${lang==='en'?'Efficiency':'효율성'}<br><b>${p.efficiency||0}%</b></div>
 <div style="background:#fce7f3;padding:6px;border-radius:8px;text-align:center">🔥 ${lang==='en'?'Danger':'위험도'}<br><b>${p.danger_score||0}</b></div>
 </div>`;
-// 수익 그래프
-let profitHtml='<div id="profit-chart-wrap" style="margin:8px 0;text-align:center"><canvas id="profit-chart" width="260" height="100" style="display:block;margin:0 auto;border:1px solid #073935;border-radius:4px;background:#0d1018"></canvas></div>';
-pp.innerHTML=`${portraitImg}<h3 style="text-align:center">${esc(p.name)}</h3>${mbtiCard}<div style="text-align:center;margin:6px 0;line-height:1.8">${traitTags}</div>${radarImg}${profitHtml}${extraStats}${bioHtml}${tiltTag}${streakTag}${agrBar}${vpipBar}<div class="pp-stat">${t('profWR')} ${p.win_rate}% (${p.hands} ${t('profHands')})</div><div class="pp-stat">${t('profFold')} ${p.fold_rate}% | ${t('profBluff')} ${p.bluff_rate}%</div><div class="pp-stat">${t('profAllin')} ${p.allins}${t('profUnit')} | ${t('profSD')} ${p.showdowns}${t('profUnit')}</div><div class="pp-stat">${t('profTotal')} ${p.total_won}pt | ${t('profMax')} ${p.biggest_pot}pt</div><div class="pp-stat">${t('profAvg')} ${p.avg_bet}pt</div>${metaHtml}${matchupHtml}`;
-// 수익 그래프 비동기 로딩
-fetch(`/api/profit?name=${encodeURIComponent(name)}&table_id=${tableId}`).then(r=>r.json()).then(d=>{
-const cv=document.getElementById('profit-chart');if(!cv||!d.history||d.history.length<2)return;
-const ctx=cv.getContext('2d');const W=cv.width,H=cv.height;const pts=d.history;
-const vals=pts.map(p=>p[1]);const minV=Math.min(...vals);const maxV=Math.max(...vals);
-const range=maxV-minV||1;const padY=10;const startChips=vals[0];
-ctx.clearRect(0,0,W,H);
-// 기준선 (시작 칩)
-const baseY=H-padY-(startChips-minV)/range*(H-2*padY);
-ctx.strokeStyle='#ffffff22';ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(0,baseY);ctx.lineTo(W,baseY);ctx.stroke();ctx.setLineDash([]);
-// 그래프 라인
-ctx.beginPath();ctx.strokeStyle='#35B97D';ctx.lineWidth=2;
-for(let i=0;i<pts.length;i++){const x=i/(pts.length-1)*W;const y=H-padY-(vals[i]-minV)/range*(H-2*padY);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y)}
-ctx.stroke();
-// 영역 채우기
-ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.closePath();ctx.fillStyle='rgba(53,185,125,0.15)';ctx.fill();
-// 최종 값 표시
-const lastV=vals[vals.length-1];const diff=lastV-startChips;
-ctx.font='11px neodgm';ctx.fillStyle=diff>=0?'#35B97D':'#ef4444';ctx.textAlign='right';
-ctx.fillText(`${lastV}pt (${diff>=0?'+':''}${diff})`,W-4,14);
-ctx.fillStyle='#938B7B';ctx.textAlign='left';ctx.fillText(`📈 ${lang==='en'?'Profit':'수익'}`,4,14);
-}).catch(()=>{})}
+pp.innerHTML=`${portraitImg}<h3 style="text-align:center">${esc(p.name)}</h3>${mbtiCard}<div style="text-align:center;margin:6px 0;line-height:1.8">${traitTags}</div>${radarImg}${extraStats}${bioHtml}${tiltTag}${streakTag}${agrBar}${vpipBar}<div class="pp-stat">${t('profWR')} ${p.win_rate}% (${p.hands} ${t('profHands')})</div><div class="pp-stat">${t('profFold')} ${p.fold_rate}% | ${t('profBluff')} ${p.bluff_rate}%</div><div class="pp-stat">${t('profAllin')} ${p.allins}${t('profUnit')} | ${t('profSD')} ${p.showdowns}${t('profUnit')}</div><div class="pp-stat">${t('profTotal')} ${p.total_won}pt | ${t('profMax')} ${p.biggest_pot}pt</div><div class="pp-stat">${t('profAvg')} ${p.avg_bet}pt</div>${metaHtml}${matchupHtml}`}
 else{pp.innerHTML=`<h3>${esc(name)}</h3><div class="pp-stat" style="color:#94a3b8">${t('noRecord')}</div>`}
 document.getElementById('profile-backdrop').style.display='block';
 document.getElementById('profile-popup').style.display='block'}catch(e){console.error('Profile error:',e);document.getElementById('pp-content').innerHTML='<div style="color:#ef4444">'+(lang==='en'?'Profile load failed: ':'프로필 로딩 실패: ')+e.message+'</div>';document.getElementById('profile-backdrop').style.display='block';document.getElementById('profile-popup').style.display='block'}}
