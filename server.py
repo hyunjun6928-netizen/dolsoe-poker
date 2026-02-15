@@ -3761,6 +3761,7 @@ box-shadow:inset 0 0 0 1px rgba(157,127,51,0.4),0 2px 8px rgba(0,0,0,0.5)}
 @keyframes cardFlipSimple{0%{transform:rotateY(180deg);opacity:0.5}50%{transform:rotateY(90deg);opacity:0.8}100%{transform:rotateY(0deg);opacity:1}}
 /* 커뮤니티 카드 등장 */
 @keyframes commDealIn{0%{transform:translateY(-40px) scale(0.5) rotateY(180deg);opacity:0}60%{transform:translateY(5px) scale(1.05) rotateY(0deg);opacity:1}100%{transform:translateY(0) scale(1) rotateY(0deg);opacity:1}}
+@keyframes commCardFlip{0%{transform:rotateY(0deg) scale(1)}50%{transform:rotateY(90deg) scale(1.1)}100%{transform:rotateY(0deg) scale(1)}}
 /* 라이벌 배너 */
 .rivalry-banner{position:absolute;top:30%;left:50%;transform:translate(-50%,-50%);z-index:190;
 background:linear-gradient(135deg,rgba(40,0,0,0.9),rgba(0,0,40,0.9));border:2px solid #ff8800;
@@ -6018,18 +6019,46 @@ else cs.innerHTML='';
 const b=document.getElementById('board');
 const prevComm=window._lastComm||0;
 const newComm=s.community?s.community.length:0;
+const revealCount=newComm-prevComm;
 // 항상 5장 슬롯 표시 (뒷면 or 앞면)
 b.innerHTML='';
 for(let i=0;i<5;i++){
   if(i<newComm){
     const isNew=i>=prevComm;
-    b.innerHTML+=`<div class="card card-f card-sm ${isNew?'comm-fly-in':''} ${'♥♦'.includes(s.community[i].suit||s.community[i][1])?'red':'black'}" ${isNew?'style="animation:commDealIn 0.4s cubic-bezier(0.2,1,0.3,1) forwards"':''}>` +
-      `<span class="r">${s.community[i].rank||s.community[i][0]||'?'}</span><span class="s">${s.community[i].suit||s.community[i][1]||'?'}</span></div>`;
+    const red='♥♦'.includes(s.community[i].suit||s.community[i][1]);
+    if(isNew&&revealCount>0){
+      // 새 카드: 뒷면으로 시작, 순차 플립
+      b.innerHTML+=`<div id="comm-reveal-${i}" class="card card-b card-sm comm-reveal-slot" style="perspective:800px"><span style="color:#fff2">?</span></div>`;
+    } else {
+      b.innerHTML+=`<div class="card card-f card-sm ${red?'red':'black'}">` +
+        `<span class="r">${s.community[i].rank||s.community[i][0]||'?'}</span><span class="s">${s.community[i].suit||s.community[i][1]||'?'}</span></div>`;
+    }
   } else {
     b.innerHTML+=`<div class="card card-b card-sm" style="opacity:${s.round==='waiting'||s.round==='between'||s.round==='finished'?'0.15':'0.4'}"><span style="color:#fff2">?</span></div>`;
   }
 }
-if(newComm>prevComm&&prevComm>=0){sfx('card');b.style.animation='none';b.offsetHeight;b.style.animation='boardFlash .3s ease-out'}
+// 순차 플립 애니메이션
+if(revealCount>0&&prevComm>=0){
+  for(let ri=0;ri<revealCount;ri++){
+    const idx=prevComm+ri;
+    const delay=ri*500;
+    setTimeout(()=>{
+      const slot=document.getElementById('comm-reveal-'+idx);
+      if(!slot)return;
+      const c=s.community[idx];
+      const rank=c.rank||c[0]||'?', suit=c.suit||c[1]||'?';
+      const red='♥♦'.includes(suit);
+      sfx('card');
+      slot.style.animation='commCardFlip 0.5s ease-out forwards';
+      setTimeout(()=>{
+        slot.className=`card card-f card-sm ${red?'red':'black'}`;
+        slot.style.animation='';
+        slot.style.perspective='';
+        slot.innerHTML=`<span class="r">${rank}</span><span class="s">${suit}</span>`;
+      },250);
+    },delay);
+  }
+}
 window._lastComm=newComm;
 // 쇼다운 결과 배너
 let sdEl=document.getElementById('sd-result');if(!sdEl){sdEl=document.createElement('div');sdEl.id='sd-result';sdEl.style.cssText='position:absolute;top:48%;left:50%;transform:translateX(-50%);z-index:10;text-align:center;font-size:0.85em';document.getElementById('felt').appendChild(sdEl)}
