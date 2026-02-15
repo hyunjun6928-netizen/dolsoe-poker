@@ -6973,9 +6973,8 @@ console.log('SFX:',type,'vol:',sfxVol,'ctx:',audioCtx.state);
 const t=audioCtx.currentTime;
 // destination 직통 (masterGain 제거 — 연결 끊김 버그 방지)
 const dest=audioCtx.destination;
-const VOL=sfxVol*5; // 볼륨 배수
 try{
-const G=1.0; // gain — 모든 소리 풀볼륨
+const G=sfxVol*0.35; // gain — sfxVol(0~1) 기반, 0.35배
 const _n=(f,type,gain,dur)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);o.frequency.value=f;o.type=type||'sine';g.gain.value=gain;g.gain.exponentialRampToValueAtTime(0.01,t+dur);o.start(t);o.stop(t+dur);return o};
 if(type==='chip'){_n(800,'sine',G,0.3)}
 else if(type==='bet'){[900,1100,700].forEach((f,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);o.frequency.value=f;o.type='sine';g.gain.value=G*0.8;g.gain.exponentialRampToValueAtTime(0.01,t+0.4);o.start(t+i*0.1);o.stop(t+0.5)})}
