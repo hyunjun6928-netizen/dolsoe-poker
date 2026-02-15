@@ -1345,7 +1345,7 @@ class Table:
         seat_names=[s['name'] for s in self._hand_seats]
         await self.broadcast_raw({'type':'deal_anim','seats':len(self._hand_seats),'dealer':self.dealer,'players':seat_names})
         await asyncio.sleep(1.8)
-        await self.broadcast_state(); await asyncio.sleep(0.5)
+        await self.broadcast_state(); await asyncio.sleep(1.2)
 
         # 블라인드
         n=len(self._hand_seats)
@@ -1384,7 +1384,7 @@ class Table:
         hand_record['community']=[card_str(c) for c in self.community]
         await self.add_log(f"── 플랍: {' '.join(card_str(c) for c in self.community)} ──")
         await self.broadcast_commentary(f"🎴 플랍 오픈! {' '.join(card_str(c) for c in self.community)} — 팟 {self.pot}pt")
-        await self.broadcast_state(); await asyncio.sleep(2)
+        await self.broadcast_state(); await asyncio.sleep(3)
         await self.betting_round((self.dealer+1)%n, hand_record)
         if self._count_alive()<=1: await self.resolve(hand_record); self._advance_dealer(); return
 
@@ -1394,7 +1394,7 @@ class Table:
         await self.add_log(f"── 턴: {' '.join(card_str(c) for c in self.community)} ──")
         alive=self._count_alive()
         await self.broadcast_commentary(f"🔥 턴 카드 오픈! {alive}명 생존 — 팟 {self.pot}pt")
-        await self.broadcast_state(); await asyncio.sleep(2)
+        await self.broadcast_state(); await asyncio.sleep(3)
         await self.betting_round((self.dealer+1)%n, hand_record)
         if self._count_alive()<=1: await self.resolve(hand_record); self._advance_dealer(); return
 
@@ -1404,7 +1404,7 @@ class Table:
         await self.add_log(f"── 리버: {' '.join(card_str(c) for c in self.community)} ──")
         alive=self._count_alive()
         await self.broadcast_commentary(f"💀 리버! 마지막 카드 오픈 — {alive}명이 {self.pot}pt를 놓고 승부!")
-        await self.broadcast_state(); await asyncio.sleep(2)
+        await self.broadcast_state(); await asyncio.sleep(3)
         await self.betting_round((self.dealer+1)%n, hand_record)
         await self.resolve(hand_record); self._advance_dealer()
 
