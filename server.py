@@ -3631,7 +3631,10 @@ pointer-events:none;z-index:0}
 h1,.btn-play,.btn-watch,.pot-badge,.seat .nm,.act-label,.tab-btns button,#new-btn,.tbl-card .tbl-name,#commentary,.bp-title,.vp-title,#log,#replay-panel,#highlight-panel,.sidebar-label,#turn-options,#chatbox{font-family:var(--font-pixel)}
 .pot-badge,.seat .ch{font-family:var(--font-number)}
 .wrap{max-width:100%;margin:0 auto;padding:6px 12px;position:relative;z-index:2}
-#game .game-layout{margin:0;padding:0}
+#game .game-layout{margin:0!important;padding:0!important;max-width:100vw!important;width:100vw!important}
+#game .dock-left,#game .dock-right{width:100%!important;min-width:200px!important}
+#game .dock-panel{width:100%!important;max-height:none!important}
+#game .felt-wrap{max-width:100%!important;padding-top:0!important}
 h1{text-align:center;font-size:1.8em;margin:4px 0;color:var(--text-primary);-webkit-text-stroke:0;-webkit-text-fill-color:unset;text-shadow:none;position:relative;z-index:1;letter-spacing:1px;font-weight:800}
 h1 b{color:var(--accent-gold);-webkit-text-fill-color:var(--accent-gold)}
 #lobby{text-align:center;padding:0 20px;position:relative;z-index:1}
@@ -3655,7 +3658,8 @@ h1 b{color:var(--accent-gold);-webkit-text-fill-color:var(--accent-gold)}
 @media(max-width:900px){.lobby-grid{grid-template-columns:1fr!important}}
 @media(max-width:700px){.lobby-grid{grid-template-columns:1fr!important}}
 #game{display:none}
-.info-bar{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;justify-content:space-between;align-items:center;padding:6px 16px;font-size:0.8em;color:var(--text-light);background:#070A10;border-bottom:1px solid rgba(255,255,255,0.06);box-shadow:none;font-family:var(--font-pixel)}
+.info-bar{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;padding:4px 16px;font-size:0.8em;color:var(--text-light);background:#070A10;border-bottom:1px solid rgba(255,255,255,0.06);box-shadow:0 2px 8px rgba(0,0,0,0.5);font-family:var(--font-pixel)}
+.info-bar #hand-timeline,.info-bar #commentary{width:100%;flex-basis:100%}
 .felt-wrap{position:relative;margin:0 auto 4px;padding-top:10px;width:100%;min-height:calc(100vh - 120px)}
 .felt-border{position:absolute;top:-20px;left:-20px;right:-20px;bottom:-20px;
 background:url('/static/slimes/stage_frame.png') center/100% 100% no-repeat;
@@ -3667,7 +3671,7 @@ z-index:0}
 background:linear-gradient(90deg,transparent,rgba(255,255,255,0.08),transparent)}
 .felt{position:relative;
 background:url('/static/slimes/table_felt.png') center/cover no-repeat,linear-gradient(180deg,#1a1e2a 0%,#0d1018 100%);
-border:none;border-radius:18px;width:100%;height:calc(100vh - 280px);
+border:none;border-radius:18px;width:100%;height:calc(100vh - 340px);
 box-shadow:0 0 60px rgba(245,197,66,0.08),0 8px 32px rgba(0,0,0,0.6);overflow:visible;
 image-rendering:auto}
 .felt::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;
@@ -3826,7 +3830,7 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 #action-feed .af-round{color:var(--accent-blue);font-weight:bold;padding:6px 0 2px;font-size:0.9em;text-shadow:none}
 #action-feed .af-action{color:var(--text-secondary)}
 #action-feed .af-win{color:var(--accent-mint);font-weight:bold}
-.game-layout{display:grid;grid-template-columns:22vw 1fr 22vw;gap:0;min-height:500px;overflow:visible;position:fixed;top:100px;left:0;right:0;bottom:50px;width:100vw!important;max-width:100vw!important}
+.game-layout{display:grid;grid-template-columns:22vw 1fr 22vw;gap:0;min-height:500px;overflow:visible;position:fixed;top:90px;left:0;right:0;bottom:44px;width:100vw!important;max-width:100vw!important}
 .dock-left,.dock-right{min-width:120px;position:relative;width:100%}
 /* 드래그 리사이저 */
 .dock-resizer{display:none!important}
@@ -4016,8 +4020,8 @@ h1{display:none}
 #bet-panel .bp-coins{color:#6bcb77;font-size:0.8em;margin-top:4px;text-shadow:1px 1px 0 #000}
 .result-box h2{color:#ffd93d;margin-bottom:15px;-webkit-text-stroke:1px #000;text-shadow:3px 3px 0 #000}
 #hand-timeline{display:flex;justify-content:center;gap:4px;margin:6px 0;font-size:0.75em}
-#hand-timeline{position:fixed;top:36px;left:0;right:0;z-index:100;background:#070A10;padding:2px 0}
-#commentary{position:fixed!important;top:62px;left:0;right:0;z-index:99;margin:0!important;border-radius:0!important}
+#hand-timeline{position:relative;z-index:5}
+#commentary{position:relative!important;z-index:5;margin:0!important;border-radius:0!important}
 #hand-timeline .tl-step{padding:5px 14px;border-radius:20px;background:var(--bg-panel);color:var(--text-muted);border:1px solid var(--frame);box-shadow:var(--shadow-sm);font-family:var(--font-pixel);font-size:0.9em;transition:all .2s}
 #hand-timeline .tl-step.active{background:linear-gradient(135deg,#34D399,#059669);color:#fff;border-color:#047857;font-weight:600;transform:scale(1.05);box-shadow:0 0 16px rgba(52,211,153,0.3)}
 #hand-timeline .tl-step.done{background:rgba(52,211,153,0.15);color:var(--accent-green);border-color:rgba(52,211,153,0.3)}
@@ -4302,8 +4306,9 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 <span id="bgm-btn" style="display:none"></span>
 </div>
 </div>
-<div id="hand-timeline"><span class="tl-step" data-r="preflop"></span><span class="tl-step" data-r="flop"></span><span class="tl-step" data-r="turn"></span><span class="tl-step" data-r="river"></span><span class="tl-step" data-r="showdown"></span></div>
-<div id="commentary" style="display:none"></div>
+<div id="hand-timeline" style="text-align:center;padding:2px 0"><span class="tl-step" data-r="preflop"></span><span class="tl-step" data-r="flop"></span><span class="tl-step" data-r="turn"></span><span class="tl-step" data-r="river"></span><span class="tl-step" data-r="showdown"></span></div>
+<div id="commentary" style="display:none;padding:4px 16px;font-size:0.85em;text-align:center"></div>
+</div><!-- end info-bar -->
 <div class="game-layout">
 <!-- 좌측 독: 액션로그 + 리플레이/하이라이트 -->
 <div class="dock-left">
