@@ -3882,13 +3882,16 @@ async function loadCasinoFloor(){
       // v3.15: unified style via CSS data-state, no inline filter
       const wr=a.hands>0?Math.round(a.wins/a.hands*100):0;
       div.innerHTML=`<div style="text-align:center;position:relative">
-        <div class="walker-body" style="width:80px;height:80px"><img src="${_cleanSlimeCache[img]||img}" style="width:100%;height:100%;object-fit:contain" alt="" data-orig="${img}"></div>
+        <div class="walker-body" style="width:80px;height:80px"></div>
         <div class="walker-shadow"></div>
         <div style="font-size:11px;color:${isLive?'#FCC88E':'#938B7B'};margin-top:2px;white-space:nowrap;text-shadow:1px 1px 0 #050F1A,-1px -1px 0 #050F1A,1px -1px 0 #050F1A,-1px 1px 0 #050F1A;max-width:80px;overflow:hidden;text-overflow:ellipsis;font-family:var(--font-pixel);background:none;padding:0;border:none">${a.name}</div>
         <div class="npc-bubble" style="display:none;position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:rgba(10,13,18,0.92);color:#eee;padding:3px 8px;border-radius:8px;font-size:0.55em;white-space:nowrap;border:1px solid rgba(245,197,66,0.2);margin-bottom:2px;backdrop-filter:blur(4px)"></div>
       </div>`;
       div.title=`${a.name} | ${wr}% | ${a.hands||0}H | ${a.outfit||''}`;
       el.appendChild(div);
+      // Draw slime via canvas (avoids premultiplied alpha black box issue with PNGs)
+      const wb=div.querySelector('.walker-body');
+      if(wb){const sc=drawSlime(a.name,'idle',80);sc.style.cssText='width:100%;height:100%';wb.appendChild(sc);}
       _floorNpcs.push({el:div,x:tx,y:ty,poi:poi.id,style:a.style||'balanced',name:a.name,live:isLive,tick:0});
     });
   }catch(e){console.warn('floor load err',e)}
