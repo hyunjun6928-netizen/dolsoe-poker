@@ -5444,8 +5444,11 @@ function flyChip(fromEl,toEl){
   chip.style.setProperty('--fx','0px');chip.style.setProperty('--fy','0px');
   chip.style.setProperty('--tx',(tr.left+tr.width/2-fr.left-fr.width/2)+'px');
   chip.style.setProperty('--ty',(tr.top+tr.height/2-fr.top-fr.height/2)+'px');
-  chip.style.setProperty('--fly-dur',(0.5+Math.random()*0.4)+'s');
+  const dur=0.5+Math.random()*0.4;
+  chip.style.setProperty('--fly-dur',dur+'s');
   document.body.appendChild(chip);
+  // 착지 시 동전 부딪치는 소리
+  setTimeout(()=>sfx('clink'),dur*1000-50);
   setTimeout(()=>chip.remove(),1200);
 }
 function flyChipsFromSeat(seatIdx,count){
@@ -6921,6 +6924,14 @@ o.frequency.value=f;o.type='sine';g.gain.value=0.15;g.gain.exponentialRampToValu
 // 🎉 환호 노이즈 버스트 (볼륨 억제)
 for(let i=0;i<2;i++){const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
 o.frequency.value=1500+Math.random()*1500;o.type='sawtooth';g.gain.value=0.015;g.gain.exponentialRampToValueAtTime(0.001,t+0.55+i*0.05);o.start(t+0.5+i*0.04);o.stop(t+0.6+i*0.05)}}
+else if(type==='clink'){
+// 동전 부딪치는 소리 — 찰칵 (고음 금속음 2~3겹)
+const baseF=3000+Math.random()*2000;
+[0,0.02,0.04].forEach((d,i)=>{const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
+o.frequency.value=baseF-i*400;o.type='sine';g.gain.value=0.06-i*0.015;g.gain.exponentialRampToValueAtTime(0.001,t+0.06+d);o.start(t+d);o.stop(t+0.08+d)});
+// 딸깍 노이즈
+const o2=audioCtx.createOscillator();const g2=audioCtx.createGain();o2.connect(g2);g2.connect(dest);
+o2.frequency.value=8000;o2.type='square';g2.gain.value=0.02;g2.gain.exponentialRampToValueAtTime(0.001,t+0.03);o2.start(t);o2.stop(t+0.04)}
 else if(type==='card'){
 // 카드 딜링 — 슉슉 (빠른 종이 소리)
 for(let i=0;i<3;i++){const o=audioCtx.createOscillator();const g=audioCtx.createGain();o.connect(g);g.connect(dest);
