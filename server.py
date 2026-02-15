@@ -3274,7 +3274,7 @@ box-shadow:inset 0 0 0 1px rgba(157,127,51,0.4),0 2px 8px rgba(0,0,0,0.5)}
 .act-call{background:var(--accent-blue)!important;color:var(--bg-dark)!important;border-color:#5AA8C3!important;box-shadow:0 3px 0 0 #4A98B3!important}
 .act-raise{background:var(--accent-mint)!important;color:var(--bg-dark)!important;border-color:#78C6A8!important;box-shadow:0 3px 0 0 #58A688!important}
 .act-check{background:var(--accent-purple)!important;color:var(--bg-dark)!important;border-color:#A898C8!important;box-shadow:0 3px 0 0 #8878A8!important}
-.thought-bubble{position:absolute;top:-56px;left:50%;transform:translateX(-50%);background:rgba(15,20,28,0.9);color:var(--accent-green);padding:5px 12px;border-radius:8px;font-size:0.7em;white-space:nowrap;z-index:9;border:1px solid rgba(52,211,153,0.2);max-width:180px;overflow:hidden;text-overflow:ellipsis;animation:bubbleFade 4s ease-out forwards;pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,0.3);backdrop-filter:blur(4px)}
+.thought-bubble{position:absolute;top:-56px;left:50%;transform:translateX(-50%);background:rgba(15,20,28,0.92);color:var(--accent-green);padding:5px 12px;border-radius:8px;font-size:0.75em;white-space:normal;z-index:9;border:1px solid rgba(52,211,153,0.2);max-width:220px;text-overflow:ellipsis;animation:bubbleFade 4s ease-out forwards;pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,0.3);backdrop-filter:blur(4px);line-height:1.3}
 .thought-bubble::after{content:'● ●';position:absolute;bottom:-14px;left:20px;font-size:0.5em;color:#000;letter-spacing:4px}
 @keyframes bubbleFade{0%{opacity:0;transform:translateX(-50%) translateY(4px)}10%{opacity:1;transform:translateX(-50%) translateY(0)}80%{opacity:0.8}100%{opacity:0;transform:translateX(-50%) translateY(-4px)}}
 @keyframes actFade{0%{opacity:1;transform:translateX(-50%) translateY(0)}70%{opacity:1}100%{opacity:0;transform:translateX(-50%) translateY(-8px)}}
@@ -3286,7 +3286,7 @@ box-shadow:inset 0 0 0 1px rgba(157,127,51,0.4),0 2px 8px rgba(0,0,0,0.5)}
 .chip-fly{position:absolute;z-index:20;font-size:1.2em;pointer-events:none;animation:chipFly .8s ease-in forwards}
 @keyframes chipFly{0%{opacity:1;transform:translate(0,0) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(0.5)}}
 .seat .cards{display:flex;gap:4px;justify-content:center;margin:2px 0;position:relative;z-index:2}
-.seat.fold{opacity:0.4;filter:grayscale(0.5)}.seat.out{opacity:0.2;filter:grayscale(1)}
+.seat.fold{opacity:0.55;filter:grayscale(0.6)}.seat.fold .cards{opacity:0.3}.seat.out{opacity:0.2;filter:grayscale(1)}
 .seat.out .nm{text-decoration:line-through;color:#f87171}
 .seat.out::after{content:'💀 OUT';position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:0.6em;color:#ff6b6b;background:#000;padding:2px 8px;border-radius:8px;white-space:nowrap;border:2px solid #ff6b6b}
 .seat:not(.is-turn):not(.fold):not(.out){opacity:0.9;transition:opacity .3s}
@@ -5565,9 +5565,9 @@ if(s.turn===p.name){if(window._preturnTarget===p.name)cls+=' preturn';else cls+=
 if(p.last_action&&p.last_action.includes('ALL IN'))cls+=' allin-glow';
 el.className=cls;let ch='';
 const isShowdown=s.round==='showdown'||s.round==='between';
-if(p.hole&&!p.folded&&!p.out)for(const c of p.hole)ch+=mkCard(c,true,isShowdown);
-else if(p.hole&&(p.folded||p.out))ch+=`<div class="card card-b card-sm" style="opacity:0.2;filter:grayscale(1)"><span style="color:#fff1">✕</span></div>`.repeat(2);
-else if(p.has_cards&&!p.out&&!p.folded)ch+=`<div class="card card-b card-sm"><span style="color:#fff3">?</span></div>`.repeat(2);
+if(p.folded||p.out){/* 폴드/아웃: 카드 안 보임 */}
+else if(p.hole)for(const c of p.hole)ch+=mkCard(c,true,isShowdown);
+else if(p.has_cards)ch+=`<div class="card card-b card-sm"><span style="color:#fff3">?</span></div>`.repeat(2);
 const db=i===s.dealer?'<span class="dbtn">D</span>':'';
 const bt=p.bet>0?`<div class="bet-chip">🪙${p.bet}pt</div>`:'';
 let la='';
