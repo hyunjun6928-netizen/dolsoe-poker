@@ -1880,6 +1880,8 @@ async def handle_client(reader, writer):
             fpath=_os.path.join(BASE,'colosseum','assets',rel[len('colosseum/'):])
         elif rel.startswith('fonts/'):
             fpath=_os.path.join(BASE,'assets','fonts',rel[len('fonts/'):])
+        elif rel.startswith('bgm/'):
+            fpath=_os.path.join(BASE,'assets','bgm',rel[len('bgm/'):])
         else:
             fpath=_os.path.join(BASE,rel)
         # Security: no directory traversal
@@ -1888,7 +1890,7 @@ async def handle_client(reader, writer):
             await send_http(writer,403,'Forbidden'); return
         if _os.path.isfile(fpath):
             ext=fpath.rsplit('.',1)[-1].lower()
-            ct_map={'css':'text/css; charset=utf-8','png':'image/png','jpg':'image/jpeg','jpeg':'image/jpeg','svg':'image/svg+xml','js':'application/javascript; charset=utf-8','webp':'image/webp','ico':'image/x-icon','json':'application/json','woff2':'font/woff2','woff':'font/woff','ttf':'font/ttf'}
+            ct_map={'css':'text/css; charset=utf-8','png':'image/png','jpg':'image/jpeg','jpeg':'image/jpeg','svg':'image/svg+xml','js':'application/javascript; charset=utf-8','webp':'image/webp','ico':'image/x-icon','json':'application/json','woff2':'font/woff2','woff':'font/woff','ttf':'font/ttf','mp3':'audio/mpeg','ogg':'audio/ogg','wav':'audio/wav'}
             ct=ct_map.get(ext,'application/octet-stream')
             with open(fpath,'rb') as _f: data=_f.read()
             cache='Cache-Control: public, max-age=604800\r\n' if ext in ('png','jpg','jpeg','webp','svg','woff2','woff','ttf') else 'Cache-Control: public, max-age=86400\r\n' if ext=='css' else 'Cache-Control: public, max-age=300\r\n'
@@ -3596,9 +3598,14 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 </div>
 <div style="display:flex;align-items:center;gap:4px">
 <span id="fairness-toggle" onclick="toggleFairness()" data-state="off" title="파생정보 ON/OFF">📊 OFF</span>
-<span id="mute-btn" onclick="toggleMute()" style="cursor:pointer;user-select:none" title="사운드 ON/OFF">🔊</span>
-<input id="vol-slider" type="range" min="0" max="100" value="50" oninput="setVol(this.value)" style="width:50px" title="볼륨">
-<span id="chat-mute-btn" onclick="toggleChatMute()" style="cursor:pointer;user-select:none" title="쓰레기톡 ON/OFF">💬</span>
+<span id="mute-btn" onclick="toggleMute()" style="cursor:pointer;user-select:none" title="SFX ON/OFF">🔊</span>
+<input id="vol-slider" type="range" min="0" max="100" value="50" oninput="setVol(this.value)" style="width:40px" title="SFX Vol">
+<span style="color:#555">|</span>
+<span id="bgm-btn" onclick="toggleBgm()" style="cursor:pointer;user-select:none" title="BGM ON/OFF">🎵</span>
+<input id="bgm-slider" type="range" min="0" max="100" value="30" oninput="setBgmVol(this.value)" style="width:40px" title="BGM Vol">
+<span id="bgm-track" onclick="skipBgm()" style="cursor:pointer;font-size:0.7em;color:#888;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="Click to skip | Music by Kevin MacLeod (incompetech.com) CC-BY">♪</span>
+<span style="color:#555">|</span>
+<span id="chat-mute-btn" onclick="toggleChatMute()" style="cursor:pointer;user-select:none" title="Chat ON/OFF">💬</span>
 </div>
 </div>
 <div id="hand-timeline"><span class="tl-step" data-r="preflop"></span><span class="tl-step" data-r="flop"></span><span class="tl-step" data-r="turn"></span><span class="tl-step" data-r="river"></span><span class="tl-step" data-r="showdown"></span></div>
@@ -5887,6 +5894,31 @@ function toggleMute(){muted=!muted;document.getElementById('mute-btn').textConte
 function setVol(v){sfxVol=v/100;if(sfxVol<=0){muted=true;document.getElementById('mute-btn').textContent='🔇'}else{muted=false;document.getElementById('mute-btn').textContent='🔊'}
 // 골드 트랙 업데이트
 document.getElementById('vol-slider').style.setProperty('--vol-pct',v+'%')}
+// ═══ BGM 시스템 ═══
+const BGM_TRACKS=[
+  {name:'Gymnopédie No.1',file:'/static/bgm/gymnopedie_1.mp3',genre:'classical'},
+  {name:'Maple Leaf Rag',file:'/static/bgm/maple_leaf_rag.mp3',genre:'ragtime'},
+  {name:'The Entertainer',file:'/static/bgm/the_entertainer.mp3',genre:'ragtime'},
+];
+let _bgm=null,_bgmIdx=0,_bgmVol=0.3,_bgmMuted=localStorage.getItem('bgm_muted')==='1';
+function initBgm(){
+  if(_bgm)return;
+  _bgm=new Audio();_bgm.loop=false;_bgm.volume=_bgmMuted?0:_bgmVol;
+  _bgm.addEventListener('ended',()=>{_bgmIdx=(_bgmIdx+1)%BGM_TRACKS.length;playBgm()});
+  _bgmIdx=Math.floor(Math.random()*BGM_TRACKS.length);
+  if(!_bgmMuted)playBgm();
+  updateBgmUI();
+}
+function playBgm(){if(!_bgm)return;_bgm.src=BGM_TRACKS[_bgmIdx].file;_bgm.volume=_bgmMuted?0:_bgmVol;_bgm.play().catch(()=>{});updateBgmUI()}
+function toggleBgm(){_bgmMuted=!_bgmMuted;localStorage.setItem('bgm_muted',_bgmMuted?'1':'0');if(_bgm){_bgm.volume=_bgmMuted?0:_bgmVol;if(!_bgmMuted&&_bgm.paused)playBgm()}updateBgmUI()}
+function setBgmVol(v){_bgmVol=v/100;if(_bgm&&!_bgmMuted)_bgm.volume=_bgmVol;localStorage.setItem('bgm_vol',v)}
+function skipBgm(){_bgmIdx=(_bgmIdx+1)%BGM_TRACKS.length;if(_bgm)playBgm()}
+function updateBgmUI(){const btn=document.getElementById('bgm-btn');if(btn)btn.textContent=_bgmMuted?'🎵✗':'🎵';const lbl=document.getElementById('bgm-track');if(lbl&&_bgm)lbl.textContent=BGM_TRACKS[_bgmIdx].name}
+// 첫 클릭에 BGM 시작 (브라우저 오토플레이 정책)
+document.addEventListener('click',()=>{if(!_bgm)initBgm()},{once:true});
+// 저장된 볼륨 복원
+{const sv=localStorage.getItem('bgm_vol');if(sv)_bgmVol=parseInt(sv)/100}
+
 let chatMuted=false;
 function toggleChatMute(){chatMuted=!chatMuted;document.getElementById('chat-mute-btn').textContent=chatMuted?'🚫':'💬';document.getElementById('chat-mute-btn').title=chatMuted?'쓰레기톡 OFF (클릭해서 켜기)':'쓰레기톡 ON (클릭해서 끄기)'}
 function sfx(type){
