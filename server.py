@@ -1047,7 +1047,7 @@ class Table:
                     p['hole']=None
                 else:
                     seat=next((seat for seat in self.seats if seat['name']==p['name']),None)
-                    if seat and seat.get('hole'): p['hole']=seat['hole']
+                    if seat and seat.get('hole'): p['hole']=[card_dict(c) for c in seat['hole']]
                 # TV모드: 진행 중에도 승률 공개
                 if not win_pcts and hasattr(self,'_hand_seats') and self._hand_seats:
                     alive=[seat for seat in self._hand_seats if not seat['folded'] and seat.get('hole')]
