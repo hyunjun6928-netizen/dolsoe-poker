@@ -5655,60 +5655,117 @@ function drawSlime(name, emotion, size) {
     px(cx+R+1,bodyTop+2,'#ff6b8a');px(cx+R+2,bodyTop+3,'#ff6b8a');px(cx+R+1,bodyTop+4,'#ff6b8a');
   }
 
-  // === HD EYES (bigger, cuter, more detail) ===
+  // === EYES — per-character style, name hash selects variant ===
   const eyeY = centerY + Math.floor(R*0.05);
   const eyeL = cx - Math.floor(R*0.4), eyeR = cx + Math.floor(R*0.4);
+  // Hash name to select eye style (0-5)
+  let _eyeHash=0;for(let i=0;i<name.length;i++)_eyeHash=(_eyeHash*7+name.charCodeAt(i))&0xFFFF;
+  const eyeStyle=_eyeHash%6;
 
-  function drawBigEye(ex,ey,lookDx,lookDy){
-    // White sclera 5x5 rounded
-    pxR(ex-1,ey-2,4,6,'#fff');
-    px(ex-2,ey-1,'#fff');px(ex-2,ey,'#fff');px(ex-2,ey+1,'#fff');px(ex-2,ey+2,'#fff');
-    px(ex+3,ey-1,'#fff');px(ex+3,ey,'#fff');px(ex+3,ey+1,'#fff');px(ex+3,ey+2,'#fff');
-    // Outline
-    px(ex-1,ey-3,col.eye+'66');px(ex,ey-3,col.eye+'66');px(ex+1,ey-3,col.eye+'66');
-    // Iris 3x3
-    const pdx=lookDx||0,pdy=lookDy||0;
-    const ix=ex+pdx,iy=ey+pdy;
-    pxR(ix-1,iy,3,3,col.cheek);
-    px(ix,iy,col.dark);px(ix+1,iy+1,col.dark); // pupil
-    // Big sparkle
-    px(ix-1,iy,'#fff');
-    px(ix+1,iy+2,'#ffffff88');
+  // --- Eye drawing functions (6 styles) ---
+  function drawEye_dot(ex,ey,lookDx,lookDy){
+    // Simple 2x2 dot eyes — cute minimal
+    const dx=lookDx||0,dy=lookDy||0;
+    pxR(ex+dx,ey+dy,2,2,col.eye);
+    px(ex+dx,ey+dy,'#fff8'); // tiny sparkle
   }
+  function drawEye_oval(ex,ey,lookDx,lookDy){
+    // Oval eye — 3x4 sclera, round pupil
+    pxR(ex-1,ey-1,3,4,col.eye);
+    const dx=lookDx||0,dy=lookDy||0;
+    pxR(ex-1+dx,ey+dy,2,2,'#000');
+    px(ex-1+dx,ey+dy,'#fff'); // sparkle
+  }
+  function drawEye_slit(ex,ey,lookDx,lookDy){
+    // Narrow slit eyes — cool/menacing
+    pxR(ex-2,ey,5,2,col.eye);
+    const dx=lookDx||0;
+    pxR(ex+dx,ey,2,2,'#fff8');
+  }
+  function drawEye_round(ex,ey,lookDx,lookDy){
+    // Round medium — 3x3 white, 2x2 iris, 1x1 pupil
+    pxR(ex-1,ey-1,3,3,'#fff');
+    const dx=lookDx||0,dy=lookDy||0;
+    pxR(ex+dx,ey+dy,2,2,col.cheek); // iris
+    px(ex+dx,ey+dy,col.eye); // pupil
+    px(ex-1,ey-1,'#fff'); // sparkle
+  }
+  function drawEye_bean(ex,ey,lookDx,lookDy){
+    // Bean shaped — wide but short, cartoony
+    pxR(ex-2,ey,5,2,'#fff');
+    px(ex-2,ey-1,'#fff');px(ex+2,ey-1,'#fff');
+    const dx=lookDx||0;
+    pxR(ex+dx,ey,2,2,col.eye);
+    px(ex-2,ey,'#fff8'); // sparkle
+  }
+  function drawEye_anime(ex,ey,lookDx,lookDy){
+    // Tall anime eye — 3x5, big iris
+    pxR(ex-1,ey-2,3,5,'#fff');
+    px(ex-1,ey-2,col.eye+'66'); // top lid shadow
+    px(ex,ey-2,col.eye+'66');px(ex+1,ey-2,col.eye+'66');
+    const dx=lookDx||0,dy=lookDy||0;
+    pxR(ex+dx,ey+dy,2,3,col.cheek); // iris
+    px(ex+dx,ey+dy,col.eye); // pupil
+    px(ex+dx+1,ey+dy+2,col.eye); // pupil2
+    px(ex-1,ey-1,'#fff'); // big sparkle
+    px(ex+1,ey+1,'#fff8'); // small sparkle
+  }
+
+  // Happy/Sad/Dead/etc override functions
   function drawHappyEye(ex,ey){
-    px(ex-2,ey+1,col.eye);px(ex-1,ey,col.eye);px(ex,ey-1,col.eye);px(ex+1,ey,col.eye);px(ex+2,ey+1,col.eye);
+    // Upward arc (^^)
+    px(ex-2,ey+1,col.eye);px(ex-1,ey,col.eye);px(ex,ey,col.eye);px(ex+1,ey,col.eye);px(ex+2,ey+1,col.eye);
   }
   function drawSadEye(ex,ey){
-    px(ex-1,ey,col.eye);px(ex,ey,col.eye);px(ex+1,ey,col.eye);
-    // Tear
+    // Downward arc with tear
+    px(ex-1,ey-1,col.eye);px(ex,ey,col.eye);px(ex+1,ey-1,col.eye);
     px(ex+2,ey+1,'#88ccff');px(ex+2,ey+2,'#88ccff');px(ex+2,ey+3,'#88ccff55');
   }
   function drawDeadEye(ex,ey){
-    px(ex-1,ey-1,col.eye);px(ex+1,ey+1,col.eye);px(ex+1,ey-1,col.eye);px(ex-1,ey+1,col.eye);px(ex,ey,col.eye);
+    // X eyes
+    px(ex-1,ey-1,col.eye);px(ex+1,ey+1,col.eye);px(ex+1,ey-1,col.eye);px(ex-1,ey+1,col.eye);
+  }
+  function drawShockEye(ex,ey){
+    // Small dot + ring
+    pxR(ex-2,ey-2,5,5,'#fff');
+    pxR(ex,ey,1,1,col.eye);
+  }
+  function drawAngryEye(ex,ey,isLeft){
+    // Slit + angry brow
+    pxR(ex-1,ey,3,2,col.eye);
+    px(ex,ey,'#fff8');
+    // Brow: diagonal slash
+    if(isLeft){px(ex-2,ey-3,col.eye);px(ex-1,ey-2,col.eye);px(ex,ey-2,col.eye);px(ex+1,ey-3,col.eye);}
+    else{px(ex-1,ey-3,col.eye);px(ex,ey-2,col.eye);px(ex+1,ey-2,col.eye);px(ex+2,ey-3,col.eye);}
+  }
+  function drawThinkEye(ex,ey,isLeft){
+    // Looking up-right, one eye squinted
+    if(isLeft){drawEye_dot(ex,ey,1,-1);}
+    else{pxR(ex-1,ey,3,1,col.eye);} // squint
+    // Sweat drop (only once)
+    if(!isLeft){px(cx+R,centerY-Math.floor(R*0.3),'#88ccff');px(cx+R,centerY-Math.floor(R*0.2),'#88ccff');}
   }
 
+  // Select eye draw function based on style
+  const _eyeDrawFns=[drawEye_dot,drawEye_oval,drawEye_slit,drawEye_round,drawEye_bean,drawEye_anime];
+  const drawEyeDefault=_eyeDrawFns[eyeStyle];
+
+  // Draw eyes based on emotion
   if(emotion==='happy'||emotion==='win'){
     drawHappyEye(eyeL,eyeY);drawHappyEye(eyeR,eyeY);
   } else if(emotion==='sad'||emotion==='lose'){
     drawSadEye(eyeL,eyeY);drawSadEye(eyeR,eyeY);
   } else if(emotion==='angry'||emotion==='allin'){
-    drawBigEye(eyeL,eyeY,0,1);drawBigEye(eyeR,eyeY,0,1);
-    // Angry brows (thicker)
-    for(let i=0;i<3;i++){px(eyeL-2+i,eyeY-4+Math.floor(i/2),col.eye);px(eyeR+2-i,eyeY-4+Math.floor(i/2),col.eye)}
+    drawAngryEye(eyeL,eyeY,true);drawAngryEye(eyeR,eyeY,false);
   } else if(emotion==='think'){
-    drawBigEye(eyeL,eyeY,1,-1);drawBigEye(eyeR,eyeY,1,-1);
-    // Sweat drop
-    px(cx+R,centerY-Math.floor(R*0.3),'#88ccff');px(cx+R,centerY-Math.floor(R*0.2),'#88ccff');
-    px(cx+R+1,centerY-Math.floor(R*0.1),'#88ccff55');
+    drawThinkEye(eyeL,eyeY,true);drawThinkEye(eyeR,eyeY,false);
   } else if(emotion==='shock'){
-    // Super big eyes
-    pxR(eyeL-2,eyeY-3,6,7,'#fff');pxR(eyeR-2,eyeY-3,6,7,'#fff');
-    pxR(eyeL,eyeY-1,2,2,col.eye);pxR(eyeR,eyeY-1,2,2,col.eye);
-    px(eyeL-1,eyeY-2,'#fff');px(eyeR-1,eyeY-2,'#fff');
+    drawShockEye(eyeL,eyeY);drawShockEye(eyeR,eyeY);
   } else if(emotion==='dead'){
     drawDeadEye(eyeL,eyeY);drawDeadEye(eyeR,eyeY);
   } else {
-    drawBigEye(eyeL,eyeY,0,0);drawBigEye(eyeR,eyeY,0,0);
+    // idle — use character's unique eye style
+    drawEyeDefault(eyeL,eyeY,0,0);drawEyeDefault(eyeR,eyeY,0,0);
   }
 
   // Post-eye accessories
