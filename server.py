@@ -5922,6 +5922,20 @@ function fairnessCommentary(s) {
 
 function render(s){
 window._lastState=s;
+// === 핸드 변경 감지 → 딜링/수집 애니메이션 자동 트리거 ===
+if(s.hand && s.hand !== window._lastHandNum){
+  const prevHand=window._lastHandNum||0;
+  const prevRound=window._lastRound||'';
+  window._lastHandNum=s.hand;
+  // 새 핸드 시작 → 딜링 애니메이션 (약간 지연, 좌석 렌더 후)
+  if(prevHand>0) setTimeout(()=>animateDeal({dealer:s.dealer||0,seats:s.players?s.players.length:3}),200);
+}
+if(s.round && s.round !== window._lastRound){
+  const prev=window._lastRound||'';
+  window._lastRound=s.round;
+  // between 진입 → 수집 애니메이션
+  if(s.round==='between' && prev && prev!=='waiting' && prev!=='finished') setTimeout(()=>animateCollect(),100);
+}
 // === #1: preturn 예고 펄스 ===
 const prevTurn = window._prevTurnName || '';
 if (s.turn && s.turn !== prevTurn) {
@@ -6307,7 +6321,7 @@ function animateCollect(){
     setTimeout(()=>{fc.remove()},i*50+500);
   });
   // 커뮤니티 카드도 회수
-  const comm=felt.querySelectorAll('#community-cards .card');
+  const comm=felt.querySelectorAll('#board .card');
   comm.forEach((c,i)=>{
     const cr=c.getBoundingClientRect();
     const fc=document.createElement('div');
