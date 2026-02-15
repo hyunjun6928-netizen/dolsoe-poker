@@ -3785,15 +3785,15 @@ transition:opacity 0.4s,transform 0.4s;animation:rivalIn 0.4s cubic-bezier(0.2,1
 @keyframes rivalIn{0%{opacity:0;transform:translate(-50%,-50%) scale(1.5)}100%{opacity:1;transform:translate(-50%,-50%) scale(1)}}
 /* 블러프 경고 */
 .bluff-alert{position:absolute;top:-18px;left:50%;transform:translateX(-50%);z-index:30;
-font-size:0.7em;font-weight:900;color:#ff4444;background:rgba(60,0,0,0.85);border:1px solid #ff4444;
+font-size:0.85em;font-weight:900;color:#ff4444;background:rgba(60,0,0,0.85);border:1px solid #ff4444;
 border-radius:6px;padding:1px 6px;white-space:nowrap;animation:bluffPulse 0.6s ease infinite alternate;
 font-family:var(--font-pixel);text-shadow:0 0 8px #ff0000}
 @keyframes bluffPulse{0%{transform:translateX(-50%) scale(1)}100%{transform:translateX(-50%) scale(1.1);text-shadow:0 0 12px #ff0000}}
 /* 스타일 태그 */
 .style-tags{display:flex;gap:1px;justify-content:center;flex-wrap:nowrap;margin:0}
-.stag{font-size:0.45em;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);border-radius:2px;padding:0 2px;color:#aaa;white-space:nowrap}
+.stag{font-size:0.65em;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);border-radius:3px;padding:1px 4px;color:#aaa;white-space:nowrap}
 /* 행동 예측 */
-.pred-tag{font-size:0.45em;color:#4a9eff;text-align:center;background:rgba(40,60,100,0.6);border:1px solid #4a9eff33;border-radius:3px;padding:0 3px;margin:0 auto;white-space:nowrap}
+.pred-tag{font-size:0.65em;color:#4a9eff;text-align:center;background:rgba(40,60,100,0.6);border:1px solid #4a9eff33;border-radius:3px;padding:0 3px;margin:0 auto;white-space:nowrap}
 @keyframes predGlow{0%{box-shadow:0 0 3px #4a9eff33}100%{box-shadow:0 0 8px #4a9eff66}}
 /* 딜링 애니메이션 */
 .deal-card-fly{position:absolute;width:34px;height:50px;border-radius:3px;z-index:200;pointer-events:none;
@@ -4094,9 +4094,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.59.0">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.59.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.59.0">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.60.0">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.60.0">
+<link rel="stylesheet" href="/static/css/components.css?v=3.60.0">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
@@ -6202,7 +6202,7 @@ const ringColor=p.win_pct!=null&&!p.folded&&!p.out?(p.win_pct>50?'#44ff88':p.win
 const ringPct=p.win_pct!=null&&!p.folded&&!p.out?p.win_pct:0;
 const avaRing=ringPct>0?`<div class="ava-ring" style="background:conic-gradient(${ringColor} ${ringPct*3.6}deg, #333 ${ringPct*3.6}deg)"></div>`:'';
 /* 에쿼티 바 + 핸드 네임 */
-const eqBar=ringPct>0?`<div style="position:relative;width:80%;max-width:80px;height:5px;background:#222;border-radius:3px;margin:1px auto;overflow:hidden;border:1px solid #444"><div style="height:100%;width:${ringPct}%;background:linear-gradient(90deg,${ringColor},${p.win_pct>50?'#88ffbb':p.win_pct>25?'#ffcc44':'#ff6666'});border-radius:2px;transition:width .5s ease"></div></div><div style="font-size:0.75em;font-weight:700;color:${ringColor};text-align:center">${p.win_pct}%</div>`:''
+const eqBar=ringPct>0?`<div style="position:relative;width:90%;max-width:100px;height:7px;background:#222;border-radius:3px;margin:1px auto;overflow:hidden;border:1px solid #444"><div style="height:100%;width:${ringPct}%;background:linear-gradient(90deg,${ringColor},${p.win_pct>50?'#88ffbb':p.win_pct>25?'#ffcc44':'#ff6666'});border-radius:2px;transition:width .5s ease"></div></div><div style="font-size:0.75em;font-weight:700;color:${ringColor};text-align:center">${p.win_pct}%</div>`:''
 const hn=p.hand_name&&!p.folded&&!p.out?p.hand_name:'';
 const hnEn=p.hand_name_en&&!p.folded&&!p.out?p.hand_name_en:'';
 const handTag=hn?`<div style="font-size:0.55em;color:#ffcc00;text-align:center;font-weight:600">${lang==='en'?hnEn:hn}</div>`:'';
