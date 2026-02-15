@@ -1974,7 +1974,7 @@ body.in-game #casino-floor::after {
   pointer-events: none;
   overflow: hidden;
 }
-body.in-game #spectator-crowd { display: block; }
+body.in-game #spectator-crowd { display: none; }
 
 #spectator-crowd .crowd-row {
   position: absolute;

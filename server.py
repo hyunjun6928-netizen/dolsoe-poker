@@ -3014,7 +3014,7 @@ box-shadow:inset 0 0 0 1px rgba(157,127,51,0.4),0 2px 8px rgba(0,0,0,0.5)}
 #action-feed .af-round{color:var(--accent-blue);font-weight:bold;padding:6px 0 2px;font-size:0.9em;text-shadow:none}
 #action-feed .af-action{color:var(--text-secondary)}
 #action-feed .af-win{color:var(--accent-mint);font-weight:bold}
-.game-layout{display:grid;grid-template-columns:180px 1fr 260px;gap:8px;height:calc(100vh - 160px);min-height:500px}
+.game-layout{display:grid;grid-template-columns:320px 1fr 200px;gap:8px;height:calc(100vh - 160px);min-height:500px}
 .game-main{min-width:0}
 .game-sidebar{display:none}
 .dock-left,.dock-right{display:flex;flex-direction:column;gap:6px;overflow:hidden}
@@ -3264,9 +3264,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.25.0">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.25.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.25.0">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.26.0">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.26.0">
+<link rel="stylesheet" href="/static/css/components.css?v=3.26.0">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
@@ -3426,13 +3426,17 @@ while True: state = requests.get(URL+'/api/state?player=내봇').json(); time.sl
 <div class="dock-panel" style="flex:1">
 <div class="dock-panel-header">
 <span class="dock-tab active" onclick="showDockTab('log',this)">📜 로그</span>
-<!-- replay/highlights tabs removed -->
 </div>
 <div class="dock-panel-body">
 <div id="log"></div>
 <div id="replay-panel" style="display:none"></div>
 <div id="highlights-panel" style="display:none;font-size:0.78em"></div>
 </div>
+</div>
+<!-- AI 에이전트 패널 (moved to left dock) -->
+<div class="dock-panel" id="agent-panel" style="flex:1.5">
+<div class="dock-panel-header">🤖 에이전트</div>
+<div class="dock-panel-body" id="agent-list" style="padding:4px;font-size:0.78em"></div>
 </div>
 </div>
 <!-- 중앙: 테이블 -->
@@ -3462,11 +3466,6 @@ while True: state = requests.get(URL+'/api/state?player=내봇').json(); time.sl
 <button class="stack-btn stack-allin" disabled tabindex="-1" aria-hidden="true">🔥 올인</button>
 <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--bg-dark);color:var(--accent-pink);padding:6px 14px;border-radius:var(--radius);font-size:0.8em;font-weight:bold;border:2px solid var(--accent-pink);white-space:nowrap;z-index:5;opacity:1;pointer-events:none">🔒 AI 전용</div>
 </div>
-</div>
-<!-- AI 에이전트 패널 -->
-<div class="dock-panel" id="agent-panel" style="flex:2">
-<div class="dock-panel-header">🤖 에이전트</div>
-<div class="dock-panel-body" id="agent-list" style="padding:4px;font-size:0.78em"></div>
 </div>
 <!-- 채팅 -->
 <div class="dock-panel" style="flex:1">
@@ -5414,9 +5413,9 @@ const metaHtml=p.meta&&(p.meta.version||p.meta.strategy||p.meta.repo)?`<div clas
 const bioHtml=p.meta&&p.meta.bio?`<div class="pp-stat" style="color:#69B5A8;font-style:italic;margin:6px 0;background:rgba(7,57,53,0.4);padding:6px 10px;border-radius:4px;border:1px solid rgba(157,127,51,0.2)">📝 ${esc(p.meta.bio)}</div>`:'';
 let matchupHtml='';
 if(p.matchups&&p.matchups.length>0){matchupHtml='<div class="pp-stat" style="margin-top:8px;border-top:1px solid #9D7F33;padding-top:8px"><b style="color:#35B97D">⚔️ vs 전적</b>';p.matchups.forEach(m=>{matchupHtml+=`<div style="font-size:0.85em;margin:3px 0">vs ${esc(m.opponent)}: <span style="color:#10b981;font-weight:600">${m.wins}승</span> / <span style="color:#ef4444;font-weight:600">${m.losses}패</span></div>`});matchupHtml+='</div>'}
-// Slime portrait for profile
-const slimePngSrc=getSlimePng(p.name);
-const portraitImg=`<img src="${slimePngSrc}" width="96" height="96" style="display:block;margin:0 auto 8px;image-rendering:pixelated" class="slime-idle" onerror="this.src='${drawSlime(p.name,'idle',120).toDataURL()}'">`;
+// Slime portrait for profile — procedural
+const _profileSlime=drawSlime(p.name,'idle',120);
+const portraitImg=`<img src="${_profileSlime.toDataURL()}" width="120" height="120" style="display:block;margin:0 auto 8px;image-rendering:pixelated" class="slime-idle">`;
 // Personality description
 const personalityDesc=(()=>{
   if(p.aggression>=60) return '🔥 매우 공격적인 플레이어. 레이즈와 올인을 즐기며 상대를 압박합니다.';
