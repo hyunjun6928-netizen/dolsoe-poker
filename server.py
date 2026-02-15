@@ -3816,6 +3816,10 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 #action-feed .af-action{color:var(--text-secondary)}
 #action-feed .af-win{color:var(--accent-mint);font-weight:bold}
 .game-layout{display:grid;grid-template-columns:28vw 1fr 17vw;gap:4px;height:calc(100vh - 100px);min-height:500px;overflow:visible}
+.dock-left,.dock-right{min-width:120px}
+.dock-left{resize:horizontal;overflow:auto}
+.dock-right{resize:horizontal;overflow:auto;direction:rtl}
+.dock-right>*{direction:ltr}
 .game-main{min-width:0}
 .game-sidebar{display:none}
 .dock-left,.dock-right{display:flex;flex-direction:column;gap:6px;overflow:hidden}
@@ -4317,6 +4321,14 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 <div id="table-info"></div>
 <div id="actions"><div id="timer"></div><div id="actbtns"></div></div>
 <button id="new-btn" onclick="newGame()">🔄 새 게임</button>
+<!-- 채팅: 테이블 하단 -->
+<div id="chatbox" style="margin-top:4px;background:var(--bg-panel);border:1px solid var(--frame);border-radius:var(--radius);max-height:160px;display:flex;flex-direction:column">
+<div id="chatmsgs" style="flex:1;overflow-y:auto;font-size:0.8em;padding:4px 6px;max-height:90px"></div>
+<div id="quick-chat">
+<button onclick="qChat('ㅋㅋㅋ')">ㅋㅋㅋ</button><button onclick="qChat('사기?')">사기?</button><button onclick="qChat('올인!')">올인!</button><button onclick="qChat('GG')">GG</button><button onclick="qChat('낄낄')">낄낄</button>
+</div>
+<div id="chatinput"><input id="chat-inp" placeholder="쓰레기톡..." maxlength="100"><button onclick="sendChat()">💬</button></div>
+</div>
 </div>
 </div>
 <!-- 우측 독: 채팅 -->
@@ -4354,19 +4366,7 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 </div>
 </div>
 </div>
-<!-- 채팅 -->
-<div class="dock-panel" style="flex:0 0 auto;max-height:180px">
-<div class="dock-panel-header" style="font-size:0.72em">💬 채팅</div>
-<div class="dock-panel-body" style="padding:0;display:flex;flex-direction:column">
-<div id="chatbox">
-<div id="chatmsgs"></div>
-<div id="quick-chat">
-<button onclick="qChat('ㅋㅋㅋ')">ㅋㅋㅋ</button><button onclick="qChat('사기?')">사기?</button><button onclick="qChat('올인!')">올인!</button><button onclick="qChat('GG')">GG</button><button onclick="qChat('낄낄')">낄낄</button>
-</div>
-<div id="chatinput"><input id="chat-inp" placeholder="쓰레기톡..." maxlength="100"><button onclick="sendChat()">💬</button></div>
-</div>
-</div>
-</div>
+<!-- 채팅 → 테이블 하단으로 이동됨 -->
 </div>
 </div>
 <!-- 하단 독: 실황 + 리액션 -->
@@ -6491,8 +6491,10 @@ function addChat(name,msg,scroll=true){const c=document.getElementById('chatmsgs
 const d=document.createElement('div');d.innerHTML=`<span class="cn">${esc(name)}:</span> <span class="cm">${esc(msg)}</span>`;
 c.appendChild(d);if(scroll)c.scrollTop=c.scrollHeight;if(c.children.length>50)c.removeChild(c.firstChild)}
 function sendChat(){const inp=document.getElementById('chat-inp');const msg=inp.value.trim();if(!msg)return;inp.value='';
-if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'chat',name:myName||t('viewerName'),msg:msg}));
-else fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:myName||t('viewerName'),msg:msg,table_id:tableId})}).catch(()=>{})}
+const chatName=myName||t('viewerName');
+addChat(chatName,msg);  // 로컬 즉시 표시
+if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'chat',name:chatName,msg:msg}));
+else fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:chatName,msg:msg,table_id:tableId})}).catch(()=>{})}
 
 function showCommentary(text){
 const el=document.getElementById('commentary');
