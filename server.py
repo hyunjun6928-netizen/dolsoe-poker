@@ -4094,9 +4094,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.46.0">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.46.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.46.0">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.47.0">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.47.0">
+<link rel="stylesheet" href="/static/css/components.css?v=3.47.0">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
@@ -4390,6 +4390,7 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 </div>
 </div>
 <!-- 하단 독: 실황 + 리액션 -->
+<div id="chatmsgs" style="position:fixed;bottom:44px;right:10px;width:280px;max-height:150px;overflow-y:auto;background:rgba(10,13,18,0.85);border:1px solid rgba(255,255,255,0.1);border-radius:8px 8px 0 0;padding:6px;font-size:0.78em;z-index:49;backdrop-filter:blur(8px);pointer-events:auto"></div>
 <div class="bottom-dock" id="bottom-dock">
 <span style="background:var(--accent-pink);color:var(--bg-dark);padding:2px 8px;border-radius:var(--radius);font-size:0.7em;font-weight:bold;border:2px solid #E8A8B8;white-space:nowrap;flex-shrink:0">📺 TV</span>
 <span style="background:#333;color:#ff8;padding:2px 6px;border-radius:var(--radius);font-size:0.65em;white-space:nowrap;flex-shrink:0;border:1px solid #ff8">⏱ 20s 딜레이</span>
@@ -4403,7 +4404,7 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 <button onclick="qChat('사기!')" style="background:#3a3c56;color:#fff;border:1px solid #4a4c66;border-radius:var(--radius);padding:2px 8px;font-size:0.75em;cursor:pointer;font-family:var(--font-pixel)">사기!</button>
 </div>
 <div id="chatbox" style="display:flex;align-items:center;gap:4px;flex-shrink:0">
-<input id="chat-inp" placeholder="쓰레기톡..." maxlength="100" style="width:180px;background:var(--bg-panel-alt);border:1px solid var(--frame);color:var(--text-primary);padding:4px 8px;font-size:0.75em;font-family:var(--font-pixel);border-radius:6px">
+<input id="chat-inp" placeholder="쓰레기톡..." maxlength="100" style="width:220px;background:var(--bg-panel-alt);border:1px solid var(--frame);color:var(--text-primary);padding:5px 10px;font-size:0.8em;font-family:var(--font-pixel);border-radius:6px">
 <button onclick="sendChat()" style="background:#4ade80;color:#000;border:none;border-radius:6px;padding:4px 8px;font-size:0.75em;cursor:pointer;font-family:var(--font-pixel)">💬</button>
 </div>
 </div>
