@@ -6861,146 +6861,109 @@ function toggleMute(){muted=!muted;document.getElementById('mute-btn').textConte
 function setVol(v){sfxVol=v/100;if(sfxVol<=0){muted=true;document.getElementById('mute-btn').textContent='🔇'}else{muted=false;document.getElementById('mute-btn').textContent='🔊'}
 // 골드 트랙 업데이트
 document.getElementById('vol-slider').style.setProperty('--vol-pct',v+'%')}
-// ═══ BGM 시스템 — 프로시져럴 생성 (100트랙, 용량 0) ═══
-const _SCALES={
-  major:[0,2,4,5,7,9,11],minor:[0,2,3,5,7,8,10],dorian:[0,2,3,5,7,9,10],
-  mixo:[0,2,4,5,7,9,10],penta:[0,2,4,7,9],blues:[0,3,5,6,7,10],
-  minpenta:[0,3,5,7,10],lydian:[0,2,4,6,7,9,11],phryg:[0,1,3,5,7,8,10]
-};
-const _GENRES=['jazz','bossa','lofi','chill','noir','ragtime','classical','ambient','funk','swing'];
-const _PROGRESSIONS=[
-  [[0,4,7],[5,9,0],[7,11,2],[0,4,7]], // I-IV-V-I
-  [[0,3,7],[5,8,0],[3,7,10],[0,4,7]], // i-iv-III-I
-  [[0,4,7],[9,0,4],[5,9,0],[7,11,2]], // I-vi-IV-V
-  [[0,3,7],[10,2,5],[8,0,3],[7,11,2]], // i-VII-VI-V
-  [[0,4,7],[2,5,9],[5,9,0],[0,4,7]], // I-ii-IV-I
-  [[0,3,7],[3,7,10],[5,8,0],[7,10,2]], // i-III-iv-v
-  [[0,4,7],[4,7,11],[5,9,0],[7,11,2]], // I-iii-IV-V
-  [[0,3,7],[8,0,3],[5,8,0],[7,11,2]], // i-VI-iv-V
-  [[0,4,7],[7,11,2],[9,0,4],[5,9,0]], // I-V-vi-IV
-  [[0,4,7],[5,9,0],[2,5,9],[7,11,2]], // I-IV-ii-V
+// ═══ BGM 시스템 — Incompetech 스트리밍 (용량 0, 진짜 음악) ═══
+const BGM_TRACKS=[
+  {name:'Gymnopedie No 1',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Gymnopedie%20No%201.mp3'},
+  {name:'Maple Leaf Rag',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Maple%20Leaf%20Rag.mp3'},
+  {name:'The Entertainer',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/The%20Entertainer.mp3'},
+  {name:'Smooth Lovin',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Smooth%20Lovin.mp3'},
+  {name:'Bossa Antigua',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Bossa%20Antigua.mp3'},
+  {name:'Cool Vibes',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Cool%20Vibes.mp3'},
+  {name:'Lobby Time',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Lobby%20Time.mp3'},
+  {name:'Laid Back Guitars',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Laid%20Back%20Guitars.mp3'},
+  {name:'Carefree',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Carefree.mp3'},
+  {name:'Local Forecast',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Local%20Forecast.mp3'},
+  {name:'Sneaky Snitch',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Sneaky%20Snitch.mp3'},
+  {name:'Fluffing a Duck',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Fluffing%20a%20Duck.mp3'},
+  {name:'Investigations',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Investigations.mp3'},
+  {name:'Pixelland',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Pixelland.mp3'},
+  {name:'Airport Lounge',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Airport%20Lounge.mp3'},
+  {name:'Hot Swing',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Hot%20Swing.mp3'},
+  {name:'Five Card Shuffle',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Five%20Card%20Shuffle.mp3'},
+  {name:'Doh De Oh',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Doh%20De%20Oh.mp3'},
+  {name:'Bass Walker',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Bass%20Walker.mp3'},
+  {name:'Easy Lemon',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Easy%20Lemon.mp3'},
+  {name:'Fretless',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Fretless.mp3'},
+  {name:'Feelin Good',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Feelin%20Good.mp3'},
+  {name:'George Street Shuffle',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/George%20Street%20Shuffle.mp3'},
+  {name:'Latin Industries',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Latin%20Industries.mp3'},
+  {name:'Groove Grove',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Groove%20Grove.mp3'},
+  {name:'Marty Gots a Plan',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Marty%20Gots%20a%20Plan.mp3'},
+  {name:'Backed Vibes Clean',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Backed%20Vibes%20Clean.mp3'},
+  {name:'Private Eye',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Private%20Eye.mp3'},
+  {name:'Hidden Agenda',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Hidden%20Agenda.mp3'},
+  {name:'Slow Burn',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Slow%20Burn.mp3'},
+  {name:'Chill Wave',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Chill%20Wave.mp3'},
+  {name:'Shades of Spring',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Shades%20of%20Spring.mp3'},
+  {name:'Carpe Diem',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Carpe%20Diem.mp3'},
+  {name:'Dream Culture',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Dream%20Culture.mp3'},
+  {name:'Floating Cities',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Floating%20Cities.mp3'},
+  {name:'Aquarium',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Aquarium.mp3'},
+  {name:'Satiate',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Satiate.mp3'},
+  {name:'Walking Along',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Walking%20Along.mp3'},
+  {name:'Wallpaper',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Wallpaper.mp3'},
+  {name:'Life of Riley',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Life%20of%20Riley.mp3'},
+  {name:'Almost in F',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Almost%20in%20F.mp3'},
+  {name:'Vivacity',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Vivacity.mp3'},
+  {name:'On My Way',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/On%20My%20Way.mp3'},
+  {name:'On the Ground',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/On%20the%20Ground.mp3'},
+  {name:'Inspired',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Inspired.mp3'},
+  {name:'Dark Walk',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Dark%20Walk.mp3'},
+  {name:'Dark Hallway',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Dark%20Hallway.mp3'},
+  {name:'Comfortable Mystery',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Comfortable%20Mystery.mp3'},
+  {name:'Comfortable Mystery 2',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Comfortable%20Mystery%202.mp3'},
+  {name:'Comfortable Mystery 3',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Comfortable%20Mystery%203.mp3'},
+  {name:'Danse Macabre - No Violin',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Danse%20Macabre%20-%20No%20Violin.mp3'},
+  {name:'Evening of Chaos',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Evening%20of%20Chaos.mp3'},
+  {name:'Danger Storm',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Danger%20Storm.mp3'},
+  {name:'Volatile Reaction',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Volatile%20Reaction.mp3'},
+  {name:'Bump in the Night',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Bump%20in%20the%20Night.mp3'},
+  {name:'Frozen Star',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Frozen%20Star.mp3'},
+  {name:'Meatball Parade',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Meatball%20Parade.mp3'},
+  {name:'Who Likes to Party',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Who%20Likes%20to%20Party.mp3'},
+  {name:'Enter the Party',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Enter%20the%20Party.mp3'},
+  {name:'Merry Go',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Merry%20Go.mp3'},
+  {name:'Sneaky Adventure',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Sneaky%20Adventure.mp3'},
+  {name:'Run Amok',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Run%20Amok.mp3'},
+  {name:'Bit Quest',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Bit%20Quest.mp3'},
+  {name:'The Complex',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/The%20Complex.mp3'},
+  {name:'Overworld',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Overworld.mp3'},
+  {name:'The Builder',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/The%20Builder.mp3'},
+  {name:'Suonatore di Liuto',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Suonatore%20di%20Liuto.mp3'},
+  {name:'Tango de Manzana',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Tango%20de%20Manzana.mp3'},
+  {name:'Sardana',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Sardana.mp3'},
+  {name:'Danse Morialta',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Danse%20Morialta.mp3'},
+  {name:'Aces High',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Aces%20High.mp3'},
+  {name:'Americana',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Americana.mp3'},
+  {name:'Ranz des Vaches',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Ranz%20des%20Vaches.mp3'},
+  {name:'Crinoline Dreams',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Crinoline%20Dreams.mp3'},
+  {name:'Rollin at 5',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Rollin%20at%205.mp3'},
+  {name:'Mining by Moonlight',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Mining%20by%20Moonlight.mp3'},
+  {name:'Leaving Home',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Leaving%20Home.mp3'},
+  {name:'District Four',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/District%20Four.mp3'},
+  {name:'Master of the Feast',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Master%20of%20the%20Feast.mp3'},
+  {name:'Your Call',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Your%20Call.mp3'},
+  {name:'Evening Fall - Piano',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Evening%20Fall%20-%20Piano.mp3'},
+  {name:'Deadly Roulette',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Deadly%20Roulette.mp3'},
+  {name:'I Got a Stick Arr Bryan Teoh',file:'https://incompetech.com/music/royalty-free/mp3-royaltyfree/I%20Got%20a%20Stick%20Arr%20Bryan%20Teoh.mp3'}
 ];
-function _genBgmTrack(idx){
-  const seed=idx*7+13;const _r=((s)=>{let v=s;return()=>{v=(v*16807+11)%2147483647;return(v&0x7fffffff)/2147483647}})( seed);
-  const genre=_GENRES[idx%_GENRES.length];
-  const scKeys=Object.keys(_SCALES);const scale=_SCALES[scKeys[Math.floor(_r()*scKeys.length)]];
-  const root=48+Math.floor(_r()*12);
-  const prog=_PROGRESSIONS[Math.floor(_r()*_PROGRESSIONS.length)];
-  const tempo=genre==='ambient'?50+_r()*20:genre==='funk'?100+_r()*20:genre==='ragtime'?110+_r()*20:70+_r()*40;
-  const beatLen=60/tempo;
-  const bars=16+Math.floor(_r()*16);
-  const swing=genre==='jazz'||genre==='swing'||genre==='bossa'?0.15+_r()*0.1:0;
-  return{idx,genre,scale,root,prog,tempo,beatLen,bars,swing,seed,name:`${genre.charAt(0).toUpperCase()+genre.slice(1)} #${idx+1}`};
-}
-const BGM_TRACKS=[];
-for(let i=0;i<100;i++)BGM_TRACKS.push(_genBgmTrack(i));
-
-let _bgmCtx=null,_bgmPlaying=false,_bgmTimeout=null;
-function _playProceduralBgm(track){
-  if(!_bgmCtx)_bgmCtx=new(window.AudioContext||window.webkitAudioContext)();
-  const ctx=_bgmCtx;if(ctx.state==='suspended')ctx.resume();
-  // stop previous
-  if(window._bgmNodes){window._bgmNodes.forEach(n=>{try{n.stop()}catch(e){}});window._bgmNodes=[]}
-  const nodes=[];window._bgmNodes=nodes;
-  const master=ctx.createGain();master.gain.value=_bgmMuted?0:_bgmVol*0.5;master.connect(ctx.destination);
-  window._bgmMaster=master;
-  const rev=ctx.createConvolver();
-  const revLen=ctx.sampleRate*1.5;const revBuf=ctx.createBuffer(2,revLen,ctx.sampleRate);
-  for(let ch=0;ch<2;ch++){const d=revBuf.getChannelData(ch);for(let i=0;i<revLen;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/revLen,2.5)}
-  rev.buffer=revBuf;const revGain=ctx.createGain();revGain.gain.value=0.15;
-  rev.connect(revGain);revGain.connect(master);
-  const t0=ctx.currentTime+0.1;
-  const{scale,root,prog,beatLen,bars,swing,seed}=track;
-  const _r=((s)=>{let v=s;return()=>{v=(v*16807+11)%2147483647;return(v&0x7fffffff)/2147483647}})(seed+42);
-  const totalBeats=bars*4;
-  const duration=totalBeats*beatLen;
-  // ═══ Bass line ═══
-  for(let bar=0;bar<bars;bar++){
-    const chord=prog[bar%prog.length];
-    for(let beat=0;beat<4;beat++){
-      const t=t0+(bar*4+beat)*beatLen+(beat%2===1?swing*beatLen:0);
-      const note=root-12+chord[0]+(_r()<0.3?scale[Math.floor(_r()*scale.length)]:0);
-      const freq=440*Math.pow(2,(note-69)/12);
-      const o=ctx.createOscillator();const g=ctx.createGain();
-      o.type=_r()<0.5?'triangle':'sine';o.frequency.value=freq;
-      g.gain.setValueAtTime(0.12,t);g.gain.exponentialRampToValueAtTime(0.001,t+beatLen*0.9);
-      o.connect(g);g.connect(master);o.start(t);o.stop(t+beatLen);nodes.push(o);
-    }
-  }
-  // ═══ Chord pads ═══
-  for(let bar=0;bar<bars;bar++){
-    const chord=prog[bar%prog.length];
-    const t=t0+bar*4*beatLen;
-    for(let ci=0;ci<chord.length;ci++){
-      const note=root+chord[ci];const freq=440*Math.pow(2,(note-69)/12);
-      const o=ctx.createOscillator();const g=ctx.createGain();
-      o.type='sine';o.frequency.value=freq;
-      const padVol=track.genre==='ambient'?0.06:0.04;
-      g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(padVol,t+0.3);
-      g.gain.setValueAtTime(padVol,t+beatLen*3.5);g.gain.linearRampToValueAtTime(0,t+beatLen*4);
-      o.connect(g);g.connect(master);g.connect(rev);o.start(t);o.stop(t+beatLen*4+0.1);nodes.push(o);
-    }
-  }
-  // ═══ Melody ═══
-  let lastNote=root+scale[Math.floor(_r()*scale.length)];
-  for(let bar=0;bar<bars;bar++){
-    const chord=prog[bar%prog.length];
-    for(let beat=0;beat<4;beat++){
-      if(_r()<0.35)continue; // rest
-      const eighth=_r()<0.4;
-      const subBeats=eighth?2:1;
-      for(let sb=0;sb<subBeats;sb++){
-        const t=t0+(bar*4+beat+sb*0.5)*beatLen+(beat%2===1?swing*beatLen:0);
-        const interval=Math.floor(_r()*5)-2;
-        const si=Math.max(0,Math.min(scale.length-1,scale.indexOf(lastNote%12<0?0:lastNote%12)||Math.floor(_r()*scale.length)));
-        const ni=(si+interval+scale.length)%scale.length;
-        const note=root+12+scale[ni]+(_r()<0.15?12:0);
-        lastNote=note;
-        const freq=440*Math.pow(2,(note-69)/12);
-        const o=ctx.createOscillator();const g=ctx.createGain();
-        const types=['sine','triangle','square'];
-        o.type=track.genre==='noir'?'sawtooth':types[Math.floor(_r()*3)];
-        o.frequency.value=freq;
-        if(o.type==='square'){const f2=ctx.createBiquadFilter();f2.type='lowpass';f2.frequency.value=1500;o.connect(f2);f2.connect(g)}else{o.connect(g)}
-        const vol=0.04+_r()*0.03;const dur=beatLen*(eighth?0.4:0.7);
-        g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol,t+0.02);
-        g.gain.setValueAtTime(vol,t+dur*0.6);g.gain.exponentialRampToValueAtTime(0.001,t+dur);
-        g.connect(master);g.connect(rev);o.start(t);o.stop(t+dur+0.05);nodes.push(o);
-      }
-    }
-  }
-  // ═══ Hi-hat / percussion ═══
-  for(let bar=0;bar<bars;bar++){
-    for(let beat=0;beat<(track.genre==='ambient'?2:8);beat++){
-      if(_r()<0.2)continue;
-      const t=t0+(bar*4+beat*0.5)*beatLen;
-      const buf=ctx.createBuffer(1,ctx.sampleRate*0.05,ctx.sampleRate);
-      const d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,6);
-      const src=ctx.createBufferSource();src.buffer=buf;
-      const g=ctx.createGain();g.gain.value=_r()<0.5?0.04:0.025;
-      const hp=ctx.createBiquadFilter();hp.type='highpass';hp.frequency.value=6000+_r()*4000;
-      src.connect(hp);hp.connect(g);g.connect(master);src.start(t);nodes.push(src);
-    }
-  }
-  _bgmPlaying=true;
-  if(_bgmTimeout)clearTimeout(_bgmTimeout);
-  _bgmTimeout=setTimeout(()=>{_bgmPlaying=false;skipBgm()},duration*1000+500);
-}
-let _bgmIdx=0,_bgmVol=0.3,_bgmMuted=localStorage.getItem('bgm_muted')==='1',_bgmInited=false;
+let _bgm=null,_bgmIdx=0,_bgmVol=0.3,_bgmMuted=localStorage.getItem('bgm_muted')==='1',_bgmInited=false;
 function initBgm(){
   if(_bgmInited)return;_bgmInited=true;
+  _bgm=new Audio();_bgm.crossOrigin='anonymous';_bgm.loop=false;_bgm.volume=_bgmMuted?0:_bgmVol;
+  _bgm.addEventListener('ended',()=>{let next;do{next=Math.floor(Math.random()*BGM_TRACKS.length)}while(next===_bgmIdx&&BGM_TRACKS.length>1);_bgmIdx=next;playBgm()});
+  _bgm.addEventListener('error',()=>{console.warn('BGM load failed:',BGM_TRACKS[_bgmIdx].name);setTimeout(()=>{_bgmIdx=(_bgmIdx+1)%BGM_TRACKS.length;playBgm()},1000)});
   _bgmIdx=Math.floor(Math.random()*BGM_TRACKS.length);
   if(!_bgmMuted)playBgm();
 }
-function playBgm(){if(_bgmMuted)return;_playProceduralBgm(BGM_TRACKS[_bgmIdx]);updateBgmUI()}
+function playBgm(){if(!_bgm||_bgmMuted)return;_bgm.src=BGM_TRACKS[_bgmIdx].file;_bgm.volume=_bgmVol;_bgm.play().catch(()=>{});updateBgmUI()}
 function toggleBgm(){
   _bgmMuted=!_bgmMuted;localStorage.setItem('bgm_muted',_bgmMuted?'1':'0');
-  if(_bgmMuted){if(window._bgmNodes){window._bgmNodes.forEach(n=>{try{n.stop()}catch(e){}});window._bgmNodes=[]}if(_bgmTimeout){clearTimeout(_bgmTimeout);_bgmTimeout=null}_bgmPlaying=false}
-  else{if(window._bgmMaster)window._bgmMaster.gain.value=_bgmVol*0.5;if(!_bgmPlaying)playBgm()}
+  if(_bgm){_bgm.volume=_bgmMuted?0:_bgmVol;if(!_bgmMuted&&_bgm.paused)playBgm()}
   updateBgmUI();
 }
-function setBgmVol(v){_bgmVol=v/100;if(window._bgmMaster&&!_bgmMuted)window._bgmMaster.gain.value=_bgmVol*0.5;localStorage.setItem('bgm_vol',v)}
-function skipBgm(){let next;do{next=Math.floor(Math.random()*BGM_TRACKS.length)}while(next===_bgmIdx&&BGM_TRACKS.length>1);_bgmIdx=next;playBgm()}
+function setBgmVol(v){_bgmVol=v/100;if(_bgm&&!_bgmMuted)_bgm.volume=_bgmVol;localStorage.setItem('bgm_vol',v)}
+function skipBgm(){let next;do{next=Math.floor(Math.random()*BGM_TRACKS.length)}while(next===_bgmIdx&&BGM_TRACKS.length>1);_bgmIdx=next;if(_bgm)playBgm()}
 function updateBgmUI(){const btn=document.getElementById('bgm-btn');if(btn)btn.textContent=_bgmMuted?'🎵✗':'🎵';const lbl=document.getElementById('bgm-track');if(lbl)lbl.textContent=BGM_TRACKS[_bgmIdx].name}
 function toggleSettings(){const p=document.getElementById('settings-panel');const b=document.getElementById('settings-toggle');if(p.style.display==='none'){p.style.display='block';b.style.transform='rotate(90deg)';updateSettingsUI()}else{p.style.display='none';b.style.transform='rotate(0deg)'}}
 function updateSettingsUI(){
