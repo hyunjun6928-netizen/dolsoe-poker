@@ -3835,7 +3835,7 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 .dock-left,.dock-right{min-width:0;max-width:100%;position:relative;overflow:visible}
 /* 드래그 리사이저 */
 .dock-resizer{display:none!important}
-.dock-panel{overflow:auto!important;position:relative}
+.dock-panel{overflow:auto!important;position:relative;cursor:default}
 .dp-resize-handle{display:none}
 .game-main{min-width:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column}
 .game-sidebar{display:none}
@@ -3843,7 +3843,9 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 .dock-left>*,.dock-right>*{width:100%!important;box-sizing:border-box}
 .dock-panel{background:var(--bg-panel);border:1px solid var(--frame);box-shadow:var(--shadow-md);padding:0;overflow:auto!important;flex:none;display:flex;flex-direction:column;border-radius:var(--radius);min-height:40px;max-height:50vh;width:100%;height:150px;resize:none!important}
 .dock-panel-header{background:rgba(10,13,18,0.8);color:var(--text-light);padding:8px 12px;font-family:var(--font-pixel);font-size:0.8em;font-weight:600;border-bottom:1px solid rgba(255,255,255,0.06);letter-spacing:0.3px}
-.dock-panel-body{flex:1;overflow-y:auto;padding:6px;font-size:0.92em;word-break:break-word}
+.dock-panel-body{flex:1;overflow-y:auto;padding:6px;font-size:0.92em;word-break:break-word;cursor:default}
+.dock-panel-body input,.dock-panel-body button{cursor:text;resize:none}
+.dock-panel-body button{cursor:pointer}
 #action-feed{max-height:none;flex:1;overflow-y:auto;background:transparent;border:none;border-radius:0;padding:4px;box-shadow:none;font-size:0.82em}
 .bottom-panel{display:none}
 .bottom-dock{position:fixed;bottom:0;left:0;right:0;background:rgba(10,13,18,0.95);border-top:1px solid rgba(255,255,255,0.06);padding:6px 16px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;z-index:50;font-family:var(--font-pixel);gap:4px;backdrop-filter:blur(16px)}
@@ -8125,19 +8127,17 @@ const dl=document.querySelector('.dock-left');
 const dr=document.querySelector('.dock-right');
 function mkHandle(dock,side){
   const h=document.createElement('div');
-  h.style.cssText='position:absolute;top:0;'+side+':-3px;width:6px;height:100%;cursor:ew-resize;z-index:60;background:transparent;pointer-events:auto';
-  h.addEventListener('mouseenter',()=>h.style.background='transparent');
-  h.addEventListener('mouseleave',()=>h.style.background='transparent');
-  dock.style.position='relative';dock.appendChild(h);
+  h.style.cssText='position:absolute;top:0;'+side+':-2px;width:4px;height:100%;cursor:ew-resize;z-index:60;background:transparent;pointer-events:auto';
+  dock.style.position='relative';dock.style.overflow='clip visible';dock.appendChild(h);
   let startX,startW;
-  h.addEventListener('mousedown',e=>{e.preventDefault();startX=e.clientX;startW=dock.offsetWidth;h._dragging=true;
+  h.addEventListener('mousedown',e=>{e.preventDefault();e.stopPropagation();startX=e.clientX;startW=dock.offsetWidth;
     const onMove=ev=>{
       const delta=side==='right'?ev.clientX-startX:startX-ev.clientX;
       const w=Math.max(120,Math.min(500,startW+delta));
       dock.style.width=w+'px';dock.style.maxWidth=w+'px';
       gl.style.gridTemplateColumns=(dl?dl.offsetWidth+'px':'22vw')+' 1fr '+(dr?dr.offsetWidth+'px':'22vw');
     };
-    const onUp=()=>{h._dragging=false;h.style.background='transparent';document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp)};
+    const onUp=()=>{document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',onUp)};
     document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',onUp)});
 }
 if(dl)mkHandle(dl,'right');
