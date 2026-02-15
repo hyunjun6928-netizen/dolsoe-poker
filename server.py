@@ -3933,16 +3933,17 @@ h1{font-size:1.1em;margin:2px 0}
 .lobby-grid pre{display:none}
 #link-full-guide{display:inline-block;margin-top:4px}
 /* ═══ 모바일 게임 ═══ */
-.game-layout{display:block;height:auto}
-.dock-left,.dock-right{display:none}
-.bottom-dock{position:fixed;bottom:0;left:0;right:0;padding:4px 6px}
+.game-layout{position:relative!important;display:flex!important;flex-direction:column!important;top:auto!important;left:auto!important;right:auto!important;bottom:auto!important;width:100%!important;max-width:100vw!important;height:auto!important;min-height:0!important;padding:0 2px;grid-template-columns:none!important}
+.dock-left,.dock-right{display:none!important}
+.game-main{flex:none!important;overflow:visible!important}
+.bottom-dock{position:fixed;bottom:0;left:0;right:0;padding:4px 6px;z-index:50}
 .bottom-dock .bd-reactions{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .bottom-dock .bd-reactions::-webkit-scrollbar{display:none}
 .bottom-dock .bd-reactions button{width:28px;height:28px;font-size:0.9em;flex-shrink:0}
-.felt-wrap{margin:10px auto 8px}
+.felt-wrap{margin:4px auto 8px;width:100%!important;flex:none!important;min-height:0!important;height:auto!important}
 .felt-border{top:-8px;left:-8px;right:-8px;bottom:-8px;border-radius:12px}
 .felt-border::before{top:-6px;left:-6px;right:-6px;bottom:-6px;border-radius:16px}
-.felt{padding-bottom:45%;border-radius:8px;box-shadow:inset 0 2px 6px #00000033}
+.felt{position:relative!important;height:auto!important;padding-bottom:55%;border-radius:8px;box-shadow:inset 0 2px 6px #00000033;min-height:280px}
 .board{gap:2px}
 .card{width:34px;height:50px;font-size:0.65em;border-radius:3px;box-shadow:0 3px 0 0 #000}
 .card-sm{width:28px;height:42px;font-size:0.55em}
