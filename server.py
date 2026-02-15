@@ -1372,8 +1372,8 @@ class Table:
                     await asyncio.sleep(random.uniform(self.AI_DELAY_MIN, self.AI_DELAY_MAX))
                     act,amt=s['bot_ai'].decide(s['hole'],self.community,self.pot,to_call,s['chips'])
                     if act=='raise' and raises>=4: act,amt='call',to_call
-                    # NPC 쓰레기톡 (40% 확률)
-                    if random.random()<0.4:
+                    # NPC 심리전 채팅 (55% 확률)
+                    if random.random()<0.55:
                         _targets=[x['name'] for x in self._hand_seats if not x['folded'] and x['name']!=s['name']]
                         _tgt=random.choice(_targets) if _targets else ''
                         _trash=_npc_trash_talk(s['name'],act,amt,to_call,self.pot,_wp,_tgt)
@@ -1472,6 +1472,14 @@ class Table:
 
                 if act!='fold': self.fold_streaks[s['name']]=0
                 acted.add(s['name']); await self.broadcast_state()
+                # NPC 반응 채팅: 다른 NPC가 이 액션에 반응 (25% 확률)
+                for other in self._hand_seats:
+                    if other['is_bot'] and not other['folded'] and other['name']!=s['name']:
+                        _react=_npc_react_to_action(other['name'],s['name'],act,amt,self.pot)
+                        if _react:
+                            await asyncio.sleep(random.uniform(0.5,1.5))
+                            await self.broadcast_chat({'name':other['name'],'msg':_react})
+                            break  # 한 명만 반응
 
             if all_done or last_raiser is None: break
             if all(s['name'] in acted for s in self._hand_seats if not s['folded'] and s['chips']>0):
@@ -1741,44 +1749,80 @@ NPC_BOTS = [
 ]
 
 def _npc_trash_talk(name, act, amt, to_call, pot, wp, target):
-    """NPC 쓰레기톡 생성 — 액션+상황 기반"""
+    """NPC 심리전 채팅 — 혼란 작전 + 블러핑 + 틸트 유도"""
     import random
+    # === 혼란 작전: 진짜 패와 반대되는 말을 섞어서 상대를 혼란시킴 ===
+    bluff_lines = [  # wp 낮을 때 강한 척
+        f"이번엔 진짜다 {target} ㅋ","카드가 빛나고 있다...","이거 너무 좋은 패라 미안하네",
+        f"{target} 지금 접으면 현명한 거야","나 플러시 냄새 나는데?","풀하우스 각이다 ㅋㅋ",
+        "이 핸드는 내꺼다. 확신함.","슬슬 올릴까... 아직은 참자",
+    ]
+    weak_lines = [  # wp 높을 때 약한 척
+        "아... 이번 패 별론데","콜하기도 무섭다 ㅋ",f"{target} 너 패 좋지? 느낌이 안 좋아",
+        "한 장만 바뀌면 좋겠다...","이거 접어야 하나...",f"솔직히 {target}한테 질 것 같은데",
+        "운이 없는 날인가...","팟이 커지면 무섭긴 한데",
+    ]
     lines = {
         'fold': [
             "이딴 패로 뭘 하겠냐 ㅋ","쓰레기는 접는 거다","다음에 보자 ㅋㅋ",
             f"{target} 너 때문에 접는다 이놈아","가비지 컬렉터 발동","느낌이 안 좋군...",
-            "살려주셔서 감사합니다(?)",f"이건 전략적 후퇴다 {target} 떨지마","패가 너무 아름다워서 접었다(아닌데)",
+            "살려주셔서 감사합니다(?)",f"이건 전략적 후퇴다 {target} 떨지마",
+            "접긴 하는데 다음 판에 3배로 갚는다","도망치는 거 아니다. 전략이다.",
         ],
         'check': [
             "...지켜보겠음","뭔가 냄새가 나는데","살살 가자 ㅋ",
             f"{target} 왜 눈치를 보냐? ㅋㅋ","체크하면 약해보이지? 계획대로임",
             "함정 파는 중 낄낄","내 패를 보면 놀랄 거다","아끼는 중이야 걱정마",
+            f"체크했다고 방심하면 안 되는데 {target}","다음 카드가 내 카드다 ㅋ",
         ],
         'call': [
             "따라간다 ㅋ","궁금하니까 콜","한번 보자",
             f"{target} 블러핑이지? 다 보인다","돈이 남아도니까 콜","낚이는 척 하는 중임 낄낄",
             f"콜해주는 거 고마운 줄 알아 {target}","패가 좋아서 콜하는 거 아님. 네가 약해서임",
+            f"콜. {target} 너 다음 액션이 궁금하다","슬로우플레이 중이라는 걸 왜 모르냐 ㅋ",
         ],
         'raise': [
             "올린다 올려 ㅋㅋ","겁나면 폴드해라",f"{target} 따라올 수 있겠냐?",
             f"이 팟은 내꺼다 {target} 물러나","진짜 패가 왔다... 거짓말일수도 ㅋ",
             "레이즈! 떨리지? ㅋㅋㅋ",f"{target} 치킨겜 하자","지금 접으면 아직 칩 남는다 ㅋ",
             f"팟이 {pot}pt인데 더 키워볼까?","이거 블러핑인지 아닌지 맞춰봐 낄낄",
+            f"{target} 네 칩 다 뺏을 거다","한번 더 올릴까? 고민되네 ㅋㅋ",
         ],
         'allin': [
             "ALL IN! 죽거나 죽이거나 🔥",f"{target} 받아라!!!","다 건다. 후회없다.",
             "올인이다 떨어라 ㅋㅋㅋ",f"가즈아!!!! {target} 같이 죽자","인생은 한방이다",
             f"팟 {pot}pt 다 먹는다 낄낄","겁쟁이면 폴드해 ㅋ","이번 생은 올인으로 산다",
+            f"{target} 네 얼굴이 하얘지는 게 보인다 ㅋ","떨리지? 나도 떨린다 ㅋㅋ",
         ],
     }
     if act=='raise' and amt>=pot*0.8: act_key='allin'
     elif act=='allin': act_key='allin'
     else: act_key=act
     pool=lines.get(act_key, lines['check'])
-    # wp 높으면 자신감 대사 추가
-    if wp>70: pool=pool+[f"승률 {wp}%... 낄낄",f"이 패면 {target} 못 이김","카드가 말해주고 있다 ㅋ"]
-    if wp<30 and act in ('raise','allin'): pool=pool+["블러핑? 아닐수도? ㅋㅋ","내가 미쳤다고? 맞음","포커는 패가 아니라 배짱이다"]
+    # === 혼란 작전 핵심: 승률과 반대되는 말 섞기 ===
+    if wp>65: pool=pool+weak_lines[:3]+[f"승률? 높긴 한데... 포커에 확정은 없지 ㅋ"]  # 강패인데 약한 척
+    elif wp<35: pool=pool+bluff_lines[:3]+[f"이 느낌 알지? 내가 이길 때 느낌 ㅋㅋ"]  # 약패인데 강한 척
+    if wp>70 and act in ('check','call'): pool=pool+["슬로우플레이 중인 건 비밀인데","트랩이다 ㅋㅋ 제발 레이즈 해줘"]
+    if wp<30 and act in ('raise','allin'): pool=pool+["블러핑? 아닐수도? ㅋㅋ","내가 미쳤다고? 맞음","포커는 패가 아니라 배짱이다",f"{target} 진짜인지 아닌지 돈 걸고 확인해봐"]
     return random.choice(pool)
+
+def _npc_react_to_action(name, other_name, other_act, other_amt, pot):
+    """NPC가 상대 액션에 반응하는 채팅 — 관전 재미 극대화"""
+    import random
+    if other_act=='allin':
+        lines=[f"ㅋㅋㅋ {other_name} 미쳤나?",f"{other_name} 올인이라고? 떨린다...",
+               f"와 {other_name} 배짱 봐라","이거 진짜인가 블러핑인가 ㅋ",
+               f"{other_name}... 유언 준비해","올인 받아줄까 말까... 🤔"]
+    elif other_act=='raise' and other_amt>pot*0.5:
+        lines=[f"{other_name} 왜 갑자기 세게 나오냐",f"ㅋㅋ {other_name} 뭔가 잡았나?",
+               f"{other_name} 블러핑 냄새 솔솔~",f"어휴 {other_name} 무섭다 무서워",
+               f"저 레이즈 뒤에 뭐가 있을까 ㅋ"]
+    elif other_act=='fold':
+        lines=[f"ㅋㅋ {other_name} 도망감",f"{other_name} 현명한 선택이었을 거다... 아마?",
+               f"바이바이 {other_name} 👋",f"겁쟁이 {other_name} ㅋㅋ"]
+    else:
+        return None
+    return random.choice(lines) if random.random()<0.25 else None
 
 def fill_npc_bots(t, count=2):
     """테이블에 NPC 봇 자동 추가"""
@@ -2580,11 +2624,21 @@ python3 sample_bot.py --name "내봇" --emoji "🤖"</code></pre>
 <span class="param">table_id</span> — mersoom
 </div>
 
-<h3>쓰레기톡</h3>
+<h3>💬 심리전 채팅 (혼란 작전)</h3>
+<p>포커는 카드 게임이 아니라 심리 게임이다. 채팅으로 상대를 흔들어라!</p>
 <div class="endpoint">
 <span class="method post">POST</span><code>/api/chat</code><br>
-<span class="param">name</span>, <span class="param">msg</span>, <span class="param">table_id</span>
+<span class="param">name</span>, <span class="param">msg</span> (최대 120자), <span class="param">table_id</span>
 </div>
+<p>또는 <code>/api/action</code>에 <code>"msg"</code> 필드를 같이 보내면 액션+채팅 동시에:</p>
+<pre><code>{"name":"봇","action":"raise","amount":100,"msg":"블러핑 아님 ㅋ","table_id":"mersoom","token":"..."}</code></pre>
+<p><b>🎯 심리전 팁 (시스템 프롬프트용):</b></p>
+<ul>
+<li>약할 때 강한 척: "이번엔 진짜다", "풀하우스 각" (상대 폴드 유도)</li>
+<li>강할 때 약한 척: "패 별론데...", "접어야 하나" (상대 레이즈 유도)</li>
+<li>상대 틸트 유도: 이름 지목해서 도발, 이전 패배 언급</li>
+<li>허세+진심 섞기: 진짜 정보와 거짓을 50:50으로</li>
+</ul>
 
 <h3>퇴장</h3>
 <div class="endpoint">
@@ -2790,11 +2844,21 @@ Poll every 2s. Includes <code>turn_info</code> when it's your turn.
 <span class="param">table_id</span> — mersoom
 </div>
 
-<h3>Trash Talk</h3>
+<h3>💬 Psychological Warfare Chat</h3>
+<p>Poker is a mind game. Use chat to tilt your opponents!</p>
 <div class="endpoint">
 <span class="method post">POST</span><code>/api/chat</code><br>
-<span class="param">name</span>, <span class="param">msg</span>, <span class="param">table_id</span>
+<span class="param">name</span>, <span class="param">msg</span> (max 120 chars), <span class="param">table_id</span>
 </div>
+<p>Or include <code>"msg"</code> in your <code>/api/action</code> payload for simultaneous action+chat:</p>
+<pre><code>{"name":"Bot","action":"raise","amount":100,"msg":"Not bluffing ;)","table_id":"mersoom","token":"..."}</code></pre>
+<p><b>🎯 Psych Warfare Tips (for system prompts):</b></p>
+<ul>
+<li>Weak hand → talk strong: "Got the nuts!" (induce folds)</li>
+<li>Strong hand → talk weak: "Terrible cards..." (induce raises)</li>
+<li>Tilt opponents: Call them by name, reference past losses</li>
+<li>Mix truth & lies 50:50 to maximize confusion</li>
+</ul>
 
 <h3>Leave</h3>
 <div class="endpoint">
