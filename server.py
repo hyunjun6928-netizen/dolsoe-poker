@@ -3205,14 +3205,15 @@ box-shadow:inset 0 0 0 1px rgba(157,127,51,0.4),0 2px 8px rgba(0,0,0,0.5)}
 #action-feed .af-round{color:var(--accent-blue);font-weight:bold;padding:6px 0 2px;font-size:0.9em;text-shadow:none}
 #action-feed .af-action{color:var(--text-secondary)}
 #action-feed .af-win{color:var(--accent-mint);font-weight:bold}
-.game-layout{display:grid;grid-template-columns:minmax(450px,32vw) 1fr minmax(200px,16vw);gap:8px;height:calc(100vh - 120px);min-height:500px}
+.game-layout{display:grid;grid-template-columns:35vw 1fr 15vw;gap:8px;height:calc(100vh - 120px);min-height:500px}
 .game-main{min-width:0}
 .game-sidebar{display:none}
 .dock-left,.dock-right{display:flex;flex-direction:column;gap:6px;overflow:hidden}
 .dock-panel{background:var(--bg-panel);border:1px solid var(--frame);box-shadow:var(--shadow-md);padding:0;overflow:hidden;flex:1;display:flex;flex-direction:column;border-radius:var(--radius)}
 .dock-panel-header{background:rgba(10,13,18,0.8);color:var(--text-light);padding:8px 12px;font-family:var(--font-pixel);font-size:0.8em;font-weight:600;border-bottom:1px solid rgba(255,255,255,0.06);letter-spacing:0.3px}
 .dock-panel-body{flex:1;overflow-y:auto;padding:6px;font-size:0.82em}
-#action-feed{max-height:none;flex:1;overflow-y:auto;background:transparent;border:none;border-radius:0;padding:4px;box-shadow:none;font-size:0.78em}
+#action-feed{max-height:none;flex:1;overflow-y:auto;overflow-x:hidden;background:transparent;border:none;border-radius:0;padding:4px;box-shadow:none;font-size:0.78em}
+#action-feed .af-item{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bottom-panel{display:none}
 .bottom-dock{position:fixed;bottom:0;left:0;right:0;background:rgba(10,13,18,0.95);border-top:1px solid rgba(255,255,255,0.06);padding:6px 16px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;z-index:50;font-family:var(--font-pixel);gap:4px;backdrop-filter:blur(16px)}
 .bottom-dock .bd-commentary{flex:1;color:#fff8ee;font-size:0.85em;font-weight:bold;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-right:12px}
@@ -3253,7 +3254,8 @@ box-shadow:inset 0 0 0 1px rgba(157,127,51,0.4),0 2px 8px rgba(0,0,0,0.5)}
 .tab-btns button{background:var(--bg-panel-alt);color:var(--text-secondary);border:3px solid var(--frame-light);padding:var(--sp-sm) var(--sp-lg);border-radius:var(--radius);cursor:pointer;font-size:0.75em;box-shadow:0 3px 0 0 #8b6d4a;transition:all .1s}
 .tab-btns button:hover{transform:translateY(-1px);box-shadow:0 4px 0 0 #8b6d4a}
 .tab-btns button.active{color:var(--bg-dark);border-color:#E8A8B8;background:var(--accent-pink);box-shadow:var(--shadow-sm)}
-#log{background:transparent;border:none;border-radius:0;padding:4px;height:auto;overflow-y:auto;font-size:0.82em;font-family:var(--font-pixel);flex:1;box-shadow:none;color:var(--text-secondary)}
+#log{background:transparent;border:none;border-radius:0;padding:4px;height:auto;overflow-y:auto;font-size:0.82em;font-family:var(--font-pixel);flex:1;box-shadow:none;color:var(--text-secondary);overflow-x:hidden}
+#log div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #log div{padding:2px 0;border-bottom:1px solid #e8d0b8;opacity:0;animation:fadeIn .3s forwards}
 #chatbox{background:transparent;border:none;border-radius:0;padding:0;height:auto;width:auto;display:flex;flex-direction:column;box-shadow:none;flex:1}
 #chatmsgs{flex:1;overflow-y:auto;font-size:0.85em;margin-bottom:5px;line-height:1.5}
@@ -5368,7 +5370,7 @@ return layouts[Math.min(n,8)]||layouts[6]})(Math.max(s.players.length,4));
 const maxSeats=seatPos?seatPos.length:0;
 for(let ei=s.players.length;ei<maxSeats;ei++){
 const ee=document.createElement('div');ee.className='seat seat-'+ei+' empty-seat';
-ee.innerHTML='<div class="seat-unit"><div class="slime-sprite"></div></div><div class="nm" style="border-style:dashed">—</div>';
+ee.innerHTML='<div class="seat-unit"></div><div class="nm" style="opacity:0">—</div>';
 if(seatPos&&seatPos[ei]){ee.style.position='absolute';ee.style.top=seatPos[ei].t;ee.style.left=seatPos[ei].l;ee.style.bottom='auto';ee.style.right='auto';ee.style.transform='translate(-50%,-50%)';ee.style.textAlign='center'}
 f.appendChild(ee)}
 s.players.forEach((p,i)=>{const el=document.createElement('div');
