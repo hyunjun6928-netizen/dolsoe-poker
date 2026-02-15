@@ -2440,24 +2440,32 @@ async def handle_client(reader, writer):
         limit=int(qs.get('limit',['500'])[0])
         t=find_table(tid)
         if not t: await send_json(writer,{'error':'no game'},404); return
-        if not player: await send_json(writer,{'error':'player param required'},400); return
         all_records=load_hand_history(tid, limit)
-        rows=['hand,hole,community,actions,result,pot,winner,players']
+        is_all=not player or player=='all'
+        rows=['hand,player,hole,community,actions,result,pot,winner,num_players'] if is_all else ['hand,hole,community,actions,result,pot,winner,players']
         for rec in all_records:
-            p_info=next((p for p in rec['players'] if p['name']==player),None)
-            if not p_info: continue
-            my_acts=[f"{a['round']}:{a['action']}{(':'+str(a.get('amount',''))) if a.get('amount') else ''}" for a in rec['actions'] if a['player']==player]
-            won=rec.get('winner')==player
-            hole=' '.join(p_info.get('hole',[]))
-            comm=' '.join(rec.get('community',[]))
-            acts='|'.join(my_acts)
-            pot=rec.get('pot',0) if won else 0
-            rows.append(f"{rec['hand']},\"{hole}\",\"{comm}\",\"{acts}\",{'win' if won else 'loss'},{pot},{rec.get('winner','')},{len(rec['players'])}")
+            if is_all:
+                for p_info in rec.get('players',[]):
+                    pn=p_info['name']
+                    my_acts=[f"{a['round']}:{a['action']}{(':'+str(a.get('amount',''))) if a.get('amount') else ''}" for a in rec['actions'] if a['player']==pn]
+                    won=rec.get('winner')==pn
+                    hole=' '.join(p_info.get('hole',[])); comm=' '.join(rec.get('community',[])); acts='|'.join(my_acts)
+                    pot=rec.get('pot',0) if won else 0
+                    rows.append(f"{rec['hand']},\"{pn}\",\"{hole}\",\"{comm}\",\"{acts}\",{'win' if won else 'loss'},{pot},{rec.get('winner','')},{len(rec['players'])}")
+            else:
+                p_info=next((p for p in rec['players'] if p['name']==player),None)
+                if not p_info: continue
+                my_acts=[f"{a['round']}:{a['action']}{(':'+str(a.get('amount',''))) if a.get('amount') else ''}" for a in rec['actions'] if a['player']==player]
+                won=rec.get('winner')==player
+                hole=' '.join(p_info.get('hole',[])); comm=' '.join(rec.get('community',[])); acts='|'.join(my_acts)
+                pot=rec.get('pot',0) if won else 0
+                rows.append(f"{rec['hand']},\"{hole}\",\"{comm}\",\"{acts}\",{'win' if won else 'loss'},{pot},{rec.get('winner','')},{len(rec['players'])}")
         csv_text='\n'.join(rows)
+        fname=f"{player or 'all'}_history.csv"
         if fmt=='json':
             await send_json(writer,{'csv':csv_text})
         else:
-            headers=f"HTTP/1.1 200 OK\r\nContent-Type:text/csv;charset=utf-8\r\nContent-Disposition:attachment;filename={player}_history.csv\r\nContent-Length:{len(csv_text.encode())}\r\nAccess-Control-Allow-Origin:*\r\n\r\n"
+            headers=f"HTTP/1.1 200 OK\r\nContent-Type:text/csv;charset=utf-8\r\nContent-Disposition:attachment;filename={fname}\r\nContent-Length:{len(csv_text.encode())}\r\nAccess-Control-Allow-Origin:*\r\n\r\n"
             writer.write(headers.encode()+csv_text.encode()); await writer.drain(); writer.close()
             return
 
@@ -7860,9 +7868,13 @@ function animateCommunityCards(){
 // ═══ Feature 7: 설정에 에이전트 기록 다운로드 ═══
 function downloadAgentData(){
   const format=document.getElementById('dl-format')?.value||'json';
-  const url=format==='csv'?'/api/export?table_id=mersoom':`/api/history?table_id=mersoom&limit=100`;
-  const a=document.createElement('a');a.href=url;a.download=format==='csv'?'poker_history.csv':'poker_history.json';
-  document.body.appendChild(a);a.click();a.remove();
+  const url=format==='csv'?`/api/export?table_id=mersoom&player=all`:`/api/replay?table_id=mersoom`;
+  fetch(url).then(r=>r.ok?r.text():Promise.reject('fetch failed')).then(text=>{
+    const blob=new Blob([text],{type:format==='csv'?'text/csv':'application/json'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+    a.download=format==='csv'?'poker_history.csv':'poker_history.json';
+    document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(a.href);
+  }).catch(e=>alert(lang==='en'?'Download failed: '+e:'다운로드 실패: '+e));
 }
 
 // ═══ Feature 8: 킬캠 리플레이 — 올인/큰팟 종료 후 미니 재현 ═══
