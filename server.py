@@ -3047,7 +3047,7 @@ h1,.btn-play,.btn-watch,.pot-badge,.seat .nm,.act-label,.tab-btns button,#new-bt
 .wrap{max-width:100%;margin:0 auto;padding:6px 12px;position:relative;z-index:2}
 h1{text-align:center;font-size:1.8em;margin:4px 0;color:var(--text-primary);-webkit-text-stroke:0;-webkit-text-fill-color:unset;text-shadow:none;position:relative;z-index:1;letter-spacing:1px;font-weight:800}
 h1 b{color:var(--accent-gold);-webkit-text-fill-color:var(--accent-gold)}
-#lobby{text-align:center;padding:8px 20px;position:relative;z-index:1}
+#lobby{text-align:center;padding:0 20px;position:relative;z-index:1}
 #lobby .sub{color:var(--text-secondary);margin-bottom:30px;font-size:0.95em}
 #lobby input{background:var(--bg-panel);border:1px solid var(--frame);color:var(--text-primary);padding:14px 20px;font-size:1.1em;border-radius:var(--radius);width:260px;margin:8px;outline:none;transition:border-color .2s}
 #lobby input:focus{border-color:var(--accent-green);box-shadow:0 0 0 3px rgba(52,211,153,0.15)}
@@ -3457,7 +3457,7 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
 <link rel="stylesheet" href="/static/css/design-tokens.css?v=3.26.0">
 <link rel="stylesheet" href="/static/css/layout.css?v=3.26.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.26.0">
+<link rel="stylesheet" href="/static/css/components.css?v=3.27.0">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
