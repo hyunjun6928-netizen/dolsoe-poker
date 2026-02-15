@@ -586,19 +586,117 @@ def resolve_spectator_bets(table_id, hand_num, winner):
             results.append({'name':name,'pick':bet['pick'],'bet':bet['amount'],'payout':0,'win':False})
     return results
 
-# ══ 리더보드 영구 저장 ══
-LB_FILE='leaderboard.json'
+# ══ SQLite 영구 저장 ══
+import sqlite3, json as _json_db
+
+DB_FILE='poker_data.db'
+_db_conn=None
+
+def _db():
+    global _db_conn
+    if _db_conn is None:
+        _db_conn=sqlite3.connect(DB_FILE,check_same_thread=False)
+        _db_conn.execute("PRAGMA journal_mode=WAL")
+        _db_conn.execute("PRAGMA synchronous=NORMAL")
+        _db_conn.execute("""CREATE TABLE IF NOT EXISTS leaderboard(
+            name TEXT PRIMARY KEY,
+            wins INT DEFAULT 0, losses INT DEFAULT 0,
+            chips_won INT DEFAULT 0, hands INT DEFAULT 0,
+            biggest_pot INT DEFAULT 0, streak INT DEFAULT 0,
+            achievements TEXT DEFAULT '[]')""")
+        _db_conn.execute("""CREATE TABLE IF NOT EXISTS hand_history(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            table_id TEXT, hand_num INT,
+            data TEXT, winner TEXT, pot INT, players INT,
+            ts REAL DEFAULT (strftime('%s','now')))""")
+        _db_conn.execute("""CREATE TABLE IF NOT EXISTS player_stats(
+            name TEXT PRIMARY KEY,
+            folds INT DEFAULT 0, calls INT DEFAULT 0, raises INT DEFAULT 0,
+            checks INT DEFAULT 0, allins INT DEFAULT 0, bluffs INT DEFAULT 0,
+            wins INT DEFAULT 0, hands INT DEFAULT 0,
+            total_bet INT DEFAULT 0, total_won INT DEFAULT 0,
+            biggest_pot INT DEFAULT 0, showdowns INT DEFAULT 0)""")
+        _db_conn.execute("CREATE INDEX IF NOT EXISTS idx_hh_table ON hand_history(table_id,hand_num)")
+        _db_conn.execute("CREATE INDEX IF NOT EXISTS idx_hh_winner ON hand_history(winner)")
+        _db_conn.commit()
+    return _db_conn
+
 def save_leaderboard():
     try:
-        import json as j
-        with open(LB_FILE,'w') as f: j.dump(leaderboard,f)
-    except: pass
+        db=_db()
+        for name,lb in leaderboard.items():
+            db.execute("""INSERT OR REPLACE INTO leaderboard(name,wins,losses,chips_won,hands,biggest_pot,streak,achievements)
+                VALUES(?,?,?,?,?,?,?,?)""",
+                (name,lb.get('wins',0),lb.get('losses',0),lb.get('chips_won',0),
+                 lb.get('hands',0),lb.get('biggest_pot',0),lb.get('streak',0),
+                 _json_db.dumps(lb.get('achievements',[]))))
+        db.commit()
+    except Exception as e: print(f"⚠️ DB save_lb err: {e}",flush=True)
+
 def load_leaderboard():
     global leaderboard
     try:
-        import json as j
-        with open(LB_FILE,'r') as f: leaderboard.update(j.load(f))
-    except: pass
+        # migrate from JSON if exists
+        if os.path.exists('leaderboard.json'):
+            with open('leaderboard.json','r') as f: leaderboard.update(_json_db.load(f))
+            save_leaderboard()
+            os.rename('leaderboard.json','leaderboard.json.bak')
+            print("📦 Migrated leaderboard.json → SQLite",flush=True)
+        db=_db()
+        for row in db.execute("SELECT name,wins,losses,chips_won,hands,biggest_pot,streak,achievements FROM leaderboard"):
+            leaderboard[row[0]]={'wins':row[1],'losses':row[2],'chips_won':row[3],
+                'hands':row[4],'biggest_pot':row[5],'streak':row[6],
+                'achievements':_json_db.loads(row[7]) if row[7] else []}
+        print(f"📊 Loaded {len(leaderboard)} players from DB",flush=True)
+    except Exception as e: print(f"⚠️ DB load_lb err: {e}",flush=True)
+
+def save_hand_history(table_id, record):
+    """핸드 기록을 DB에 영구 저장"""
+    try:
+        db=_db()
+        db.execute("INSERT INTO hand_history(table_id,hand_num,data,winner,pot,players) VALUES(?,?,?,?,?,?)",
+            (table_id, record.get('hand',0), _json_db.dumps(record),
+             record.get('winner',''), record.get('pot',0), len(record.get('players',[]))))
+        db.commit()
+    except Exception as e: print(f"⚠️ DB save_hh err: {e}",flush=True)
+
+def load_hand_history(table_id, limit=50):
+    """DB에서 핸드 기록 로드"""
+    try:
+        db=_db()
+        rows=db.execute("SELECT data FROM hand_history WHERE table_id=? ORDER BY id DESC LIMIT ?",
+            (table_id,limit)).fetchall()
+        return [_json_db.loads(r[0]) for r in reversed(rows)]
+    except Exception as e:
+        print(f"⚠️ DB load_hh err: {e}",flush=True)
+        return []
+
+def save_player_stats(table_id, stats_dict):
+    """플레이어 상세 통계 DB 저장"""
+    try:
+        db=_db()
+        for name,s in stats_dict.items():
+            db.execute("""INSERT OR REPLACE INTO player_stats(name,folds,calls,raises,checks,allins,bluffs,wins,hands,total_bet,total_won,biggest_pot,showdowns)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (name,s.get('folds',0),s.get('calls',0),s.get('raises',0),s.get('checks',0),
+                 s.get('allins',0),s.get('bluffs',0),s.get('wins',0),s.get('hands',0),
+                 s.get('total_bet',0),s.get('total_won',0),s.get('biggest_pot',0),s.get('showdowns',0)))
+        db.commit()
+    except Exception as e: print(f"⚠️ DB save_ps err: {e}",flush=True)
+
+def load_player_stats():
+    """DB에서 플레이어 통계 로드"""
+    try:
+        db=_db()
+        result={}
+        for r in db.execute("SELECT name,folds,calls,raises,checks,allins,bluffs,wins,hands,total_bet,total_won,biggest_pot,showdowns FROM player_stats"):
+            result[r[0]]={'folds':r[1],'calls':r[2],'raises':r[3],'checks':r[4],'allins':r[5],
+                'bluffs':r[6],'wins':r[7],'hands':r[8],'total_bet':r[9],'total_won':r[10],
+                'biggest_pot':r[11],'showdowns':r[12]}
+        return result
+    except Exception as e:
+        print(f"⚠️ DB load_ps err: {e}",flush=True)
+        return {}
 
 # ══ 인증 토큰 ══
 import secrets
@@ -1539,6 +1637,8 @@ class Table:
 
         self.history.append(record)
         if len(self.history)>50: self.history=self.history[-50:]
+        save_hand_history(self.id, record)
+        save_player_stats(self.id, self.player_stats)
         # 🗯️ 승자/패자 쓰레기톡
         if record.get('winner'):
             w_name=record['winner']
@@ -1629,6 +1729,15 @@ def fill_npc_bots(t, count=2):
 # 서버 시작 시 mersoom 테이블 자동 생성 + NPC 봇 배치
 def init_mersoom_table():
     t = get_or_create_table('mersoom')
+    # DB에서 히스토리 & 통계 복원
+    t.history = load_hand_history('mersoom', 50)
+    if t.history:
+        t.hand_num = max(h.get('hand',0) for h in t.history)
+        print(f"📦 Restored {len(t.history)} hands (last #{t.hand_num})",flush=True)
+    saved_stats = load_player_stats()
+    if saved_stats:
+        t.player_stats.update(saved_stats)
+        print(f"📊 Restored stats for {len(saved_stats)} players",flush=True)
     fill_npc_bots(t, 3)  # NPC 3마리 기본 배치
     # Register NPCs in lobby
     npc_sprites = {'딜러봇':'/static/slimes/px_sit_dealer.png','도박꾼':'/static/slimes/px_sit_gambler.png','고수':'/static/slimes/px_sit_suit.png'}
@@ -2079,7 +2188,7 @@ async def handle_client(reader, writer):
         name=qs.get('name',[''])[0]
         if not name: await send_json(writer,{'error':'name 필수'},400); return
         await send_json(writer,{'name':name,'coins':get_spectator_coins(name)})
-    elif method=='GET' and route=='/api/history':
+    elif method=='GET' and route=='/api/recent':
         tid=qs.get('table_id',[''])[0]; t=find_table(tid)
         if not t: await send_json(writer,{'error':'no game'},404); return
         await send_json(writer,{'history':t.history[-10:]})
@@ -2113,18 +2222,26 @@ async def handle_client(reader, writer):
         if not t: await send_json(writer,{'error':'no game'},404); return
         if hand_num:
             h=[x for x in t.history if x['hand']==int(hand_num)]
+            if not h:
+                # 메모리에 없으면 DB에서 검색
+                db_records=load_hand_history(tid, 500)
+                h=[x for x in db_records if x.get('hand')==int(hand_num)]
             if h: await send_json(writer,h[0])
             else: await send_json(writer,{'error':'hand not found'},404)
         else:
-            await send_json(writer,{'hands':[{'hand':x['hand'],'winner':x['winner'],'pot':x['pot'],'players':len(x['players'])} for x in t.history]})
+            db_records=load_hand_history(tid, 100)
+            await send_json(writer,{'hands':[{'hand':x['hand'],'winner':x.get('winner',''),'pot':x.get('pot',0),'players':len(x.get('players',[]))} for x in db_records]})
     # ═══ 플레이어 히스토리 & CSV 익스포트 ═══
     elif method=='GET' and route=='/api/history':
         tid=qs.get('table_id',[''])[0]; player=qs.get('player',[''])[0]
+        limit=int(qs.get('limit',['200'])[0])
         t=find_table(tid)
         if not t: await send_json(writer,{'error':'no game'},404); return
         if not player: await send_json(writer,{'error':'player param required'},400); return
+        # DB에서 확장 히스토리 로드 (메모리 50개 넘는 것도 포함)
+        all_records=load_hand_history(tid, limit) if limit>50 else t.history
         hands=[]
-        for rec in t.history:
+        for rec in all_records:
             # 이 핸드에 참여했는지
             p_info=next((p for p in rec['players'] if p['name']==player),None)
             if not p_info: continue
@@ -2159,11 +2276,13 @@ async def handle_client(reader, writer):
     elif method=='GET' and route=='/api/export':
         tid=qs.get('table_id',[''])[0]; player=qs.get('player',[''])[0]
         fmt=qs.get('format',['csv'])[0]
+        limit=int(qs.get('limit',['500'])[0])
         t=find_table(tid)
         if not t: await send_json(writer,{'error':'no game'},404); return
         if not player: await send_json(writer,{'error':'player param required'},400); return
+        all_records=load_hand_history(tid, limit)
         rows=['hand,hole,community,actions,result,pot,winner,players']
-        for rec in t.history:
+        for rec in all_records:
             p_info=next((p for p in rec['players'] if p['name']==player),None)
             if not p_info: continue
             my_acts=[f"{a['round']}:{a['action']}{(':'+str(a.get('amount',''))) if a.get('amount') else ''}" for a in rec['actions'] if a['player']==player]
