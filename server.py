@@ -3840,7 +3840,7 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 .game-sidebar{display:none}
 .dock-left,.dock-right{display:flex;flex-direction:column;gap:6px;overflow:auto;align-items:stretch}
 .dock-left>*,.dock-right>*{width:100%!important;box-sizing:border-box}
-.dock-panel{background:var(--bg-panel);border:1px solid var(--frame);box-shadow:var(--shadow-md);padding:0;overflow:auto!important;flex:1;display:flex;flex-direction:column;border-radius:var(--radius);min-height:60px;max-height:none;width:100%;resize:vertical}
+.dock-panel{background:var(--bg-panel);border:1px solid var(--frame);box-shadow:var(--shadow-md);padding:0;overflow:auto!important;flex:none;display:flex;flex-direction:column;border-radius:var(--radius);min-height:40px;max-height:50vh;width:100%;resize:vertical;height:150px}
 .dock-panel-header{background:rgba(10,13,18,0.8);color:var(--text-light);padding:8px 12px;font-family:var(--font-pixel);font-size:0.8em;font-weight:600;border-bottom:1px solid rgba(255,255,255,0.06);letter-spacing:0.3px}
 .dock-panel-body{flex:1;overflow-y:auto;padding:6px;font-size:0.92em;word-break:break-word}
 #action-feed{max-height:none;flex:1;overflow-y:auto;background:transparent;border:none;border-radius:0;padding:4px;box-shadow:none;font-size:0.82em}
@@ -3861,7 +3861,7 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 .stack-raise{background:var(--accent-mint);color:var(--bg-dark);border-color:#78C6A8;box-shadow:0 3px 0 0 #58A688}
 .stack-allin{background:var(--accent-pink);color:var(--bg-dark);border-color:#E8A8B8;box-shadow:0 3px 0 0 #C888A0;animation:pulse 2s infinite}
 /* Player list — 기본 접힘 */
-#player-list-panel{flex:0 0 auto;max-height:32px;overflow:hidden;transition:max-height .3s ease;cursor:pointer}
+#player-list-panel{flex:none!important;height:auto!important;max-height:32px;overflow:hidden;transition:max-height .3s ease;cursor:pointer;resize:none!important}
 #player-list-panel.expanded{max-height:160px;cursor:default}
 #player-list-panel .dock-panel-header{cursor:pointer}
 .pl-item{display:flex;align-items:center;gap:4px;padding:3px 4px;border-bottom:1px solid var(--frame-light)}
@@ -4093,9 +4093,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.42.0">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.42.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.42.0">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.43.0">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.43.0">
+<link rel="stylesheet" href="/static/css/components.css?v=3.43.0">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
