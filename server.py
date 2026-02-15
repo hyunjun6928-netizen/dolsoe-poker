@@ -6128,13 +6128,13 @@ const seatPos=((n)=>{
 // 포커 테이블 좌석 배치 — 좌우 사이드 중심
 // {t:top%, l:left%, side:'left'|'right'|'bottom'} — 펠트 기준 상대좌표
 const layouts={
-2:[{t:'60%',l:'15%',side:'left'},{t:'60%',l:'85%',side:'right'}],
-3:[{t:'85%',l:'50%',side:'bottom'},{t:'50%',l:'15%',side:'left'},{t:'50%',l:'85%',side:'right'}],
-4:[{t:'35%',l:'15%',side:'left'},{t:'65%',l:'15%',side:'left'},{t:'35%',l:'85%',side:'right'},{t:'65%',l:'85%',side:'right'}],
-5:[{t:'85%',l:'50%',side:'bottom'},{t:'30%',l:'15%',side:'left'},{t:'62%',l:'15%',side:'left'},{t:'30%',l:'85%',side:'right'},{t:'62%',l:'85%',side:'right'}],
-6:[{t:'85%',l:'38%',side:'bottom'},{t:'85%',l:'62%',side:'bottom'},{t:'28%',l:'15%',side:'left'},{t:'60%',l:'15%',side:'left'},{t:'28%',l:'85%',side:'right'},{t:'60%',l:'85%',side:'right'}],
-7:[{t:'85%',l:'50%',side:'bottom'},{t:'22%',l:'15%',side:'left'},{t:'48%',l:'15%',side:'left'},{t:'74%',l:'15%',side:'left'},{t:'22%',l:'85%',side:'right'},{t:'48%',l:'85%',side:'right'},{t:'74%',l:'85%',side:'right'}],
-8:[{t:'85%',l:'38%',side:'bottom'},{t:'85%',l:'62%',side:'bottom'},{t:'22%',l:'15%',side:'left'},{t:'48%',l:'15%',side:'left'},{t:'74%',l:'15%',side:'left'},{t:'22%',l:'85%',side:'right'},{t:'48%',l:'85%',side:'right'},{t:'74%',l:'85%',side:'right'}]
+2:[{t:'50%',l:'12%',side:'left'},{t:'50%',l:'88%',side:'right'}],
+3:[{t:'80%',l:'50%',side:'bottom'},{t:'35%',l:'12%',side:'left'},{t:'35%',l:'88%',side:'right'}],
+4:[{t:'25%',l:'12%',side:'left'},{t:'65%',l:'12%',side:'left'},{t:'25%',l:'88%',side:'right'},{t:'65%',l:'88%',side:'right'}],
+5:[{t:'80%',l:'50%',side:'bottom'},{t:'20%',l:'12%',side:'left'},{t:'55%',l:'12%',side:'left'},{t:'20%',l:'88%',side:'right'},{t:'55%',l:'88%',side:'right'}],
+6:[{t:'80%',l:'35%',side:'bottom'},{t:'80%',l:'65%',side:'bottom'},{t:'20%',l:'12%',side:'left'},{t:'55%',l:'12%',side:'left'},{t:'20%',l:'88%',side:'right'},{t:'55%',l:'88%',side:'right'}],
+7:[{t:'80%',l:'50%',side:'bottom'},{t:'15%',l:'12%',side:'left'},{t:'42%',l:'12%',side:'left'},{t:'68%',l:'12%',side:'left'},{t:'15%',l:'88%',side:'right'},{t:'42%',l:'88%',side:'right'},{t:'68%',l:'88%',side:'right'}],
+8:[{t:'80%',l:'35%',side:'bottom'},{t:'80%',l:'65%',side:'bottom'},{t:'12%',l:'12%',side:'left'},{t:'40%',l:'12%',side:'left'},{t:'68%',l:'12%',side:'left'},{t:'12%',l:'88%',side:'right'},{t:'40%',l:'88%',side:'right'},{t:'68%',l:'88%',side:'right'}]
 };
 return layouts[Math.min(n,8)]||layouts[6]})(Math.max(s.players.length,4));
 // 빈 좌석 렌더: 플레이어 수 이후~seatPos 끝까지
