@@ -4069,9 +4069,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.71.0">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.71.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.71.0">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.72.0">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.72.0">
+<link rel="stylesheet" href="/static/css/components.css?v=3.72.0">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
@@ -7947,12 +7947,12 @@ var _casinoFloorCanvas=null;
 function initCasinoFloorBg(){
   const floor=document.getElementById('casino-floor');
   if(!floor||_casinoFloorCanvas)return;
-  const w=Math.max(window.innerWidth,960);
-  const h=Math.max(window.innerHeight,540);
-  _casinoFloorCanvas=drawCasinoFloor(w,h);
-  _casinoFloorCanvas.id='casino-floor-bg';
-  _casinoFloorCanvas.style.cssText='position:absolute;inset:0;width:100%;height:100%;z-index:0;image-rendering:pixelated;pointer-events:none';
-  floor.insertBefore(_casinoFloorCanvas,floor.firstChild);
+  const img=new Image();
+  img.src='/static/slimes/px_lobby_map.png';
+  img.id='casino-floor-bg';
+  img.style.cssText='position:absolute;inset:0;width:100%;height:100%;z-index:0;image-rendering:pixelated;pointer-events:none;object-fit:cover';
+  floor.insertBefore(img,floor.firstChild);
+  _casinoFloorCanvas=img;
 }
 
 function _mixColor(c1,c2,t){
