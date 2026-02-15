@@ -3828,7 +3828,7 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 #action-feed .af-round{color:var(--accent-blue);font-weight:bold;padding:6px 0 2px;font-size:0.9em;text-shadow:none}
 #action-feed .af-action{color:var(--text-secondary)}
 #action-feed .af-win{color:var(--accent-mint);font-weight:bold}
-.game-layout{display:grid;grid-template-columns:180px 1fr 220px;gap:0;min-height:500px;overflow:visible;position:fixed!important;top:90px!important;left:0!important;right:0!important;bottom:76px!important;width:100vw!important;max-width:100vw!important}
+.game-layout{display:grid;grid-template-columns:180px 1fr 160px;gap:0;min-height:500px;overflow:visible;position:fixed!important;top:90px!important;left:0!important;right:0!important;bottom:44px!important;width:100vw!important;max-width:100vw!important}
 .dock-left,.dock-right{min-width:120px;position:relative}
 /* 드래그 리사이저 */
 .dock-resizer{display:none!important}
@@ -3843,7 +3843,7 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 .dock-panel-body{flex:1;overflow-y:auto;padding:6px;font-size:0.92em;word-break:break-word}
 #action-feed{max-height:none;flex:1;overflow-y:auto;background:transparent;border:none;border-radius:0;padding:4px;box-shadow:none;font-size:0.82em}
 .bottom-panel{display:none}
-.bottom-dock{position:fixed;bottom:36px;left:0;right:0;background:rgba(10,13,18,0.95);border-top:1px solid rgba(255,255,255,0.06);padding:6px 16px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;z-index:50;font-family:var(--font-pixel);gap:4px;backdrop-filter:blur(16px)}
+.bottom-dock{position:fixed;bottom:0;left:0;right:0;background:rgba(10,13,18,0.95);border-top:1px solid rgba(255,255,255,0.06);padding:6px 16px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;z-index:50;font-family:var(--font-pixel);gap:4px;backdrop-filter:blur(16px)}
 .bottom-dock .bd-commentary{flex:1;color:#fff8ee;font-size:1.05em;font-weight:bold;overflow:hidden;text-overflow:ellipsis;margin-right:12px;text-shadow:0 1px 2px rgba(0,0,0,0.5);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.3}
 .bottom-dock .bd-reactions{display:flex;gap:4px}
 .bottom-dock .bd-reactions button{font-size:1.2em;background:#3a3c56;border:2px solid #4a4c66;border-radius:4px;width:36px;height:36px;cursor:pointer;transition:all .1s}
@@ -4091,9 +4091,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.54.0">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.54.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.54.0">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.55.0">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.55.0">
+<link rel="stylesheet" href="/static/css/components.css?v=3.55.0">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
@@ -4345,7 +4345,12 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 <div id="table-info"></div>
 <div id="actions"><div id="timer"></div><div id="actbtns"></div></div>
 <button id="new-btn" onclick="newGame()">🔄 새 게임</button>
-<!-- 채팅: bottom-dock으로 이동 -->
+<!-- 쓰레기톡 독 -->
+<div id="chatbox" style="flex-shrink:0;display:flex;align-items:center;gap:6px;padding:6px 12px;background:rgba(10,13,18,0.92);border:1px solid rgba(255,255,255,0.08);border-radius:8px;margin-top:4px">
+<div id="chatmsgs" style="flex:1;overflow-y:auto;max-height:60px;font-size:0.8em;color:var(--text-muted);font-family:var(--font-pixel);line-height:1.4"></div>
+<input id="chat-inp" placeholder="쓰레기톡..." maxlength="100" style="width:200px;background:var(--bg-panel-alt);border:1px solid var(--frame);color:var(--text-primary);padding:5px 10px;font-size:0.85em;font-family:var(--font-pixel);border-radius:8px">
+<button onclick="sendChat()" style="background:#4ade80;color:#000;border:none;border-radius:8px;padding:5px 10px;font-size:0.85em;cursor:pointer;font-family:var(--font-pixel);font-weight:bold">💬</button>
+</div>
 </div>
 </div>
 <!-- 우측 독: 채팅 -->
@@ -4387,7 +4392,7 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 </div>
 </div>
 <!-- 하단 독: 실황 + 리액션 -->
-<div id="chatmsgs" style="position:fixed;bottom:76px;right:10px;width:280px;max-height:150px;overflow-y:auto;background:rgba(10,13,18,0.85);border:1px solid rgba(255,255,255,0.1);border-radius:8px 8px 0 0;padding:6px;font-size:0.78em;z-index:49;backdrop-filter:blur(8px);pointer-events:auto"></div>
+<!-- chatmsgs now inside game-main chatbox -->
 <div class="bottom-dock" id="bottom-dock">
 <span style="background:var(--accent-pink);color:var(--bg-dark);padding:2px 8px;border-radius:var(--radius);font-size:0.7em;font-weight:bold;border:2px solid #E8A8B8;white-space:nowrap;flex-shrink:0">📺 TV</span>
 <span style="background:#333;color:#ff8;padding:2px 6px;border-radius:var(--radius);font-size:0.65em;white-space:nowrap;flex-shrink:0;border:1px solid #ff8">⏱ 20s 딜레이</span>
@@ -4402,11 +4407,7 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 </div>
 </div>
 </div>
-<div id="chatbox" style="position:fixed;bottom:0;left:0;right:0;z-index:55;display:flex;align-items:center;gap:6px;padding:4px 16px;background:rgba(7,10,16,0.95);border-top:1px solid rgba(255,255,255,0.08)">
-<div id="chatmsgs-inline" style="flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:0.8em;color:var(--text-muted);font-family:var(--font-pixel)"></div>
-<input id="chat-inp" placeholder="쓰레기톡..." maxlength="100" style="width:250px;background:var(--bg-panel-alt);border:1px solid var(--frame);color:var(--text-primary);padding:6px 12px;font-size:0.85em;font-family:var(--font-pixel);border-radius:8px">
-<button onclick="sendChat()" style="background:#4ade80;color:#000;border:none;border-radius:8px;padding:6px 12px;font-size:0.85em;cursor:pointer;font-family:var(--font-pixel);font-weight:bold">💬</button>
-</div>
+<!-- chatbox moved to game-main -->
 <div id="vote-panel"><div class="vp-title">🗳️ <span id="vote-title-text">누가 이길까?</span></div><div class="vp-btns" id="vote-btns"></div><div id="vote-results"></div></div>
 <div class="result-overlay" id="result"><div class="result-box" id="rbox"></div></div>
 <div id="reactions" style="display:none">
