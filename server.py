@@ -2381,6 +2381,162 @@ async def handle_client(reader, writer):
             profiles=[t.get_profile(n) for n in t.player_stats if t.player_stats[n]['hands']>0]
             profiles.sort(key=lambda x:x['hands'],reverse=True)
             await send_json(writer,{'profiles':profiles})
+    elif method=='GET' and route=='/api/analysis':
+        tid=qs.get('table_id',[''])[0]; name=qs.get('name',[''])[0]; rtype=qs.get('type',['hands'])[0]
+        t=find_table(tid)
+        if not t: await send_json(writer,{'error':'no game'},404); return
+        all_records=load_hand_history(tid, 500)
+        if rtype=='hands':
+            # 핸드별 의사결정 로그
+            hands=[]
+            for rec in all_records:
+                p_info=next((p for p in rec.get('players',[]) if p['name']==name),None) if name and name!='all' else None
+                if name and name!='all' and not p_info: continue
+                h={'hand':rec['hand'],'community':rec.get('community',[]),'winner':rec.get('winner',''),'pot':rec.get('pot',0),'players_count':len(rec.get('players',[]))}
+                if p_info:
+                    h['hole']=p_info.get('hole',[]); h['chips']=p_info.get('chips',0)
+                    h['actions']=[{'round':a['round'],'action':a['action'],'amount':a.get('amount',0)} for a in rec['actions'] if a['player']==name]
+                    h['result']='win' if rec.get('winner')==name else 'loss'
+                else:
+                    h['players']=[{'name':p['name'],'hole':p.get('hole',[]),'chips':p.get('chips',0)} for p in rec.get('players',[])]
+                    h['actions']=rec.get('actions',[])
+                hands.append(h)
+            await send_json(writer,{'type':'hands','player':name or 'all','total':len(hands),'hands':hands})
+        elif rtype=='winrate':
+            # 승률별 행동 분석 — 승률 구간별 액션 분포
+            if not name or name=='all': await send_json(writer,{'error':'player name required'},400); return
+            buckets={}  # '0-20','20-40','40-60','60-80','80-100'
+            for b in ['0-20','20-40','40-60','60-80','80-100']: buckets[b]={'fold':0,'call':0,'raise':0,'allin':0,'check':0,'total':0,'wins':0}
+            for rec in all_records:
+                p_info=next((p for p in rec.get('players',[]) if p['name']==name),None)
+                if not p_info or not p_info.get('hole'): continue
+                comm=rec.get('community',[])
+                # 각 액션 시점의 승률 추정 (카드 기반)
+                for act in rec.get('actions',[]):
+                    if act['player']!=name: continue
+                    # 간단한 승률 구간 추정: hand_strength 사용
+                    hole_cards=p_info.get('hole',[])
+                    if len(hole_cards)<2: continue
+                    try:
+                        # parse cards for strength calc
+                        parsed=[]
+                        for cs in hole_cards:
+                            if len(cs)>=2:
+                                r=cs[:-1];s=cs[-1];parsed.append((r,s))
+                        if len(parsed)<2: continue
+                        comm_parsed=[]
+                        rnd=act.get('round','preflop')
+                        if rnd=='preflop': comm_parsed=[]
+                        elif rnd=='flop': comm_parsed=[(c[:-1],c[-1]) for c in comm[:3] if len(c)>=2]
+                        elif rnd=='turn': comm_parsed=[(c[:-1],c[-1]) for c in comm[:4] if len(c)>=2]
+                        elif rnd=='river': comm_parsed=[(c[:-1],c[-1]) for c in comm[:5] if len(c)>=2]
+                        wp=hand_strength(parsed,comm_parsed)*100
+                    except: wp=50
+                    bk='0-20' if wp<20 else '20-40' if wp<40 else '40-60' if wp<60 else '60-80' if wp<80 else '80-100'
+                    a=act['action'].lower()
+                    ak='allin' if 'all' in a else 'raise' if a in ('raise','bet') else 'call' if a=='call' else 'fold' if a=='fold' else 'check'
+                    buckets[bk][ak]+=1; buckets[bk]['total']+=1
+                if rec.get('winner')==name:
+                    # 최종 승률 구간에 승리 기록
+                    try:
+                        parsed=[(cs[:-1],cs[-1]) for cs in p_info.get('hole',[]) if len(cs)>=2]
+                        cp=[(c[:-1],c[-1]) for c in comm if len(c)>=2]
+                        wp=hand_strength(parsed,cp)*100 if len(parsed)>=2 else 50
+                    except: wp=50
+                    bk='0-20' if wp<20 else '20-40' if wp<40 else '40-60' if wp<60 else '60-80' if wp<80 else '80-100'
+                    buckets[bk]['wins']+=1
+            await send_json(writer,{'type':'winrate','player':name,'buckets':buckets})
+        elif rtype=='position':
+            # 포지션별 성적
+            if not name or name=='all': await send_json(writer,{'error':'player name required'},400); return
+            pos={'SB':{'hands':0,'wins':0,'profit':0,'actions':{'fold':0,'call':0,'raise':0,'check':0,'allin':0}},
+                 'BB':{'hands':0,'wins':0,'profit':0,'actions':{'fold':0,'call':0,'raise':0,'check':0,'allin':0}},
+                 'Dealer':{'hands':0,'wins':0,'profit':0,'actions':{'fold':0,'call':0,'raise':0,'check':0,'allin':0}},
+                 'Other':{'hands':0,'wins':0,'profit':0,'actions':{'fold':0,'call':0,'raise':0,'check':0,'allin':0}}}
+            for rec in all_records:
+                players=rec.get('players',[])
+                idx=next((i for i,p in enumerate(players) if p['name']==name),-1)
+                if idx<0: continue
+                n_p=len(players); dealer_idx=rec.get('dealer',0)%n_p
+                if n_p==2:
+                    my_pos='Dealer' if idx==dealer_idx else 'BB'
+                else:
+                    sb_idx=(dealer_idx+1)%n_p; bb_idx=(dealer_idx+2)%n_p
+                    my_pos='Dealer' if idx==dealer_idx else 'SB' if idx==sb_idx else 'BB' if idx==bb_idx else 'Other'
+                won=rec.get('winner')==name; pot=rec.get('pot',0)
+                pos[my_pos]['hands']+=1
+                if won: pos[my_pos]['wins']+=1; pos[my_pos]['profit']+=pot
+                for act in rec.get('actions',[]):
+                    if act['player']!=name: continue
+                    a=act['action'].lower()
+                    ak='allin' if 'all' in a else 'raise' if a in ('raise','bet') else 'call' if a=='call' else 'fold' if a=='fold' else 'check'
+                    pos[my_pos]['actions'][ak]+=1
+            for k in pos:
+                h=max(pos[k]['hands'],1); pos[k]['win_rate']=round(pos[k]['wins']/h*100,1)
+            await send_json(writer,{'type':'position','player':name,'positions':pos})
+        elif rtype=='ev':
+            # EV 분석 — 각 액션의 기대값
+            if not name or name=='all': await send_json(writer,{'error':'player name required'},400); return
+            ev_data={'total_hands':0,'total_ev':0,'actions':[],'summary':{'good_calls':0,'bad_calls':0,'good_folds':0,'bad_folds':0,'good_raises':0,'bad_raises':0}}
+            for rec in all_records:
+                p_info=next((p for p in rec.get('players',[]) if p['name']==name),None)
+                if not p_info: continue
+                ev_data['total_hands']+=1
+                won=rec.get('winner')==name; pot=rec.get('pot',0)
+                my_total_bet=sum(a.get('amount',0) for a in rec.get('actions',[]) if a['player']==name and a['action'] in ('call','raise','bet','all_in'))
+                hand_ev=pot-my_total_bet if won else -my_total_bet
+                ev_data['total_ev']+=hand_ev
+                for act in rec.get('actions',[]):
+                    if act['player']!=name: continue
+                    amt=act.get('amount',0); a=act['action'].lower()
+                    # EV 추정: 승리했으면 +, 패배했으면 -
+                    act_ev=round(pot/max(len(rec.get('players',[])),1)-amt) if won else -amt
+                    if a=='fold': act_ev=0  # 폴드는 EV 0 (손실 방지)
+                    ev_entry={'hand':rec['hand'],'round':act.get('round',''),'action':a,'amount':amt,'ev':act_ev}
+                    ev_data['actions'].append(ev_entry)
+                    # 분류
+                    if a=='call':
+                        if won: ev_data['summary']['good_calls']+=1
+                        else: ev_data['summary']['bad_calls']+=1
+                    elif a=='fold':
+                        if not won: ev_data['summary']['good_folds']+=1
+                        else: ev_data['summary']['bad_folds']+=1
+                    elif a in ('raise','bet','all_in'):
+                        if won: ev_data['summary']['good_raises']+=1
+                        else: ev_data['summary']['bad_raises']+=1
+            ev_data['avg_ev']=round(ev_data['total_ev']/max(ev_data['total_hands'],1),1)
+            await send_json(writer,{'type':'ev','player':name,'data':ev_data})
+        elif rtype=='matchup':
+            # 상대별 전적 매트릭스
+            if not name or name=='all':
+                # 전체 매트릭스
+                matrix={}
+                for rec in all_records:
+                    w=rec.get('winner','')
+                    for p in rec.get('players',[]):
+                        if p['name']==w: continue
+                        pair=tuple(sorted([w,p['name']]))
+                        if pair not in matrix: matrix[pair]={'a':pair[0],'b':pair[1],'a_wins':0,'b_wins':0,'hands':0}
+                        matrix[pair]['hands']+=1
+                        if w==pair[0]: matrix[pair]['a_wins']+=1
+                        else: matrix[pair]['b_wins']+=1
+                await send_json(writer,{'type':'matchup','player':'all','matchups':list(matrix.values())})
+            else:
+                rivals={}
+                for rec in all_records:
+                    p_info=next((p for p in rec.get('players',[]) if p['name']==name),None)
+                    if not p_info: continue
+                    w=rec.get('winner','')
+                    for p in rec.get('players',[]):
+                        if p['name']==name: continue
+                        opp=p['name']
+                        if opp not in rivals: rivals[opp]={'opponent':opp,'wins':0,'losses':0,'hands':0,'my_profit':0}
+                        rivals[opp]['hands']+=1
+                        if w==name: rivals[opp]['wins']+=1; rivals[opp]['my_profit']+=rec.get('pot',0)
+                        elif w==opp: rivals[opp]['losses']+=1
+                await send_json(writer,{'type':'matchup','player':name,'rivals':sorted(rivals.values(),key=lambda x:x['hands'],reverse=True)})
+        else:
+            await send_json(writer,{'error':f'unknown type: {rtype}'},400)
     elif method=='GET' and route=='/api/_v':
         # 스텔스 방문자 통계 (비공개 — URL 모르면 접근 불가)
         k=qs.get('k',[''])[0]
@@ -3738,15 +3894,23 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 </div>
 <!-- 데이터 다운로드 -->
 <div style="margin-bottom:16px">
-<div style="color:#ccc;font-size:0.9em;margin-bottom:6px;font-weight:700">📊 AI 에이전트 기록</div>
-<div style="display:flex;gap:8px;align-items:center">
-<select id="dl-format" style="flex:1;background:#1a1d24;color:#fff;border:2px solid #555;border-radius:8px;padding:8px;font-family:var(--font-pixel);font-size:0.9em">
-<option value="json">JSON (상세)</option>
-<option value="csv">CSV (엑셀용)</option>
+<div style="color:#ccc;font-size:0.9em;margin-bottom:6px;font-weight:700">📊 AI 에이전트 분석 & 다운로드</div>
+<div style="margin-bottom:8px">
+<select id="dl-agent" style="width:100%;background:#1a1d24;color:#fff;border:2px solid #555;border-radius:8px;padding:8px;font-family:var(--font-pixel);font-size:0.9em">
+<option value="all">전체 에이전트</option>
 </select>
-<button onclick="downloadAgentData()" style="background:rgba(74,222,128,0.15);border:2px solid #4ade80;color:#4ade80;border-radius:8px;padding:8px 16px;cursor:pointer;font-family:var(--font-pixel);font-size:0.9em;font-weight:700">⬇️ 다운로드</button>
 </div>
-<div style="color:#666;font-size:0.7em;margin-top:4px">핸드 히스토리, 액션 로그, 승패 기록</div>
+<div style="display:flex;gap:4px;flex-wrap:wrap">
+<button onclick="dlReport('hands')" style="flex:1;min-width:90px;background:rgba(74,222,128,0.15);border:2px solid #4ade80;color:#4ade80;border-radius:8px;padding:6px 8px;cursor:pointer;font-family:var(--font-pixel);font-size:0.75em;font-weight:700" title="핸드별 카드·액션·결과 전체 로그">📋 핸드로그</button>
+<button onclick="dlReport('winrate')" style="flex:1;min-width:90px;background:rgba(96,165,250,0.15);border:2px solid #60a5fa;color:#60a5fa;border-radius:8px;padding:6px 8px;cursor:pointer;font-family:var(--font-pixel);font-size:0.75em;font-weight:700" title="승률별 실제 행동 분석">🧠 승률vs행동</button>
+<button onclick="dlReport('position')" style="flex:1;min-width:90px;background:rgba(251,191,36,0.15);border:2px solid #fbbf24;color:#fbbf24;border-radius:8px;padding:6px 8px;cursor:pointer;font-family:var(--font-pixel);font-size:0.75em;font-weight:700" title="SB/BB/딜러별 성적">🎯 포지션별</button>
+</div>
+<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px">
+<button onclick="dlReport('ev')" style="flex:1;min-width:90px;background:rgba(248,113,113,0.15);border:2px solid #f87171;color:#f87171;border-radius:8px;padding:6px 8px;cursor:pointer;font-family:var(--font-pixel);font-size:0.75em;font-weight:700" title="각 액션의 기대값 분석">💰 EV분석</button>
+<button onclick="dlReport('matchup')" style="flex:1;min-width:90px;background:rgba(192,132,252,0.15);border:2px solid #c084fc;color:#c084fc;border-radius:8px;padding:6px 8px;cursor:pointer;font-family:var(--font-pixel);font-size:0.75em;font-weight:700" title="상대별 전적 매트릭스">⚔️ 상대별전적</button>
+<button onclick="dlReport('csv')" style="flex:1;min-width:90px;background:rgba(255,255,255,0.08);border:2px solid #888;color:#aaa;border-radius:8px;padding:6px 8px;cursor:pointer;font-family:var(--font-pixel);font-size:0.75em;font-weight:700" title="CSV 원본 데이터">📊 CSV</button>
+</div>
+<div style="color:#666;font-size:0.65em;margin-top:6px;line-height:1.4">봇 튜닝용: 핸드로그(전체흐름) · 승률vs행동(비효율발견) · 포지션별(위치전략) · EV분석(실수찾기) · 상대별전적(약점파악)</div>
 </div>
 <!-- 크레딧 -->
 <div style="border-top:1px solid #333;padding-top:10px;color:#777;font-size:0.75em;line-height:1.5;text-align:center">
@@ -7905,16 +8069,34 @@ function animateCommunityCards(){
   });
 }
 
-// ═══ Feature 7: 설정에 에이전트 기록 다운로드 ═══
-function downloadAgentData(){
-  const format=document.getElementById('dl-format')?.value||'json';
-  const url=format==='csv'?`/api/export?table_id=mersoom&player=all`:`/api/replay?table_id=mersoom`;
-  fetch(url).then(r=>r.ok?r.text():Promise.reject('fetch failed')).then(text=>{
-    const blob=new Blob([text],{type:format==='csv'?'text/csv':'application/json'});
-    const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-    a.download=format==='csv'?'poker_history.csv':'poker_history.json';
+// ═══ Feature 7: 에이전트 분석 다운로드 ═══
+function populateAgentDropdown(){
+  const sel=document.getElementById('dl-agent');if(!sel)return;
+  const existing=new Set([...sel.options].map(o=>o.value));
+  fetch(`/api/profile?table_id=mersoom`).then(r=>r.json()).then(d=>{
+    const profiles=d.profiles||[];
+    profiles.forEach(p=>{if(!existing.has(p.name)){const o=document.createElement('option');o.value=p.name;o.textContent=`${p.name} (${p.hands}핸드, ${p.win_rate}%)`;sel.appendChild(o);existing.add(p.name)}});
+  }).catch(()=>{});
+}
+setTimeout(populateAgentDropdown,2000);
+function dlReport(rtype){
+  const agent=document.getElementById('dl-agent')?.value||'all';
+  if(rtype==='csv'){
+    const url=`/api/export?table_id=mersoom&player=${encodeURIComponent(agent)}`;
+    fetch(url).then(r=>r.ok?r.text():Promise.reject('failed')).then(text=>{
+      const blob=new Blob([text],{type:'text/csv'});
+      const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`${agent}_history.csv`;
+      document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(a.href);
+    }).catch(e=>alert('Download failed: '+e));
+    return;
+  }
+  const url=`/api/analysis?table_id=mersoom&name=${encodeURIComponent(agent)}&type=${rtype}`;
+  fetch(url).then(r=>r.ok?r.json():Promise.reject(r.statusText)).then(data=>{
+    const text=JSON.stringify(data,null,2);
+    const blob=new Blob([text],{type:'application/json'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`${agent}_${rtype}.json`;
     document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(a.href);
-  }).catch(e=>alert(lang==='en'?'Download failed: '+e:'다운로드 실패: '+e));
+  }).catch(e=>alert('Download failed: '+e));
 }
 
 // ═══ Feature 8: 킬캠 리플레이 — 올인/큰팟 종료 후 미니 재현 ═══
