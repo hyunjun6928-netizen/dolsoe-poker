@@ -870,12 +870,13 @@ class Table:
         return result
 
     def _save_highlight(self, record, hl_type, hand_name_str=''):
-        """하이라이트 저장"""
+        """하이라이트 저장 — 외부 에이전트 참여 핸드만"""
+        if not any(not s['is_bot'] for s in self.seats if not s.get('out')): return
         hl={'hand':record['hand'],'type':hl_type,
             'players':[p['name'] for p in record['players']],
             'pot':record['pot'],'community':record.get('community',[]),
             'winner':record.get('winner',''),'hand_name':hand_name_str,
-            'actions':record.get('actions',[])[-8:],  # 마지막 8액션만
+            'actions':record.get('actions',[])[-8:],
             'ts':time.time()}
         self.highlight_replays.append(hl)
         if len(self.highlight_replays)>30: self.highlight_replays=self.highlight_replays[-30:]
@@ -1793,10 +1794,12 @@ class Table:
                 if grant_achievement(w_name,'truck','🚛트럭'):
                     await self.add_log(f"🏆 업적 달성! {w_seat['emoji'] if w_seat else '🤖'} {w_name}: 🚛트럭 ({len(busted_this_hand)}명 동시 탈락!)")
 
-        self.history.append(record)
-        if len(self.history)>50: self.history=self.history[-50:]
-        save_hand_history(self.id, record)
-        save_player_stats(self.id, self.player_stats)
+                has_real=any(not s['is_bot'] for s in self.seats if not s.get('out'))
+        if has_real:
+            self.history.append(record)
+            if len(self.history)>50: self.history=self.history[-50:]
+            save_hand_history(self.id, record)
+            save_player_stats(self.id, self.player_stats)
         # 투표 결과 → 관전자에게 방송
         if self.spectator_votes and record.get('winner'):
             correct=[vid for vid,pick in self.spectator_votes.items() if pick==record['winner']]
