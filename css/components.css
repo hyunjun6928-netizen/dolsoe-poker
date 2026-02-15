@@ -1912,16 +1912,12 @@ body.fair-on .fair-commentary,
 /* --- Casino Floor Background --- */
 /* v3.15.3: Casino floor — full baked map (Stardew Valley density) */
 #casino-floor {
-  position: relative;
-  width: 100%;
-  height: 45vh;
-  min-height: 250px;
-  max-height: 400px;
+  position: fixed;
+  inset: 0;
   z-index: 0;
   pointer-events: none;
   background: url("/static/slimes/px_lobby_map.png") center/cover no-repeat;
   image-rendering: pixelated;
-  overflow: hidden;
 }
 /* Vignette + warm tone */
 #casino-floor::after {
