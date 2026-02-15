@@ -373,7 +373,7 @@ def _lobby_record(name, sprite=None, title=None, stats=None):
     else:
         _lobby_agents[name] = {
             'name': name,
-            'sprite': sprite or f'/static/slimes/sit_emerald.png',
+            'sprite': sprite or f'/static/slimes/px_sit_suit.png',
             'title': title or '',
             'last_seen': now,
             'stats': stats or {'hands':0,'win_rate':0,'allins':0}
@@ -1628,9 +1628,9 @@ def init_mersoom_table():
     t = get_or_create_table('mersoom')
     fill_npc_bots(t, 3)  # NPC 3마리 기본 배치
     # Register NPCs in lobby
-    npc_sprites = {'딜러봇':'/static/slimes/sit_sapphire.png','도박꾼':'/static/slimes/sit_ruby.png','고수':'/static/slimes/sit_emerald.png'}
+    npc_sprites = {'딜러봇':'/static/slimes/px_sit_dealer.png','도박꾼':'/static/slimes/px_sit_gambler.png','고수':'/static/slimes/px_sit_suit.png'}
     for s in t.seats:
-        sp = npc_sprites.get(s['name'], '/static/slimes/sit_amber.png')
+        sp = npc_sprites.get(s['name'], '/static/slimes/px_sit_casual.png')
         _lobby_record(s['name'], sprite=sp, title='NPC')
     asyncio.get_event_loop().call_soon(lambda: asyncio.create_task(auto_start_mersoom(t)))
     return t
@@ -1907,7 +1907,7 @@ async def handle_client(reader, writer):
         join_src = sanitize_name(d.get('src',''))[:30] or 'direct'
         _telemetry_log.append({'ts':time.time(),'ev':'join_success','name':name,'table':t.id,'src':join_src})
         touch_agent(name, t.id, d.get('strategy','')[:20] or None)
-        _lobby_record(name, sprite=f'/static/slimes/sit_emerald.png', title=meta_strategy or meta_bio or '')
+        _lobby_record(name, sprite=f'/static/slimes/px_sit_suit.png', title=meta_strategy or meta_bio or '')
         await send_json(writer,{'ok':True,'table_id':t.id,'your_seat':len(t.seats)-1,
             'players':[s['name'] for s in t.seats],'token':token})
     elif method=='GET' and route=='/api/version':
@@ -3268,11 +3268,16 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 .chair-sprite { width: 76px; height: 60px; position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); z-index: 1; opacity: 0.85; pointer-events: none; }
 .chair-sprite img { width: 100%; height: 100%; object-fit: contain; }
 .slime-sprite { position: relative; z-index: 2; }
-.slime-sprite img { width: 88px; height: 88px; object-fit: contain; image-rendering: pixelated; }
+.slime-sprite img, .slime-sprite div { width: 88px; height: 88px; object-fit: contain; image-rendering: auto; background-color: transparent; }
 .chair-shadow { position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%); width: 64px; height: 8px; background: radial-gradient(ellipse, rgba(0,0,0,0.25), transparent); border-radius: 50%; z-index: 0; pointer-events: none; }
 .seat.is-turn .chair-sprite { filter: drop-shadow(0 0 8px rgba(245,197,66,0.3)); }
 .seat.fold .chair-sprite, .seat.fold .slime-sprite { opacity: 0.35; filter: grayscale(0.5); }
 .seat.out .chair-sprite, .seat.out .slime-sprite { opacity: 0.15; filter: grayscale(1); }
+/* Walker / Floor NPC — kill black box */
+.floor-npc, .floor-npc div, .walker-body { background: transparent !important; }
+.walker-body img { image-rendering: auto; background: transparent; }
+.walker-shadow { width: 40px; height: 6px; margin: -2px auto 0; background: radial-gradient(ellipse, rgba(0,0,0,0.3), transparent); border-radius: 50%; pointer-events: none; }
+.crowd-slime { width: 40px; height: 40px; object-fit: contain; image-rendering: auto; background: transparent; }
 </style>
 </head>
 <body class="is-spectator is-lobby">
@@ -5631,7 +5636,7 @@ let _winT=null;
 function showWinnerOverlay(p){
 const ov=document.getElementById('winner-overlay');if(!ov)return;
 ov.classList.remove('hidden');ov.setAttribute('aria-hidden','false');
-_set('#win-img','src',p.img||'/static/slimes/sit_emerald.png');
+_set('#win-img','src',p.img||'/static/slimes/px_sit_suit.png');
 _set('#win-name','textContent',p.name||'Winner');
 _set('#win-slogan','textContent',WIN_SLOGANS[(Math.random()*WIN_SLOGANS.length)|0]);
 _set('#win-hand','textContent',p.hand?'족보: '+p.hand:'');
