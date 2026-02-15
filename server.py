@@ -3624,14 +3624,10 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 </div>
 <div class="dock-panel" style="flex:1">
 <div class="dock-panel-header">
-<span class="dock-tab active" onclick="showDockTab('log',this)" id="tab-log">📜 로그</span>
-<span class="dock-tab" onclick="showDockTab('replay',this)" id="tab-replay">📋 리플레이</span>
-<span class="dock-tab" onclick="showDockTab('highlights',this)" id="tab-hl">🔥 명장면</span>
+<span class="dock-tab active" id="tab-log">📜 로그</span>
 </div>
 <div class="dock-panel-body">
 <div id="log"></div>
-<div id="replay-panel" style="display:none"></div>
-<div id="highlights-panel" style="display:none;font-size:0.78em"></div>
 </div>
 </div>
 <!-- AI 에이전트 패널 (moved to left dock) -->
@@ -3668,21 +3664,17 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--bg-dark);color:var(--accent-pink);padding:6px 14px;border-radius:var(--radius);font-size:0.8em;font-weight:bold;border:2px solid var(--accent-pink);white-space:nowrap;z-index:5;opacity:1;pointer-events:none">🔒 AI 전용</div>
 </div>
 </div>
-<!-- 채팅 -->
+<!-- 리플레이/명장면/룰 탭 -->
 <div class="dock-panel" style="flex:1">
-<div class="dock-panel-header">
-<span class="dock-tab active" onclick="showRightTab('chat',this)">💬 채팅</span>
+<div class="dock-panel-header" style="font-size:0.72em">
+<span class="dock-tab active" onclick="showRightTab('replay',this)" id="tab-replay">📋 리플</span>
+<span class="dock-tab" onclick="showRightTab('highlights',this)" id="tab-hl">🔥 명장면</span>
 <span class="dock-tab" onclick="showRightTab('guide',this)">📖 룰</span>
 </div>
-<div class="dock-panel-body" style="padding:0;display:flex;flex-direction:column">
-<div id="chatbox">
-<div id="chatmsgs"></div>
-<div id="quick-chat">
-<button onclick="qChat('ㅋㅋㅋ')">ㅋㅋㅋ</button><button onclick="qChat('사기?')">사기?</button><button onclick="qChat('올인!')">올인!</button><button onclick="qChat('GG')">GG</button><button onclick="qChat('낄낄')">낄낄</button>
-</div>
-<div id="chatinput"><input id="chat-inp" placeholder="쓰레기톡..." maxlength="100"><button onclick="sendChat()">💬</button></div>
-</div>
-<div id="guide-panel" style="display:none;padding:8px;font-size:0.8em;color:var(--text-secondary);line-height:1.6">
+<div class="dock-panel-body" style="padding:4px">
+<div id="replay-panel" style="font-size:0.75em"></div>
+<div id="highlights-panel" style="display:none;font-size:0.75em"></div>
+<div id="guide-panel" style="display:none;padding:4px;font-size:0.75em;color:var(--text-secondary);line-height:1.5">
 <b style="color:var(--text-primary)">📖 텍사스 홀덤 간단 룰</b><br>
 🃏 각 플레이어에게 홀카드 2장 → 커뮤니티 5장 공개<br>
 🔄 프리플랍→플랍(3장)→턴(1장)→리버(1장)→쇼다운<br>
@@ -3691,6 +3683,19 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 ⏱ AI 턴 타임아웃: 45초<br>
 👀 관전자는 쇼다운 때만 홀카드 공개됨<br>
 📡 관전 딜레이: 20초 (공정성)
+</div>
+</div>
+</div>
+<!-- 채팅 -->
+<div class="dock-panel" style="flex:0 0 auto;max-height:180px">
+<div class="dock-panel-header" style="font-size:0.72em">💬 채팅</div>
+<div class="dock-panel-body" style="padding:0;display:flex;flex-direction:column">
+<div id="chatbox">
+<div id="chatmsgs"></div>
+<div id="quick-chat">
+<button onclick="qChat('ㅋㅋㅋ')">ㅋㅋㅋ</button><button onclick="qChat('사기?')">사기?</button><button onclick="qChat('올인!')">올인!</button><button onclick="qChat('GG')">GG</button><button onclick="qChat('낄낄')">낄낄</button>
+</div>
+<div id="chatinput"><input id="chat-inp" placeholder="쓰레기톡..." maxlength="100"><button onclick="sendChat()">💬</button></div>
 </div>
 </div>
 </div>
@@ -5043,10 +5048,12 @@ document.querySelectorAll('.fair-data').forEach(el=>el.style.display=fairnessSho
 
 // === 우측 독 탭 전환 ===
 function showRightTab(tab,el){
-document.querySelectorAll('#agent-panel ~ .dock-panel .dock-tab').forEach(t=>t.classList.remove('active'));
+document.querySelectorAll('.dock-right .dock-panel:not(#action-stack) .dock-tab').forEach(t=>t.classList.remove('active'));
 if(el)el.classList.add('active');
-document.getElementById('chatbox').style.display=tab==='chat'?'flex':'none';
-const gp=document.getElementById('guide-panel');if(gp)gp.style.display=tab==='guide'?'block':'none';}
+const rp=document.getElementById('replay-panel');if(rp)rp.style.display=tab==='replay'?'block':'none';
+const hp=document.getElementById('highlights-panel');if(hp)hp.style.display=tab==='highlights'?'block':'none';
+const gp=document.getElementById('guide-panel');if(gp)gp.style.display=tab==='guide'?'block':'none';
+}
 
 // === 에이전트 패널 렌더 ===
 function renderAgentPanel(state){
