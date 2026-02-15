@@ -3667,7 +3667,7 @@ z-index:0}
 background:linear-gradient(90deg,transparent,rgba(255,255,255,0.08),transparent)}
 .felt{position:relative;
 background:url('/static/slimes/table_felt.png') center/cover no-repeat,linear-gradient(180deg,#1a1e2a 0%,#0d1018 100%);
-border:none;border-radius:18px;width:100%;height:calc(100vh - 140px);
+border:none;border-radius:18px;width:100%;height:calc(100vh - 280px);
 box-shadow:0 0 60px rgba(245,197,66,0.08),0 8px 32px rgba(0,0,0,0.6);overflow:visible;
 image-rendering:auto}
 .felt::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;
@@ -3833,7 +3833,7 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 .dock-resizer:hover,.dock-resizer.active{background:rgba(74,222,128,0.4)}
 .dock-left .dock-resizer{right:-3px}
 .dock-right .dock-resizer{left:-3px}
-.game-main{min-width:0;overflow:visible}
+.game-main{min-width:0;overflow-y:auto;overflow-x:hidden}
 .game-sidebar{display:none}
 .dock-left,.dock-right{display:flex;flex-direction:column;gap:6px;overflow:auto;align-items:stretch}
 .dock-left>*,.dock-right>*{width:100%!important;box-sizing:border-box}
