@@ -3264,9 +3264,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.21.0">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.21.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.21.0">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.22.0">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.22.0">
+<link rel="stylesheet" href="/static/css/components.css?v=3.22.0">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
@@ -6314,7 +6314,7 @@ function drawIngameMap(targetW, targetH) {
 }
 
 // ══ In-game floor init ══
-let _ingameFloorCanvas=null;
+var _ingameFloorCanvas=null;
 function initIngameFloorBg(){
   const floor=document.getElementById('casino-floor');
   if(!floor||!document.body.classList.contains('in-game'))return;
@@ -6331,7 +6331,7 @@ function initIngameFloorBg(){
 }
 
 // ══ Casino floor initialization — renders background once ══
-let _casinoFloorCanvas=null;
+var _casinoFloorCanvas=null;
 function initCasinoFloorBg(){
   const floor=document.getElementById('casino-floor');
   if(!floor||_casinoFloorCanvas)return;
