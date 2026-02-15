@@ -1916,18 +1916,17 @@ body.fair-on .fair-commentary,
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  /* Background rendered by drawCasinoFloor() procedural engine */
-  background: #1e1530;
+  background: url("/static/slimes/px_lobby_map.png") center/cover no-repeat;
   image-rendering: pixelated;
 }
-/* Vignette — very subtle, don't crush the procedural art */
+/* Vignette + warm tone */
 #casino-floor::after {
   content: "";
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 80% 70% at 50% 50%, transparent 50%, rgba(0,0,0,0.25) 100%),
-    radial-gradient(ellipse 50% 40% at 50% 40%, rgba(245,197,66,0.05), transparent);
+    radial-gradient(ellipse 65% 55% at 50% 50%, transparent 30%, rgba(0,0,0,0.5) 100%),
+    radial-gradient(ellipse 40% 30% at 50% 40%, rgba(245,197,66,0.03), transparent);
   pointer-events: none;
   image-rendering: auto;
 }
@@ -1953,7 +1952,7 @@ body.in-game #casino-floor {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background: #1e1530 !important;
+  background: #0e0a14 !important;
   image-rendering: pixelated;
 }
 body.in-game #casino-floor #floor-agents,
@@ -1962,8 +1961,8 @@ body.in-game #casino-floor #lobby-log,
 body.in-game #casino-floor #casino-walkers { display: none; }
 body.in-game #casino-floor::after {
   background:
-    radial-gradient(ellipse 75% 65% at 50% 45%, transparent 40%, rgba(0,0,0,0.35) 100%),
-    radial-gradient(ellipse 50% 40% at 50% 45%, rgba(245,197,66,0.06), transparent);
+    radial-gradient(ellipse 70% 60% at 50% 45%, rgba(0,0,0,0.1), rgba(0,0,0,0.6)),
+    radial-gradient(ellipse 40% 35% at 50% 45%, rgba(245,197,66,0.04), transparent);
 }
 
 /* === Spectator Crowd (in-game) === */

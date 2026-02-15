@@ -3264,9 +3264,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.22.0">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.22.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.22.0">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.23.0">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.23.0">
+<link rel="stylesheet" href="/static/css/components.css?v=3.23.0">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
@@ -3826,7 +3826,6 @@ function pickPOI(npc){
 }
 
 async function loadCasinoFloor(){
-  initCasinoFloorBg();
   const el=document.getElementById('floor-agents');if(!el)return;
   // Render zone light pools + POI furniture sprites
   const poiLayer=document.getElementById('poi-layer');
@@ -5843,9 +5842,9 @@ function drawSlime(name, emotion, size) {
   return c;
 }
 // Color mixing util
-// ══════════════════════════════════════════════════════════════════
-// ═══ PROCEDURAL CASINO FLOOR RENDERER (PX=2 pixel art) ═══
-// ══════════════════════════════════════════════════════════════════
+// ══ Procedural In-Game Map — casino interior, table-level view ══
+// (lobby uses PixelLab px_lobby_map.png)
+function _drawCasinoFloor_REMOVED() { /* removed — lobby uses static image now */ }
 function drawCasinoFloor(targetW, targetH) {
   const PX=2;
   const W=Math.floor(targetW/PX), H=Math.floor(targetH/PX);
