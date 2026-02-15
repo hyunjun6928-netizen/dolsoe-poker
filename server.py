@@ -3632,7 +3632,7 @@ h1 b{color:var(--accent-gold);-webkit-text-fill-color:var(--accent-gold)}
 .info-bar{position:fixed!important;top:0!important;left:0!important;right:0!important;z-index:100!important;display:flex!important;flex-wrap:wrap!important;justify-content:space-between;align-items:center;padding:4px 16px;font-size:0.8em;color:var(--text-light);background:#070A10!important;border-bottom:1px solid rgba(255,255,255,0.06);box-shadow:0 2px 8px rgba(0,0,0,0.5)!important;font-family:var(--font-pixel)}
 .info-bar #hand-timeline,.info-bar #commentary{width:100%!important;flex-basis:100%}
 .info-bar #commentary{font-size:14px!important}
-.felt-wrap{position:relative;margin:0 auto 0;padding-top:0;width:100%;flex:1 1 0;min-height:0;overflow:visible}
+.felt-wrap{position:relative;margin:0 auto 0;padding-top:0;width:100%;flex:0 0 auto;min-height:0;overflow:visible}
 .felt-border{position:absolute;top:-20px;left:-20px;right:-20px;bottom:-20px;
 background:url('/static/slimes/stage_frame.png') center/100% 100% no-repeat;
 border-radius:0;border:none;image-rendering:auto;pointer-events:none;
@@ -3643,7 +3643,7 @@ z-index:0}
 background:linear-gradient(90deg,transparent,rgba(255,255,255,0.08),transparent)}
 .felt{position:relative;
 background:url('/static/slimes/table_felt.png') center/cover no-repeat,linear-gradient(180deg,#1a1e2a 0%,#0d1018 100%);
-border:none;border-radius:18px;width:100%;height:100%;
+border:none;border-radius:18px;width:100%;height:calc(100vh - 160px);max-height:800px;
 box-shadow:0 0 60px rgba(245,197,66,0.08),0 8px 32px rgba(0,0,0,0.6);overflow:visible;
 image-rendering:auto}
 .felt::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;
@@ -4068,9 +4068,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- v2.0 Design System Override -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/neodgm@1.530/style/neodgm.css">
 <style>@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');</style>
-<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.67.0">
-<link rel="stylesheet" href="/static/css/layout.css?v=3.67.0">
-<link rel="stylesheet" href="/static/css/components.css?v=3.67.0">
+<link rel="stylesheet" href="/static/css/design-tokens.css?v=3.68.0">
+<link rel="stylesheet" href="/static/css/layout.css?v=3.68.0">
+<link rel="stylesheet" href="/static/css/components.css?v=3.68.0">
 <style>
 /* === Seat Chair Layer System === */
 .seat-unit { position: relative; display: flex; flex-direction: column; align-items: center; }
