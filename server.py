@@ -8744,7 +8744,7 @@ function drawSlime(name, emotion, size) {
   const traits = _slimeTraits[name] || {type:'balanced'};
   const key = name+'_'+emotion+'_'+size+'_'+traits.type;
   if (_slimeCache[key]) return _slimeCache[key];
-  const PX = 2; // v4: HD pixel size
+  const PX = 2;
   const sz = size || 80;
   const G = Math.floor(sz/PX);
   const c = document.createElement('canvas');
@@ -8756,111 +8756,135 @@ function drawSlime(name, emotion, size) {
   function px(x,y,color){if(x>=0&&x<G&&y>=0&&y<G){g.fillStyle=color;g.fillRect(x*PX,y*PX,PX,PX)}}
   function pxR(x,y,w,h,color){g.fillStyle=color;g.fillRect(x*PX,y*PX,w*PX,h*PX)}
 
-  // --- HD Joody Dome Slime (PX=2, 40x40 grid for 80px) ---
-  const cx=Math.floor(G/2);
-  const R=Math.floor(G*0.34);
-  const centerY=Math.floor(G*0.46);
-  const bodyTop=centerY-R;
-  const bodyBot=centerY+Math.floor(R*0.65);
+  // --- Cute Blob Slime (PX=2, 40x40 grid) ---
+  const cx=Math.floor(G/2); // 20
+  // Body dimensions — wider than tall (blob shape)
+  const bodyW = Math.floor(G*0.42); // half-width ~17
+  const bodyH = Math.floor(G*0.32); // half-height ~13
+  const centerY = Math.floor(G*0.50); // vertical center ~20
+  const bodyTop = centerY - bodyH;
+  const bodyBot = centerY + Math.floor(bodyH*0.7);
 
-  // Body: dome top + slightly flared bottom
-  for(let y=bodyTop;y<=bodyBot;y++){
-    const dy=y-centerY;
+  // Emotion body squish
+  let squishX=1.0, squishY=1.0;
+  if(emotion==='lose') { squishX=1.08; squishY=0.85; }
+
+  // === GROUND SHADOW (dark ellipse below body) ===
+  const shY = bodyBot + 3;
+  for(let dx=-bodyW+2; dx<=bodyW-2; dx++){
+    const nx = dx/(bodyW-2);
+    const a = Math.max(0, 0.25*(1-nx*nx));
+    if(a>0.01){
+      px(cx+dx, shY, `rgba(0,0,0,${a})`);
+      px(cx+dx, shY+1, `rgba(0,0,0,${a*0.5})`);
+    }
+  }
+
+  // === BODY: wide dome blob ===
+  for(let y=bodyTop; y<=bodyBot; y++){
+    const dy = y - centerY;
+    const ny = dy / bodyH; // normalized -1..~0.7
     let hw;
-    if(dy<=0){
-      hw=Math.floor(Math.sqrt(Math.max(R*R-dy*dy,0)));
+    if(dy <= 0){
+      // Top dome: elliptical
+      hw = Math.floor(Math.sqrt(Math.max(1 - (dy*dy)/(bodyH*bodyH), 0)) * bodyW * squishX);
     } else {
-      const t=dy/Math.max(bodyBot-centerY,1);
-      hw=R+Math.floor(t*3);
+      // Bottom: slightly flared then tuck in at base
+      const t = dy / Math.max(bodyBot - centerY, 1);
+      const flare = 1 + 0.1*Math.sin(t*Math.PI);
+      hw = Math.floor(bodyW * flare * squishX * (1 - t*0.15));
     }
-    if(st==='newbie') hw=Math.max(Math.floor(hw*0.8),3);
-    for(let dx=-hw;dx<=hw;dx++){
-      let cc=col.body;
-      // Outline
-      if(Math.abs(dx)>=hw) cc=col.dark;
-      else if(y<=bodyTop+1) cc=col.dark;
-      else if(y>=bodyBot) cc=col.dark;
-      // Lighting: left highlight band
-      else if(dy<-R*0.2 && dx>-hw+2 && dx<-hw/4) cc=col.light;
-      // Top highlight
-      else if(y<=bodyTop+3 && Math.abs(dx)<hw-2) cc=col.light;
-      // Bottom shadow
-      else if(y>=bodyBot-2) cc=col.dark;
-      // Right shadow edge
-      else if(dx>=hw-2) { const a=0.15+0.1*((dx-hw+2)/2); cc=_mixColor(col.body,col.dark,a); }
-      px(cx+dx,y,cc);
-    }
-  }
-  // Inner body fill (smooth gradient)
-  for(let y=bodyTop+2;y<bodyBot-1;y++){
-    const dy=y-centerY;
-    let hw;
-    if(dy<=0) hw=Math.floor(Math.sqrt(Math.max(R*R-dy*dy,0)))-1;
-    else { const t=dy/Math.max(bodyBot-centerY,1); hw=R+Math.floor(t*3)-1; }
-    // Subtle vertical gradient
-    const gy=(y-bodyTop)/(bodyBot-bodyTop);
-    if(gy>0.7){
-      for(let dx=-hw+1;dx<hw;dx++){
-        const a=0.08*(gy-0.7)/0.3;
-        px(cx+dx,y,_mixColor(col.body,col.dark,a));
+    if(st==='newbie') hw = Math.max(Math.floor(hw*0.85), 3);
+
+    for(let dx=-hw; dx<=hw; dx++){
+      let cc = col.body;
+      const adx = Math.abs(dx);
+      // Outline (1px dark border)
+      if(adx >= hw || y<=bodyTop || y>=bodyBot){
+        cc = col.dark;
       }
+      // Top highlight zone (rows 1-4 from top)
+      else if(y <= bodyTop+4 && adx < hw-2){
+        cc = col.light;
+      }
+      // Left highlight band (jelly sheen)
+      else if(dy < 0 && dx > -hw+2 && dx < -hw/3){
+        cc = _mixColor(col.light, col.body, 0.4);
+      }
+      // Bottom shadow gradient
+      else if(y >= bodyBot-3){
+        const t2 = (y-(bodyBot-3))/3;
+        cc = _mixColor(col.body, col.dark, 0.15+0.15*t2);
+      }
+      // Right edge shadow
+      else if(dx >= hw-2){
+        cc = _mixColor(col.body, col.dark, 0.2);
+      }
+      px(cx+dx, y, cc);
     }
   }
 
-  // Big specular highlight (top-left dome)
-  const hlX=cx-Math.floor(R*0.4), hlY=centerY-Math.floor(R*0.55);
-  pxR(hlX,hlY,3,4,'#ffffffcc');
-  pxR(hlX+1,hlY-1,2,1,'#ffffffaa');
-  px(hlX+3,hlY+1,'#ffffff88');
-  px(hlX-1,hlY+2,'#ffffff66');
-  // Small secondary highlight
-  px(cx-Math.floor(R*0.15),centerY-Math.floor(R*0.7),'#ffffff77');
+  // === SHORT ARMS (2-3px stubs on sides) ===
+  const armY = centerY + 1;
+  if(emotion==='win'){
+    // Arms up! (raised)
+    for(let i=0;i<3;i++){
+      px(cx-bodyW-1, armY-2-i, col.body);
+      px(cx+bodyW+1, armY-2-i, col.body);
+    }
+    px(cx-bodyW-2, armY-4, col.body); px(cx+bodyW+2, armY-4, col.body);
+    // arm outline
+    px(cx-bodyW-1, armY-5, col.dark); px(cx+bodyW+1, armY-5, col.dark);
+    px(cx-bodyW-2, armY-2, col.dark); px(cx+bodyW+2, armY-2, col.dark);
+  } else {
+    // Normal arms (sides)
+    for(let i=0;i<3;i++){
+      px(cx-bodyW-1, armY+i, col.body);
+      px(cx+bodyW+1, armY+i, col.body);
+    }
+    px(cx-bodyW-2, armY+1, col.body); px(cx+bodyW+2, armY+1, col.body);
+    // outline
+    px(cx-bodyW-2, armY, col.dark); px(cx+bodyW+2, armY, col.dark);
+    px(cx-bodyW-1, armY+3, col.dark); px(cx+bodyW+1, armY+3, col.dark);
+    px(cx-bodyW-2, armY+2, col.dark); px(cx+bodyW+2, armY+2, col.dark);
+  }
+
+  // === BIG SPECULAR HIGHLIGHT (top-left dome, jelly feel) ===
+  const hlX = cx - Math.floor(bodyW*0.35);
+  const hlY = bodyTop + 2;
+  pxR(hlX, hlY, 4, 3, '#ffffffcc');
+  pxR(hlX+1, hlY-1, 3, 1, '#ffffffaa');
+  px(hlX+4, hlY+1, '#ffffff88');
+  px(hlX-1, hlY+1, '#ffffff66');
+  // Small secondary highlight (top right)
+  pxR(cx+Math.floor(bodyW*0.15), bodyTop+2, 2, 2, '#ffffff55');
 
   // === NPC-SPECIFIC ACCESSORIES ===
   const npcKey = name.toLowerCase();
-  // 딜러봇: Dealer visor cap (green)
   if(npcKey.includes('딜러')||npcKey.includes('dealer')){
     const capY=bodyTop-1;
-    pxR(cx-R+1,capY,R*2-2,3,'#065f46');
-    pxR(cx-R,capY+1,R*2,2,'#065f46');
-    // Visor brim
-    pxR(cx-R-2,capY+3,R*2+4,1,'#047857');
-    pxR(cx-R-3,capY+4,R*2+6,1,'#059669');
-    // Cap highlight
+    pxR(cx-bodyW+2,capY,bodyW*2-4,3,'#065f46');
+    pxR(cx-bodyW+1,capY+1,bodyW*2-2,2,'#065f46');
+    pxR(cx-bodyW-1,capY+3,bodyW*2+2,1,'#047857');
+    pxR(cx-bodyW-2,capY+4,bodyW*2+4,1,'#059669');
     pxR(cx-3,capY+1,4,1,'#10b981');
   }
-  // 도박꾼: Sunglasses (cool)
-  else if(npcKey.includes('도박')||npcKey.includes('gambler')){
-    // drawn after eyes (see below)
-  }
-  // 고수/Pro: Top hat
   else if(npcKey.includes('고수')||npcKey==='pro'){
     const hatY=bodyTop-5;
-    pxR(cx-4,hatY,9,5,'#1a1a2e');
-    pxR(cx-3,hatY+1,7,3,'#16213e');
-    // Hat band
+    pxR(cx-4,hatY,9,5,'#1a1a2e');pxR(cx-3,hatY+1,7,3,'#16213e');
     pxR(cx-4,hatY+4,9,1,'#c0392b');
-    // Brim
     pxR(cx-6,bodyTop-1,13,2,'#1a1a2e');
-    // Highlight
     px(cx-2,hatY+1,'#2d3a5e');
   }
-  // 초보/Newbie: Propeller cap
   else if(npcKey.includes('초보')||npcKey.includes('newbie')){
     const capY=bodyTop-1;
-    pxR(cx-R+2,capY,R*2-4,2,'#3b82f6');
-    pxR(cx-R+1,capY+1,R*2-2,1,'#2563eb');
-    // Propeller
+    pxR(cx-bodyW+3,capY,bodyW*2-6,2,'#3b82f6');
+    pxR(cx-bodyW+2,capY+1,bodyW*2-4,1,'#2563eb');
     px(cx,capY-2,'#ef4444');
     px(cx-2,capY-3,'#fbbf24');px(cx+2,capY-3,'#fbbf24');
     px(cx-3,capY-2,'#fbbf24');px(cx+3,capY-2,'#fbbf24');
     px(cx,capY-1,'#ef4444');
   }
-  // 상어/Shark: Scar + dark look
-  else if(npcKey.includes('상어')||npcKey.includes('shark')){
-    // Scar drawn after eyes (see below)
-  }
-  // 여우/Fox: Bow tie
   else if(npcKey.includes('여우')||npcKey.includes('fox')){
     const btY=bodyBot-3;
     px(cx,btY,'#ef4444');
@@ -8868,10 +8892,10 @@ function drawSlime(name, emotion, size) {
     px(cx-2,btY-2,'#ef4444');px(cx+2,btY-2,'#ef4444');
     px(cx-1,btY+1,'#ef4444');px(cx+1,btY+1,'#ef4444');
     px(cx-2,btY+2,'#ef4444');px(cx+2,btY+2,'#ef4444');
-    px(cx,btY-1,'#fbbf24');px(cx,btY+1,'#fbbf24'); // center knot
+    px(cx,btY-1,'#fbbf24');px(cx,btY+1,'#fbbf24');
   }
 
-  // === DYNAMIC ACCESSORIES (from traits.accessories or /join API) ===
+  // === DYNAMIC ACCESSORIES ===
   const acc = (traits.accessories || []);
   acc.forEach(a => {
     if(a==='crown'){
@@ -8884,18 +8908,18 @@ function drawSlime(name, emotion, size) {
       for(let i=0;i<4;i++){px(cx-5-i,bodyTop-1-i,'#8b0000');px(cx+5+i,bodyTop-1-i,'#8b0000')}
     }
     if(a==='shield'){
-      const sx=cx+R+2,sy=centerY-3;
+      const sx=cx+bodyW+2,sy=centerY-3;
       pxR(sx,sy,4,8,'#4a90d9');pxR(sx+1,sy+1,2,6,'#6ab0ff');
       px(sx+2,sy+3,'#fbbf24');
     }
     if(a==='flame'){
       for(let i=0;i<3;i++){
-        px(cx-R-1-i,centerY-i*2,'#ff4400');px(cx-R-1-i,centerY-i*2-1,'#D4864A');
-        px(cx+R+1+i,centerY-i*2,'#ff4400');px(cx+R+1+i,centerY-i*2-1,'#D4864A');
+        px(cx-bodyW-1-i,centerY-i*2,'#ff4400');px(cx-bodyW-1-i,centerY-i*2-1,'#D4864A');
+        px(cx+bodyW+1+i,centerY-i*2,'#ff4400');px(cx+bodyW+1+i,centerY-i*2-1,'#D4864A');
       }
     }
     if(a==='heart'){
-      const hx=cx+R+1,hy=bodyTop;
+      const hx=cx+bodyW+1,hy=bodyTop;
       px(hx-1,hy,'#ff4466');px(hx+1,hy,'#ff4466');
       px(hx-2,hy+1,'#ff4466');px(hx,hy+1,'#ff4466');px(hx+2,hy+1,'#ff4466');
       px(hx-1,hy+2,'#ff4466');px(hx+1,hy+2,'#ff4466');
@@ -8915,51 +8939,46 @@ function drawSlime(name, emotion, size) {
       px(cx-1,btY2+1,'#e74c3c');px(cx+1,btY2+1,'#e74c3c');
     }
     if(a==='bandana'){
-      pxR(cx-R+1,bodyTop,R*2-2,2,'#e74c3c');
-      pxR(cx-R,bodyTop+1,2,3,'#e74c3c');
+      pxR(cx-bodyW+2,bodyTop,bodyW*2-4,2,'#e74c3c');
+      pxR(cx-bodyW+1,bodyTop+1,2,3,'#e74c3c');
     }
     if(a==='cigar'){
-      const cY=centerY+Math.floor(R*0.4);
-      pxR(cx+R-1,cY,5,1,'#8B4513');pxR(cx+R+3,cY-1,2,1,'#D4864A');
-      px(cx+R+4,cY-2,'#aaa');px(cx+R+5,cY-3,'#aaa8');
+      const cY=centerY+Math.floor(bodyH*0.4);
+      pxR(cx+bodyW-1,cY,5,1,'#8B4513');pxR(cx+bodyW+3,cY-1,2,1,'#D4864A');
+      px(cx+bodyW+4,cY-2,'#aaa');px(cx+bodyW+5,cY-3,'#aaa8');
     }
     if(a==='halo'){
       const haY=bodyTop-4;
       for(let dx=-4;dx<=4;dx++) if(Math.abs(dx)>=2){px(cx+dx,haY,'#fde68a');px(cx+dx,haY-1,'#fde68a66')}
     }
     if(a==='devil_tail'){
-      const tx=cx-R-1,ty=bodyBot;
+      const tx=cx-bodyW-1,ty=bodyBot;
       px(tx,ty,'#8b0000');px(tx-1,ty+1,'#8b0000');px(tx-2,ty+2,'#8b0000');
       px(tx-3,ty+1,'#8b0000');px(tx-4,ty,'#8b0000');
     }
     if(a==='earring'){
-      px(cx-R-1,centerY+1,'#fbbf24');px(cx-R-1,centerY+2,'#fbbf24');px(cx-R-1,centerY+3,'#fbbf24');
+      px(cx-bodyW-1,centerY+1,'#fbbf24');px(cx-bodyW-1,centerY+2,'#fbbf24');px(cx-bodyW-1,centerY+3,'#fbbf24');
     }
     if(a==='headphones'){
-      pxR(cx-R-1,centerY-3,2,6,'#333');pxR(cx+R,centerY-3,2,6,'#333');
-      pxR(cx-R-2,centerY-2,3,4,'#555');pxR(cx+R,centerY-2,3,4,'#555');
-      for(let dx=-R;dx<=R;dx++) if(Math.abs(dx)>R-3) px(cx+dx,bodyTop-2,'#333');
+      pxR(cx-bodyW-1,centerY-3,2,6,'#333');pxR(cx+bodyW,centerY-3,2,6,'#333');
+      pxR(cx-bodyW-2,centerY-2,3,4,'#555');pxR(cx+bodyW,centerY-2,3,4,'#555');
+      for(let dx=-bodyW;dx<=bodyW;dx++) if(Math.abs(dx)>bodyW-3) px(cx+dx,bodyTop-2,'#333');
     }
     if(a==='scarf'){
-      pxR(cx-R+1,bodyBot-2,R*2-2,2,'#e74c3c');
-      pxR(cx+R-2,bodyBot,2,4,'#e74c3c');
+      pxR(cx-bodyW+2,bodyBot-2,bodyW*2-4,2,'#e74c3c');
+      pxR(cx+bodyW-2,bodyBot,2,4,'#e74c3c');
     }
     if(a==='flower'){
-      const fx=cx-R-1,fy=bodyTop+1;
+      const fx=cx-bodyW-1,fy=bodyTop+1;
       px(fx,fy-1,'#f472b6');px(fx-1,fy,'#f472b6');px(fx+1,fy,'#f472b6');
       px(fx,fy+1,'#f472b6');px(fx,fy,'#fbbf24');
     }
-    if(a==='monocle'){
-      // drawn after eyes
-    }
-    if(a==='sunglasses'){
-      // drawn after eyes
-    }
+    if(a==='monocle'){/* drawn after eyes */}
+    if(a==='sunglasses'){/* drawn after eyes */}
   });
 
   // === TYPE DECORATIONS ===
   if(st==='aggressive'||traits.allinAddict){
-    // Devil horns
     for(let i=0;i<3;i++){px(cx-4-i,bodyTop-1-i,col.dark);px(cx+4+i,bodyTop-1-i,col.dark)}
     if(traits.allinAddict){px(cx-4,bodyTop-2,'#ff4400');px(cx+4,bodyTop-2,'#ff4400');px(cx,bodyTop-3,'#D4864A')}
   }
@@ -8967,198 +8986,149 @@ function drawSlime(name, emotion, size) {
     const crY=bodyTop-2;
     pxR(cx-4,crY,9,1,'#fbbf24');
     for(let i=0;i<3;i++){px(cx-4+i*4,crY-1,'#fbbf24');px(cx-4+i*4,crY-2,'#fbbf24')}
-    px(cx,crY-3,'#ef4444'); // ruby
-    pxR(cx-1,crY-2,3,1,'#fde68a'); // crown shine
+    px(cx,crY-3,'#ef4444');pxR(cx-1,crY-2,3,1,'#fde68a');
   }
   if(st==='bluffer'){
     const msk=centerY+2;
-    for(let dy=-2;dy<=2;dy++)for(let dx=2;dx<=R-1;dx++)if(dx+Math.abs(dy)<R)px(cx+dx,msk+dy,'#ffffffaa');
+    for(let dy=-2;dy<=2;dy++)for(let dx=2;dx<=bodyW-1;dx++)if(dx+Math.abs(dy)<bodyW)px(cx+dx,msk+dy,'#ffffffaa');
   }
   if(st==='defensive'){
-    // Shield visor line
-    const vy=centerY-Math.floor(R*0.25);
-    for(let dx=-R+3;dx<=R-3;dx++){px(cx+dx,vy,'#334155');px(cx+dx,vy+1,'#33415566')}
+    const vy=centerY-Math.floor(bodyH*0.25);
+    for(let dx=-bodyW+3;dx<=bodyW-3;dx++){px(cx+dx,vy,'#334155');px(cx+dx,vy+1,'#33415566')}
   }
   if(st==='loose'){
-    // Sparkles around
-    px(cx-R-2,centerY-2,'#fde68a');px(cx+R+2,centerY-3,'#fde68a');
-    px(cx-R-1,centerY+2,'#fde68a55');px(cx+R+1,centerY+3,'#fde68a55');
+    px(cx-bodyW-2,centerY-2,'#fde68a');px(cx+bodyW+2,centerY-3,'#fde68a');
+    px(cx-bodyW-1,centerY+2,'#fde68a55');px(cx+bodyW+1,centerY+3,'#fde68a55');
   }
   if(traits.emotional){
-    px(cx+R+1,bodyTop+2,'#ff6b8a');px(cx+R+2,bodyTop+3,'#ff6b8a');px(cx+R+1,bodyTop+4,'#ff6b8a');
+    px(cx+bodyW+1,bodyTop+2,'#ff6b8a');px(cx+bodyW+2,bodyTop+3,'#ff6b8a');px(cx+bodyW+1,bodyTop+4,'#ff6b8a');
   }
 
-  // === EYES — per-character style, name hash selects variant ===
-  const eyeY = centerY + Math.floor(R*0.05);
-  const eyeL = cx - Math.floor(R*0.4), eyeR = cx + Math.floor(R*0.4);
-  // Hash name to select eye style (0-5)
-  let _eyeHash=0;for(let i=0;i<name.length;i++)_eyeHash=(_eyeHash*7+name.charCodeAt(i))&0xFFFF;
-  const eyeStyle=_eyeHash%6;
+  // === EYES — big cute 3x3 eyes with highlight ===
+  const eyeY = centerY - Math.floor(bodyH*0.15);
+  const eyeSpacing = Math.floor(bodyW*0.38);
+  const eyeL = cx - eyeSpacing, eyeR = cx + eyeSpacing;
 
-  // --- Eye drawing functions (6 styles) ---
-  function drawEye_dot(ex,ey,lookDx,lookDy){
-    // Simple 2x2 dot eyes — cute minimal
-    const dx=lookDx||0,dy=lookDy||0;
-    pxR(ex+dx,ey+dy,2,2,col.eye);
-    px(ex+dx,ey+dy,'#fff8'); // tiny sparkle
+  function drawCuteEye(ex, ey){
+    // 3x3 big black pupil
+    pxR(ex-1, ey-1, 3, 3, col.eye);
+    // 1px white highlight (top-left of pupil)
+    px(ex-1, ey-1, '#fff');
   }
-  function drawEye_oval(ex,ey,lookDx,lookDy){
-    // Oval eye — 3x4 sclera, round pupil
-    pxR(ex-1,ey-1,3,4,col.eye);
-    const dx=lookDx||0,dy=lookDy||0;
-    pxR(ex-1+dx,ey+dy,2,2,'#000');
-    px(ex-1+dx,ey+dy,'#fff'); // sparkle
+  function drawBigCuteEye(ex, ey){
+    // Even bigger for win — 4x4 with 2 highlights
+    pxR(ex-2, ey-2, 4, 4, col.eye);
+    px(ex-2, ey-2, '#fff');
+    px(ex, ey, '#ffffff88');
   }
-  function drawEye_slit(ex,ey,lookDx,lookDy){
-    // Narrow slit eyes — cool/menacing
-    pxR(ex-2,ey,5,2,col.eye);
-    const dx=lookDx||0;
-    pxR(ex+dx,ey,2,2,'#fff8');
+  function drawHalfClosedEye(ex, ey){
+    // Lose — half-closed, 3x2 with lid
+    pxR(ex-1, ey, 3, 2, col.eye);
+    pxR(ex-1, ey-1, 3, 1, col.dark); // eyelid
+    px(ex-1, ey, '#fff8');
   }
-  function drawEye_round(ex,ey,lookDx,lookDy){
-    // Round medium — 3x3 white, 2x2 iris, 1x1 pupil
-    pxR(ex-1,ey-1,3,3,'#fff');
-    const dx=lookDx||0,dy=lookDy||0;
-    pxR(ex+dx,ey+dy,2,2,col.cheek); // iris
-    px(ex+dx,ey+dy,col.eye); // pupil
-    px(ex-1,ey-1,'#fff'); // sparkle
+  function drawThinkEyeL(ex, ey){
+    // Think left eye — big and looking up-right
+    pxR(ex-1, ey-2, 3, 4, col.eye);
+    px(ex-1, ey-2, '#fff');
+    px(ex+1, ey, '#ffffff88');
   }
-  function drawEye_bean(ex,ey,lookDx,lookDy){
-    // Bean shaped — wide but short, cartoony
-    pxR(ex-2,ey,5,2,'#fff');
-    px(ex-2,ey-1,'#fff');px(ex+2,ey-1,'#fff');
-    const dx=lookDx||0;
-    pxR(ex+dx,ey,2,2,col.eye);
-    px(ex-2,ey,'#fff8'); // sparkle
+  function drawThinkEyeR(ex, ey){
+    // Think right eye — squinted (narrow slit)
+    pxR(ex-1, ey, 3, 1, col.eye);
   }
-  function drawEye_anime(ex,ey,lookDx,lookDy){
-    // Tall anime eye — 3x5, big iris
-    pxR(ex-1,ey-2,3,5,'#fff');
-    px(ex-1,ey-2,col.eye+'66'); // top lid shadow
-    px(ex,ey-2,col.eye+'66');px(ex+1,ey-2,col.eye+'66');
-    const dx=lookDx||0,dy=lookDy||0;
-    pxR(ex+dx,ey+dy,2,3,col.cheek); // iris
-    px(ex+dx,ey+dy,col.eye); // pupil
-    px(ex+dx+1,ey+dy+2,col.eye); // pupil2
-    px(ex-1,ey-1,'#fff'); // big sparkle
-    px(ex+1,ey+1,'#fff8'); // small sparkle
-  }
-
-  // Happy/Sad/Dead/etc override functions
-  function drawHappyEye(ex,ey){
-    // Upward arc (^^)
-    px(ex-2,ey+1,col.eye);px(ex-1,ey,col.eye);px(ex,ey,col.eye);px(ex+1,ey,col.eye);px(ex+2,ey+1,col.eye);
-  }
-  function drawSadEye(ex,ey){
-    // Downward arc with tear
-    px(ex-1,ey-1,col.eye);px(ex,ey,col.eye);px(ex+1,ey-1,col.eye);
-    px(ex+2,ey+1,'#8AB4DC');px(ex+2,ey+2,'#8AB4DC');px(ex+2,ey+3,'#8AB4DC55');
-  }
-  function drawDeadEye(ex,ey){
-    // X eyes
-    px(ex-1,ey-1,col.eye);px(ex+1,ey+1,col.eye);px(ex+1,ey-1,col.eye);px(ex-1,ey+1,col.eye);
-  }
-  function drawShockEye(ex,ey){
-    // Small dot + ring
-    pxR(ex-2,ey-2,5,5,'#fff');
-    pxR(ex,ey,1,1,col.eye);
-  }
-  function drawAngryEye(ex,ey,isLeft){
-    // Slit + angry brow
-    pxR(ex-1,ey,3,2,col.eye);
-    px(ex,ey,'#fff8');
-    // Brow: diagonal slash
-    if(isLeft){px(ex-2,ey-3,col.eye);px(ex-1,ey-2,col.eye);px(ex,ey-2,col.eye);px(ex+1,ey-3,col.eye);}
-    else{px(ex-1,ey-3,col.eye);px(ex,ey-2,col.eye);px(ex+1,ey-2,col.eye);px(ex+2,ey-3,col.eye);}
-  }
-  function drawThinkEye(ex,ey,isLeft){
-    // Looking up-right, one eye squinted
-    if(isLeft){drawEye_dot(ex,ey,1,-1);}
-    else{pxR(ex-1,ey,3,1,col.eye);} // squint
-    // Sweat drop (only once)
-    if(!isLeft){px(cx+R,centerY-Math.floor(R*0.3),'#8AB4DC');px(cx+R,centerY-Math.floor(R*0.2),'#8AB4DC');}
-  }
-
-  // Select eye draw function based on style
-  const _eyeDrawFns=[drawEye_dot,drawEye_oval,drawEye_slit,drawEye_round,drawEye_bean,drawEye_anime];
-  const drawEyeDefault=_eyeDrawFns[eyeStyle];
 
   // Draw eyes based on emotion
-  if(emotion==='happy'||emotion==='win'){
-    drawHappyEye(eyeL,eyeY);drawHappyEye(eyeR,eyeY);
-  } else if(emotion==='sad'||emotion==='lose'){
-    drawSadEye(eyeL,eyeY);drawSadEye(eyeR,eyeY);
-  } else if(emotion==='angry'||emotion==='allin'){
-    drawAngryEye(eyeL,eyeY,true);drawAngryEye(eyeR,eyeY,false);
+  if(emotion==='win'||emotion==='happy'){
+    drawBigCuteEye(eyeL, eyeY); drawBigCuteEye(eyeR, eyeY);
+  } else if(emotion==='lose'||emotion==='sad'){
+    drawHalfClosedEye(eyeL, eyeY); drawHalfClosedEye(eyeR, eyeY);
   } else if(emotion==='think'){
-    drawThinkEye(eyeL,eyeY,true);drawThinkEye(eyeR,eyeY,false);
+    drawThinkEyeL(eyeL, eyeY); drawThinkEyeR(eyeR, eyeY);
+    // Sweat drop
+    px(cx+bodyW, centerY-Math.floor(bodyH*0.3), '#8AB4DC');
+    px(cx+bodyW, centerY-Math.floor(bodyH*0.2), '#8AB4DC');
+  } else if(emotion==='angry'||emotion==='allin'){
+    // Angry: slit eyes + brow
+    pxR(eyeL-1, eyeY, 3, 2, col.eye); px(eyeL, eyeY, '#fff8');
+    px(eyeL-2, eyeY-2, col.eye); px(eyeL-1, eyeY-1, col.eye); px(eyeL+1, eyeY-2, col.eye);
+    pxR(eyeR-1, eyeY, 3, 2, col.eye); px(eyeR, eyeY, '#fff8');
+    px(eyeR-1, eyeY-2, col.eye); px(eyeR+1, eyeY-1, col.eye); px(eyeR+2, eyeY-2, col.eye);
   } else if(emotion==='shock'){
-    drawShockEye(eyeL,eyeY);drawShockEye(eyeR,eyeY);
+    // Shock: small dot + big white ring
+    pxR(eyeL-2, eyeY-2, 5, 5, '#fff'); px(eyeL, eyeY, col.eye);
+    pxR(eyeR-2, eyeY-2, 5, 5, '#fff'); px(eyeR, eyeY, col.eye);
   } else if(emotion==='dead'){
-    drawDeadEye(eyeL,eyeY);drawDeadEye(eyeR,eyeY);
+    // X eyes
+    px(eyeL-1,eyeY-1,col.eye);px(eyeL+1,eyeY+1,col.eye);px(eyeL+1,eyeY-1,col.eye);px(eyeL-1,eyeY+1,col.eye);
+    px(eyeR-1,eyeY-1,col.eye);px(eyeR+1,eyeY+1,col.eye);px(eyeR+1,eyeY-1,col.eye);px(eyeR-1,eyeY+1,col.eye);
   } else {
-    // idle — use character's unique eye style
-    drawEyeDefault(eyeL,eyeY,0,0);drawEyeDefault(eyeR,eyeY,0,0);
+    // idle — default cute eyes
+    drawCuteEye(eyeL, eyeY); drawCuteEye(eyeR, eyeY);
   }
 
   // Post-eye accessories
-  // 도박꾼: Sunglasses over eyes
   if(npcKey.includes('도박')||npcKey.includes('gambler')){
     pxR(eyeL-3,eyeY-2,7,5,'#1a1a2ecc');
     pxR(eyeR-3,eyeY-2,7,5,'#1a1a2ecc');
-    pxR(eyeL+4,eyeY,eyeR-eyeL-7,1,'#1a1a2ecc'); // bridge
-    // Lens shine
+    pxR(eyeL+4,eyeY,eyeR-eyeL-7,1,'#1a1a2ecc');
     px(eyeL-2,eyeY-1,'#ffffff44');px(eyeR-2,eyeY-1,'#ffffff44');
   }
-  // 상어: Scar across left eye
   if(npcKey.includes('상어')||npcKey.includes('shark')){
     for(let i=-3;i<=3;i++){px(eyeL+i,eyeY-3+i,'#DC5656');px(eyeL+i+1,eyeY-3+i,'#DC565666')}
   }
-  // Dynamic post-eye accessories
   if(acc.includes('sunglasses')){
     pxR(eyeL-3,eyeY-2,7,5,'#1a1a2ecc');pxR(eyeR-3,eyeY-2,7,5,'#1a1a2ecc');
     pxR(eyeL+4,eyeY,eyeR-eyeL-7,1,'#1a1a2ecc');
     px(eyeL-2,eyeY-1,'#ffffff44');px(eyeR-2,eyeY-1,'#ffffff44');
   }
   if(acc.includes('monocle')){
-    // Circle around right eye
     for(let a=0;a<16;a++){const ax=Math.round(Math.cos(a/16*Math.PI*2)*4),ay=Math.round(Math.sin(a/16*Math.PI*2)*4);px(eyeR+ax,eyeY+ay,'#fbbf24')}
-    px(eyeR+4,eyeY+4,'#fbbf24');px(eyeR+4,eyeY+5,'#fbbf24');px(eyeR+3,eyeY+6,'#fbbf24'); // chain
+    px(eyeR+4,eyeY+4,'#fbbf24');px(eyeR+4,eyeY+5,'#fbbf24');px(eyeR+3,eyeY+6,'#fbbf24');
   }
   if(acc.includes('scar')){
     for(let i=-3;i<=3;i++){px(eyeL+i,eyeY-3+i,'#DC5656');px(eyeL+i+1,eyeY-3+i,'#DC565666')}
   }
+  if(acc.includes('mask')){
+    const msk=centerY+2;
+    for(let dy=-2;dy<=2;dy++)for(let dx=2;dx<=bodyW-1;dx++)if(dx+Math.abs(dy)<bodyW)px(cx+dx,msk+dy,'#ffffffaa');
+  }
 
-  // Pink cheeks (bigger, softer)
-  const chkY = eyeY + 4;
-  pxR(eyeL-3,chkY,3,2,col.cheek+'55');
-  pxR(eyeR+1,chkY,3,2,col.cheek+'55');
+  // Pink cheeks
+  const chkY = eyeY + 3;
+  pxR(eyeL-3, chkY, 3, 2, col.cheek+'55');
+  pxR(eyeR+1, chkY, 3, 2, col.cheek+'55');
 
-  // Mouth (more expressive)
-  const my = eyeY + 6;
-  if(emotion==='happy'||emotion==='win'){
-    px(cx-2,my,col.eye);px(cx-1,my+1,col.eye);px(cx,my+1,col.eye);px(cx+1,my+1,col.eye);px(cx+2,my,col.eye);
-  } else if(emotion==='sad'||emotion==='lose'){
-    px(cx-2,my+1,col.eye);px(cx-1,my,col.eye);px(cx,my,col.eye);px(cx+1,my,col.eye);px(cx+2,my+1,col.eye);
+  // === MOUTH — V-shape smile and emotion variants ===
+  const my = eyeY + 5;
+  if(emotion==='win'||emotion==='happy'){
+    // Big open smile (wide V)
+    px(cx-3, my, col.eye); px(cx-2, my+1, col.eye); px(cx-1, my+2, col.eye);
+    px(cx, my+2, col.eye); px(cx+1, my+2, col.eye);
+    px(cx+2, my+1, col.eye); px(cx+3, my, col.eye);
+  } else if(emotion==='lose'||emotion==='sad'){
+    // Frown (inverted V)
+    px(cx-2, my+1, col.eye); px(cx-1, my, col.eye); px(cx, my, col.eye);
+    px(cx+1, my, col.eye); px(cx+2, my+1, col.eye);
+  } else if(emotion==='think'){
+    // Pouty sideways mouth
+    px(cx+1, my, col.eye); px(cx+2, my, col.eye); px(cx+3, my-1, col.eye);
   } else if(emotion==='shock'){
-    pxR(cx-1,my,3,2,col.eye);
+    // Small O mouth
+    pxR(cx-1, my, 3, 2, col.eye);
   } else if(emotion==='angry'||emotion==='allin'){
-    pxR(cx-2,my,5,1,col.eye);px(cx-2,my-1,col.eye);px(cx+2,my-1,col.eye);
+    // Grimace
+    pxR(cx-2, my, 5, 1, col.eye); px(cx-2, my-1, col.eye); px(cx+2, my-1, col.eye);
   } else {
-    px(cx-1,my,col.eye);px(cx,my,col.eye);px(cx+1,my,col.eye);
+    // idle — cute V smile
+    px(cx-2, my, col.eye); px(cx-1, my+1, col.eye); px(cx, my+1, col.eye);
+    px(cx+1, my+1, col.eye); px(cx+2, my, col.eye);
   }
 
   // Tiny feet/base
-  const ftY=bodyBot+1;
-  pxR(cx-Math.floor(R*0.5),ftY,3,1,col.dark);
-  pxR(cx+Math.floor(R*0.3),ftY,3,1,col.dark);
-
-  // Drop shadow
-  const shY=bodyBot+2;
-  for(let dx=-R;dx<=R;dx++){
-    const a=Math.max(0,0.2-Math.abs(dx)/(R*2));
-    if(a>0.01) px(cx+dx,shY,`rgba(0,0,0,${a})`);
-  }
+  const ftY = bodyBot+1;
+  pxR(cx-Math.floor(bodyW*0.45), ftY, 3, 1, col.dark);
+  pxR(cx+Math.floor(bodyW*0.3), ftY, 3, 1, col.dark);
 
   _slimeCache[key] = c;
   return c;
