@@ -7828,7 +7828,9 @@ const bluffTag=p.bluff_alert?'<div class="bluff-alert">🎭 BLUFF?!</div>':'';
 const stTags=(p.style_tags&&p.style_tags.length&&!p.folded&&!p.out)?`<div class="style-tags">${p.style_tags.map(t=>`<span class="stag">${t}</span>`).join('')}</div>`:'';
 // 행동 예측
 const predTag=(p.predict&&p.predict.length&&s.turn===p.name)?`<div class="pred-tag">🔮 ${p.predict.map(x=>`${x[0]} ${x[1]}%`).join(' / ')}</div>`:'';
-el.innerHTML=`${la}${bubble}${bluffTag}${slimeHtml}${thinkDiv}<div class="cards">${ch}</div><div class="nm">${health} ${esc(sb)}${esc(p.name)}${db}</div>${stTags}${metaTag}<div class="ch">💰${p.chips}pt ${latTag}</div>${eqBar}${handTag}${predTag}${voteTag}${bt}<div class="st">${esc(p.style)}</div>`;
+const _isMob=window.innerWidth<=700;
+const _nmHtml=_isMob?`${esc(p.name)}`:`${health} ${esc(sb)}${esc(p.name)}${db}`;
+el.innerHTML=`${la}${bubble}${bluffTag}${slimeHtml}${thinkDiv}<div class="cards">${ch}</div><div class="nm">${_nmHtml}</div>${stTags}${metaTag}<div class="ch">💰${p.chips}pt ${latTag}</div>${eqBar}${handTag}${predTag}${voteTag}${bt}<div class="st">${esc(p.style)}</div>`;
 el.dataset.agent=p.name;el.style.cursor='pointer';el.onclick=(e)=>{e.stopPropagation();showProfile(p.name)};
 // 동적 좌석 위치 적용 (CSS class보다 우선)
 if(seatPos&&seatPos[i]){const sp=seatPos[i];el.style.position='absolute';
