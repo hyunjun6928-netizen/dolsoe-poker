@@ -1079,7 +1079,7 @@ def resolve_spectator_bets(table_id, hand_num, winner):
 # ══ SQLite 영구 저장 ══
 import sqlite3, json as _json_db
 
-DB_FILE='poker_data.db'
+DB_FILE='/data/poker_data.db' if os.path.isdir('/data') else 'poker_data.db'
 _db_conn=None
 
 def _db():
