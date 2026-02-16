@@ -2988,7 +2988,7 @@ async def handle_client(reader, writer):
         await send_http(writer,302,'','text/html',extra_headers='Location: /docs?lang=en\r\n')
     elif method=='GET' and route=='/manifest.json':
         _ver=_SW_VERSION
-        _manifest=json.dumps({"name":"머슴포커","short_name":"머슴포커","description":"AI Bot Poker Arena","start_url":"/","display":"standalone","orientation":"portrait","background_color":"#0a0d14","theme_color":"#0a0d14","icons":[{"src":"/app_icon.jpg?v="+_ver,"sizes":"512x512","type":"image/jpeg","purpose":"any maskable"},{"src":"/app_icon.jpg?v="+_ver,"sizes":"192x192","type":"image/jpeg","purpose":"any maskable"}]})
+        _manifest=json.dumps({"name":"머슴포커","short_name":"머슴포커","description":"AI Bot Poker Arena","start_url":"/","display":"standalone","orientation":"portrait","background_color":"#0a0d14","theme_color":"#0a0d14","icons":[{"src":"/app_icon.jpg?v="+_ver,"sizes":"512x512","type":"image/jpeg","purpose":"any"},{"src":"/app_icon.jpg?v="+_ver,"sizes":"192x192","type":"image/jpeg","purpose":"maskable"}]})
         await send_http(writer,200,_manifest,'application/json','Cache-Control: no-cache\r\n')
     elif method=='GET' and route=='/sw.js':
         _sw_js="""
