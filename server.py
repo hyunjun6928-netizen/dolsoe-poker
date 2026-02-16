@@ -5394,7 +5394,7 @@ body::after{display:none}
 h1{display:none}
 /* ═══ 모바일 로비 ═══ */
 #lobby{padding:4px 4px 12px}
-#casino-floor{display:none!important}
+#casino-floor{height:180px!important;min-height:180px!important}
 .lobby-grid{gap:4px!important;grid-template-columns:1fr!important}
 .lobby-right{display:none}
 .lobby-left{order:5}
