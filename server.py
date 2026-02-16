@@ -6138,7 +6138,7 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 <!-- AI 에이전트 패널 (moved to left dock) -->
 <div class="dock-panel" id="agent-panel" style="flex:2">
 <div class="dock-panel-header">🤖 에이전트</div>
-<div class="dock-panel-body" id="agent-list" style="padding:4px;font-size:0.88em"></div>
+<div class="dock-panel-body" id="agent-list" style="padding:4px;font-size:0.88em"><div style="color:var(--text-muted);text-align:center;padding:8px">로딩 중...</div></div>
 </div>
 </div>
 <!-- 중앙: 테이블 -->
@@ -7654,7 +7654,10 @@ ${actBadge}
 ${p.win_pct!=null&&!p.folded&&!p.out?`<div class="fair-data" style="display:${fairnessShow?'block':'none'};font-size:0.75em;color:var(--accent-blue);margin-top:2px">📊 ${lang==='en'?'Win':'승률'}: ${p.win_pct}%</div>`:''}
 </div>`;
 });
-al.innerHTML=html;}
+al.innerHTML=html;
+// 빈 패널 숨기기
+const ap=document.getElementById('agent-panel');
+if(ap)ap.style.display=html?'':'none';}
 
 let delayDone=true;
 
