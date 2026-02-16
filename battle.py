@@ -346,7 +346,7 @@ sel1=null;sel2=null;
 document.getElementById('btn-fight').disabled=true;
 document.getElementById('battle-area').innerHTML='<div class="loading"><div class="spinner"></div><p style="margin-top:12px">🎲 랜덤 매칭 중... AI가 디스 생성 중 (30~60초)</p></div>';
 fetch('/api/battle/start',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{}})}})
-.then(r=>r.json()).then(renderBattle).catch(e=>{{document.getElementById('battle-area').innerHTML=`<div class="no-battles">에러: ${{e}}</div>`}})
+.then(r=>r.json()).then(renderBattle).catch(e=>{{document.getElementById('battle-area').innerHTML=`<div class="no-battles">에러 발생</div>`}})
 .finally(()=>document.getElementById('btn-fight').disabled=false);
 }}
 
@@ -355,12 +355,13 @@ if(!sel1||!sel2)return randomFight();
 document.getElementById('btn-fight').disabled=true;
 document.getElementById('battle-area').innerHTML='<div class="loading"><div class="spinner"></div><p style="margin-top:12px">⚔️ 디스 생성 중... AI가 열심히 욕 짜는 중 (30~60초)</p></div>';
 fetch('/api/battle/start',{{method:'POST',headers:{{'Content-Type':'application/json'}},body:JSON.stringify({{fighter1:sel1,fighter2:sel2}})}})
-.then(r=>r.json()).then(renderBattle).catch(e=>{{document.getElementById('battle-area').innerHTML=`<div class="no-battles">에러: ${{e}}</div>`}})
+.then(r=>r.json()).then(renderBattle).catch(e=>{{document.getElementById('battle-area').innerHTML=`<div class="no-battles">에러 발생</div>`}})
 .finally(()=>document.getElementById('btn-fight').disabled=false);
 }}
 
+function esc(s){{const d=document.createElement('div');d.textContent=s;return d.innerHTML}}
 function renderBattle(b){{
-if(b.error){{document.getElementById('battle-area').innerHTML=`<div class="no-battles">❌ ${{b.error}}</div>`;return}}
+if(b.error){{document.getElementById('battle-area').innerHTML=`<div class="no-battles">❌ ${{esc(b.error)}}</div>`;return}}
 let html=`<div class="battle-card">
 <div class="battle-header">
 <span class="matchup">${{b.fighter1.emoji}} ${{b.fighter1.name}} <span style="color:var(--red)">VS</span> ${{b.fighter2.emoji}} ${{b.fighter2.name}}</span>
@@ -371,11 +372,11 @@ html+=`<div class="round-box">
 <div class="round-label">🥊 Round ${{r.round}}</div>
 <div class="dis-line" style="background:${{b.fighter1.color}}22;border-left:3px solid ${{b.fighter1.color}}">
 <div class="speaker" style="color:${{b.fighter1.color}}">${{r.fighter1.emoji}} ${{r.fighter1.name}}</div>
-${{r.fighter1.dis}}
+${{esc(r.fighter1.dis)}}
 </div>
 <div class="dis-line" style="background:${{b.fighter2.color}}22;border-left:3px solid ${{b.fighter2.color}}">
 <div class="speaker" style="color:${{b.fighter2.color}}">${{r.fighter2.emoji}} ${{r.fighter2.name}}</div>
-${{r.fighter2.dis}}
+${{esc(r.fighter2.dis)}}
 </div>
 </div>`;
 }});
@@ -387,7 +388,7 @@ html+=`<div class="verdict-box">
 <div>${{b.fighter1.emoji}} <span class="score" style="color:${{b.fighter1.color}}">${{v.score1}}</span></div>
 <div>${{b.fighter2.emoji}} <span class="score" style="color:${{b.fighter2.color}}">${{v.score2}}</span></div>
 </div>
-<div class="verdict-comment">"${{v.comment}}"</div>
+<div class="verdict-comment">"${{esc(v.comment)}}"</div>
 </div></div>`;
 document.getElementById('battle-area').innerHTML=html;
 loadHistory();
@@ -429,7 +430,8 @@ def battle_api_start(data):
         result = run_battle_sync(f1, f2)
         return result
     except Exception as e:
-        return {'error': f'배틀 실행 에러: {str(e)}'}
+        print(f'[BATTLE] error: {e}', flush=True)
+        return {'error': '배틀 실행 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'}
 
 def battle_api_history():
     """배틀 히스토리 API"""
