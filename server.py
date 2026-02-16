@@ -2116,6 +2116,7 @@ class Table:
                 s=self._hand_seats[idx]
                 if s['folded'] or s.get('out') or s['chips']<=0: continue
                 if s['name']==last_raiser and s['name'] in acted: continue
+                if s['name'] in acted and s['bet']>=self.current_bet: continue  # already matched
                 if self._count_alive()<=1: return
                 to_call=self.current_bet-s['bet']
 
