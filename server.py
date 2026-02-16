@@ -2890,7 +2890,7 @@ async def handle_client(reader, writer):
     elif method=='POST' and route=='/api/new':
         d=safe_json(body)
         if not _check_admin(d.get('admin_key','')):
-            await send_json(writer,{'ok':False,'code':'UNAUTHORIZED','message':'admin_key required'},401); return
+            await send_json(writer,{'ok':False,'code':'UNAUTHORIZED','message':'인증 실패'},401); return
         tid=d.get('table_id',f"table_{int(time.time()*1000)%100000}")
         t=get_or_create_table(tid)
         timeout=d.get('timeout',60)
@@ -3363,7 +3363,7 @@ async def handle_client(reader, writer):
             await send_json(writer, {'rooms': rooms})
         elif method=='GET' and route=='/api/ranked/house':
             if not _check_admin(qs.get('admin_key',[''])[0]):
-                await send_json(writer, {'error': 'admin_key required'}, 401); return
+                await send_json(writer, {'error': '인증 실패'}, 401); return
             house_points = 0
             if MERSOOM_AUTH_ID and MERSOOM_PASSWORD:
                 try:
@@ -3386,12 +3386,12 @@ async def handle_client(reader, writer):
             })
         elif method=='GET' and route=='/api/ranked/watchdog':
             if not _check_admin(qs.get('admin_key',[''])[0]):
-                await send_json(writer, {'error': 'admin_key required'}, 401); return
+                await send_json(writer, {'error': '인증 실패'}, 401); return
             report = _ranked_watchdog_report()
             await send_json(writer, report)
         elif method=='GET' and route=='/api/ranked/audit':
             if not _check_admin(qs.get('admin_key',[''])[0]):
-                await send_json(writer, {'error': 'admin_key required'}, 401); return
+                await send_json(writer, {'error': '인증 실패'}, 401); return
             r_auth = qs.get('auth_id',[''])[0]
             try: limit = min(200, max(1, int(qs.get('limit',['50'])[0])))
             except: limit = 50
@@ -3436,7 +3436,7 @@ async def handle_client(reader, writer):
                 _auth_cache_set(r_auth, cache_key)
             bal=ranked_balance(r_auth)
             if amount>bal:
-                await send_json(writer,{'error':f'잔고 부족 (잔고: {bal}pt, 요청: {amount}pt)'},400); return
+                await send_json(writer,{'error':f'잔고 부족'},400); return
             ok_d, rem = ranked_deposit(r_auth, amount)
             if not ok_d:
                 await send_json(writer,{'error':'차감 실패'},500); return
@@ -3489,7 +3489,7 @@ async def handle_client(reader, writer):
         elif method=='POST' and route=='/api/ranked/admin-credit':
             d=safe_json(body)
             if not _check_admin(d.get('admin_key','')):
-                await send_json(writer,{'error':'admin_key required'},401); return
+                await send_json(writer,{'error':'인증 실패'},401); return
             r_auth=d.get('auth_id','')
             try: amount=max(0, int(d.get('amount',0)))
             except (ValueError, TypeError): amount=0
@@ -3507,7 +3507,7 @@ async def handle_client(reader, writer):
         elif method=='POST' and route=='/api/ranked/admin-fix-ledger':
             d=safe_json(body)
             if not _check_admin(d.get('admin_key','')):
-                await send_json(writer,{'error':'admin_key required'},401); return
+                await send_json(writer,{'error':'인증 실패'},401); return
             with _ranked_lock:
                 db = _db()
                 rows = db.execute("SELECT auth_id, balance FROM ranked_balances").fetchall()
@@ -3535,7 +3535,7 @@ async def handle_client(reader, writer):
         if not t: await send_json(writer,{'error':'no game'},404); return
         if is_ranked_table(tid):
             if not _check_admin(qs.get('admin_key',[''])[0]):
-                await send_json(writer,{'error':'ranked recent requires admin_key'},403); return
+                await send_json(writer,{'error':'접근 거부'},403); return
         await send_json(writer,{'history':t.history[-10:]})
     elif method=='GET' and route=='/api/profile':
         tid=qs.get('table_id',[''])[0]; name=qs.get('name',[''])[0]
@@ -3561,7 +3561,7 @@ async def handle_client(reader, writer):
                 if not name or name=='all':
                     await send_json(writer,{'error':'ranked analysis requires specific player name'},400); return
                 if not verify_token(name, req_token):
-                    await send_json(writer,{'error':'ranked analysis requires token authentication'},401); return
+                    await send_json(writer,{'error':'인증 필요'},401); return
         all_records=load_hand_history(tid, 500)
         if rtype=='hands':
             # 핸드별 의사결정 로그
@@ -3713,7 +3713,7 @@ async def handle_client(reader, writer):
                         elif w==opp: rivals[opp]['losses']+=1
                 await send_json(writer,{'type':'matchup','player':name,'rivals':sorted(rivals.values(),key=lambda x:x['hands'],reverse=True)})
         else:
-            await send_json(writer,{'error':f'unknown type: {rtype}'},400)
+            await send_json(writer,{'error':'잘못된 요청'},400)
     elif method=='GET' and route=='/api/_v':
         # 스텔스 방문자 통계 (비공개 — URL 모르면 접근 불가)
         k=qs.get('k',[''])[0]
@@ -3769,7 +3769,7 @@ async def handle_client(reader, writer):
             req_token=qs.get('token',[''])[0]
             is_admin=_check_admin(qs.get('admin_key',[''])[0])
             if not is_admin and not verify_token(player, req_token):
-                await send_json(writer,{'error':'ranked history requires token authentication'},401); return
+                await send_json(writer,{'error':'인증 필요'},401); return
         # DB에서 확장 히스토리 로드 (메모리 50개 넘는 것도 포함)
         all_records=load_hand_history(tid, limit) if limit>50 else t.history
         hands=[]
@@ -3812,7 +3812,7 @@ async def handle_client(reader, writer):
         # ranked 테이블 export 차단 (admin만 허용)
         if is_ranked_table(tid):
             if not _check_admin(qs.get('admin_key',[''])[0]):
-                await send_json(writer,{'error':'ranked table export requires admin_key'},403); return
+                await send_json(writer,{'error':'접근 거부'},403); return
         fmt=qs.get('format',['csv'])[0]
         try: limit=min(500, max(1, int(qs.get('limit',['500'])[0])))
         except (ValueError, TypeError): limit=500
@@ -3908,13 +3908,13 @@ async def handle_ws(reader, writer, path):
         # WS play 모드: 토큰 검증 필수
         ws_token=qs.get('token',[''])[0]
         if not ws_token or not verify_token(name, ws_token):
-            await ws_send(writer,json.dumps({'error':'token required for play mode'},ensure_ascii=False))
+            await ws_send(writer,json.dumps({'error':'인증 필요'},ensure_ascii=False))
             try: writer.close()
             except: pass
             return
         # ranked 테이블은 WS play 금지 (HTTP join만 허용)
         if is_ranked_table(tid):
-            await ws_send(writer,json.dumps({'error':'ranked tables require HTTP /api/join'},ensure_ascii=False))
+            await ws_send(writer,json.dumps({'error':'잘못된 접근'},ensure_ascii=False))
             try: writer.close()
             except: pass
             return
@@ -3922,7 +3922,7 @@ async def handle_ws(reader, writer, path):
         # 이미 seat에 있는 경우만 연결 (WS로 직접 add_player 금지)
         existing_seat = next((s for s in t.seats if s['name']==name and not s.get('out')), None)
         if not existing_seat:
-            await ws_send(writer,json.dumps({'error':'join via /api/join first'},ensure_ascii=False))
+            await ws_send(writer,json.dumps({'error':'인증 필요'},ensure_ascii=False))
             try: writer.close()
             except: pass
             return
