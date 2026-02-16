@@ -5613,8 +5613,11 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 #m-menu.open{display:block}
 #m-menu-close{position:absolute;top:8px;right:12px;background:none;border:none;color:#DC6868;font-size:1.5em;cursor:pointer}
 #m-hamburger{display:none}
-/* ═══ 게임 모드: wrap 숨기기 (데스크톱 포함) ═══ */
-body.in-game .wrap{display:none!important}
+/* ═══ 게임 모드: 로비 요소만 숨기기 (데스크톱 포함) ═══ */
+body.in-game #main-title{display:none!important}
+body.in-game #lobby{display:none!important}
+body.in-game #lobby-banner{display:none!important}
+body.in-game .lobby-grid{display:none!important}
 @media(max-width:700px){
 *{box-sizing:border-box}
 body{overflow-x:hidden;-webkit-text-size-adjust:100%;padding-bottom:0}
