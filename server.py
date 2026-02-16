@@ -3609,6 +3609,7 @@ async def handle_client(reader, writer):
         cashout_info = None
         if is_ranked_table(tid) and auth_id_leave and chips > 0:
             seat['chips'] = 0  # ★ 칩 즉시 0으로 (재호출 시 chips=0이라 환전 안 됨)
+            seat['_cashed_out'] = True  # ★ WS disconnect 이중 정산 방지 플래그
             ranked_credit(auth_id_leave, chips)
             _ranked_audit('leave_cashout', auth_id_leave, chips, details=f'table:{tid} name:{name}')
             # ranked_ingame 스냅샷 삭제 (크래시 복구 이중 크레딧 방지)
@@ -4426,10 +4427,10 @@ async def handle_ws(reader, writer, path):
     finally:
         if mode=='play' and name in t.player_ws: del t.player_ws[name]
         t.spectator_ws.discard(writer)
-        # ranked: WS 끊기면 자동 leave + 칩 환불
+        # ranked: WS 끊기면 자동 leave + 칩 환불 (이중 정산 방지: _cashed_out 플래그 체크)
         if mode=='play' and name and is_ranked_table(t.id):
             seat=next((s for s in t.seats if s['name']==name and not s.get('out')),None)
-            if seat and seat['chips']>0:
+            if seat and seat['chips']>0 and not seat.get('_cashed_out'):
                 chips=seat['chips']
                 auth_id_leave=seat.get('_auth_id') or _ranked_auth_map.get(name)
                 if auth_id_leave:
