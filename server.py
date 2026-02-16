@@ -10777,193 +10777,438 @@ KART_PAGE = r"""<!DOCTYPE html>
 <title>🏎️ 머슴카트</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#161B24;--panel:#1E2430;--text:#C8CDD8;--dim:#6B7280;--accent:#5EC4A0;--red:#DC5656;--gold:#E8B84A}
-body{background:var(--bg);color:var(--text);font-family:'Segoe UI',sans-serif;overflow:hidden;height:100vh;display:flex;flex-direction:column}
-.header{padding:12px 20px;display:flex;align-items:center;gap:16px;background:var(--panel);border-bottom:1px solid #2A3140}
-.header h1{font-size:1.3rem}
-.header a{color:var(--accent);text-decoration:none;font-size:0.9rem}
-.main{display:flex;flex:1;overflow:hidden}
-.track-area{flex:1;display:flex;align-items:center;justify-content:center;padding:12px}
-canvas{background:#0D1117;border-radius:12px;border:1px solid #2A3140}
-.sidebar{width:220px;background:var(--panel);border-left:1px solid #2A3140;display:flex;flex-direction:column;overflow:hidden}
-.sidebar h2{font-size:0.85rem;padding:10px 12px 6px;color:var(--dim);text-transform:uppercase;letter-spacing:1px}
-.rank-list{flex:1;overflow-y:auto;padding:0 8px}
-.rank-item{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;margin-bottom:2px;font-size:0.85rem}
-.rank-item.finished{opacity:0.6}
-.rank-num{width:20px;text-align:center;font-weight:bold;color:var(--gold)}
-.rank-emoji{font-size:1.1rem}
+body{background:#0a0e17;color:#C8CDD8;font-family:'Segoe UI',sans-serif;overflow:hidden;height:100vh;display:flex;flex-direction:column}
+.header{background:#161B24;padding:8px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #2a3a4e;z-index:10}
+.header h1{font-size:16px;font-weight:500}
+.header .back{color:#7a9ac0;text-decoration:none;font-size:13px}
+.header .back:hover{color:#a0c0e0}
+.game-area{flex:1;display:flex;position:relative}
+canvas{display:block;flex:1}
+.hud{position:absolute;top:0;right:0;width:220px;height:100%;background:rgba(22,27,36,0.85);border-left:1px solid #2a3a4e;padding:12px;overflow-y:auto;z-index:5}
+.hud h3{font-size:13px;color:#7a9ac0;margin-bottom:8px;border-bottom:1px solid #2a3a4e;padding-bottom:4px}
+.rank-row{display:flex;align-items:center;gap:6px;padding:3px 4px;font-size:13px;border-radius:4px;margin-bottom:2px}
+.rank-row.me{background:rgba(37,99,235,0.2);border:1px solid #2563eb44}
+.rank-num{width:20px;text-align:center;font-weight:700}
+.rank-emoji{font-size:16px}
 .rank-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rank-item-icon{font-size:0.9rem}
-.rank-lap{color:var(--dim);font-size:0.75rem}
-.events{height:130px;background:var(--panel);border-top:1px solid #2A3140;overflow-y:auto;padding:8px 12px}
-.events h2{font-size:0.75rem;color:var(--dim);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px}
-.ev{font-size:0.8rem;padding:2px 0;color:var(--text);opacity:0.9}
-.overlay{position:fixed;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:10}
-.overlay-text{font-size:5rem;font-weight:900;text-shadow:0 0 40px rgba(0,0,0,0.8);animation:pop 0.5s ease-out}
-@keyframes pop{0%{transform:scale(2);opacity:0}100%{transform:scale(1);opacity:1}}
-.result-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:20}
-.result-box{background:var(--panel);border:2px solid var(--gold);border-radius:16px;padding:32px;text-align:center;min-width:300px}
-.result-box h2{font-size:1.5rem;margin-bottom:16px}
-.result-row{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:1rem}
-.result-rank{width:28px;font-weight:bold}
-.status-badge{position:absolute;top:8px;left:50%;transform:translateX(-50%);padding:4px 16px;border-radius:20px;font-size:0.75rem;background:#2A3140;color:var(--dim);z-index:5}
+.rank-lap{font-size:11px;color:#5a7090}
+.rank-item{font-size:14px;width:20px;text-align:center}
+.events{position:absolute;bottom:0;left:0;right:220px;background:rgba(22,27,36,0.85);border-top:1px solid #2a3a4e;padding:6px 12px;max-height:120px;overflow-y:auto;z-index:5}
+.ev{font-size:12px;padding:2px 0;color:#a0b0c8;animation:fadeEv 0.3s ease}
+@keyframes fadeEv{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:none}}
+.countdown-overlay{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:80px;font-weight:900;color:#fff;text-shadow:0 0 40px rgba(37,99,235,0.8);z-index:20;pointer-events:none;animation:cdPulse 0.5s ease}
+@keyframes cdPulse{from{transform:translate(-50%,-50%) scale(1.5);opacity:0}to{transform:translate(-50%,-50%) scale(1);opacity:1}}
+.result-overlay{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(10,14,23,0.9);z-index:25;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.result-overlay h2{font-size:28px;margin-bottom:20px;color:#E8B84A}
+.result-row{font-size:18px;padding:6px 0}
+.result-medal{font-size:24px}
+.cam-select{position:absolute;top:50px;left:10px;z-index:10;display:flex;flex-direction:column;gap:4px}
+.cam-btn{background:#1E2430;border:1px solid #2a3a4e;color:#7a9ac0;padding:4px 10px;border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit}
+.cam-btn:hover,.cam-btn.active{background:#2563eb;color:#fff;border-color:#2563eb}
 </style>
 </head><body>
 <div class="header">
-<a href="/">← 로비</a>
+<a class="back" href="/">← 로비</a>
 <h1>🏎️ 머슴카트</h1>
-<span id="status" style="color:var(--dim);font-size:0.85rem">연결 중...</span>
 </div>
-<div class="main">
-<div class="track-area" style="position:relative">
-<div id="statusBadge" class="status-badge"></div>
-<canvas id="c" width="800" height="600"></canvas>
-<div id="overlay" class="overlay" style="display:none"><span id="overlayText" class="overlay-text"></span></div>
-<div id="resultOverlay" class="result-overlay" style="display:none">
-<div class="result-box"><h2>🏆 레이스 결과</h2><div id="resultList"></div></div>
+<div class="game-area">
+<canvas id="c"></canvas>
+<div class="cam-select" id="camSelect"></div>
+<div class="hud" id="hud"><h3>🏁 순위</h3><div id="ranks"></div></div>
+<div class="events" id="events"></div>
 </div>
-</div>
-<div class="sidebar">
-<h2>🏁 순위</h2>
-<div id="rankList" class="rank-list"></div>
-</div>
-</div>
-<div id="eventLog" class="events"><h2>📢 이벤트</h2></div>
 <script>
+const C=document.getElementById('c');
+const ctx=C.getContext('2d');
 const API=location.origin;
-const C=document.getElementById('c'),ctx=C.getContext('2d');
-let state=null,lastTick=0,overlayTimer=null,effects=[];
-function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+let W,H;
+let state=null;
+let camTarget=0; // index of racer to follow
+let lastEvents=[];
+let cdEl=null;
+let resultEl=null;
+let lastTick=0;
 
-async function poll(){
-  try{
-    const r=await fetch(API+'/api/kart/state?since='+lastTick);
-    if(!r.ok)return;
-    state=await r.json();
-    if(state.tick)lastTick=Math.max(lastTick,state.tick-5);
-    document.getElementById('status').textContent=
-      state.state==='waiting'?'⏳ 대기 중':state.state==='countdown'?'⏱️ 카운트다운':state.state==='racing'?'🏁 레이싱':'🏆 완료';
-    document.getElementById('statusBadge').textContent=
-      state.state==='waiting'?'다음 레이스 대기 중...':state.state==='countdown'?'출발 준비!':state.state==='racing'?'LAP '+Math.min((state.racers[0]?.lap||0)+1,state.laps)+'/'+state.laps:'레이스 종료';
-    updateRanks();updateEvents();checkOverlay();
-  }catch(e){}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+function resize(){
+  const ga=document.querySelector('.game-area');
+  W=C.width=ga.clientWidth-220;
+  H=C.height=ga.clientHeight;
+}
+window.addEventListener('resize',resize);
+resize();
+
+// ── Pseudo-3D Road Rendering ──
+const ROAD_W=2000; // base road width (world units)
+const SEG_LEN=200; // segment length
+const CAM_H=1000;  // camera height
+const DRAW_DIST=120; // how many segments to draw
+const FOV=100;     // field of view factor
+
+// Track curvature: the oval track generates curvature per segment
+function getTrackCurvature(progress){
+  // Oval: constant curvature, varying by position
+  const a=progress%1.0;
+  // Sinusoidal curvature to simulate oval
+  return Math.sin(a*Math.PI*2)*3.0;
 }
 
-function checkOverlay(){
-  if(!state)return;
-  const ov=document.getElementById('overlay'),ot=document.getElementById('overlayText');
-  const ro=document.getElementById('resultOverlay');
-  if(state.state==='countdown'&&state.countdown){
-    ov.style.display='flex';ot.textContent=state.countdown;ot.style.color='#DC5656';
-    ro.style.display='none';
-  }else if(state.state==='racing'&&state.events){
-    const starts=state.events.filter(e=>e.type==='start');
-    if(starts.length){ov.style.display='flex';ot.textContent='GO!';ot.style.color='#5EC4A0';
-      clearTimeout(overlayTimer);overlayTimer=setTimeout(()=>{ov.style.display='none'},1500);}
-    else{if(!overlayTimer)ov.style.display='none';}
-    ro.style.display='none';
-  }else if(state.state==='finished'&&state.results){
-    ov.style.display='none';ro.style.display='flex';
-    const rl=document.getElementById('resultList');rl.innerHTML='';
-    const medals=['🥇','🥈','🥉'];
-    state.results.forEach(r=>{
-      const d=document.createElement('div');d.className='result-row';
-      d.innerHTML='<span class="result-rank">'+(medals[r.rank-1]||r.rank)+'</span><span>'+esc(r.name)+'</span><span style="color:var(--dim);margin-left:auto">'+r.time+'s</span>';
-      rl.appendChild(d);
+function getTrackHill(progress){
+  // Gentle hills
+  const a=progress%1.0;
+  return Math.sin(a*Math.PI*4)*30;
+}
+
+function drawRoad(){
+  if(!state||!state.racers||state.racers.length===0) return;
+  
+  const me=state.racers[camTarget]||state.racers[0];
+  const baseProgress=me.progress||0;
+  
+  ctx.fillStyle='#0a1628'; // sky
+  ctx.fillRect(0,0,W,H);
+  
+  // Stars
+  for(let i=0;i<40;i++){
+    const sx=((i*137+baseProgress*50)%W);
+    const sy=((i*97)%(H*0.4));
+    ctx.fillStyle='rgba(200,210,230,'+(0.3+Math.sin(i+Date.now()/1000)*0.2)+')';
+    ctx.fillRect(sx,sy,1.5,1.5);
+  }
+  
+  // Mountains/horizon
+  const horizonY=H*0.4;
+  ctx.fillStyle='#121a2a';
+  ctx.beginPath();
+  ctx.moveTo(0,horizonY);
+  for(let x=0;x<=W;x+=20){
+    const mh=Math.sin(x*0.01+baseProgress*0.5)*30+Math.sin(x*0.023)*15;
+    ctx.lineTo(x,horizonY-40+mh);
+  }
+  ctx.lineTo(W,H);ctx.lineTo(0,H);ctx.closePath();ctx.fill();
+  
+  // Ground
+  ctx.fillStyle='#0f1a12';
+  ctx.fillRect(0,horizonY,W,H-horizonY);
+  
+  // Road segments (bottom to top = near to far)
+  let x=W/2;
+  let dx=0;
+  const segments=[];
+  
+  for(let i=0;i<DRAW_DIST;i++){
+    const p=baseProgress+i*0.005;
+    const curve=getTrackCurvature(p);
+    const hill=getTrackHill(p);
+    const z=(i+1)*SEG_LEN;
+    const scale=FOV/z;
+    const projY=horizonY+(H-horizonY)*(1-scale*CAM_H*0.01);
+    const roadW=ROAD_W*scale;
+    
+    dx+=curve*scale*50;
+    const projX=W/2+dx;
+    
+    segments.push({i,z,projX,projY,roadW,scale,progress:p});
+  }
+  
+  // Draw from far to near
+  for(let s=segments.length-1;s>=0;s--){
+    const seg=segments[s];
+    const next=segments[s-1]||{projX:W/2,projY:H,roadW:ROAD_W*FOV/SEG_LEN};
+    
+    // Grass
+    const grassColor=(Math.floor(seg.progress*80)%2===0)?'#0f2818':'#0d2214';
+    ctx.fillStyle=grassColor;
+    ctx.fillRect(0,seg.projY,W,next.projY-seg.projY+1);
+    
+    // Road
+    const isStripe=(Math.floor(seg.progress*40)%2===0);
+    ctx.fillStyle=isStripe?'#2a2a2a':'#333';
+    ctx.beginPath();
+    ctx.moveTo(seg.projX-seg.roadW/2, seg.projY);
+    ctx.lineTo(seg.projX+seg.roadW/2, seg.projY);
+    ctx.lineTo(next.projX+next.roadW/2, next.projY);
+    ctx.lineTo(next.projX-next.roadW/2, next.projY);
+    ctx.closePath();ctx.fill();
+    
+    // Road edges (curb)
+    const curbColor=isStripe?'#DC5656':'#fff';
+    ctx.fillStyle=curbColor;
+    ctx.fillRect(seg.projX-seg.roadW/2-seg.roadW*0.03,seg.projY,seg.roadW*0.03,next.projY-seg.projY+1);
+    ctx.fillRect(seg.projX+seg.roadW/2,seg.projY,seg.roadW*0.03,next.projY-seg.projY+1);
+    
+    // Center line (dashed)
+    if(isStripe){
+      ctx.fillStyle='rgba(255,255,255,0.3)';
+      ctx.fillRect(seg.projX-seg.roadW*0.005,seg.projY,seg.roadW*0.01,next.projY-seg.projY+1);
+    }
+    
+    // Item boxes on track
+    if(state.track){
+      const cpCount=state.track.checkpoints?state.track.checkpoints.length:40;
+      const cpIdx=Math.floor((seg.progress%1.0)*cpCount)%cpCount;
+      const itemBoxes=state.track.item_boxes||[];
+      if(itemBoxes.includes(cpIdx)&&seg.scale>0.003){
+        const boxSize=40*seg.scale*100;
+        if(boxSize>3){
+          ctx.fillStyle='rgba(232,184,74,0.6)';
+          ctx.fillRect(seg.projX-boxSize/2,seg.projY-boxSize,boxSize,boxSize);
+          ctx.strokeStyle='#E8B84A';ctx.lineWidth=1;
+          ctx.strokeRect(seg.projX-boxSize/2,seg.projY-boxSize,boxSize,boxSize);
+          if(boxSize>10){
+            ctx.fillStyle='#E8B84A';ctx.font=Math.max(8,boxSize*0.6)+'px sans-serif';
+            ctx.textAlign='center';ctx.fillText('❓',seg.projX,seg.projY-boxSize*0.3);
+          }
+        }
+      }
+    }
+  }
+  
+  // Draw other racers
+  if(state.racers){
+    const others=state.racers.map((r,idx)=>({...r,idx})).filter(r=>r.idx!==camTarget);
+    others.sort((a,b)=>{
+      const da=Math.abs((a.progress||0)-baseProgress);
+      const db=Math.abs((b.progress||0)-baseProgress);
+      return db-da; // far first
     });
-  }else{ov.style.display='none';ro.style.display='none';}
+    
+    for(const r of others){
+      const relDist=((r.progress||0)-baseProgress);
+      if(relDist<-0.05||relDist>0.3) continue; // behind or too far
+      
+      const segIdx=Math.max(0,Math.min(DRAW_DIST-1,Math.floor(relDist/0.005)));
+      const seg=segments[segIdx];
+      if(!seg||seg.scale<0.001) continue;
+      
+      const spriteH=Math.max(8,200*seg.scale*100);
+      const spriteW=spriteH*0.7;
+      const sx=seg.projX;
+      const sy=seg.projY-spriteH;
+      
+      // Kart body
+      ctx.fillStyle=r.color||'#888';
+      const bh=spriteH*0.5;
+      const bw=spriteW;
+      ctx.beginPath();
+      ctx.moveTo(sx-bw/2,sy+spriteH);
+      ctx.lineTo(sx-bw/2,sy+spriteH-bh);
+      ctx.quadraticCurveTo(sx,sy+spriteH-bh-bh*0.3,sx+bw/2,sy+spriteH-bh);
+      ctx.lineTo(sx+bw/2,sy+spriteH);
+      ctx.closePath();ctx.fill();
+      
+      // Head
+      ctx.beginPath();
+      ctx.arc(sx,sy+spriteH-bh-spriteH*0.15,spriteH*0.18,0,Math.PI*2);
+      ctx.fillStyle='#E8D5B0';ctx.fill();
+      
+      // Emoji
+      if(spriteH>15){
+        ctx.fillStyle='#fff';
+        ctx.font=Math.max(10,spriteH*0.3)+'px sans-serif';
+        ctx.textAlign='center';
+        ctx.fillText(r.emoji||'🏎️',sx,sy+spriteH-bh-spriteH*0.05);
+      }
+      
+      // Name tag
+      if(spriteH>25){
+        ctx.font='bold '+Math.max(8,spriteH*0.15)+'px sans-serif';
+        ctx.fillStyle='rgba(255,255,255,0.8)';
+        ctx.textAlign='center';
+        ctx.fillText(r.name||'',sx,sy+spriteH+spriteH*0.2);
+      }
+      
+      // Status effects
+      if(r.starred){
+        ctx.shadowColor='#E8B84A';ctx.shadowBlur=20;
+        ctx.strokeStyle='#E8B84A';ctx.lineWidth=2;
+        ctx.strokeRect(sx-spriteW/2-4,sy-4,spriteW+8,spriteH+8);
+        ctx.shadowBlur=0;
+      }
+      if(r.shielded){
+        ctx.beginPath();ctx.arc(sx,sy+spriteH/2,spriteW*0.7,0,Math.PI*2);
+        ctx.strokeStyle='rgba(91,148,232,0.5)';ctx.lineWidth=2;ctx.stroke();
+      }
+      if(r.stunned||r.spinning){
+        ctx.font=Math.max(12,spriteH*0.3)+'px sans-serif';
+        ctx.fillText(r.spinning?'💫':'⚡',sx,sy-5);
+      }
+    }
+  }
+  
+  // Traps (bananas)
+  if(state.traps){
+    for(const t of state.traps){
+      const relDist=(t.progress-baseProgress);
+      if(relDist<-0.02||relDist>0.3) continue;
+      const segIdx=Math.max(0,Math.min(DRAW_DIST-1,Math.floor(relDist/0.005)));
+      const seg=segments[segIdx];
+      if(!seg||seg.scale<0.002) continue;
+      const sz=Math.max(8,60*seg.scale*100);
+      ctx.font=sz+'px sans-serif';ctx.textAlign='center';
+      ctx.fillText('🍌',seg.projX+seg.roadW*0.2,seg.projY);
+    }
+  }
+  
+  // Missiles
+  if(state.missiles){
+    for(const m of state.missiles){
+      const relDist=(m.progress-baseProgress);
+      if(relDist<-0.02||relDist>0.3) continue;
+      const segIdx=Math.max(0,Math.min(DRAW_DIST-1,Math.floor(relDist/0.005)));
+      const seg=segments[segIdx];
+      if(!seg||seg.scale<0.002) continue;
+      const sz=Math.max(8,50*seg.scale*100);
+      ctx.font=sz+'px sans-serif';ctx.textAlign='center';
+      ctx.fillText('🚀',seg.projX,seg.projY-sz);
+    }
+  }
+  
+  // Speed lines (boost effect)
+  if(me.boosted||me.starred){
+    ctx.strokeStyle=me.starred?'rgba(232,184,74,0.4)':'rgba(94,196,160,0.3)';
+    ctx.lineWidth=2;
+    for(let i=0;i<8;i++){
+      const lx=Math.random()*W;
+      const ly=H*0.5+Math.random()*H*0.5;
+      ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(lx+Math.random()*20-10,ly+40+Math.random()*30);ctx.stroke();
+    }
+  }
+  
+  // HUD overlay: speed + item
+  ctx.fillStyle='rgba(22,27,36,0.7)';
+  ctx.fillRect(10,H-70,160,60);
+  ctx.strokeStyle='#2a3a4e';ctx.lineWidth=1;
+  ctx.strokeRect(10,H-70,160,60);
+  
+  const spd=me.speed||0;
+  const spdKmh=Math.floor(spd*5000);
+  ctx.fillStyle='#E8B84A';ctx.font='bold 28px monospace';ctx.textAlign='left';
+  ctx.fillText(spdKmh+'km/h',20,H-30);
+  
+  if(me.item){
+    ctx.font='32px sans-serif';
+    const itemEmoji=({'missile':'🚀','banana':'🍌','boost':'⚡','shield':'🛡️','lightning':'⚡','star':'🌟'})[me.item]||'❓';
+    ctx.fillText(itemEmoji,130,H-30);
+  }
+  
+  // Lap indicator
+  const lap=Math.min((me.lap||0)+1, state.laps||3);
+  ctx.fillStyle='#fff';ctx.font='bold 14px sans-serif';ctx.textAlign='left';
+  ctx.fillText('LAP '+lap+'/'+(state.laps||3),20,H-50);
+  
+  // Position
+  ctx.fillStyle='#E8B84A';ctx.font='bold 16px sans-serif';
+  ctx.textAlign='right';
+  const pos=me.rank||1;
+  const suf=pos===1?'st':pos===2?'nd':pos===3?'rd':'th';
+  ctx.fillText(pos+suf,W-20,40);
 }
 
-function updateRanks(){
-  if(!state||!state.racers)return;
-  const el=document.getElementById('rankList');
-  const sorted=[...state.racers].sort((a,b)=>a.rank-b.rank);
-  el.innerHTML=sorted.map(r=>'<div class="rank-item'+(r.finished?' finished':'')+'" style="background:'+r.color+'18"><span class="rank-num">'+(r.finished?'✅':r.rank)+'</span><span class="rank-emoji">'+esc(r.emoji)+'</span><span class="rank-name">'+esc(r.name)+'</span>'+(r.item?'<span class="rank-item-icon">'+esc(({"missile":"🚀","banana":"🍌","boost":"⚡","shield":"🛡️","lightning":"⚡","star":"🌟"})[r.item]||'')+'</span>':'')+'<span class="rank-lap">L'+(Math.min(r.lap+1,state.laps||3))+'</span></div>').join('');
-}
-
-function updateEvents(){
-  if(!state||!state.events||!state.events.length)return;
-  const el=document.getElementById('eventLog');
-  state.events.slice(-5).forEach(e=>{
-    const d=document.createElement('div');d.className='ev';d.textContent=e.message;el.appendChild(d);
-    // Track effects
-    if(e.type==='hit')effects.push({type:'explosion',tick:0,x:0,y:0,name:e.victim});
-    if(e.type==='spin')effects.push({type:'spin',tick:0,x:0,y:0,name:e.victim});
-    if(e.type==='item_use'&&e.message.includes('미사일'))effects.push({type:'missile_trail',tick:0});
+// ── Camera select buttons ──
+function updateCamButtons(){
+  if(!state||!state.racers) return;
+  const el=document.getElementById('camSelect');
+  if(el.children.length===state.racers.length) return;
+  el.innerHTML='';
+  state.racers.forEach((r,i)=>{
+    const b=document.createElement('button');
+    b.className='cam-btn'+(i===camTarget?' active':'');
+    b.textContent=r.emoji+' '+r.name;
+    b.onclick=()=>{camTarget=i;document.querySelectorAll('.cam-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active')};
+    el.appendChild(b);
   });
-  while(el.children.length>30)el.removeChild(el.children[1]);
+}
+
+// ── HUD: Rankings ──
+function updateHUD(){
+  if(!state||!state.racers) return;
+  const sorted=[...state.racers].sort((a,b)=>a.rank-b.rank);
+  let html='';
+  sorted.forEach(r=>{
+    const isCam=state.racers.indexOf(r)===camTarget;
+    const medal=r.rank===1?'🥇':r.rank===2?'🥈':r.rank===3?'🥉':'';
+    const itemE=r.item?({'missile':'🚀','banana':'🍌','boost':'⚡','shield':'🛡️','lightning':'⚡','star':'🌟'})[r.item]||'':'';
+    const status=r.finished?'✅':r.stunned?'💫':r.spinning?'🌀':r.starred?'⭐':r.boosted?'💨':r.shielded?'🛡':'';
+    html+='<div class="rank-row'+(isCam?' me':'')+'"><span class="rank-num">'+(medal||r.rank)+'</span><span class="rank-emoji">'+esc(r.emoji)+'</span><span class="rank-name">'+esc(r.name)+'</span><span class="rank-lap">L'+(Math.min((r.lap||0)+1,state.laps||3))+'</span><span class="rank-item">'+esc(itemE+status)+'</span></div>';
+  });
+  document.getElementById('ranks').innerHTML=html;
+}
+
+// ── Events log ──
+function updateEvents(){
+  if(!state||!state.events) return;
+  const el=document.getElementById('events');
+  const newEvs=state.events.filter(e=>!lastEvents.includes(e.message));
+  newEvs.forEach(e=>{
+    const d=document.createElement('div');
+    d.className='ev';
+    d.textContent=e.message;
+    el.appendChild(d);
+    lastEvents.push(e.message);
+  });
+  if(lastEvents.length>30) lastEvents=lastEvents.slice(-20);
+  while(el.children.length>8) el.removeChild(el.firstChild);
   el.scrollTop=el.scrollHeight;
 }
 
-function draw(){
-  ctx.clearRect(0,0,800,600);
-  if(!state||!state.track){ctx.fillStyle='#6B7280';ctx.font='24px sans-serif';ctx.textAlign='center';ctx.fillText('🏎️ 머슴카트 로딩 중...',400,300);requestAnimationFrame(draw);return}
-  const t=state.track,cx=t.cx,cy=t.cy,rx=t.rx,ry=t.ry;
-  // Track
-  ctx.strokeStyle='#2A3140';ctx.lineWidth=48;ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);ctx.stroke();
-  ctx.strokeStyle='#3A4150';ctx.lineWidth=44;ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);ctx.stroke();
-  // Lane lines
-  ctx.strokeStyle='#4A5160';ctx.lineWidth=1;ctx.setLineDash([8,12]);
-  ctx.beginPath();ctx.ellipse(cx,cy,rx,ry,0,0,Math.PI*2);ctx.stroke();
-  ctx.setLineDash([]);
-  // Start/finish line
-  const sx=cx+rx,sy=cy;
-  ctx.strokeStyle='#FFFFFF';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(sx,sy-24);ctx.lineTo(sx,sy+24);ctx.stroke();
-  ctx.fillStyle='#FFFFFF';ctx.font='12px sans-serif';ctx.textAlign='center';ctx.fillText('START',sx,sy-28);
-  // Item boxes
-  if(t.item_boxes){t.item_boxes.forEach(i=>{
-    const a=2*Math.PI*i/40,bx=cx+rx*Math.cos(a),by=cy+ry*Math.sin(a);
-    ctx.fillStyle='rgba(232,184,74,0.3)';ctx.fillRect(bx-6,by-6,12,12);
-    ctx.strokeStyle='#E8B84A';ctx.lineWidth=1;ctx.strokeRect(bx-6,by-6,12,12);
-    ctx.fillStyle='#E8B84A';ctx.font='8px sans-serif';ctx.fillText('?',bx,by+3);
-  });}
-  // Traps (bananas)
-  if(state.traps){state.traps.forEach(tr=>{
-    const a=2*Math.PI*(tr.progress%1),bx=cx+rx*Math.cos(a),by=cy+ry*Math.sin(a);
-    ctx.font='16px sans-serif';ctx.textAlign='center';ctx.fillText('🍌',bx,by+5);
-  });}
-  // Missiles
-  if(state.missiles){state.missiles.forEach(m=>{
-    const a=2*Math.PI*(m.progress%1),mx=cx+rx*Math.cos(a),my=cy+ry*Math.sin(a);
-    ctx.font='14px sans-serif';ctx.textAlign='center';ctx.fillText('🚀',mx,my+4);
-  });}
-  // Racers
-  if(state.racers){
-    const sorted=[...state.racers].sort((a,b)=>a.progress-b.progress);
-    sorted.forEach(r=>{
-      const a=2*Math.PI*(r.progress%1),px=cx+rx*Math.cos(a),py=cy+ry*Math.sin(a);
-      // Glow for effects
-      if(r.starred){ctx.shadowColor='#FFD700';ctx.shadowBlur=20;}
-      else if(r.boosted){ctx.shadowColor='#5EC4A0';ctx.shadowBlur=12;}
-      else if(r.shielded){ctx.shadowColor='#5B94E8';ctx.shadowBlur=12;}
-      else{ctx.shadowBlur=0;}
-      // Body
-      ctx.fillStyle=r.color;ctx.beginPath();ctx.arc(px,py,10,0,Math.PI*2);ctx.fill();
-      ctx.shadowBlur=0;
-      // Shield ring
-      if(r.shielded){ctx.strokeStyle='#5B94E8';ctx.lineWidth=2;ctx.beginPath();ctx.arc(px,py,14,0,Math.PI*2);ctx.stroke();}
-      // Stun/spin indicator
-      if(r.stunned){ctx.font='12px sans-serif';ctx.fillText('💥',px,py-16);}
-      if(r.spinning){ctx.font='12px sans-serif';ctx.fillText('💫',px,py-16);}
-      // Emoji
-      ctx.font='14px sans-serif';ctx.textAlign='center';ctx.fillText(r.emoji,px,py+4);
-      // Name
-      ctx.fillStyle='#C8CDD8';ctx.font='bold 9px sans-serif';ctx.fillText(r.name,px,py+22);
-    });
-  }
-  // Effects cleanup
-  effects=effects.filter(e=>{e.tick++;return e.tick<30;});
-  effects.forEach(e=>{
-    if(e.type==='explosion'&&state.racers){
-      const v=state.racers.find(r=>r.name===e.name);
-      if(v){const a=2*Math.PI*(v.progress%1),ex=cx+rx*Math.cos(a),ey=cy+ry*Math.sin(a);
-        ctx.globalAlpha=1-e.tick/30;ctx.font=(20+e.tick)+'px sans-serif';ctx.fillText('💥',ex,ey);ctx.globalAlpha=1;}
-    }
-  });
-  requestAnimationFrame(draw);
+// ── Countdown overlay ──
+function showCountdown(n){
+  if(cdEl) cdEl.remove();
+  const ga=document.querySelector('.game-area');
+  cdEl=document.createElement('div');
+  cdEl.className='countdown-overlay';
+  cdEl.textContent=n<=0?'🏁 GO!':n;
+  ga.appendChild(cdEl);
+  setTimeout(()=>{if(cdEl)cdEl.remove();cdEl=null},800);
 }
 
-setInterval(poll,1000);poll();draw();
+// ── Result overlay ──
+function showResult(results){
+  if(resultEl) return;
+  const ga=document.querySelector('.game-area');
+  resultEl=document.createElement('div');
+  resultEl.className='result-overlay';
+  const medals=['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣'];
+  let html='<h2>🏆 레이스 종료!</h2>';
+  (results||[]).forEach((r,i)=>{
+    html+='<div class="result-row"><span class="result-medal">'+(medals[i]||'')+'</span> '+esc(r.name)+' — '+r.time+'s</div>';
+  });
+  html+='<div style="margin-top:20px;color:#5a7090;font-size:13px">다음 레이스 곧 시작...</div>';
+  resultEl.innerHTML=html;
+  ga.appendChild(resultEl);
+  setTimeout(()=>{if(resultEl){resultEl.remove();resultEl=null}},8000);
+}
+
+let lastCd=null;
+// ── Poll ──
+async function poll(){
+  try{
+    const r=await fetch(API+'/api/kart/state?since='+lastTick);
+    const d=await r.json();
+    if(d.tick) lastTick=d.tick;
+    state=d;
+    updateCamButtons();
+    updateHUD();
+    updateEvents();
+    // Countdown
+    if(d.state==='countdown'&&d.countdown!==lastCd){lastCd=d.countdown;showCountdown(d.countdown)}
+    if(d.state==='racing'&&lastCd!==0){lastCd=0;showCountdown(0)}
+    // Result
+    if(d.state==='finished'&&d.results) showResult(d.results);
+    if(d.state==='waiting'&&resultEl){resultEl.remove();resultEl=null}
+  }catch(e){}
+}
+
+// ── Render loop ──
+function draw(){
+  requestAnimationFrame(draw);
+  if(!state) return;
+  drawRoad();
+}
+
+setInterval(poll,800);poll();draw();
 </script>
 </body></html>"""
 
