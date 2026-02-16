@@ -273,22 +273,23 @@ def mersoom_withdraw(to_auth_id, amount):
             return True, 'ok'
         else:
             print(f"[MERSOOM] 출금 실패: {status} {data}", flush=True)
-            return False, str(data)
+            return False, 'transfer_failed'
     except Exception as e:
         print(f"[MERSOOM] 출금 에러: {e}", flush=True)
-        return False, str(e)
+        return False, 'internal_error'
 
 def ranked_deposit(auth_id, amount):
-    """ranked 잔고에서 칩 차감 (게임 입장 시)"""
+    """ranked 잔고에서 칩 차감 (게임 입장 시) — 원자적 차감"""
     with _ranked_lock:
         db = _db()
-        row = db.execute("SELECT balance FROM ranked_balances WHERE auth_id=?", (auth_id,)).fetchone()
-        bal = row[0] if row else 0
-        if bal < amount:
-            return False, bal
-        db.execute("UPDATE ranked_balances SET balance=balance-?, updated_at=strftime('%s','now') WHERE auth_id=?",
-            (amount, auth_id))
+        # 원자적 차감: WHERE balance >= ? 로 잔고 부족 시 업데이트 자체가 안 됨
+        cur = db.execute("UPDATE ranked_balances SET balance=balance-?, updated_at=strftime('%s','now') WHERE auth_id=? AND balance>=?",
+            (amount, auth_id, amount))
         db.commit()
+        if cur.rowcount == 0:
+            # 차감 실패: 잔고 부족 or 계정 없음
+            row = db.execute("SELECT balance FROM ranked_balances WHERE auth_id=?", (auth_id,)).fetchone()
+            return False, row[0] if row else 0
         new_bal = db.execute("SELECT balance FROM ranked_balances WHERE auth_id=?", (auth_id,)).fetchone()[0]
         return True, new_bal
 
@@ -318,7 +319,7 @@ def _ranked_audit(event, auth_id, amount, balance_before=None, balance_after=Non
             balance_after = ranked_balance(auth_id)
         db = _db()
         db.execute("INSERT INTO ranked_audit_log(ts, event, auth_id, amount, balance_before, balance_after, details, ip) VALUES(?,?,?,?,?,?,?,?)",
-            (time.time(), event, auth_id, amount, balance_before, balance_after, details, ip[:45] if ip else ''))
+            (time.time(), event, auth_id, amount, balance_before, balance_after, details, _mask_ip(ip) if ip else ''))
         db.commit()
         # 로그 상한 (10000건 유지)
         count = db.execute("SELECT COUNT(*) FROM ranked_audit_log").fetchone()[0]
@@ -1046,12 +1047,25 @@ def _tele_update_summary():
 spectator_coins = {}  # spectator_name -> coins (가상 포인트)
 SPECTATOR_START_COINS = 1000
 
+_spectator_last_seen = {}  # name -> timestamp (활동 추적)
+
 def get_spectator_coins(name):
     if name not in spectator_coins:
         if len(spectator_coins) > 5000:  # 메모리 상한
-            oldest = sorted(spectator_coins.keys(), key=lambda k: spectator_coins.get(k,0))[:2500]
-            for k in oldest: del spectator_coins[k]
+            # 비활성 관전자 우선 정리 (24시간 미활동)
+            now = time.time()
+            inactive = [k for k, ts in _spectator_last_seen.items() if now - ts > 86400]
+            for k in inactive:
+                spectator_coins.pop(k, None)
+                _spectator_last_seen.pop(k, None)
+            # 그래도 5000 초과면 잔고 최소순 정리
+            if len(spectator_coins) > 5000:
+                oldest = sorted(spectator_coins.keys(), key=lambda k: spectator_coins.get(k,0))[:2500]
+                for k in oldest:
+                    del spectator_coins[k]
+                    _spectator_last_seen.pop(k, None)
         spectator_coins[name]=SPECTATOR_START_COINS
+    _spectator_last_seen[name] = time.time()
     return spectator_coins[name]
 
 def place_spectator_bet(table_id, hand_num, spectator, pick, amount):
@@ -1149,6 +1163,13 @@ def _db():
 def save_leaderboard():
     try:
         db=_db()
+        # 리더보드 상한: 2000명 초과 시 hands=0이거나 최소 hands인 유저 제거
+        if len(leaderboard) > 2000:
+            sorted_by_hands = sorted(leaderboard.items(), key=lambda x: x[1].get('hands', 0))
+            remove_count = len(leaderboard) - 1500
+            for name, _ in sorted_by_hands[:remove_count]:
+                del leaderboard[name]
+                db.execute("DELETE FROM leaderboard WHERE name=?", (name,))
         for name,lb in leaderboard.items():
             db.execute("""INSERT OR REPLACE INTO leaderboard(name,wins,losses,chips_won,hands,biggest_pot,streak,achievements)
                 VALUES(?,?,?,?,?,?,?,?)""",
@@ -2548,11 +2569,12 @@ class Table:
             self.history.append(record)
             if len(self.history)>50: self.history=self.history[-50:]
             save_hand_history(self.id, record)
-            # DB 핸드 히스토리 정리: NPC 테이블은 최근 1000건만 유지
-            if not is_ranked_table(self.id) and self.hand_num % 100 == 0:
+            # DB 핸드 히스토리 정리: 최근 N건만 유지
+            if self.hand_num % 100 == 0:
                 try:
                     db=_db()
-                    db.execute("DELETE FROM hand_history WHERE table_id=? AND id NOT IN (SELECT id FROM hand_history WHERE table_id=? ORDER BY id DESC LIMIT 1000)", (self.id, self.id))
+                    max_records = 5000 if is_ranked_table(self.id) else 1000
+                    db.execute("DELETE FROM hand_history WHERE table_id=? AND id NOT IN (SELECT id FROM hand_history WHERE table_id=? ORDER BY id DESC LIMIT ?)", (self.id, self.id, max_records))
                     db.commit()
                 except: pass
             save_player_stats(self.id, self.player_stats)
@@ -2821,24 +2843,34 @@ _visitor_log = []  # [{ip, ua, route, referer, ts, count}]
 _visitor_map = {}  # ip -> {ua, routes, first_seen, last_seen, hits, referer}
 _VISITOR_MAX = 200
 
+def _mask_ip(ip):
+    """IP 마스킹: 마지막 옥텟 제거 (개인정보 보호)"""
+    if not ip: return ''
+    parts = ip.split('.')
+    if len(parts) == 4:
+        return f"{parts[0]}.{parts[1]}.{parts[2]}.xxx"
+    # IPv6 or other: 마지막 4자 마스킹
+    return ip[:-4] + 'xxxx' if len(ip) > 4 else ip
+
 def _track_visitor(ip, ua, route, referer=''):
     if not ip or ip.startswith('10.') or ip=='127.0.0.1': return
+    masked_ip = _mask_ip(ip)
     now = time.time()
-    if ip in _visitor_map:
-        v = _visitor_map[ip]
+    if masked_ip in _visitor_map:
+        v = _visitor_map[masked_ip]
         v['last_seen'] = now
         v['hits'] += 1
         v['ua'] = ua
         if route not in v['routes']: v['routes'].append(route)
         if referer and not v.get('referer'): v['referer'] = referer
     else:
-        _visitor_map[ip] = {'ua': ua, 'routes': [route], 'first_seen': now, 'last_seen': now, 'hits': 1, 'referer': referer}
+        _visitor_map[masked_ip] = {'ua': ua, 'routes': [route], 'first_seen': now, 'last_seen': now, 'hits': 1, 'referer': referer}
     # visitor_map 상한 (메모리 보호)
     if len(_visitor_map) > 5000:
         oldest = sorted(_visitor_map.keys(), key=lambda k: _visitor_map[k]['last_seen'])[:2500]
         for k in oldest: del _visitor_map[k]
-    # 로그 (최근 200개)
-    _visitor_log.append({'ip': ip, 'ua': ua[:100], 'route': route, 'ts': now, 'referer': referer[:200] if referer else ''})
+    # 로그 (최근 200개) — IP 마스킹
+    _visitor_log.append({'ip': masked_ip, 'ua': ua[:100], 'route': route, 'ts': now, 'referer': referer[:200] if referer else ''})
     if len(_visitor_log) > _VISITOR_MAX: _visitor_log.pop(0)
 
 def _get_visitor_stats():
@@ -4025,7 +4057,20 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
             ip = peer[0] if peer else 'unknown'
             if not _tele_rate_ok(ip): await send_http(writer,429,'rate limited'); return
             td=safe_json(body)
-            td['_ip'] = ip[:45]
+            # 텔레메트리 입력 검증: 허용된 필드만 수집, 타입 강제
+            _TELE_ALLOWED = {'poll_ok','poll_err','rtt_avg','rtt_p95','hands','overlay_allin',
+                'overlay_killcam','sid','ev','name','table','src'}
+            td = {k: v for k, v in td.items() if k in _TELE_ALLOWED}
+            # 숫자 필드 타입 강제
+            for nf in ('poll_ok','poll_err','rtt_avg','rtt_p95','hands','overlay_allin','overlay_killcam'):
+                if nf in td:
+                    try: td[nf] = max(0, min(int(td[nf]), 1000000))
+                    except (ValueError, TypeError): del td[nf]
+            # 문자열 필드 길이 제한
+            for sf in ('sid','ev','name','table','src'):
+                if sf in td:
+                    td[sf] = str(td[sf])[:50]
+            td['_ip'] = _mask_ip(ip)
             _telemetry_log.append({'ts':time.time(),**td})
             if len(_telemetry_log)>500: _telemetry_log[:]=_telemetry_log[-250:]
             _tele_update_summary()
