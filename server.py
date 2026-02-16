@@ -1322,6 +1322,9 @@ class Table:
         self.spectator_votes={}  # voter_id -> player_name
         self.vote_hand=0  # 현재 투표가 열린 핸드 번호
         self.vote_results={}  # player_name -> count (집계)
+        # 킬스트릭 추적
+        self._killstreak_winner=None  # 마지막 핸드 승자
+        self._killstreak_count=0  # 연승 카운트
 
     def _init_stats(self, name):
         if name not in self.player_stats:
@@ -1545,6 +1548,7 @@ class Table:
             'showdown_result':self.last_showdown,
             'fold_winner':self.fold_winner,
             'spectator_count':len(self.spectator_ws)+len(self.poll_spectators),
+            'killstreak':{'name':self._killstreak_winner,'count':self._killstreak_count} if self._killstreak_count>=2 else None,
             'season':get_season_info(),
             'seats_available':self.MAX_PLAYERS-len(self.seats),
             'table_info':{'sb':self.SB,'bb':self.BB,'timeout':self.TURN_TIMEOUT,
@@ -1988,33 +1992,66 @@ class Table:
         await self.betting_round(start, hand_record)
         if self._count_alive()<=1: await self.resolve(hand_record); self._advance_dealer(); return
 
+        # 올인 슬로모션 감지
+        _slowmo=self._is_all_allin()
+
         # 플랍
-        self.round='flop'; self.deck.pop(); self.community+=[self.deck.pop() for _ in range(3)]
-        hand_record['community']=[card_str(c) for c in self.community]
-        await self.add_log(f"── 플랍: {' '.join(card_str(c) for c in self.community)} ──")
-        await self.broadcast_commentary(f"🎴 플랍 오픈! {' '.join(card_str(c) for c in self.community)} — 팟 {self.pot}pt")
+        self.round='flop'; self.deck.pop()
+        if _slowmo and len(self.community)==0:
+            # 슬로모션: 플랍 카드 한 장씩
+            await self.broadcast_raw({'type':'slowmo_start','pot':self.pot})
+            for ci in range(3):
+                self.community.append(self.deck.pop())
+                hand_record['community']=[card_str(c) for c in self.community]
+                eq=self._compute_equities()
+                await self.broadcast_raw({'type':'slowmo_card','card':card_dict(self.community[-1]),'index':ci,
+                    'street':'flop','community':[card_dict(c) for c in self.community],'equities':eq,'pot':self.pot})
+                await self.broadcast_state(); await asyncio.sleep(2.5)
+            await self.add_log(f"── 플랍: {' '.join(card_str(c) for c in self.community)} ──")
+            await self.broadcast_commentary(f"🎴 플랍 오픈! {' '.join(card_str(c) for c in self.community)} — 팟 {self.pot}pt")
+        else:
+            self.community+=[self.deck.pop() for _ in range(3)]
+            hand_record['community']=[card_str(c) for c in self.community]
+            await self.add_log(f"── 플랍: {' '.join(card_str(c) for c in self.community)} ──")
+            await self.broadcast_commentary(f"🎴 플랍 오픈! {' '.join(card_str(c) for c in self.community)} — 팟 {self.pot}pt")
         await self.broadcast_state(); await asyncio.sleep(3)
-        await self.betting_round((self.dealer+1)%n, hand_record)
-        if self._count_alive()<=1: await self.resolve(hand_record); self._advance_dealer(); return
+        if not _slowmo:
+            await self.betting_round((self.dealer+1)%n, hand_record)
+            if self._count_alive()<=1: await self.resolve(hand_record); self._advance_dealer(); return
+            _slowmo=self._is_all_allin()  # 플랍 베팅 후 올인 체크
 
         # 턴
         self.round='turn'; self.deck.pop(); self.community.append(self.deck.pop())
         hand_record['community']=[card_str(c) for c in self.community]
+        if _slowmo:
+            eq=self._compute_equities()
+            await self.broadcast_raw({'type':'slowmo_card','card':card_dict(self.community[-1]),'index':3,
+                'street':'turn','community':[card_dict(c) for c in self.community],'equities':eq,'pot':self.pot})
+            await asyncio.sleep(3)
         await self.add_log(f"── 턴: {' '.join(card_str(c) for c in self.community)} ──")
         alive=self._count_alive()
         await self.broadcast_commentary(f"🔥 턴 카드 오픈! {alive}명 생존 — 팟 {self.pot}pt")
         await self.broadcast_state(); await asyncio.sleep(3)
-        await self.betting_round((self.dealer+1)%n, hand_record)
-        if self._count_alive()<=1: await self.resolve(hand_record); self._advance_dealer(); return
+        if not _slowmo:
+            await self.betting_round((self.dealer+1)%n, hand_record)
+            if self._count_alive()<=1: await self.resolve(hand_record); self._advance_dealer(); return
+            _slowmo=self._is_all_allin()  # 턴 베팅 후 올인 체크
 
         # 리버
         self.round='river'; self.deck.pop(); self.community.append(self.deck.pop())
         hand_record['community']=[card_str(c) for c in self.community]
+        if _slowmo:
+            eq=self._compute_equities()
+            await self.broadcast_raw({'type':'slowmo_card','card':card_dict(self.community[-1]),'index':4,
+                'street':'river','community':[card_dict(c) for c in self.community],'equities':eq,'pot':self.pot})
+            await self.broadcast_raw({'type':'slowmo_end'})
+            await asyncio.sleep(3)
         await self.add_log(f"── 리버: {' '.join(card_str(c) for c in self.community)} ──")
         alive=self._count_alive()
         await self.broadcast_commentary(f"💀 리버! 마지막 카드 오픈 — {alive}명이 {self.pot}pt를 놓고 승부!")
         await self.broadcast_state(); await asyncio.sleep(3)
-        await self.betting_round((self.dealer+1)%n, hand_record)
+        if not _slowmo:
+            await self.betting_round((self.dealer+1)%n, hand_record)
         await self.resolve(hand_record); self._advance_dealer()
 
     def _advance_dealer(self):
@@ -2022,6 +2059,24 @@ class Table:
         if active: self.dealer=(self.dealer+1)%len(active)
 
     def _count_alive(self): return sum(1 for s in self._hand_seats if not s['folded'])
+
+    def _is_all_allin(self):
+        """모든 생존 플레이어가 올인 상태(chips==0)인지 체크"""
+        alive=[s for s in self._hand_seats if not s['folded'] and not s.get('out')]
+        if len(alive)<2: return False
+        # 칩이 남은 플레이어가 최대 1명이면 올인 쇼다운
+        with_chips=[s for s in alive if s['chips']>0]
+        return len(with_chips)<=1
+
+    def _compute_equities(self):
+        """현재 커뮤니티 카드 기준 생존자 승률 계산 (Monte Carlo 간이)"""
+        alive=[s for s in self._hand_seats if not s['folded'] and not s.get('out') and s.get('hole')]
+        if len(alive)<2: return {}
+        equities={}
+        total=sum(hand_strength(s['hole'],self.community) for s in alive) or 1
+        for s in alive:
+            equities[s['name']]=round(hand_strength(s['hole'],self.community)/total*100)
+        return equities
 
     async def betting_round(self, start, record):
         if self.round!='preflop':
@@ -2385,6 +2440,23 @@ class Table:
                     if r['win']: await self.add_log(f"🎰 관전자 {r['name']}: {r['pick']}에 {r['bet']}코인 → +{r['payout']}코인!")
                     else: await self.add_log(f"💸 관전자 {r['name']}: {r['pick']}에 {r['bet']}코인 → 꽝")
             save_leaderboard()
+        # 킬스트릭 체크
+        if record.get('winner'):
+            wn=record['winner']
+            if self._killstreak_winner==wn:
+                self._killstreak_count+=1
+            else:
+                self._killstreak_winner=wn
+                self._killstreak_count=1
+            if self._killstreak_count>=2:
+                streak_labels={2:'🔥 더블킬!',3:'💀 트리플킬!',4:'⚡ 쿼드라킬!'}
+                sl=streak_labels.get(self._killstreak_count,'👑 갓라이크!' if self._killstreak_count>=5 else '')
+                if sl:
+                    w_seat=next((s for s in self._hand_seats if s['name']==wn),None)
+                    w_emoji=w_seat['emoji'] if w_seat else '🃏'
+                    await self.broadcast_raw({'type':'killstreak','name':wn,'emoji':w_emoji,
+                        'streak':self._killstreak_count,'label':sl})
+                    await self.add_log(f"{sl} {w_emoji} {wn} {self._killstreak_count}연승!")
         # 다크호스 체크: 칩 꼴찌가 이겼을 때
         if record.get('winner'):
             alive=[s for s in self._hand_seats if (not s['folded'] and not s.get('out')) or s['name']==record['winner']]
@@ -5257,7 +5329,7 @@ body.in-game .game-layout{position:fixed!important;top:0!important;left:0!import
 .seat .ava img{width:28px!important;height:28px!important}
 .seat .nm{font-size:0.55em;padding:1px 2px;max-width:48px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .seat .ch{font-size:0.5em!important;padding:1px 2px}
-.seat .eq-bar{display:none!important}
+.seat .eq-bar{max-width:50px!important;height:5px!important;margin:1px auto!important}
 .seat .hand-name{font-size:0.45em!important}
 .seat .st{display:none}
 .seat .bet-chip{font-size:0.5em}
@@ -5370,6 +5442,22 @@ input,select,textarea{font-size:16px!important}
 #allin-overlay .allin-text{font-size:3.5em;font-weight:900;color:#ff6b6b;-webkit-text-stroke:3px #000;text-shadow:4px 4px 0 #000;animation:allinPulse .3s ease-in-out 3}
 @keyframes allinFlash{0%{opacity:0}10%{opacity:1}80%{opacity:1}100%{opacity:0}}
 @keyframes allinPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
+/* ═══ 킬스트릭 배너 ═══ */
+#killstreak-banner{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);z-index:100;pointer-events:none;text-align:center;font-family:var(--font-pixel);opacity:0}
+#killstreak-banner.show{animation:ksAppear 2.5s ease-out forwards}
+#killstreak-banner .ks-text{font-size:3.5em;font-weight:900;color:#fff;-webkit-text-stroke:3px #000;text-shadow:0 0 30px #ff6b00,0 0 60px #ff3300,4px 4px 0 #000;white-space:nowrap}
+#killstreak-banner .ks-name{font-size:1.4em;color:#ffaa00;margin-top:4px;text-shadow:2px 2px 0 #000}
+@keyframes ksAppear{0%{opacity:0;transform:translate(-50%,-50%) scale(3)}8%{opacity:1;transform:translate(-50%,-50%) scale(1)}15%{transform:translate(-50%,-50%) scale(1.1)}20%{transform:translate(-50%,-50%) scale(1)}80%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(0.8)}}
+/* ═══ 슬로모션 카드 플립 ═══ */
+@keyframes slowmoFlip{0%{transform:rotateY(180deg) scale(0.5);opacity:0}40%{transform:rotateY(90deg) scale(1.1);opacity:0.5}100%{transform:rotateY(0deg) scale(1);opacity:1}}
+.slowmo-card{animation:slowmoFlip 1s ease-out forwards;display:inline-block;perspective:600px}
+/* ═══ 승률바 라이브 애니메이션 ═══ */
+@keyframes eqPulse{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.4)}}
+@keyframes eqFlash{0%{box-shadow:0 0 0 rgba(255,255,0,0)}25%{box-shadow:0 0 12px rgba(255,255,0,0.8)}50%{box-shadow:0 0 20px rgba(255,68,68,0.9)}100%{box-shadow:0 0 0 rgba(255,255,0,0)}}
+@keyframes eqShake{0%,100%{transform:translateX(0)}10%{transform:translateX(-3px)}30%{transform:translateX(3px)}50%{transform:translateX(-2px)}70%{transform:translateX(2px)}90%{transform:translateX(-1px)}}
+.eq-bar-live{transition:width 0.8s cubic-bezier(0.34,1.56,0.64,1)}
+.eq-bar-pulse{animation:eqPulse 0.6s ease-in-out 2}
+.eq-bar-flash{animation:eqFlash 0.8s ease-out,eqShake 0.5s ease-in-out}
 #highlight-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:radial-gradient(circle,#ffd93d33,#000000dd);display:none;align-items:center;justify-content:center;z-index:98}
 #highlight-overlay .hl-text{font-size:2.8em;font-weight:900;color:#ffd93d;-webkit-text-stroke:2px #000;text-shadow:4px 4px 0 #000}
 #bet-panel{background:#ffffffcc;border:2.5px solid #000;border-radius:14px;padding:10px;margin-top:8px;text-align:center;box-shadow:4px 4px 0 #000}
@@ -5809,6 +5897,7 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 <button onclick="react('👏')">👏</button><button onclick="react('🔥')">🔥</button><button onclick="react('😱')">😱</button><button onclick="react('💀')">💀</button><button onclick="react('😂')">😂</button><button onclick="react('🤡')">🤡</button>
 </div>
 <div id="allin-overlay"><div class="allin-text">🔥 ALL IN 🔥</div></div>
+<div id="killstreak-banner"><div class="ks-text"></div><div class="ks-name"></div></div>
 <div id="killcam-overlay"><div class="kc-text"><div class="kc-vs"></div><div class="kc-msg"></div></div></div>
 <div id="darkhorse-overlay"><div class="dh-text"></div></div>
 <div id="mvp-overlay"><div class="mvp-text"></div></div>
@@ -7295,7 +7384,11 @@ else if(d.type==='deal_anim'){animateDeal(d)}
 else if(d.type==='collect_anim'){animateCollect()}
 else if(d.type==='action_display'){showActionBanner(d)}
 else if(d.type==='vote_update'){updateVoteCounts(d)}
-else if(d.type==='vote_result'){showVoteResult(d)}}
+else if(d.type==='vote_result'){showVoteResult(d)}
+else if(d.type==='killstreak'){showKillstreak(d)}
+else if(d.type==='slowmo_card'){showSlowmoCard(d)}
+else if(d.type==='slowmo_start'){showSlowmoStart(d)}
+else if(d.type==='slowmo_end'){showSlowmoEnd()}}
 
 // === 팟 숫자 롤링 애니 (#3) ===
 function rollPot(el, from, to) {
@@ -7624,7 +7717,9 @@ const ringColor=p.win_pct!=null&&!p.folded&&!p.out?(p.win_pct>50?'#44ff88':p.win
 const ringPct=p.win_pct!=null&&!p.folded&&!p.out?p.win_pct:0;
 const avaRing=ringPct>0?`<div class="ava-ring" style="background:conic-gradient(${ringColor} ${ringPct*3.6}deg, #333 ${ringPct*3.6}deg)"></div>`:'';
 /* 에쿼티 바 + 핸드 네임 */
-const eqBar=ringPct>0?`<div style="position:relative;width:90%;max-width:100px;height:7px;background:#222;border-radius:3px;margin:1px auto;overflow:hidden;border:1px solid #444"><div style="height:100%;width:${ringPct}%;background:linear-gradient(90deg,${ringColor},${p.win_pct>50?'#88ffbb':p.win_pct>25?'#ffcc44':'#ff6666'});border-radius:2px;transition:width .5s ease"></div></div><div style="font-size:0.75em;font-weight:700;color:${ringColor};text-align:center">${p.win_pct}%</div>`:''
+const _prevEq=window._eqPrev||(window._eqPrev={});const _oldEq=_prevEq[p.name]||0;const _eqDelta=Math.abs(ringPct-_oldEq);if(ringPct>0)_prevEq[p.name]=ringPct;
+const _eqExtra=_eqDelta>=20?'eq-bar-flash':(_eqDelta>=5?'eq-bar-pulse':'');
+const eqBar=ringPct>0?`<div class="eq-bar" style="position:relative;width:90%;max-width:100px;height:7px;background:#222;border-radius:3px;margin:1px auto;overflow:hidden;border:1px solid #444"><div class="eq-bar-live ${_eqExtra}" style="height:100%;width:${ringPct}%;background:linear-gradient(90deg,${ringColor},${p.win_pct>50?'#88ffbb':p.win_pct>25?'#ffcc44':'#ff6666'});border-radius:2px"></div></div><div style="font-size:0.75em;font-weight:700;color:${ringColor};text-align:center">${p.win_pct}%</div>`:''
 const hn=p.hand_name&&!p.folded&&!p.out?p.hand_name:'';
 const hnEn=p.hand_name_en&&!p.folded&&!p.out?p.hand_name_en:'';
 const handTag=hn?`<div style="font-size:0.75em;color:#ffcc00;text-align:center;font-weight:600">${lang==='en'?hnEn:hn}</div>`:'';
@@ -8063,6 +8158,40 @@ o.querySelector('.allin-text').textContent=`🔥 ${d.emoji} ${d.name} ALL IN ${d
 o.style.display='flex';o.style.animation='none';o.offsetHeight;o.style.animation='allinFlash 2s ease-out forwards';
 setTimeout(()=>{o.style.display='none'},2000);
 try{crowdReact('allin')}catch(e){}}
+
+// ═══ 킬스트릭 배너 ═══
+function showKillstreak(d){
+const b=document.getElementById('killstreak-banner');if(!b)return;
+b.querySelector('.ks-text').textContent=d.label;
+b.querySelector('.ks-name').textContent=`${d.emoji} ${d.name} ${d.streak}연승`;
+b.className='';b.offsetHeight;b.className='show';
+try{sfx('rare');screenShake()}catch(e){}
+setTimeout(()=>{b.className=''},2500)}
+
+// ═══ 슬로모션 쇼다운 ═══
+let _slowmoActive=false;
+function showSlowmoStart(d){_slowmoActive=true;
+try{document.getElementById('commentary-bar').textContent='⏳ 올인 쇼다운! 카드가 느리게 열립니다...'}catch(e){}}
+function showSlowmoEnd(){_slowmoActive=false}
+function showSlowmoCard(d){
+if(!d.card)return;
+// 승률바 업데이트 (equities)
+if(d.equities&&window._eqPrev){
+for(const[name,eq]of Object.entries(d.equities)){
+const old=window._eqPrev[name]||0;
+window._eqPrev[name]=eq;
+}
+}
+// 카드 플립 이펙트 — commentary로 표시
+const streetNames={flop:'플랍',turn:'턴',river:'리버'};
+const sn=streetNames[d.street]||d.street;
+const cardStr=`${d.card.rank}${d.card.suit}`;
+try{
+const cbar=document.getElementById('commentary-bar');
+if(cbar)cbar.innerHTML=`<span class="slowmo-card">🃏 ${sn} — ${cardStr}</span> ${d.equities?Object.entries(d.equities).map(([n,e])=>`<span style="color:${e>50?'#44ff88':e>25?'#ffaa00':'#ff4444'};margin-left:8px">${n}: ${e}%</span>`).join(''):''}`;
+}catch(e){}
+try{sfx('card')}catch(e){}
+}
 
 function showHighlight(d){
 const o=document.getElementById('highlight-overlay');const hlEl=document.getElementById('hl-text');
