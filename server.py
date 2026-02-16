@@ -4986,6 +4986,14 @@ HTML_PAGE = r"""<!DOCTYPE html>
   --font-body:'Inter','Pretendard',-apple-system,system-ui,sans-serif;
   --font-number:'JetBrains Mono','SF Mono','Fira Code',monospace;
 }
+/* ═══ FONT SMOOTHING — 다크 배경 위 밝은 텍스트 번짐 방지 ═══ */
+*{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+
+/* ═══ REDUCED MOTION — 시스템 설정 존중 ═══ */
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:0.01ms!important;animation-iteration-count:1!important;transition-duration:0.01ms!important}
+}
+
 /* ═══ UTILITY CLASSES ═══ */
 .px-panel{background:rgba(18,22,32,0.88);border:2px solid rgba(232,184,74,0.15);box-shadow:0 4px 16px rgba(0,0,0,0.3);border-radius:4px;overflow:hidden;backdrop-filter:blur(12px);image-rendering:auto;font-family:var(--font-pixel)}
 .px-panel-header{background:linear-gradient(135deg,var(--frame),var(--frame-light));color:var(--text-light);padding:10px var(--sp-lg);font-family:var(--font-pixel);font-size:0.85em;font-weight:600;border-bottom:1px solid rgba(255,255,255,0.06);letter-spacing:0.3px}
