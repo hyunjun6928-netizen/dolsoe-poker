@@ -929,7 +929,8 @@ def load_player_stats():
 
 # ══ 인증 토큰 ══
 import secrets
-player_tokens = {}  # name -> token
+player_tokens = {}  # name -> (token, timestamp)
+_TOKEN_MAX_AGE = 86400  # 24시간 후 토큰 만료
 chat_cooldowns = {}  # name -> last_chat_timestamp
 CHAT_COOLDOWN = 5  # 5초
 
@@ -937,16 +938,27 @@ ADMIN_KEY = os.environ.get('POKER_ADMIN_KEY', '')
 
 def issue_token(name):
     token = secrets.token_hex(16)
-    player_tokens[name] = token
+    player_tokens[name] = (token, time.time())
+    # 메모리 정리: 1000개 넘으면 만료된 것 제거
+    if len(player_tokens) > 1000:
+        now = time.time()
+        expired = [k for k, (_, ts) in player_tokens.items() if now - ts > _TOKEN_MAX_AGE]
+        for k in expired: del player_tokens[k]
     return token
 
 def verify_token(name, token):
-    return player_tokens.get(name) == token
+    entry = player_tokens.get(name)
+    if not entry: return False
+    stored_token, ts = entry
+    if time.time() - ts > _TOKEN_MAX_AGE:
+        del player_tokens[name]
+        return False
+    return stored_token == token
 
 def require_token(name, token):
     """모든 name에 토큰 필수. 토큰 미발급이면 거부."""
     if not name or not token: return False
-    return player_tokens.get(name) == token
+    return verify_token(name, token)
 
 def sanitize_name(name):
     """이름 정제: 제어문자 제거, 공백 정리, 길이 제한"""
@@ -2342,6 +2354,12 @@ async def handle_client(reader, writer):
         await handle_ws(reader,writer,path); return
 
     body=b''; cl=int(headers.get('content-length',0))
+    MAX_BODY=65536  # 64KB 제한
+    if cl>MAX_BODY:
+        await send_http(writer,413,'Request body too large (max 64KB)')
+        try: writer.close()
+        except: pass
+        return
     if cl>0: body=await reader.readexactly(cl)
     parsed=urlparse(path); route=parsed.path; qs=parse_qs(parsed.query)
 
@@ -2355,6 +2373,23 @@ async def handle_client(reader, writer):
         t=tables.get(tid) if tid else tables.get('mersoom')
         if not t: t=list(tables.values())[0] if tables else None
         return t
+
+    def safe_json(raw):
+        """안전한 JSON 파싱 — 실패 시 빈 dict"""
+        if not raw: return {}
+        try:
+            result = json.loads(raw)
+            return result if isinstance(result, dict) else {}
+        except (json.JSONDecodeError, ValueError): return {}
+
+    # POST 요청의 JSON 바디 유효성 검증
+    if method == 'POST' and body and route.startswith('/api/'):
+        try: json.loads(body)
+        except (json.JSONDecodeError, ValueError):
+            await send_json(writer, {'error': 'Invalid JSON body'}, 400)
+            try: writer.close()
+            except: pass
+            return
 
     _lang=qs.get('lang',[''])[0]
     if not _lang:
@@ -2411,7 +2446,7 @@ async def handle_client(reader, writer):
                 'round':t.round,'seats_available':t.MAX_PLAYERS-len(t.seats)} for t in tables.values()]
         await send_json(writer,{'games':games})
     elif method=='POST' and route=='/api/new':
-        d=json.loads(body) if body else {}
+        d=safe_json(body)
         if ADMIN_KEY and d.get('admin_key')!=ADMIN_KEY:
             await send_json(writer,{'ok':False,'code':'UNAUTHORIZED','message':'admin_key required'},401); return
         tid=d.get('table_id',f"table_{int(time.time()*1000)%100000}")
@@ -2423,7 +2458,7 @@ async def handle_client(reader, writer):
     elif method=='POST' and route=='/api/join':
         if not _api_rate_ok(_visitor_ip, 'join', 10):
             await send_json(writer,{'error':'rate limited — max 10 joins/min','code':'RATE_LIMITED'},429); return
-        d=json.loads(body) if body else {}; name=sanitize_name(d.get('name','')); emoji=sanitize_name(d.get('emoji','🤖'))[:2] or '🤖'
+        d=safe_json(body); name=sanitize_name(d.get('name','')); emoji=sanitize_name(d.get('emoji','🤖'))[:2] or '🤖'
         tid=d.get('table_id','mersoom')
         meta_version=sanitize_name(d.get('version',''))[:20]
         meta_strategy=sanitize_msg(d.get('strategy',''),30)
@@ -2444,7 +2479,7 @@ async def handle_client(reader, writer):
         except (ValueError, TypeError): buy_in = 0
         if is_ranked_table(tid):
             # 잠금 상태면 admin_key 필요
-            if RANKED_LOCKED and d.get('admin_key') != ADMIN_KEY:
+            if RANKED_LOCKED and (not ADMIN_KEY or d.get('admin_key') != ADMIN_KEY):
                 await send_json(writer, {'ok': False, 'code': 'RANKED_LOCKED',
                     'message': '랭크 매치는 현재 비공개 테스트 중입니다.'}, 403)
                 return
@@ -2543,7 +2578,7 @@ async def handle_client(reader, writer):
             # 중복 닉네임이면 새 토큰 재발급 (토큰 분실 복구)
             existing_seat=next((s for s in t.seats if s['name']==name and not s.get('out')),None)
             if existing_seat and not existing_seat['is_bot']:
-                token=generate_token(name)
+                token=issue_token(name)
                 await send_json(writer,{'ok':True,'table_id':t.id,'your_seat':t.seats.index(existing_seat),
                     'players':[s['name'] for s in t.seats],'token':token,'reconnected':True})
                 await t.add_log(f"🔄 {existing_seat['emoji']} {name} 재접속!")
@@ -2636,7 +2671,7 @@ async def handle_client(reader, writer):
     elif method=='POST' and route=='/api/action':
         if not _api_rate_ok(_visitor_ip, 'action', 30):
             await send_json(writer,{'ok':False,'code':'RATE_LIMITED','message':'rate limited — max 30 actions/min'},429); return
-        d=json.loads(body) if body else {}; name=d.get('name',''); tid=d.get('table_id','')
+        d=safe_json(body); name=d.get('name',''); tid=d.get('table_id','')
         token=d.get('token','')
         t=find_table(tid)
         if not t: await send_json(writer,{'ok':False,'code':'NOT_FOUND','message':'no game'},404); return
@@ -2658,7 +2693,7 @@ async def handle_client(reader, writer):
     elif method=='POST' and route=='/api/chat':
         if not _api_rate_ok(_visitor_ip, 'chat', 15):
             await send_json(writer,{'ok':False,'code':'RATE_LIMITED','message':'rate limited'},429); return
-        d=json.loads(body) if body else {}; name=sanitize_name(d.get('name','')); msg=sanitize_msg(d.get('msg',''),120); tid=d.get('table_id','')
+        d=safe_json(body); name=sanitize_name(d.get('name','')); msg=sanitize_msg(d.get('msg',''),120); tid=d.get('table_id','')
         token=d.get('token','')
         if not name or not msg: await send_json(writer,{'ok':False,'code':'INVALID_INPUT','message':'name and msg required'},400); return
         if not require_token(name,token):
@@ -2675,12 +2710,20 @@ async def handle_client(reader, writer):
         entry=t.add_chat(name,msg); await t.broadcast_chat(entry)
         await send_json(writer,{'ok':True})
     elif method=='POST' and route=='/api/leave':
-        d=json.loads(body) if body else {}; name=d.get('name',''); tid=d.get('table_id','mersoom')
+        d=safe_json(body); name=d.get('name',''); tid=d.get('table_id','')
         token=d.get('token','')
         if not name: await send_json(writer,{'ok':False,'code':'INVALID_INPUT','message':'name required'},400); return
         if not token or not verify_token(name,token):
             await send_json(writer,{'ok':False,'code':'UNAUTHORIZED','message':'token required'},401); return
-        t=find_table(tid)
+        # table_id 미지정 시 플레이어가 있는 테이블 자동 탐색
+        t = None
+        if tid:
+            t = find_table(tid)
+        else:
+            for _tid, _tbl in tables.items():
+                if any(s['name'] == name and not s.get('out') for s in _tbl.seats):
+                    t = _tbl; tid = _tid; break
+            if not t: t = find_table('mersoom'); tid = 'mersoom'
         if not t: await send_json(writer,{'ok':False,'code':'NOT_FOUND','message':'no game'},404); return
         seat=next((s for s in t.seats if s['name']==name),None)
         if not seat: await send_json(writer,{'ok':False,'code':'NOT_FOUND','message':'not in game'},400); return
@@ -2771,7 +2814,7 @@ async def handle_client(reader, writer):
                 entry['achievements']=[{'id':a['id'],'label':ACHIEVEMENT_DESC_EN.get(a['id'],{}).get('label',a['label']),'ts':a.get('ts',0)} for a in entry['achievements']]
         await send_json(writer,lb_data)
     elif method=='POST' and route=='/api/bet':
-        d=json.loads(body) if body else {}
+        d=safe_json(body)
         name=d.get('name',''); pick=d.get('pick',''); amount=int(d.get('amount',0))
         tid=d.get('table_id','mersoom'); t=find_table(tid)
         if not t or not t.running: await send_json(writer,{'error':'게임 진행중 아님'},400); return
@@ -2793,7 +2836,7 @@ async def handle_client(reader, writer):
             if not _ak and body:
                 try: _ak = json.loads(body).get('admin_key','')
                 except: _ak = ''
-            if _ak != ADMIN_KEY:
+            if not ADMIN_KEY or _ak != ADMIN_KEY:
                 await send_json(writer, {'error': '랭크 매치는 현재 비공개 테스트 중입니다.', 'code': 'RANKED_LOCKED'}, 403)
                 return
         # ── ranked API (잠금 통과 후) ──
@@ -2845,7 +2888,7 @@ async def handle_client(reader, writer):
             bal=ranked_balance(r_auth)
             await send_json(writer,{'auth_id':r_auth,'balance':bal})
         elif method=='POST' and route=='/api/ranked/withdraw':
-            d=json.loads(body) if body else {}
+            d=safe_json(body)
             r_auth=d.get('auth_id',''); r_pw=d.get('password','')
             try: amount=max(0, int(d.get('amount',0)))
             except (ValueError, TypeError): amount=0
@@ -3151,7 +3194,7 @@ async def handle_client(reader, writer):
     elif method=='GET' and route=='/battle' and HAS_BATTLE:
         await send_http(writer,200,battle_page_html(),ct='text/html; charset=utf-8')
     elif method=='POST' and route=='/api/battle/start' and HAS_BATTLE:
-        d=json.loads(body) if body else {}
+        d=safe_json(body)
         result = await asyncio.get_event_loop().run_in_executor(None, lambda: battle_api_start(d))
         await send_json(writer,result)
     elif method=='GET' and route=='/api/battle/history' and HAS_BATTLE:
@@ -3162,7 +3205,7 @@ async def handle_client(reader, writer):
             peer = writer.get_extra_info('peername')
             ip = peer[0] if peer else 'unknown'
             if not _tele_rate_ok(ip): await send_http(writer,429,'rate limited'); return
-            td=json.loads(body) if body else {}
+            td=safe_json(body)
             td['_ip'] = ip[:45]
             _telemetry_log.append({'ts':time.time(),**td})
             if len(_telemetry_log)>500: _telemetry_log[:]=_telemetry_log[-250:]
