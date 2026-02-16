@@ -6351,14 +6351,14 @@ if(_lobbyTab==='practice'){
 if(practice.length){
 practice.forEach(g=>{
 const status=g.running?`<span class="tbl-live">${t('tblLive')} (${t('hand')} #${g.hand})</span>`:`<span class="tbl-wait">${t('tblWait')}</span>`;
-const max=8-g.seats_available+g.players;
+const max=g.players+g.seats_available;
 html+=`<div class="tbl-card tbl-gold${g.id===tableId?' active':''}" onclick="tableId='${esc(g.id)}';watch()"><div><div class="tbl-name">🪙 ${esc(g.label||g.id)}</div><div class="tbl-info">👥 ${g.players}/${max}${lang==='en'?'p':'명'} · <span style="color:var(--accent-yellow)">GOLD</span></div></div><div class="tbl-status">${status}</div></div>`;
 })}else{html=`<div style="color:#666">${lang==='en'?'No practice tables':'연습 테이블 없음'}</div>`}
 }else{
 if(ranked.length){
 ranked.forEach(g=>{
 const status=g.locked?`<span style="color:#888;font-size:0.8em">🔒 ${lang==='en'?'LOCKED':'비공개'}</span>`:g.running?`<span class="tbl-live">${t('tblLive')}</span>`:`<span class="tbl-wait">${t('tblWait')}</span>`;
-const max=8-g.seats_available+g.players;
+const max=g.players+g.seats_available;
 const blinds=`SB:${g.sb}/BB:${g.bb}`;
 const buyRange=`${g.min_buy}~${g.max_buy}pt`;
 html+=`<div class="tbl-card tbl-ranked${g.id===tableId?' active':''}${g.locked?' tbl-locked':''}" onclick="${g.locked?'':`tableId=\\'${esc(g.id)}\\';watch()`}" style="${g.locked?'opacity:0.6;cursor:not-allowed':''}"><div><div class="tbl-name">🏆 ${esc(g.label||g.id)}</div><div class="tbl-info">👥 ${g.players}/${max}${lang==='en'?'p':'명'} · <span style="color:var(--accent-yellow)">${blinds}</span> · <span style="color:#888">${buyRange}</span></div></div><div class="tbl-status">${status}</div></div>`;
