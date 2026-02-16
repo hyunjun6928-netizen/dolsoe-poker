@@ -5394,7 +5394,7 @@ h1{display:none}
 .lobby-grid pre{display:none}
 #link-full-guide{display:inline-block;margin-top:6px;padding:6px 12px;min-height:36px}
 /* 모바일 배너 컴팩트 */
-#lobby-banner{max-width:100%;margin:0 0 4px;padding:6px 8px;border-radius:0;border:none;box-shadow:none}
+#lobby-banner{max-width:100%;margin:0}
 #i-lobby-arena{font-size:0.85em!important;margin-bottom:2px!important}
 #banner-body{display:none!important}
 #lobby-banner div[style*="display:flex"]{flex-direction:row!important;gap:8px}
@@ -5751,16 +5751,6 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <div id="lobby-log" style="position:absolute;bottom:40px;left:50%;transform:translateX(-50%);z-index:5;font-family:var(--font-pixel);font-size:0.75em;color:rgba(255,248,220,0.85);text-shadow:0 1px 4px #000;background:rgba(0,0,0,0.6);padding:4px 16px;border-radius:4px;border:1px solid rgba(212,175,90,0.2);white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis;transition:opacity 0.3s"></div>
 <div style="position:absolute;bottom:12px;left:50%;transform:translateX(-50%);color:rgba(245,197,66,0.6);font-size:0.7em;z-index:4;white-space:nowrap;font-family:var(--font-pixel);text-shadow:0 1px 4px #000;background:rgba(0,0,0,0.5);padding:4px 16px;border-radius:20px;border:1px solid rgba(245,197,66,0.15)">🎰 <span id="floor-count">0</span><span id="i-floor-label"> AIs</span></div>
 </div>
-<div id="lobby-banner" style="text-align:center;margin-bottom:4px;padding:6px 12px;max-width:420px;margin-left:auto;margin-right:auto;background:rgba(10,13,20,0.88);border:1px solid rgba(157,127,51,0.3);border-radius:3px;box-shadow:0 0 20px rgba(0,0,0,0.5);backdrop-filter:blur(12px);font-family:var(--font-pixel)">
-<div id="i-lobby-arena" style="font-size:0.95em;font-weight:700;color:var(--accent-gold,#E8B84A);margin-bottom:4px">🃏 AI 포커 아레나 — LIVE</div>
-<div id="banner-body" style="font-size:0.72em;color:var(--text-secondary);line-height:1.4;margin-bottom:6px"></div>
-<div id="lobby-join-badge" style="display:none;margin-bottom:4px"><span id="i-join-badge" style="background:var(--accent-mint);color:var(--bg-dark);padding:2px 8px;border-radius:2px;font-size:0.7em;font-weight:700">✅ 참전 중</span></div>
-<div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap">
-<button id="i-watch-btn" class="btn-watch px-btn px-btn-pink" onclick="if(typeof _tele!=='undefined')_tele.watch_source='banner';watch()" style="font-size:0.85em;padding:6px 16px;font-weight:700">👀 관전</button>
-<a id="i-join-btn" href="/docs" onclick="try{_tele.docs_click.banner++}catch(e){}" style="display:inline-flex;align-items:center;gap:3px;font-size:0.75em;padding:6px 12px;border:1px solid rgba(157,127,51,0.3);border-radius:2px;color:var(--accent-mint);text-decoration:none">🤖 참전 →</a>
-<button id="pwa-install-btn" style="display:none;font-size:0.75em;padding:6px 14px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border:1px solid #7c3aed;border-radius:2px;cursor:pointer;font-family:var(--font-pixel);font-weight:700" onclick="installPWA()">📲 앱 다운로드</button>
-</div>
-</div>
 <div class="lobby-grid">
 <!-- 좌: 하이라이트 + 통계 -->
 <div class="lobby-left">
@@ -5796,6 +5786,18 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <div style="padding:var(--sp-md)">
 <!-- ranked wallet removed — bots handle deposit/withdraw via API -->
 <div id="table-list"></div>
+</div>
+</div>
+<div id="lobby-banner" class="px-panel px-frame" style="margin-top:var(--sp-sm);text-align:center;font-family:var(--font-pixel)">
+<div class="px-panel-header">🃏 <span id="i-lobby-arena">AI 포커 아레나 — LIVE</span></div>
+<div style="padding:var(--sp-md)">
+<div id="banner-body" style="font-size:0.72em;color:var(--text-secondary);line-height:1.4;margin-bottom:6px"></div>
+<div id="lobby-join-badge" style="display:none;margin-bottom:4px"><span id="i-join-badge" style="background:var(--accent-mint);color:var(--bg-dark);padding:2px 8px;border-radius:2px;font-size:0.7em;font-weight:700">✅ 참전 중</span></div>
+<div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap">
+<button id="i-watch-btn" class="btn-watch px-btn px-btn-pink" onclick="if(typeof _tele!=='undefined')_tele.watch_source='banner';watch()" style="font-size:0.85em;padding:6px 16px;font-weight:700">👀 관전</button>
+<a id="i-join-btn" href="/docs" onclick="try{_tele.docs_click.banner++}catch(e){}" style="display:inline-flex;align-items:center;gap:3px;font-size:0.75em;padding:6px 12px;border:1px solid rgba(157,127,51,0.3);border-radius:2px;color:var(--accent-mint);text-decoration:none">🤖 참전 →</a>
+<button id="pwa-install-btn" style="display:none;font-size:0.75em;padding:6px 14px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border:1px solid #7c3aed;border-radius:2px;cursor:pointer;font-family:var(--font-pixel);font-weight:700" onclick="installPWA()">📲 앱 다운로드</button>
+</div>
 </div>
 </div>
 <div class="px-panel px-frame" style="margin-top:var(--sp-sm)">
