@@ -5398,20 +5398,20 @@ body.in-game .game-layout{position:fixed!important;top:0!important;left:0!import
 .felt-border{top:-6px;left:-4px;right:-4px;bottom:-6px;border-radius:10px}
 .felt-border::before{top:-4px;left:-3px;right:-3px;bottom:-4px;border-radius:12px}
 .felt{position:relative!important;height:auto!important;max-height:none!important;min-height:48vw!important;flex:1!important;border-radius:8px;box-shadow:inset 0 2px 6px #00000033;overflow:visible!important;padding-bottom:0!important}
-.board{gap:2px;top:38%!important;z-index:20!important}
-.pot-badge{top:15%!important;font-size:0.8em!important;padding:4px 12px!important}
-.card{width:30px;height:42px;font-size:0.55em;border-radius:3px;box-shadow:0 1px 0 0 #000}
-.card-sm{width:24px;height:34px;font-size:0.5em}
+.board{gap:4px;top:35%!important;z-index:20!important}
+.pot-badge{top:12%!important;font-size:0.85em!important;padding:5px 14px!important}
+.card{width:36px;height:50px;font-size:0.65em;border-radius:4px;box-shadow:0 1px 2px 0 #000}
+.card-sm{width:32px;height:44px;font-size:0.6em}
 /* ═══ 모바일 좌석 ═══ */
-.seat{min-width:44px!important;max-width:62px!important;position:absolute!important}
-.seat .ava{font-size:1.1em;min-height:28px}
-.seat .ava img{width:28px!important;height:28px!important}
-.seat .nm{font-size:0.6em;padding:2px 4px;max-width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.seat .ch{font-size:0.5em!important;padding:1px 2px}
-.seat .eq-bar{max-width:50px!important;height:5px!important;margin:1px auto!important}
-.seat .hand-name{font-size:0.45em!important}
+.seat{min-width:52px!important;max-width:72px!important;position:absolute!important;z-index:15}
+.seat .ava{font-size:1.2em;min-height:32px}
+.seat .ava img{width:32px!important;height:32px!important}
+.seat .nm{font-size:0.65em;padding:2px 5px;max-width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:rgba(22,27,36,0.95)!important}
+.seat .ch{font-size:0.55em!important;padding:2px 4px}
+.seat .eq-bar{max-width:56px!important;height:6px!important;margin:2px auto!important}
+.seat .hand-name{font-size:0.5em!important}
 .seat .st{display:none}
-.seat .bet-chip{font-size:0.5em}
+.seat .bet-chip{font-size:0.55em}
 /* 8인 타원 배치: 하2 좌2 우2 상2 */
 .seat-0{bottom:-8px!important;left:65%!important;transform:translateX(-50%)!important;top:auto!important;right:auto!important}
 .seat-1{bottom:-8px!important;left:35%!important;transform:translateX(-50%)!important;top:auto!important;right:auto!important}
@@ -5444,7 +5444,7 @@ body.in-game .game-layout{position:fixed!important;top:0!important;left:0!import
 .bottom-dock .bd-reactions::-webkit-scrollbar{display:none}
 .bottom-dock .bd-reactions button{width:32px;height:32px;font-size:1em;flex-shrink:0;min-height:32px}
 /* ═══ 모바일 해설/타임라인 ═══ */
-#commentary{margin:0 2px 2px;font-size:0.75em;padding:3px 6px;min-height:18px;border-radius:6px;flex-shrink:0;max-height:36px;overflow:hidden}
+#commentary{margin:0 2px 2px;font-size:0.8em;padding:4px 8px;min-height:20px;border-radius:6px;flex-shrink:0;max-height:40px;overflow:hidden}
 #hand-timeline{font-size:0.55em;gap:2px;flex-wrap:nowrap;justify-content:center;padding:2px 0;flex-shrink:0;overflow-x:auto}
 #hand-timeline .tl-step{padding:2px 5px;white-space:nowrap}
 /* ═══ 모바일 패널 ═══ */
@@ -5471,7 +5471,7 @@ body.in-game .game-layout{position:fixed!important;top:0!important;left:0!import
 #profile-popup h3{font-size:1em;margin-bottom:6px}
 #profile-popup .pp-stat{font-size:0.8em;margin:2px 0}
 .result-box{padding:16px;min-width:unset;width:90vw;border-radius:14px}
-.info-bar{flex-wrap:nowrap;gap:2px 4px;padding:2px 4px;font-size:0.55em;justify-content:center;flex-shrink:0;overflow-x:auto}
+.info-bar{flex-wrap:nowrap;gap:2px 6px;padding:3px 6px;font-size:0.6em;justify-content:center;flex-shrink:0;overflow-x:auto}
 .info-bar>div{display:flex;align-items:center;gap:2px;white-space:nowrap}
 .ms-tab .ms-label{display:none}
 .lobby-tab .tab-label{display:none}
@@ -5501,10 +5501,10 @@ input,select,textarea{font-size:16px!important}
 /* ═══ 초소형 모바일 (375px 이하) ═══ */
 @media(max-width:375px){
 .felt{height:65vw!important;min-height:200px!important}
-.card{width:26px;height:38px;font-size:0.5em}
-.card-sm{width:22px;height:32px;font-size:0.45em}
-.seat{min-width:42px!important;max-width:60px!important}
-.seat .ava{font-size:1em;min-height:28px}
+.card{width:30px;height:42px;font-size:0.55em}
+.card-sm{width:26px;height:36px;font-size:0.5em}
+.seat{min-width:48px!important;max-width:64px!important}
+.seat .ava{font-size:1.1em;min-height:28px}
 .seat .ava img{width:28px!important;height:28px!important}
 .seat .nm{font-size:0.55em;max-width:64px}
 .seat .ch{font-size:0.5em!important}
