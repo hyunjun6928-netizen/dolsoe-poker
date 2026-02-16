@@ -2588,6 +2588,7 @@ async def ws_recv(reader):
     masked=bool(b2[0]&0x80); ln=b2[0]&0x7F
     if ln==126: ln=struct.unpack('>H',await reader.readexactly(2))[0]
     elif ln==127: ln=struct.unpack('>Q',await reader.readexactly(8))[0]
+    if ln>65536: return None  # 64KB WS 메시지 제한
     if masked:
         mask=await reader.readexactly(4); data=await reader.readexactly(ln)
         data=bytes(b^mask[i%4] for i,b in enumerate(data))
