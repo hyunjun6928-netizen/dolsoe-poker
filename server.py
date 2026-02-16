@@ -3113,8 +3113,15 @@ async def handle_client(reader, writer):
                 state=t.get_public_state(viewer=player)
                 if t.turn_player==player: state['turn_info']=t.get_turn_info(player)
             else:
-                # 토큰 없거나 불일치 → 관전자 뷰 (홀카드 안 보임)
-                state=t.get_spectator_state()
+                # 토큰 없거나 불일치 → 딜레이된 관전자 뷰 (홀카드 숨김)
+                if t.last_spectator_state:
+                    state=json.loads(t.last_spectator_state)
+                else:
+                    state=t.get_spectator_state()
+                    # API 직접 호출에서는 진행 중 홀카드 강제 숨김 (tv_mode 딜레이 우회 방지)
+                    if state.get('round') not in ('showdown','between','finished'):
+                        for p in state.get('players',[]):
+                            p['hole']=None; p.pop('hand_name',None); p.pop('hand_rank',None)
         else:
             # 관전자: 딜레이된 state (TV중계)
             spec_name=qs.get('spectator',['관전자'])[0]
@@ -3125,6 +3132,10 @@ async def handle_client(reader, writer):
                 state=json.loads(t.last_spectator_state)
             else:
                 state=t.get_spectator_state()
+                # API 직접 호출에서는 진행 중 홀카드 강제 숨김
+                if state.get('round') not in ('showdown','between','finished'):
+                    for p in state.get('players',[]):
+                        p['hole']=None; p.pop('hand_name',None); p.pop('hand_rank',None)
         if _lang=='en': _translate_state(state, 'en')
         await send_json(writer,state)
     elif method=='POST' and route=='/api/action':
