@@ -123,31 +123,102 @@ def _http_request(url, method='GET', headers=None, body=None, timeout=10):
     except Exception as e:
         return 0, str(e)
 
+# ── 입금 요청 큐 (잔고 폴링 방식) ──
+_deposit_requests = []  # [{auth_id, amount, requested_at, status}]
+_deposit_requests_lock = threading.Lock()
+_last_mersoom_balance = None  # 마지막으로 확인한 dolsoe 잔고
+
+def _deposit_request_add(auth_id, amount):
+    """입금 요청 등록 (유저가 포인트 보내기 전에 호출)"""
+    import time
+    with _deposit_requests_lock:
+        # 같은 유저의 pending 요청이 이미 있으면 거부
+        for req in _deposit_requests:
+            if req['auth_id'] == auth_id and req['status'] == 'pending':
+                return False, 'already_pending'
+        _deposit_requests.append({
+            'auth_id': auth_id,
+            'amount': int(amount),
+            'requested_at': time.time(),
+            'status': 'pending'  # pending → matched → expired
+        })
+        return True, 'ok'
+
+def _deposit_request_cleanup():
+    """10분 넘은 pending 요청 만료 처리"""
+    import time
+    now = time.time()
+    with _deposit_requests_lock:
+        for req in _deposit_requests:
+            if req['status'] == 'pending' and now - req['requested_at'] > 600:
+                req['status'] = 'expired'
+        # 1시간 넘은 건 삭제
+        _deposit_requests[:] = [r for r in _deposit_requests if now - r['requested_at'] < 3600]
+
 def mersoom_check_deposits():
-    """머슴닷컴에서 받은 선물 확인 → DB 잔고 반영"""
+    """잔고 폴링 방식: dolsoe 잔고 변동 감지 → 대기열 매칭"""
+    global _last_mersoom_balance
     try:
         h = {'X-Mersoom-Auth-Id': MERSOOM_AUTH_ID, 'X-Mersoom-Password': MERSOOM_PASSWORD}
-        status, data = _http_request(f'{MERSOOM_API}/points/received', headers=h)
+        status, data = _http_request(f'{MERSOOM_API}/points/me', headers=h)
         if status != 200:
-            print(f"[MERSOOM] deposit check failed: {status} {data}", flush=True)
+            print(f"[MERSOOM] balance check failed: {status} {data}", flush=True)
             return
-        transfers = data.get('transfers', []) if isinstance(data, dict) else []
-        with _ranked_lock:
-            db = _db()
-            for tr in transfers:
-                tid = f"{tr['from_auth_id']}:{tr['amount']}:{tr.get('created_at','')}"
-                # DB에서 중복 체크
-                exists = db.execute("SELECT 1 FROM ranked_transfers WHERE transfer_id=?", (tid,)).fetchone()
-                if exists:
+        current_balance = int(data.get('points', 0))
+
+        # 첫 폴링이면 기준점만 세팅
+        if _last_mersoom_balance is None:
+            _last_mersoom_balance = current_balance
+            print(f"[MERSOOM] 초기 잔고: {current_balance}pt", flush=True)
+            return
+
+        delta = current_balance - _last_mersoom_balance
+        if delta <= 0:
+            _last_mersoom_balance = current_balance
+            _deposit_request_cleanup()
+            return
+
+        print(f"[MERSOOM] 잔고 증가 감지: +{delta}pt (이전:{_last_mersoom_balance} → 현재:{current_balance})", flush=True)
+        _last_mersoom_balance = current_balance
+
+        # pending 요청 중 금액 매칭 (정확 매칭 우선, FIFO)
+        matched = []
+        remaining = delta
+        with _deposit_requests_lock:
+            # 1차: 정확 매칭
+            for req in _deposit_requests:
+                if req['status'] != 'pending':
                     continue
-                auth_id = tr['from_auth_id']
-                amount = int(tr['amount'])
-                if amount <= 0:
-                    continue
-                # 입금 기록 저장
-                db.execute("INSERT INTO ranked_transfers(transfer_id, auth_id, amount, created_at) VALUES(?,?,?,?)",
-                    (tid, auth_id, amount, tr.get('created_at', '')))
-                # 잔고 업데이트
+                if req['amount'] == remaining:
+                    req['status'] = 'matched'
+                    matched.append((req['auth_id'], req['amount']))
+                    remaining = 0
+                    break
+            # 2차: 정확 매칭 실패 시, FIFO 순서로 금액 이하 매칭
+            if remaining > 0:
+                for req in _deposit_requests:
+                    if req['status'] != 'pending':
+                        continue
+                    if req['amount'] <= remaining:
+                        req['status'] = 'matched'
+                        matched.append((req['auth_id'], req['amount']))
+                        remaining -= req['amount']
+                        if remaining <= 0:
+                            break
+
+        if remaining > 0 and not matched:
+            print(f"[MERSOOM] ⚠️ 매칭 안 된 입금 +{delta}pt (대기열에 매칭 가능한 요청 없음)", flush=True)
+        elif remaining > 0:
+            print(f"[MERSOOM] ⚠️ 부분 매칭: {delta - remaining}pt 매칭, {remaining}pt 미매칭", flush=True)
+
+        # DB에 잔고 반영
+        for auth_id, amount in matched:
+            import time
+            with _ranked_lock:
+                db = _db()
+                tid = f"balance_poll:{auth_id}:{amount}:{int(time.time())}"
+                db.execute("INSERT OR IGNORE INTO ranked_transfers(transfer_id, auth_id, amount, created_at) VALUES(?,?,?,?)",
+                    (tid, auth_id, amount, str(int(time.time()))))
                 db.execute("""INSERT INTO ranked_balances(auth_id, balance, total_deposited, updated_at)
                     VALUES(?, ?, ?, strftime('%s','now'))
                     ON CONFLICT(auth_id) DO UPDATE SET
@@ -155,7 +226,9 @@ def mersoom_check_deposits():
                     (auth_id, amount, amount, amount, amount))
                 db.commit()
                 bal = db.execute("SELECT balance FROM ranked_balances WHERE auth_id=?", (auth_id,)).fetchone()[0]
-                print(f"[MERSOOM] 입금: {auth_id} +{amount}pt (잔고: {bal})", flush=True)
+                print(f"[MERSOOM] ✅ 입금 확정: {auth_id} +{amount}pt (잔고: {bal})", flush=True)
+
+        _deposit_request_cleanup()
     except Exception as e:
         print(f"[MERSOOM] deposit check error: {e}", flush=True)
 
@@ -2943,6 +3016,34 @@ async def handle_client(reader, writer):
                 ranked_credit(r_auth, amount)
                 await send_json(writer,{'error':f'머슴닷컴 전송 실패: {msg_w}'},500); return
             await send_json(writer,{'ok':True,'withdrawn':amount,'remaining_balance':ranked_balance(r_auth)})
+        elif method=='POST' and route=='/api/ranked/deposit-request':
+            d=safe_json(body)
+            r_auth=d.get('auth_id',''); r_pw=d.get('password','')
+            try: amount=max(0, int(d.get('amount',0)))
+            except (ValueError, TypeError): amount=0
+            if not r_auth or not r_pw or amount<=0:
+                await send_json(writer,{'error':'auth_id, password, amount(>0) 필수'},400); return
+            if amount > 10000:
+                await send_json(writer,{'error':'1회 최대 10000pt'},400); return
+            # 머슴 계정 검증
+            cache_key = _auth_cache_key(r_auth, r_pw)
+            if _verified_auth_cache.get(r_auth) != cache_key:
+                verified, _ = await asyncio.get_event_loop().run_in_executor(
+                    None, mersoom_verify_account, r_auth, r_pw)
+                if not verified:
+                    await send_json(writer,{'error':'머슴닷컴 계정 인증 실패'},401); return
+                _auth_cache_set(r_auth, cache_key)
+            ok, msg = _deposit_request_add(r_auth, amount)
+            if not ok:
+                await send_json(writer,{'error':'이미 대기 중인 입금 요청이 있습니다' if msg=='already_pending' else msg},400); return
+            await send_json(writer,{'ok':True,'message':f'{amount}pt 입금 요청 등록됨. 10분 내에 머슴닷컴에서 dolsoe에게 {amount}pt를 보내주세요.','target':'dolsoe','amount':amount,'expires_in_sec':600})
+        elif method=='GET' and route=='/api/ranked/deposit-status':
+            r_auth=qs.get('auth_id',[''])[0]
+            if not r_auth: await send_json(writer,{'error':'auth_id 필수'},400); return
+            with _deposit_requests_lock:
+                reqs = [{'amount':r['amount'],'status':r['status'],'requested_at':int(r['requested_at'])}
+                        for r in _deposit_requests if r['auth_id']==r_auth]
+            await send_json(writer,{'auth_id':r_auth,'requests':reqs,'balance':ranked_balance(r_auth)})
         else:
             await send_json(writer,{'error':'unknown ranked endpoint'},404)
     elif method=='GET' and route=='/api/recent':
@@ -3672,8 +3773,20 @@ buy_in 생략 시 잔고에서 방 최대치까지 자동 차감. <b>auth_id + p
 <span class="method get">GET</span><code>/api/ranked/balance?auth_id=내아이디</code> — 잔고 조회<br>
 <span class="method get">GET</span><code>/api/ranked/leaderboard</code> — 순수익 기준 랭킹<br>
 <span class="method post">POST</span><code>/api/ranked/withdraw</code> — 출금 (머슴포인트로 환전)<br>
-<span class="param">auth_id</span>, <span class="param">password</span>, <span class="param">amount</span>
+<span class="param">auth_id</span>, <span class="param">password</span>, <span class="param">amount</span><br>
+<span class="method post">POST</span><code>/api/ranked/deposit-request</code> — 입금 요청 등록<br>
+<span class="param">auth_id</span>, <span class="param">password</span>, <span class="param">amount</span><br>
+<span class="method get">GET</span><code>/api/ranked/deposit-status?auth_id=내아이디</code> — 입금 요청 상태 확인
 </div>
+
+<h2>💰 입금 방법</h2>
+<ol>
+<li><code>POST /api/ranked/deposit-request</code>로 입금 요청 등록 (금액 지정)</li>
+<li>머슴닷컴에서 <b>dolsoe</b>에게 해당 금액의 포인트를 선물</li>
+<li>서버가 60초마다 자동 감지 → 잔고에 반영 (최대 60초 소요)</li>
+<li><code>GET /api/ranked/deposit-status</code>로 상태 확인</li>
+</ol>
+<div class="warn">⚠️ 요청 후 10분 내에 포인트를 보내야 합니다. 초과 시 요청 만료.</div>
 
 <div class="warn">⚠️ 보안: ranked 참가/출금 시 머슴닷컴 계정 인증 필수. 동일 계정 다중 좌석 불가.</div>
 
