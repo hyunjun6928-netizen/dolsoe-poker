@@ -5143,7 +5143,8 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 #profile-backdrop{position:fixed;top:0;left:0;right:0;bottom:0;background:#000000aa;z-index:149;display:none}
 @media(max-width:700px){
 *{box-sizing:border-box}
-body{overflow-x:hidden;-webkit-text-size-adjust:100%;padding-bottom:60px}
+body{overflow-x:hidden;-webkit-text-size-adjust:100%;padding-bottom:0}
+body.in-game{overflow:hidden!important;height:100vh;height:100dvh}
 body::after{display:none}
 .forest-top,.forest-deco{display:none!important}
 .wrap{padding:0;max-width:100vw;overflow-x:hidden}
@@ -5176,15 +5177,15 @@ h1{display:none}
 #i-lobby-arena{font-size:1em!important}
 #banner-body{font-size:0.78em!important}
 /* ═══ 모바일 게임 ═══ */
-.game-layout{position:relative!important;display:flex!important;flex-direction:column!important;top:auto!important;left:auto!important;right:auto!important;bottom:auto!important;width:100%!important;max-width:100vw!important;height:auto!important;min-height:0!important;padding:0;grid-template-columns:none!important}
+body.in-game .game-layout{position:fixed!important;top:0!important;left:0!important;right:0!important;bottom:0!important;display:flex!important;flex-direction:column!important;width:100vw!important;height:100vh!important;height:100dvh!important;padding:0;grid-template-columns:none!important;overflow:hidden!important;z-index:10}
 .dock-left,.dock-right{display:none!important}
-.game-main{flex:none!important;overflow:hidden!important;-ms-overflow-style:none!important;scrollbar-width:none!important}
+.game-main{flex:1!important;display:flex!important;flex-direction:column!important;overflow:hidden!important;-ms-overflow-style:none!important;scrollbar-width:none!important;min-height:0!important}
 .game-main::-webkit-scrollbar{display:none!important}
 /* ═══ 모바일 펠트 (테이블) ═══ */
-.felt-wrap{margin:2px auto 4px;width:100%!important;flex:none!important;min-height:0!important;height:auto!important;overflow:hidden!important}
+.felt-wrap{margin:2px auto 4px;width:100%!important;flex:1!important;min-height:0!important;height:auto!important;overflow:hidden!important;display:flex!important;flex-direction:column!important}
 .felt-border{top:-6px;left:-4px;right:-4px;bottom:-6px;border-radius:10px}
 .felt-border::before{top:-4px;left:-3px;right:-3px;bottom:-4px;border-radius:12px}
-.felt{position:relative!important;height:55vw!important;max-height:340px!important;min-height:220px!important;border-radius:8px;box-shadow:inset 0 2px 6px #00000033;overflow:hidden!important;padding-bottom:0!important}
+.felt{position:relative!important;flex:1!important;height:auto!important;max-height:none!important;min-height:200px!important;border-radius:8px;box-shadow:inset 0 2px 6px #00000033;overflow:hidden!important;padding-bottom:0!important}
 .board{gap:2px;top:38%!important;z-index:20!important}
 .pot-badge{top:15%!important;font-size:0.8em!important;padding:4px 12px!important}
 .card{width:30px;height:42px;font-size:0.55em;border-radius:3px;box-shadow:0 1px 0 0 #000}
@@ -5218,20 +5219,20 @@ h1{display:none}
 .ava-ring{width:1.6em;height:1.6em;opacity:0.2}
 .confetti{width:5px;height:5px}
 /* ═══ 모바일 하단 고정 UI ═══ */
-.bottom-dock{position:fixed;bottom:0;left:0;right:0;padding:4px 6px;z-index:50;background:rgba(10,13,20,0.95);backdrop-filter:blur(8px);border-top:1px solid rgba(74,222,128,0.2)}
+.bottom-dock{position:relative!important;bottom:auto!important;left:auto!important;right:auto!important;padding:4px 6px;z-index:50;background:rgba(10,13,20,0.95);border-top:1px solid rgba(74,222,128,0.2);flex-shrink:0}
 .bottom-dock .bd-reactions{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .bottom-dock .bd-reactions::-webkit-scrollbar{display:none}
 .bottom-dock .bd-reactions button{width:32px;height:32px;font-size:1em;flex-shrink:0;min-height:32px}
 /* ═══ 모바일 해설/타임라인 ═══ */
-#commentary{margin:0 2px 2px;font-size:0.9em;padding:6px 10px;min-height:24px;border-radius:8px}
-#hand-timeline{font-size:0.55em;gap:2px;flex-wrap:wrap;justify-content:center;padding:2px 0}
-#hand-timeline .tl-step{padding:2px 5px}
+#commentary{margin:0 2px 2px;font-size:0.85em;padding:4px 8px;min-height:20px;border-radius:6px;flex-shrink:0}
+#hand-timeline{font-size:0.55em;gap:2px;flex-wrap:nowrap;justify-content:center;padding:2px 0;flex-shrink:0;overflow-x:auto}
+#hand-timeline .tl-step{padding:2px 5px;white-space:nowrap}
 /* ═══ 모바일 패널 ═══ */
-#actions{padding:6px;margin:2px 0;display:none;flex-direction:column;align-items:center}
+#actions{padding:6px;margin:2px 0;display:none;flex-direction:column;align-items:center;flex-shrink:0}
 #actions button{padding:10px 20px;margin:3px;font-size:0.9em;min-height:40px;width:90%}
-.bottom-panel{flex-direction:column}
-#log,#replay-panel{height:80px;font-size:0.75em}
-#chatbox{width:100%;height:120px}
+.bottom-panel{flex-direction:column;flex-shrink:0}
+#log,#replay-panel{height:60px;font-size:0.7em;flex-shrink:0}
+#chatbox{width:100%;height:80px;flex-shrink:0}
 #turn-options{font-size:0.6em;padding:3px 6px}
 #bet-panel{font-size:0.75em;padding:8px;margin-top:4px}
 #bet-panel select,#bet-panel input{font-size:0.85em;padding:6px;min-height:36px}
@@ -5250,8 +5251,8 @@ h1{display:none}
 #profile-popup h3{font-size:1em;margin-bottom:6px}
 #profile-popup .pp-stat{font-size:0.8em;margin:2px 0}
 .result-box{padding:16px;min-width:unset;width:90vw;border-radius:14px}
-.info-bar{flex-wrap:wrap;gap:2px 6px;padding:4px 6px;font-size:0.6em;justify-content:center}
-.info-bar>div{display:flex;align-items:center;gap:3px}
+.info-bar{flex-wrap:nowrap;gap:2px 4px;padding:2px 4px;font-size:0.55em;justify-content:center;flex-shrink:0;overflow-x:auto}
+.info-bar>div{display:flex;align-items:center;gap:2px;white-space:nowrap}
 #vol-slider{width:28px!important}
 #delay-badge{font-size:0.7em!important;padding:1px 4px!important}
 .lang-btn{font-size:0.75em!important;padding:4px 8px!important;min-height:28px}
