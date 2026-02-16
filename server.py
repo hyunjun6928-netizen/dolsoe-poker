@@ -7108,7 +7108,8 @@ function flyChip(fromEl,toEl){
 }
 function flyChipsFromSeat(seatIdx,count){
   const seat=document.querySelector(`.seat[data-seat="${seatIdx}"]`);
-  const target=document.getElementById('chip-stack')||document.getElementById('pot');
+  const cs=document.getElementById('chip-stack');
+  const target=(cs&&cs.offsetParent!==null)?cs:document.getElementById('pot');
   if(!seat||!target)return;
   count=Math.min(count||1,6);
   for(let i=0;i<count;i++){
@@ -7763,7 +7764,7 @@ const seatEl=document.querySelector(`.seat-${i}`);
 if(seatEl){
 const felt=document.getElementById('felt');
 const sr=seatEl.getBoundingClientRect();const fr=felt.getBoundingClientRect();
-const pot=document.getElementById('chip-stack')||document.getElementById('pot');const pr=pot.getBoundingClientRect();
+const _cs2=document.getElementById('chip-stack');const pot=(_cs2&&_cs2.offsetParent!==null)?_cs2:document.getElementById('pot');const pr=pot.getBoundingClientRect();
 const dx=pr.left+pr.width/2-sr.left-sr.width/2;
 const dy=pr.top+pr.height/2-sr.top-sr.height/2;
 const chip=document.createElement('div');chip.className='chip-fly';
