@@ -6066,7 +6066,7 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <div id="lobby-tabs" style="display:flex;gap:4px">
 <button class="lobby-tab active" data-tab="practice" onclick="switchLobbyTab('practice')">🪙 <span class="tab-label" data-i="tabPractice">골드</span></button>
 <button class="lobby-tab" data-tab="ranked" onclick="switchLobbyTab('ranked')">🏆 <span class="tab-label" data-i="tabRanked">랭크</span></button>
-<button class="lobby-tab" data-tab="kart" onclick="location.href='/kart'">🏎️ <span class="tab-label">카트</span></button>
+<!-- kart removed -->
 </div>
 </div>
 <div style="padding:var(--sp-md)">
