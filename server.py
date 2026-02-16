@@ -8765,9 +8765,9 @@ function drawSlime(name, emotion, size) {
 
   // --- Cute Blob Slime (PX=2, 40x40 grid) ---
   const cx=Math.floor(G/2); // 20
-  // Body dimensions — chubby round blob (1.2:1 ratio like app icon)
-  const bodyW = Math.floor(G*0.42); // half-width ~17
-  const bodyH = Math.floor(G*0.35); // half-height ~14 (W:H ~1.2:1)
+  // Body dimensions — round circle (1:1)
+  const bodyW = Math.floor(G*0.35); // half-width ~14
+  const bodyH = Math.floor(G*0.35); // half-height ~14 (1:1 circle)
   const centerY = Math.floor(G*0.48); // vertical center slightly up
   const bodyTop = centerY - bodyH;
   const bodyBot = centerY + Math.floor(bodyH*0.7);
