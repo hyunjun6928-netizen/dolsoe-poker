@@ -2027,10 +2027,14 @@ class Table:
             for s in self._hand_seats: s['bet']=0
             self.current_bet=0
         last_raiser=None; acted=set(); raises=0; n=len(self._hand_seats)
+        if n==0: return
+        start=start%n  # clamp start to valid range
         for _ in range(n*4):
             all_done=True
             for i in range(n):
-                idx=(start+i)%n; s=self._hand_seats[idx]
+                idx=(start+i)%n
+                if idx>=len(self._hand_seats): return  # safety
+                s=self._hand_seats[idx]
                 if s['folded'] or s['chips']<=0: continue
                 if s['name']==last_raiser and s['name'] in acted: continue
                 if self._count_alive()<=1: return
