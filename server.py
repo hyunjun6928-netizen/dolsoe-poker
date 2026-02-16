@@ -5410,13 +5410,16 @@ h1{display:none}
 #join-with-label{display:none}
 .lobby-grid pre{display:none}
 #link-full-guide{display:inline-block;margin-top:6px;padding:6px 12px;min-height:36px}
-/* 모바일 배너 컴팩트 */
-#lobby-banner{max-width:100%;margin:0}
-#i-lobby-arena{font-size:0.85em!important;margin-bottom:2px!important}
+/* 모바일 배너 — 테이블 아래 컴팩트 바 */
+#lobby-banner{max-width:100%;margin:0;order:10!important}
+#lobby-banner .px-panel-header{display:none!important}
+#lobby-banner>div{padding:8px!important}
 #banner-body{display:none!important}
-#lobby-banner div[style*="display:flex"]{flex-direction:row!important;gap:8px}
-.btn-watch,.px-btn-pink{padding:8px 14px!important;font-size:0.8em!important;width:auto!important;min-height:36px}
-#i-join-btn{padding:8px 14px!important;font-size:0.7em!important;width:auto!important;min-height:36px}
+#lobby-join-badge{display:none!important}
+#lobby-banner div[style*="display:flex"]{flex-direction:row!important;gap:6px;justify-content:center!important}
+.btn-watch,.px-btn-pink{padding:10px 20px!important;font-size:0.85em!important;width:auto!important;min-height:40px;border-radius:8px!important}
+#i-join-btn{padding:10px 16px!important;font-size:0.75em!important;width:auto!important;min-height:40px;border-radius:8px!important}
+#pwa-install-btn{min-height:40px!important;border-radius:8px!important;padding:10px 16px!important}
 /* 설정 톱니바퀴 축소 */
 #settings-toggle{width:40px!important;height:40px!important;font-size:1.3em!important}
 /* 로비에서 모바일시트 숨기기 */
