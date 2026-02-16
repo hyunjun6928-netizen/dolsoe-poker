@@ -2674,7 +2674,9 @@ async def handle_client(reader, writer):
         writer.write(resp.encode()); await writer.drain()
         await handle_ws(reader,writer,path); return
 
-    body=b''; cl=int(headers.get('content-length',0))
+    try: cl=max(0, int(headers.get('content-length',0)))
+    except (ValueError, TypeError): cl=0
+    body=b''
     MAX_BODY=65536  # 64KB 제한
     if cl>MAX_BODY:
         await send_http(writer,413,'Request body too large (max 64KB)')
@@ -2770,7 +2772,7 @@ async def handle_client(reader, writer):
         await send_json(writer,{'games':games})
     elif method=='POST' and route=='/api/new':
         d=safe_json(body)
-        if ADMIN_KEY and d.get('admin_key')!=ADMIN_KEY:
+        if not ADMIN_KEY or d.get('admin_key')!=ADMIN_KEY:
             await send_json(writer,{'ok':False,'code':'UNAUTHORIZED','message':'admin_key required'},401); return
         tid=d.get('table_id',f"table_{int(time.time()*1000)%100000}")
         t=get_or_create_table(tid)
@@ -3204,7 +3206,7 @@ async def handle_client(reader, writer):
                     'sb': cfg['sb'], 'bb': cfg['bb'], 'players': players, 'running': running})
             await send_json(writer, {'rooms': rooms})
         elif method=='GET' and route=='/api/ranked/house':
-            if ADMIN_KEY and qs.get('admin_key',[''])[0] != ADMIN_KEY:
+            if not ADMIN_KEY or qs.get('admin_key',[''])[0] != ADMIN_KEY:
                 await send_json(writer, {'error': 'admin_key required'}, 401); return
             house_points = 0
             if MERSOOM_AUTH_ID and MERSOOM_PASSWORD:
@@ -3314,6 +3316,9 @@ async def handle_client(reader, writer):
     elif method=='GET' and route=='/api/recent':
         tid=qs.get('table_id',[''])[0]; t=find_table(tid)
         if not t: await send_json(writer,{'error':'no game'},404); return
+        if is_ranked_table(tid):
+            if not ADMIN_KEY or qs.get('admin_key',[''])[0] != ADMIN_KEY:
+                await send_json(writer,{'error':'ranked recent requires admin_key'},403); return
         await send_json(writer,{'history':t.history[-10:]})
     elif method=='GET' and route=='/api/profile':
         tid=qs.get('table_id',[''])[0]; name=qs.get('name',[''])[0]
@@ -3331,6 +3336,15 @@ async def handle_client(reader, writer):
         tid=qs.get('table_id',[''])[0]; name=qs.get('name',[''])[0]; rtype=qs.get('type',['hands'])[0]
         t=find_table(tid)
         if not t: await send_json(writer,{'error':'no game'},404); return
+        # ranked: 본인 분석만 허용 (admin 제외)
+        if is_ranked_table(tid):
+            req_token=qs.get('token',[''])[0]
+            is_admin=ADMIN_KEY and qs.get('admin_key',[''])[0]==ADMIN_KEY
+            if not is_admin:
+                if not name or name=='all':
+                    await send_json(writer,{'error':'ranked analysis requires specific player name'},400); return
+                if not verify_token(name, req_token):
+                    await send_json(writer,{'error':'ranked analysis requires token authentication'},401); return
         all_records=load_hand_history(tid, 500)
         if rtype=='hands':
             # 핸드별 의사결정 로그
@@ -3502,12 +3516,25 @@ async def handle_client(reader, writer):
         t=find_table(tid)
         if not t: await send_json(writer,{'error':'no game'},404); return
         if hand_num:
-            h=[x for x in t.history if x['hand']==int(hand_num)]
+            try: hand_num_i=int(hand_num)
+            except: await send_json(writer,{'error':'invalid hand number'},400); return
+            h=[x for x in t.history if x['hand']==hand_num_i]
             if not h:
-                # 메모리에 없으면 DB에서 검색
                 db_records=load_hand_history(tid, 500)
-                h=[x for x in db_records if x.get('hand')==int(hand_num)]
-            if h: await send_json(writer,h[0])
+                h=[x for x in db_records if x.get('hand')==hand_num_i]
+            if h:
+                result=h[0]
+                # ranked: 홀카드 마스킹 (본인 것만 공개, admin 제외)
+                if is_ranked_table(tid):
+                    req_player=qs.get('player',[''])[0]
+                    req_token=qs.get('token',[''])[0]
+                    is_admin=ADMIN_KEY and qs.get('admin_key',[''])[0]==ADMIN_KEY
+                    if not is_admin:
+                        import copy; result=copy.deepcopy(result)
+                        for p in result.get('players',[]):
+                            if not req_player or not req_token or not verify_token(req_player, req_token) or p['name']!=req_player:
+                                p['hole']=['??','??']
+                await send_json(writer,result)
             else: await send_json(writer,{'error':'hand not found'},404)
         else:
             db_records=load_hand_history(tid, 100)
@@ -3520,6 +3547,12 @@ async def handle_client(reader, writer):
         t=find_table(tid)
         if not t: await send_json(writer,{'error':'no game'},404); return
         if not player: await send_json(writer,{'error':'player param required'},400); return
+        # ranked: 토큰 검증 (본인 히스토리만, admin 제외)
+        if is_ranked_table(tid):
+            req_token=qs.get('token',[''])[0]
+            is_admin=ADMIN_KEY and qs.get('admin_key',[''])[0]==ADMIN_KEY
+            if not is_admin and not verify_token(player, req_token):
+                await send_json(writer,{'error':'ranked history requires token authentication'},401); return
         # DB에서 확장 히스토리 로드 (메모리 50개 넘는 것도 포함)
         all_records=load_hand_history(tid, limit) if limit>50 else t.history
         hands=[]
@@ -3559,6 +3592,10 @@ async def handle_client(reader, writer):
         if not _api_rate_ok(_visitor_ip, 'export', 5):
             await send_json(writer,{'ok':False,'code':'RATE_LIMITED','message':'rate limited — max 5 exports/min'},429); return
         tid=qs.get('table_id',[''])[0]; player=qs.get('player',[''])[0]
+        # ranked 테이블 export 차단 (admin만 허용)
+        if is_ranked_table(tid):
+            if not ADMIN_KEY or qs.get('admin_key',[''])[0] != ADMIN_KEY:
+                await send_json(writer,{'error':'ranked table export requires admin_key'},403); return
         fmt=qs.get('format',['csv'])[0]
         try: limit=min(500, max(1, int(qs.get('limit',['500'])[0])))
         except (ValueError, TypeError): limit=500
@@ -3585,7 +3622,8 @@ async def handle_client(reader, writer):
                 pot=rec.get('pot',0) if won else 0
                 rows.append(f"{rec['hand']},\"{hole}\",\"{comm}\",\"{acts}\",{'win' if won else 'loss'},{pot},{rec.get('winner','')},{len(rec['players'])}")
         csv_text='\n'.join(rows)
-        fname=f"{player or 'all'}_history.csv"
+        _safe_player=''.join(c for c in (player or 'all') if c.isalnum() or c in '_-')[:20] or 'export'
+        fname=f"{_safe_player}_history.csv"
         if fmt=='json':
             await send_json(writer,{'csv':csv_text})
         else:
@@ -3618,7 +3656,7 @@ async def handle_client(reader, writer):
         except: pass
         await send_http(writer,204,'')
     elif method=='GET' and route=='/api/telemetry':
-        if ADMIN_KEY and qs.get('key',[''])[0] != ADMIN_KEY:
+        if not ADMIN_KEY or qs.get('key',[''])[0] != ADMIN_KEY:
             await send_json(writer,{'ok':False,'code':'UNAUTHORIZED'},401); return
         await send_json(writer,{'summary':_tele_summary,'alerts':_alert_history[-20:],'streaks':dict(_alert_streaks),'entries':_telemetry_log[-50:]})
     elif method=='OPTIONS':
