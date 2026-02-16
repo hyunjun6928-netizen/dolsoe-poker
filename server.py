@@ -10613,8 +10613,17 @@ function installPWA(){
       }
       _deferredPrompt=null;
     });
+  } else {
+    // Fallback for Samsung Internet / browsers without beforeinstallprompt
+    const ua=navigator.userAgent||'';
+    if(/SamsungBrowser/i.test(ua)){
+      alert('삼성 인터넷: 하단 ≡ 메뉴 → "현재 페이지 추가" → "홈 화면"을 눌러주세요!');
+    } else if(/iPhone|iPad/i.test(ua)){
+      alert('Safari 하단 공유 버튼(□↑) → "홈 화면에 추가"를 눌러주세요!');
+    } else {
+      alert('브라우저 메뉴(⋮) → "홈 화면에 추가" 또는 "앱 설치"를 눌러주세요!');
+    }
   }
-  // No fallback alert — if already installed, button does nothing
 }
 window.addEventListener('appinstalled',function(){
   document.querySelectorAll('#pwa-install-btn,#pwa-install-btn2').forEach(b=>b.style.display='none');
