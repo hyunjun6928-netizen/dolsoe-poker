@@ -38,9 +38,9 @@ MERSOOM_PASSWORD = os.environ.get('MERSOOM_PASSWORD', '')
 
 # 랭크 매치 방 설정: table_id -> {min_buy, max_buy, sb, bb}
 RANKED_ROOMS = {
-    'ranked-micro': {'min_buy': 10, 'max_buy': 100, 'sb': 1, 'bb': 2, 'label': '마이크로 (10~100pt)'},
-    'ranked-mid':   {'min_buy': 50, 'max_buy': 500, 'sb': 5, 'bb': 10, 'label': '미들 (50~500pt)'},
-    'ranked-high':  {'min_buy': 200, 'max_buy': 2000, 'sb': 25, 'bb': 50, 'label': '하이 (200~2000pt)'},
+    'ranked-micro': {'min_buy': 10, 'max_buy': 100, 'sb': 1, 'bb': 2, 'label': '마이크로 (10~100pt)', 'label_en': 'Micro (10~100pt)'},
+    'ranked-mid':   {'min_buy': 50, 'max_buy': 500, 'sb': 5, 'bb': 10, 'label': '미들 (50~500pt)', 'label_en': 'Mid (50~500pt)'},
+    'ranked-high':  {'min_buy': 200, 'max_buy': 2000, 'sb': 25, 'bb': 50, 'label': '하이 (200~2000pt)', 'label_en': 'High (200~2000pt)'},
 }
 
 # ranked 매치 잠금 (True면 admin_key 필요)
@@ -2864,8 +2864,23 @@ async def handle_client(reader, writer):
         pg=DOCS_PAGE_EN if _lang=='en' else DOCS_PAGE
         await send_http(writer,200,pg,'text/html; charset=utf-8')
     elif method=='GET' and route=='/api/games':
-        games=[{'id':t.id,'players':len(t.seats),'running':t.running,'hand':t.hand_num,
-                'round':t.round,'seats_available':t.MAX_PLAYERS-len(t.seats)} for t in tables.values()]
+        games=[]
+        for t in tables.values():
+            g={'id':t.id,'players':len(t.seats),'running':t.running,'hand':t.hand_num,
+                'round':t.round,'seats_available':t.MAX_PLAYERS-len(t.seats)}
+            if is_ranked_table(t.id):
+                room=RANKED_ROOMS.get(t.id,{})
+                g['mode']='ranked'
+                g['label']=room.get('label_en' if _lang=='en' else 'label',t.id)
+                g['sb']=room.get('sb',0)
+                g['bb']=room.get('bb',0)
+                g['min_buy']=room.get('min_buy',0)
+                g['max_buy']=room.get('max_buy',0)
+                g['locked']=RANKED_LOCKED
+            else:
+                g['mode']='practice'
+                g['label']=('🤖 NPC Practice' if _lang=='en' else '🤖 NPC 연습장') if t.id=='mersoom' else t.id
+            games.append(g)
         await send_json(writer,{'games':games})
     elif method=='POST' and route=='/api/new':
         d=safe_json(body)
@@ -4867,6 +4882,8 @@ border-radius:18px;pointer-events:none;z-index:1}
 .tbl-card:hover{border-color:var(--accent-green);box-shadow:0 0 0 1px var(--accent-green),var(--shadow-md)}
 .tbl-card.active{border-color:var(--accent-gold);background:rgba(245,197,66,0.05)}
 .tbl-card .tbl-name{color:var(--accent-green);font-weight:600;font-size:1.1em}
+.tbl-card.tbl-locked{border-color:#555;background:rgba(100,100,100,0.05)}
+.tbl-card.tbl-locked:hover{border-color:#666;box-shadow:none}
 .tbl-card .tbl-info{color:var(--text-secondary);font-size:0.85em}
 .tbl-card .tbl-status{font-size:0.85em}
 .tbl-live{color:var(--accent-green)}.tbl-wait{color:var(--text-muted)}
@@ -6249,13 +6266,29 @@ async function loadTables(){
 const tl=document.getElementById('table-list');
 try{const r=await fetch('/api/games');const d=await r.json();
 if(!d.games||d.games.length===0){tl.innerHTML=`<div style="color:#666">${t('noTables')}</div>`;return}
-tl.innerHTML=`<div style="color:#888;margin-bottom:8px;font-size:0.9em">${t('selTable')}</div>`;
-d.games.forEach(g=>{const el=document.createElement('div');
-el.className='tbl-card'+(g.id===tableId?' active':'');
+const practice=d.games.filter(g=>g.mode==='practice');
+const ranked=d.games.filter(g=>g.mode==='ranked');
+let html='';
+// 연습장 섹션
+if(practice.length){
+html+=`<div style="margin-bottom:6px"><span style="color:var(--accent-mint);font-weight:700;font-size:0.85em;font-family:var(--font-pixel)">🤖 ${lang==='en'?'PRACTICE':'연습장'}</span></div>`;
+practice.forEach(g=>{
 const status=g.running?`<span class="tbl-live">${t('tblLive')} (${t('hand')} #${g.hand})</span>`:`<span class="tbl-wait">${t('tblWait')}</span>`;
-el.innerHTML=`<div><div class="tbl-name">🎰 ${esc(g.id)}</div><div class="tbl-info">👥 ${g.players}/${8-g.seats_available+g.players}명</div></div><div class="tbl-status">${status}</div>`;
-el.onclick=()=>{tableId=g.id;watch()};
-tl.appendChild(el)})}catch(e){tl.innerHTML=`<div style="color:#f44">${t('loadFail')}</div>`}}
+const max=8-g.seats_available+g.players;
+html+=`<div class="tbl-card${g.id===tableId?' active':''}" onclick="tableId='${esc(g.id)}';watch()"><div><div class="tbl-name">🎰 ${esc(g.label||g.id)}</div><div class="tbl-info">👥 ${g.players}/${max}${lang==='en'?'p':'명'} · <span style="color:var(--accent-mint)">FREE</span></div></div><div class="tbl-status">${status}</div></div>`;
+})}
+// 랭크 매치 섹션
+if(ranked.length){
+html+=`<div style="margin:10px 0 6px;border-top:1px solid var(--frame-light);padding-top:8px"><span style="color:var(--accent-yellow);font-weight:700;font-size:0.85em;font-family:var(--font-pixel)">🏆 ${lang==='en'?'RANKED MATCH':'랭크 매치'}</span></div>`;
+ranked.forEach(g=>{
+const status=g.locked?`<span style="color:#888;font-size:0.8em">🔒 ${lang==='en'?'LOCKED':'비공개'}</span>`:g.running?`<span class="tbl-live">${t('tblLive')}</span>`:`<span class="tbl-wait">${t('tblWait')}</span>`;
+const max=8-g.seats_available+g.players;
+const blinds=`SB:${g.sb}/BB:${g.bb}`;
+const buyRange=`${g.min_buy}~${g.max_buy}pt`;
+html+=`<div class="tbl-card${g.id===tableId?' active':''}${g.locked?' tbl-locked':''}" onclick="${g.locked?'':`tableId=\\'${esc(g.id)}\\';watch()`}" style="${g.locked?'opacity:0.6;cursor:not-allowed':''}"><div><div class="tbl-name">🏆 ${esc(g.label||g.id)}</div><div class="tbl-info">👥 ${g.players}/${max}${lang==='en'?'p':'명'} · <span style="color:var(--accent-yellow)">${blinds}</span> · <span style="color:#888">${buyRange}</span></div></div><div class="tbl-status">${status}</div></div>`;
+})}
+if(!html)html=`<div style="color:#666">${t('noTables')}</div>`;
+tl.innerHTML=html}catch(e){tl.innerHTML=`<div style="color:#f44">${t('loadFail')}</div>`}}
 loadTables();setInterval(loadTables,5000);
 async function loadLobbyRanking(){
 try{const r=await fetch(`/api/leaderboard?lang=${lang}`);const d=await r.json();
@@ -10010,6 +10043,13 @@ async def main():
     # 초기화는 포트 열린 후에
     load_leaderboard()
     init_mersoom_table()
+    # ranked 테이블 미리 생성 (로비에 표시용)
+    for rid in RANKED_ROOMS:
+        t = get_or_create_table(rid)
+        t.SB = RANKED_ROOMS[rid]['sb']
+        t.BB = RANKED_ROOMS[rid]['bb']
+        t.BLIND_SCHEDULE = [(RANKED_ROOMS[rid]['sb'], RANKED_ROOMS[rid]['bb'])]
+    print(f"🏆 Ranked 테이블 {len(RANKED_ROOMS)}개 생성", flush=True)
     # 크래시 복구: 미정산 ranked 인게임 칩을 잔고에 복구
     try:
         db = _db()
