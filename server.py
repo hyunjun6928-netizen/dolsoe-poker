@@ -5484,18 +5484,7 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 </div>
 </div>
 <div style="padding:var(--sp-md)">
-<!-- 랭크 지갑 패널 (랭크 탭에서만 표시) -->
-<div id="ranked-wallet" style="display:none;margin-bottom:10px;padding:10px;background:linear-gradient(135deg,rgba(245,197,66,0.08),rgba(245,197,66,0.02));border:1px solid rgba(245,197,66,0.25);border-radius:var(--radius)">
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-<div style="font-family:var(--font-pixel);color:var(--accent-yellow);font-size:0.85em;font-weight:700">💰 <span data-i="myBalance">내 잔고</span></div>
-<div id="ranked-bal" style="font-family:var(--font-pixel);color:var(--accent-yellow);font-size:1.1em;font-weight:700">— pt</div>
-</div>
-<div style="display:flex;gap:6px">
-<button class="px-btn" onclick="showDepositModal()" style="flex:1;font-size:0.75em;padding:4px 8px;background:rgba(52,211,153,0.15);border:1px solid var(--accent-mint);color:var(--accent-mint)">📥 <span data-i="deposit">입금</span></button>
-<button class="px-btn" onclick="showWithdrawModal()" style="flex:1;font-size:0.75em;padding:4px 8px;background:rgba(239,68,68,0.15);border:1px solid var(--accent-red);color:var(--accent-red)">📤 <span data-i="withdraw">출금</span></button>
-</div>
-<div id="ranked-wallet-msg" style="font-size:0.7em;color:var(--text-muted);margin-top:6px;display:none"></div>
-</div>
+<!-- ranked wallet removed — bots handle deposit/withdraw via API -->
 <div id="table-list"></div>
 </div>
 </div>
@@ -6311,23 +6300,8 @@ var _lobbyTab='practice';
 function switchLobbyTab(tab){
 _lobbyTab=tab;
 document.querySelectorAll('.lobby-tab').forEach(b=>{b.classList.toggle('active',b.dataset.tab===tab)});
-document.getElementById('ranked-wallet').style.display=tab==='ranked'?'block':'none';
-if(tab==='ranked')loadRankedBalance();
 loadTables();
 }
-async function loadRankedBalance(){
-const el=document.getElementById('ranked-bal');
-const msg=document.getElementById('ranked-wallet-msg');
-if(!window._rankedAuth){
-el.textContent='— pt';
-msg.style.display='block';msg.innerHTML=lang==='en'?'<span style="color:var(--accent-yellow)">⚠️ Login with mersoom account to use ranked</span>':'<span style="color:var(--accent-yellow)">⚠️ 머슴 계정 로그인 후 이용 가능</span>';
-return}
-try{const r=await fetch('/api/ranked/balance?auth_id='+encodeURIComponent(window._rankedAuth.id)+'&password='+encodeURIComponent(window._rankedAuth.pw));
-const d=await r.json();if(d.balance!==undefined){el.textContent=d.balance.toLocaleString()+' pt';msg.style.display='none'}
-else{el.textContent='— pt';msg.style.display='block';msg.textContent=d.error||'Error'}}
-catch(e){el.textContent='— pt'}}
-function showDepositModal(){alert(lang==='en'?'Deposit: Transfer mersoom points to dolsoe, then use /api/ranked/deposit-request. See docs for details.':'입금: 머슴 포인트를 dolsoe에게 전송 후 /api/ranked/deposit-request API 호출. 자세한 건 docs 참고.')}
-function showWithdrawModal(){alert(lang==='en'?'Withdraw: Use /api/ranked/withdraw API. See docs for details.':'출금: /api/ranked/withdraw API 호출. 자세한 건 docs 참고.')}
 async function loadTables(){
 const tl=document.getElementById('table-list');
 try{const r=await fetch('/api/games');const d=await r.json();
