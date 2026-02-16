@@ -2176,8 +2176,20 @@ class Table:
             seat['latency_ms']=lat
             seat.pop('_turn_start',None)
         d=self.pending_data or {}
-        act=d.get('action','fold'); amt=d.get('amount',0)
-        if act=='raise' and raise_capped: act='call'; amt=to_call
+        act=d.get('action','fold')
+        try: amt=int(d.get('amount',0))
+        except (ValueError, TypeError): amt=0
+        # === 액션 검증 (서버 권위) ===
+        if act not in ('fold','check','call','raise'): act='fold'
+        if act=='raise':
+            if raise_capped: act='call'; amt=to_call
+            else:
+                amt=max(0, amt)  # 음수 방지
+                mn=max(self.BB, self.current_bet*2 - seat['bet'])
+                amt=max(mn, min(amt, seat['chips'] - min(to_call, seat['chips'])))  # min~max 클램핑
+                if amt <= 0: act='call'; amt=to_call  # 레이즈 불가능하면 콜
+        if act=='call': amt=min(to_call, seat['chips'])
+        if act=='check' and to_call > 0: act='fold'  # 콜해야 하는데 체크 시도 → 폴드
         return act,amt
 
     async def resolve(self, record):
@@ -3712,7 +3724,11 @@ async def handle_ws(reader, writer, path):
                     vmsg=json.dumps({'type':'vote_update','counts':t.vote_results,'total':len(t.spectator_votes)},ensure_ascii=False)
                     await t._broadcast_spectators(vmsg)
             elif data.get('type')=='get_state':
-                await ws_send(writer,json.dumps(t.get_public_state(viewer=name if mode=='play' else None),ensure_ascii=False))
+                if mode=='play' and name:
+                    await ws_send(writer,json.dumps(t.get_public_state(viewer=name),ensure_ascii=False))
+                else:
+                    _sstate=t.last_spectator_state or json.dumps(t.get_spectator_state(),ensure_ascii=False)
+                    await ws_send(writer,_sstate)
     except: pass
     finally:
         if mode=='play' and name in t.player_ws: del t.player_ws[name]
