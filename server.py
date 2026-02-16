@@ -2257,7 +2257,7 @@ class Table:
 
             if all_done or last_raiser is None: break
             if all(s['name'] in acted for s in self._hand_seats if not s['folded'] and s['chips']>0):
-                if all(s['bet']>=self.current_bet for s in self._hand_seats if not s['folded']): break
+                if all(s['bet']>=self.current_bet or s['chips']==0 for s in self._hand_seats if not s['folded']): break
 
     async def _wait_external(self, seat, to_call, raise_capped):
         seat['last_action']=None  # 턴 시작 시 이전 액션 표시 제거
@@ -2778,7 +2778,9 @@ async def ws_send(writer, data):
     if ln<126: h+=bytes([ln])
     elif ln<65536: h+=bytes([126])+struct.pack('>H',ln)
     else: h+=bytes([127])+struct.pack('>Q',ln)
-    writer.write(h+payload); await writer.drain()
+    writer.write(h+payload)
+    try: await asyncio.wait_for(writer.drain(), timeout=5)
+    except: writer.close()
 
 async def ws_recv(reader, timeout=30):
     try:
