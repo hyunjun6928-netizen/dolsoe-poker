@@ -856,10 +856,15 @@ def _api_rate_ok(ip, endpoint, max_per_min=20):
             rates[endpoint] = (1, now)
     else:
         rates[endpoint] = (1, now)
-    # 메모리 정리
+    # 메모리 정리: 오래된 엔트리만 삭제 (전체 clear → rate limit 우회 방지)
     if len(_api_rate) > 500:
         cutoff = now - 120
-        _api_rate.clear()
+        stale = [k for k, v in _api_rate.items() if all(ts < cutoff for _, ts in v.values())]
+        for k in stale: del _api_rate[k]
+        # 그래도 500 초과면 절반 삭제
+        if len(_api_rate) > 500:
+            sorted_ips = sorted(_api_rate.keys(), key=lambda k: max((ts for _, ts in _api_rate[k].values()), default=0))
+            for k in sorted_ips[:len(_api_rate)//2]: del _api_rate[k]
     return True
 _tele_summary = {'ok_total':0,'err_total':0,'success_rate':100,'rtt_avg':0,'rtt_p95':0,
                  'hands':0,'allin_per_100h':0,'killcam_per_100h':0,'last_ts':0,
@@ -2912,6 +2917,17 @@ async def handle_client(reader, writer):
                 return
             _ranked_audit('buy_in', auth_id, buy_in, remaining + buy_in, remaining, f'table:{tid} name:{name}')
             _ranked_auth_map[name] = auth_id
+            # 메모리 캡: 1000건 초과 시 정리
+            if len(_ranked_auth_map) > 1000:
+                active_names = set()
+                for rtid in RANKED_ROOMS:
+                    rt = tables.get(rtid)
+                    if rt:
+                        for s in rt.seats:
+                            if not s.get('out'): active_names.add(s['name'])
+                keep = {n: a for n, a in _ranked_auth_map.items() if n in active_names}
+                _ranked_auth_map.clear()
+                _ranked_auth_map.update(keep)
         t=find_table(tid)
         if not t: t=get_or_create_table(tid)
         if not t: await send_json(writer,{'ok':False,'code':'INVALID_INPUT','message':'invalid table_id or max tables reached'},400); return
@@ -3085,6 +3101,7 @@ async def handle_client(reader, writer):
         if not t: await send_json(writer,{'ok':False,'code':'NOT_FOUND','message':'no game'},404); return
         # 쿨다운 체크
         now=time.time()
+        if len(chat_cooldowns) > 2000: chat_cooldowns.clear()
         last=chat_cooldowns.get(name,0)
         if now-last<CHAT_COOLDOWN:
             retry_after=round((CHAT_COOLDOWN-(now-last))*1000)
@@ -3300,7 +3317,16 @@ async def handle_client(reader, writer):
             await send_json(writer, {'audit_log': entries, 'count': len(entries)})
         elif method=='GET' and route=='/api/ranked/balance':
             r_auth=qs.get('auth_id',[''])[0]
-            if not r_auth: await send_json(writer,{'error':'auth_id 필수'},400); return
+            r_pw=qs.get('password',[''])[0]
+            if not r_auth or not r_pw: await send_json(writer,{'error':'auth_id, password 필수'},400); return
+            # 본인 인증 (다른 사람 잔고 조회 방지)
+            cache_key = _auth_cache_key(r_auth, r_pw)
+            if not _auth_cache_check(r_auth, cache_key):
+                verified, _ = await asyncio.get_event_loop().run_in_executor(
+                    None, mersoom_verify_account, r_auth, r_pw)
+                if not verified:
+                    await send_json(writer,{'error':'머슴닷컴 계정 인증 실패'},401); return
+                _auth_cache_set(r_auth, cache_key)
             await asyncio.get_event_loop().run_in_executor(None, mersoom_check_deposits)
             bal=ranked_balance(r_auth)
             await send_json(writer,{'auth_id':r_auth,'balance':bal})
@@ -3357,7 +3383,16 @@ async def handle_client(reader, writer):
             await send_json(writer,{'ok':True,'message':f'{amount}pt 입금 요청 등록됨. 10분 내에 머슴닷컴에서 dolsoe에게 {amount}pt를 보내주세요.','target':'dolsoe','amount':amount,'expires_in_sec':600})
         elif method=='GET' and route=='/api/ranked/deposit-status':
             r_auth=qs.get('auth_id',[''])[0]
-            if not r_auth: await send_json(writer,{'error':'auth_id 필수'},400); return
+            r_pw=qs.get('password',[''])[0]
+            if not r_auth or not r_pw: await send_json(writer,{'error':'auth_id, password 필수'},400); return
+            # 본인 인증
+            cache_key = _auth_cache_key(r_auth, r_pw)
+            if not _auth_cache_check(r_auth, cache_key):
+                verified, _ = await asyncio.get_event_loop().run_in_executor(
+                    None, mersoom_verify_account, r_auth, r_pw)
+                if not verified:
+                    await send_json(writer,{'error':'머슴닷컴 계정 인증 실패'},401); return
+                _auth_cache_set(r_auth, cache_key)
             with _ranked_lock:
                 db = _db()
                 rows = db.execute("SELECT amount, status, requested_at FROM deposit_requests WHERE auth_id=? ORDER BY requested_at DESC LIMIT 10", (r_auth,)).fetchall()
