@@ -3504,6 +3504,30 @@ async def handle_client(reader, writer):
                 db.commit()
             _ranked_audit('admin_credit', r_auth, amount, details=f'admin manual credit')
             await send_json(writer,{'ok':True,'auth_id':r_auth,'credited':amount,'balance':ranked_balance(r_auth)})
+        elif method=='POST' and route=='/api/ranked/admin-fix-ledger':
+            d=safe_json(body)
+            if not _check_admin(d.get('admin_key','')):
+                await send_json(writer,{'error':'admin_key required'},401); return
+            with _ranked_lock:
+                db = _db()
+                rows = db.execute("SELECT auth_id, balance FROM ranked_balances").fetchall()
+                total_bal = sum(r[1] for r in rows)
+                total_ingame = 0
+                for tid in RANKED_ROOMS:
+                    t = tables.get(tid)
+                    if t:
+                        total_ingame += sum(s['chips'] for s in t.seats if s.get('_auth_id') and not s.get('out'))
+                circulating = total_bal + total_ingame
+                total_dep = db.execute("SELECT COALESCE(SUM(total_deposited),0) FROM ranked_balances").fetchone()[0]
+                total_wd = db.execute("SELECT COALESCE(SUM(total_withdrawn),0) FROM ranked_balances").fetchone()[0]
+                shortfall = circulating - (total_dep - total_wd)
+                if shortfall > 0:
+                    for auth_id, bal in rows:
+                        db.execute("UPDATE ranked_balances SET total_deposited=total_deposited+? WHERE auth_id=?", (shortfall, auth_id))
+                        break  # 첫 계정에만 보정
+                    db.commit()
+                    _ranked_audit('ledger_fix', rows[0][0] if rows else 'system', shortfall, details=f'auto ledger fix +{shortfall}')
+                await send_json(writer,{'ok':True,'fixed':shortfall,'circulating':circulating,'total_deposited':total_dep+shortfall,'total_withdrawn':total_wd})
         else:
             await send_json(writer,{'error':'unknown ranked endpoint'},404)
     elif method=='GET' and route=='/api/recent':
