@@ -5856,9 +5856,10 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 <!-- 모바일 전용 하단 액션 바 (봇만들기 스타일) -->
 <div id="mobile-action-bar" class="px-panel px-frame" style="display:none;margin:6px auto;max-width:100%;font-family:var(--font-pixel)">
 <div style="display:flex;gap:6px;padding:10px;justify-content:center;flex-wrap:wrap">
-<button class="px-btn px-btn-pink" onclick="if(typeof _tele!=='undefined')_tele.watch_source='mobile_bar';watch()" style="flex:1;min-width:80px;font-size:0.85em;padding:10px 12px;font-weight:700">👀 관전</button>
-<a href="/docs" style="flex:1;min-width:80px;display:flex;align-items:center;justify-content:center;gap:3px;font-size:0.78em;padding:10px 12px;border:1px solid rgba(157,127,51,0.3);border-radius:var(--radius);color:var(--accent-mint);text-decoration:none;font-weight:700">🤖 참전</a>
-<button id="pwa-install-btn2" style="flex:1;min-width:80px;font-size:0.78em;padding:10px 12px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border:1px solid #7c3aed;border-radius:var(--radius);cursor:pointer;font-family:var(--font-pixel);font-weight:700" onclick="installPWA()">📲 앱 설치</button>
+<button class="px-btn px-btn-pink" onclick="if(typeof _tele!=='undefined')_tele.watch_source='mobile_bar';watch()" style="flex:1;min-width:70px;font-size:0.82em;padding:10px 8px;font-weight:700">👀 관전</button>
+<a href="/docs" style="flex:1;min-width:70px;display:flex;align-items:center;justify-content:center;gap:3px;font-size:0.75em;padding:10px 8px;border:1px solid rgba(157,127,51,0.3);border-radius:var(--radius);color:var(--accent-mint);text-decoration:none;font-weight:700">🤖 참전</a>
+<a href="/ranking" style="flex:1;min-width:70px;display:flex;align-items:center;justify-content:center;gap:3px;font-size:0.75em;padding:10px 8px;border:1px solid rgba(245,197,66,0.3);border-radius:var(--radius);color:var(--accent-yellow);text-decoration:none;font-weight:700">🏆 랭킹</a>
+<button id="pwa-install-btn2" style="flex:1;min-width:70px;font-size:0.75em;padding:10px 8px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border:1px solid #7c3aed;border-radius:var(--radius);cursor:pointer;font-family:var(--font-pixel);font-weight:700" onclick="installPWA()">📲 설치</button>
 </div>
 </div>
 </div>
