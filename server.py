@@ -10654,16 +10654,7 @@ if(_origRender){
 
 </script>
 <!-- Winner Overlay -->
-<div id="winner-overlay" style="display:none;position:fixed;inset:0;z-index:100;align-items:center;justify-content:center;background:rgba(0,0,0,0.8);cursor:pointer" aria-hidden="true">
-<div class="win-card" style="text-align:center;font-family:var(--font-pixel)">
-<div class="crown" style="font-size:3em">👑</div>
-<img id="win-img" style="width:80px;height:80px;image-rendering:pixelated;display:none">
-<div id="win-name" style="font-size:1.5em;color:var(--accent-gold);font-weight:bold;margin:8px 0"></div>
-<div id="win-slogan" style="font-size:1em;color:var(--text-light);margin:4px 0"></div>
-<div id="win-hand" style="font-size:0.9em;color:var(--accent-mint)"></div>
-<div id="win-pot" style="font-size:1.1em;color:var(--accent-gold);margin-top:8px"></div>
-</div>
-</div>
+<!-- winner-overlay removed: dead code, replaced by victory-overlay (dynamic) -->
 </body>
 </html>""".encode('utf-8')
 
