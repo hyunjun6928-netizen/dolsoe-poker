@@ -233,6 +233,7 @@ def mersoom_check_deposits():
                 db.commit()
                 bal = db.execute("SELECT balance FROM ranked_balances WHERE auth_id=?", (auth_id,)).fetchone()[0]
                 print(f"[MERSOOM] ✅ 입금 확정: {auth_id} +{amount}pt (잔고: {bal})", flush=True)
+                _ranked_audit('deposit', auth_id, amount, bal - amount, bal, 'balance_poll match')
 
         _deposit_request_cleanup()
     except Exception as e:
@@ -258,6 +259,7 @@ def mersoom_withdraw(to_auth_id, amount):
                     (amount, to_auth_id))
                 db.commit()
             print(f"[MERSOOM] 출금: {to_auth_id} +{amount}pt", flush=True)
+            _ranked_audit('withdraw', to_auth_id, amount, details=f'mersoom transfer to {to_auth_id}')
             return True, 'ok'
         else:
             print(f"[MERSOOM] 출금 실패: {status} {data}", flush=True)
@@ -297,6 +299,25 @@ def ranked_balance(auth_id):
         row = db.execute("SELECT balance FROM ranked_balances WHERE auth_id=?", (auth_id,)).fetchone()
         return row[0] if row else 0
 
+def _ranked_audit(event, auth_id, amount, balance_before=None, balance_after=None, details='', ip=''):
+    """ranked 금전 이벤트 감사 로그"""
+    try:
+        if balance_before is None:
+            balance_before = ranked_balance(auth_id)
+        if balance_after is None:
+            balance_after = ranked_balance(auth_id)
+        db = _db()
+        db.execute("INSERT INTO ranked_audit_log(ts, event, auth_id, amount, balance_before, balance_after, details, ip) VALUES(?,?,?,?,?,?,?,?)",
+            (time.time(), event, auth_id, amount, balance_before, balance_after, details, ip[:45] if ip else ''))
+        db.commit()
+        # 로그 상한 (10000건 유지)
+        count = db.execute("SELECT COUNT(*) FROM ranked_audit_log").fetchone()[0]
+        if count > 10000:
+            db.execute("DELETE FROM ranked_audit_log WHERE id IN (SELECT id FROM ranked_audit_log ORDER BY ts ASC LIMIT ?)", (count - 5000,))
+            db.commit()
+    except Exception as e:
+        print(f"[AUDIT] log error: {e}", flush=True)
+
 async def _deposit_poll_loop():
     """주기적으로 머슴닷컴 입금 확인 (60초마다)"""
     while True:
@@ -305,6 +326,152 @@ async def _deposit_poll_loop():
             await asyncio.get_event_loop().run_in_executor(None, mersoom_check_deposits)
         except Exception as e:
             print(f"[MERSOOM] poll error: {e}", flush=True)
+
+# ══ Ranked 실시간 감시 시스템 (Watchdog) ══
+_ranked_watchdog = {
+    'last_balances': {},       # auth_id -> balance (이전 스냅샷)
+    'suspicious_events': [],   # 최근 의심 이벤트 (최대 100건)
+    'hourly_stats': {},        # auth_id -> {deposits, withdrawals, hands, wins, net}
+    'last_house_balance': None,  # dolsoe 잔고 추적
+}
+
+def _ranked_watchdog_check():
+    """ranked 이상 거래 탐지 (60초마다 호출)"""
+    try:
+        db = _db()
+        now = time.time()
+        alerts = []
+
+        # 1. 잔고 급변 감지: 1분 내 200pt 이상 변동
+        rows = db.execute("SELECT auth_id, balance FROM ranked_balances").fetchall()
+        for auth_id, balance in rows:
+            prev = _ranked_watchdog['last_balances'].get(auth_id, balance)
+            delta = balance - prev
+            if abs(delta) >= 200:
+                alerts.append(('WARN', 'balance_spike',
+                    f'{auth_id} 잔고 급변: {prev}→{balance} (Δ{delta:+d}pt)',
+                    {'auth_id': auth_id, 'prev': prev, 'now': balance, 'delta': delta}))
+            _ranked_watchdog['last_balances'][auth_id] = balance
+
+        # 2. 출금 폭주: 5분 내 동일 계정 3회 이상 출금
+        recent_withdrawals = db.execute(
+            "SELECT auth_id, COUNT(*) as cnt, SUM(amount) as total FROM ranked_transfers "
+            "WHERE transfer_id LIKE 'balance_poll:%' AND created_at > ? GROUP BY auth_id",
+            (str(int(now - 300)),)).fetchall()
+        # ranked_transfers에는 입금만 있음. 출금은 별도 추적 필요
+        # → total_withdrawn 변동으로 추적
+        for auth_id, balance in rows:
+            row = db.execute("SELECT total_withdrawn FROM ranked_balances WHERE auth_id=?", (auth_id,)).fetchone()
+            if row and row[0] > 500:  # 총 출금 500pt 이상
+                alerts.append(('INFO', 'high_withdrawal',
+                    f'{auth_id} 누적 출금: {row[0]}pt',
+                    {'auth_id': auth_id, 'total_withdrawn': row[0]}))
+
+        # 3. 하우스 잔고 감시 (dolsoe 머슴 포인트)
+        if MERSOOM_AUTH_ID and MERSOOM_PASSWORD:
+            try:
+                h = {'X-Mersoom-Auth-Id': MERSOOM_AUTH_ID, 'X-Mersoom-Password': MERSOOM_PASSWORD}
+                status, data = _http_request(f'{MERSOOM_API}/points/me', headers=h)
+                if status == 200:
+                    house_bal = int(data.get('points', 0))
+                    prev_house = _ranked_watchdog['last_house_balance']
+                    if prev_house is not None and house_bal < prev_house - 100:
+                        alerts.append(('CRIT', 'house_drain',
+                            f'하우스 잔고 급감: {prev_house}→{house_bal}pt',
+                            {'prev': prev_house, 'now': house_bal}))
+                    _ranked_watchdog['last_house_balance'] = house_bal
+            except:
+                pass
+
+        # 4. 동시 다중 테이블 시도 감지 (로그)
+        auth_tables = {}
+        for tid in RANKED_ROOMS:
+            t = tables.get(tid)
+            if t:
+                for s in t.seats:
+                    aid = s.get('_auth_id')
+                    if aid and not s.get('out'):
+                        if aid in auth_tables:
+                            alerts.append(('CRIT', 'multi_table',
+                                f'{aid} 다중 테이블 감지: {auth_tables[aid]}, {tid}',
+                                {'auth_id': aid, 'tables': [auth_tables[aid], tid]}))
+                        auth_tables[aid] = tid
+
+        # 5. 총 유통량 검증: sum(balance) + sum(ingame chips) ≤ sum(total_deposited)
+        total_balance = db.execute("SELECT COALESCE(SUM(balance),0) FROM ranked_balances").fetchone()[0]
+        total_deposited = db.execute("SELECT COALESCE(SUM(total_deposited),0) FROM ranked_balances").fetchone()[0]
+        total_withdrawn = db.execute("SELECT COALESCE(SUM(total_withdrawn),0) FROM ranked_balances").fetchone()[0]
+        total_ingame = 0
+        for tid in RANKED_ROOMS:
+            t = tables.get(tid)
+            if t:
+                total_ingame += sum(s['chips'] for s in t.seats if s.get('_auth_id') and not s.get('out'))
+        circulating = total_balance + total_ingame
+        expected_max = total_deposited - total_withdrawn
+        if circulating > expected_max + 1:  # +1 반올림 허용
+            alerts.append(('CRIT', 'supply_overflow',
+                f'유통량 초과! 순환:{circulating}pt > 순입금:{expected_max}pt (차이:+{circulating-expected_max})',
+                {'circulating': circulating, 'expected_max': expected_max,
+                 'total_balance': total_balance, 'total_ingame': total_ingame,
+                 'total_deposited': total_deposited, 'total_withdrawn': total_withdrawn}))
+
+        # 6. pending deposit 요청 오래 방치 (5분 이상)
+        stale = db.execute("SELECT COUNT(*) FROM deposit_requests WHERE status='pending' AND requested_at < ?",
+            (now - 300,)).fetchone()[0]
+        if stale > 3:
+            alerts.append(('WARN', 'stale_deposits',
+                f'미처리 입금 요청 {stale}건 (5분+ 방치)',
+                {'count': stale}))
+
+        # 알림 발송
+        for level, key, msg, data in alerts:
+            _emit_alert(level, f'ranked_{key}', f'💰 {msg}', data)
+            _ranked_watchdog['suspicious_events'].append({
+                'ts': now, 'level': level, 'key': key, 'msg': msg, 'data': data
+            })
+
+        # 이벤트 로그 상한
+        if len(_ranked_watchdog['suspicious_events']) > 100:
+            _ranked_watchdog['suspicious_events'] = _ranked_watchdog['suspicious_events'][-50:]
+
+    except Exception as e:
+        print(f"[WATCHDOG] error: {e}", flush=True)
+
+def _ranked_watchdog_report():
+    """감시 보고서 (admin API용)"""
+    db = _db()
+    total_balance = db.execute("SELECT COALESCE(SUM(balance),0) FROM ranked_balances").fetchone()[0]
+    total_deposited = db.execute("SELECT COALESCE(SUM(total_deposited),0) FROM ranked_balances").fetchone()[0]
+    total_withdrawn = db.execute("SELECT COALESCE(SUM(total_withdrawn),0) FROM ranked_balances").fetchone()[0]
+    accounts = db.execute("SELECT COUNT(*) FROM ranked_balances WHERE balance > 0").fetchone()[0]
+    pending = db.execute("SELECT COUNT(*) FROM deposit_requests WHERE status='pending'").fetchone()[0]
+    total_ingame = 0
+    for tid in RANKED_ROOMS:
+        t = tables.get(tid)
+        if t:
+            total_ingame += sum(s['chips'] for s in t.seats if s.get('_auth_id') and not s.get('out'))
+    return {
+        'house_balance': _ranked_watchdog['last_house_balance'],
+        'total_balance': total_balance,
+        'total_ingame': total_ingame,
+        'total_deposited': total_deposited,
+        'total_withdrawn': total_withdrawn,
+        'net_circulation': total_balance + total_ingame,
+        'expected_max': total_deposited - total_withdrawn,
+        'supply_ok': (total_balance + total_ingame) <= (total_deposited - total_withdrawn + 1),
+        'active_accounts': accounts,
+        'pending_deposits': pending,
+        'recent_alerts': _ranked_watchdog['suspicious_events'][-20:],
+    }
+
+async def _watchdog_loop():
+    """60초마다 ranked 감시"""
+    while True:
+        await asyncio.sleep(60)
+        try:
+            await asyncio.get_event_loop().run_in_executor(None, _ranked_watchdog_check)
+        except Exception as e:
+            print(f"[WATCHDOG] loop error: {e}", flush=True)
 
 # ══ 시즌 시스템 ══
 import datetime
@@ -941,6 +1108,13 @@ def _db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             auth_id TEXT, amount INT, status TEXT DEFAULT 'pending',
             requested_at REAL, updated_at REAL)""")
+        _db_conn.execute("""CREATE TABLE IF NOT EXISTS ranked_audit_log(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ts REAL, event TEXT, auth_id TEXT, amount INT,
+            balance_before INT, balance_after INT,
+            details TEXT, ip TEXT)""")
+        _db_conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_ts ON ranked_audit_log(ts)")
+        _db_conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_auth ON ranked_audit_log(auth_id)")
         _db_conn.commit()
     return _db_conn
 
@@ -1662,6 +1836,7 @@ class Table:
                 if auth_id and s['chips'] > 0:
                     ranked_credit(auth_id, s['chips'])
                     print(f"[RANKED] 게임종료 정산: {s['name']}({auth_id}) +{s['chips']}pt → 잔고 {ranked_balance(auth_id)}pt", flush=True)
+                    _ranked_audit('game_end', auth_id, s['chips'], details=f'table:{self.id} name:{s["name"]}')
                     s['chips'] = 0  # 이중 크레딧 방지
             self.seats=[]  # ranked 게임 끝나면 전원 퇴장 (재입장 필요)
             # ingame 스냅샷 정리 (정산 완료)
@@ -2666,6 +2841,7 @@ async def handle_client(reader, writer):
                 await send_json(writer, {'ok': False, 'code': 'INSUFFICIENT',
                     'message': f'잔고 부족 ({remaining}pt)'}, 400)
                 return
+            _ranked_audit('buy_in', auth_id, buy_in, remaining + buy_in, remaining, f'table:{tid} name:{name}')
             _ranked_auth_map[name] = auth_id
         t=find_table(tid)
         if not t: t=get_or_create_table(tid)
@@ -2877,6 +3053,7 @@ async def handle_client(reader, writer):
         if is_ranked_table(tid) and auth_id_leave and chips > 0:
             seat['chips'] = 0  # ★ 칩 즉시 0으로 (재호출 시 chips=0이라 환전 안 됨)
             ranked_credit(auth_id_leave, chips)
+            _ranked_audit('leave_cashout', auth_id_leave, chips, details=f'table:{tid} name:{name}')
             cashout_info = {'auth_id': auth_id_leave, 'cashed_out': chips, 'balance': ranked_balance(auth_id_leave)}
         if not t.running:
             t.seats.remove(seat)
@@ -3033,6 +3210,25 @@ async def handle_client(reader, writer):
                 'total_deposited': total_deposited, 'total_withdrawn': total_withdrawn,
                 'total_users': total_users, 'warning': warning
             })
+        elif method=='GET' and route=='/api/ranked/watchdog':
+            if not ADMIN_KEY or qs.get('admin_key',[''])[0] != ADMIN_KEY:
+                await send_json(writer, {'error': 'admin_key required'}, 401); return
+            report = _ranked_watchdog_report()
+            await send_json(writer, report)
+        elif method=='GET' and route=='/api/ranked/audit':
+            if not ADMIN_KEY or qs.get('admin_key',[''])[0] != ADMIN_KEY:
+                await send_json(writer, {'error': 'admin_key required'}, 401); return
+            r_auth = qs.get('auth_id',[''])[0]
+            try: limit = min(200, max(1, int(qs.get('limit',['50'])[0])))
+            except: limit = 50
+            db = _db()
+            if r_auth:
+                rows = db.execute("SELECT ts, event, auth_id, amount, balance_before, balance_after, details, ip FROM ranked_audit_log WHERE auth_id=? ORDER BY ts DESC LIMIT ?", (r_auth, limit)).fetchall()
+            else:
+                rows = db.execute("SELECT ts, event, auth_id, amount, balance_before, balance_after, details, ip FROM ranked_audit_log ORDER BY ts DESC LIMIT ?", (limit,)).fetchall()
+            entries = [{'ts': r[0], 'event': r[1], 'auth_id': r[2], 'amount': r[3],
+                       'balance_before': r[4], 'balance_after': r[5], 'details': r[6], 'ip': r[7]} for r in rows]
+            await send_json(writer, {'audit_log': entries, 'count': len(entries)})
         elif method=='GET' and route=='/api/ranked/balance':
             r_auth=qs.get('auth_id',[''])[0]
             if not r_auth: await send_json(writer,{'error':'auth_id 필수'},400); return
@@ -9609,6 +9805,7 @@ async def main():
                 if chips > 0:
                     ranked_credit(auth_id, chips)
                     print(f"  ✅ 복구: {name}({auth_id}) +{chips}pt → 잔고 {ranked_balance(auth_id)}pt", flush=True)
+                    _ranked_audit('crash_recovery', auth_id, chips, details=f'table:{tid} name:{name}')
             db.execute("DELETE FROM ranked_ingame")
             db.commit()
             print(f"✅ [RANKED] 크래시 복구 완료", flush=True)
@@ -9616,6 +9813,8 @@ async def main():
         print(f"⚠️ [RANKED] 크래시 복구 실패: {e}", flush=True)
     asyncio.create_task(_tele_log_loop())
     asyncio.create_task(_deposit_poll_loop())
+    asyncio.create_task(_watchdog_loop())
+    print("🛡️ Ranked Watchdog 가동", flush=True)
     async with server: await server.serve_forever()
 
 if __name__ == '__main__':
