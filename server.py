@@ -10642,7 +10642,7 @@ if(_origRender){
 
 </script>
 <!-- Winner Overlay -->
-<div id="winner-overlay" class="hidden" aria-hidden="true">
+<div id="winner-overlay" style="display:none" aria-hidden="true">
 <div class="win-card">
 <div class="crown">👑</div>
 <img id="win-img" src="" alt="">
