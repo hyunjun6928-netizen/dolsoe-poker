@@ -5413,7 +5413,7 @@ border-radius:18px;pointer-events:none;z-index:1}
 .tbl-card.tbl-ranked .tbl-name{color:#a78bfa}
 @keyframes chipShimmer{0%{background-position:-200% center}100%{background-position:200% center}}
 .pot-badge{position:absolute;top:20%;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,rgba(22,27,36,0.92),rgba(30,36,48,0.97));padding:8px 24px;border-radius:20px;font-size:1.3em;color:var(--accent-gold);font-weight:700;z-index:22;border:2px solid rgba(232,184,74,0.3);box-shadow:0 4px 14px rgba(0,0,0,0.35);transition:font-size .3s ease;font-family:var(--font-number);letter-spacing:1.5px;backdrop-filter:blur(8px);text-shadow:0 1px 3px rgba(0,0,0,0.4)}
-.board{position:absolute;top:42%;left:50%;transform:translate(-50%,-50%);display:flex;gap:8px;z-index:20}
+.board{position:absolute;top:42%;left:50%;transform:translate(-50%,-50%);display:flex;gap:10px;z-index:20}
 .turn-badge{position:absolute;bottom:18%;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#fb923c,#f97316);padding:4px 14px;border-radius:15px;font-size:0.85em;color:#fff;z-index:5;display:none;border:2px solid #ea580c;box-shadow:2px 2px 0 #ea580c44}
 .card{width:68px;height:96px;border-radius:10px;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;font-size:1.2em;
 font-weight:bold;box-shadow:0 3px 12px rgba(0,0,0,0.5);transition:all .2s;border:1.5px solid rgba(255,255,255,0.2)}
@@ -5424,7 +5424,7 @@ box-shadow:inset 0 0 0 1px rgba(157,127,51,0.4),0 2px 8px rgba(0,0,0,0.5)}
 .card .r{line-height:1}.card .s{font-size:1.1em;line-height:1}
 .card.red .r,.card.red .s{color:#C85A64}
 .card.black .r,.card.black .s{color:#050F1A}
-.card-sm{width:52px;height:74px;font-size:0.9em;border-radius:8px}.card-sm .s{font-size:1em}
+.card-sm{width:72px;height:100px;font-size:1.1em;border-radius:10px}.card-sm .s{font-size:1.1em}
 .seat{position:absolute;text-align:center;z-index:10;transition:all .3s;min-width:120px}
 .seat-0{top:88%;left:64%;transform:translate(-50%,-50%)}
 .seat-1{top:88%;left:36%;transform:translate(-50%,-50%)}
@@ -7958,7 +7958,7 @@ for(let i=0;i<5;i++){
         `<span class="r">${s.community[i].rank||s.community[i][0]||'?'}</span><span class="s">${s.community[i].suit||s.community[i][1]||'?'}</span></div>`;
     }
   } else {
-    b.innerHTML+=`<div class="card card-b card-sm" style="opacity:${s.round==='waiting'||s.round==='between'||s.round==='finished'?'0':'0.15'}"><span style="color:#fff2">?</span></div>`;
+    b.innerHTML+=`<div class="card card-b card-sm" style="opacity:${s.round==='waiting'||s.round==='between'||s.round==='finished'?'0':'0.55'}"><span style="color:#fff4">?</span></div>`;
   }
 }
 // 순차 플립 애니메이션
