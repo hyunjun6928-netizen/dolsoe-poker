@@ -2385,16 +2385,21 @@ class Table:
                 if remaining_pot > 0:
                     top_eligible = [s['name'] for s,_,_ in scores]
                     pots.append((remaining_pot, top_eligible))
-            # 각 팟을 해당 eligible 중 최고 핸드에게 배분
+            # 각 팟을 해당 eligible 중 최고 핸드에게 배분 (동점 시 split)
             total_won = {}
             main_winner = None
             for pot_amount, eligible in pots:
                 pot_scores = [(s,sc,hn) for s,sc,hn in scores if s['name'] in eligible]
                 if pot_scores:
-                    pw = pot_scores[0][0]  # 이미 정렬됨
-                    pw['chips'] += pot_amount
-                    total_won[pw['name']] = total_won.get(pw['name'],0) + pot_amount
-                    if main_winner is None: main_winner = pw
+                    best_sc = pot_scores[0][1]
+                    winners = [(s,sc,hn) for s,sc,hn in pot_scores if sc==best_sc]
+                    share = pot_amount // len(winners)
+                    remainder = pot_amount - share * len(winners)
+                    for wi,(pw,_,_) in enumerate(winners):
+                        amt = share + (1 if wi < remainder else 0)  # 나머지 1pt씩 분배
+                        pw['chips'] += amt
+                        total_won[pw['name']] = total_won.get(pw['name'],0) + amt
+                        if main_winner is None: main_winner = pw
             w = main_winner or scores[0][0]
             sd=[{'name':s['name'],'emoji':s['emoji'],'hole':[card_dict(c) for c in (s['hole'] or [])],'hand':hn,'winner':s['name'] in total_won} for s,_,hn in scores]
             self.last_showdown=sd
