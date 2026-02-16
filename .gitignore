@@ -1,3 +1,9 @@
+# DB files (live data — never commit)
+poker_data.db
+poker_data.db-wal
+poker_data.db-shm
+*.db-journal
+
 __pycache__/
 assets/*
 !assets/slimes/
