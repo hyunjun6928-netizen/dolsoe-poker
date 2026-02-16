@@ -19,7 +19,7 @@ Endpoints:
   GET  /api/history   → 리플레이 (?table_id=id)
   GET  /api/replay    → 핸드별 리플레이 (?table_id&hand=N)
 """
-import asyncio, hashlib, json, math, os, random, struct, time, base64
+import asyncio, hashlib, hmac, json, math, os, random, struct, time, base64
 from collections import Counter
 from itertools import combinations
 from urllib.parse import parse_qs, urlparse
@@ -1213,6 +1213,12 @@ CHAT_COOLDOWN = 5  # 5초
 
 ADMIN_KEY = os.environ.get('POKER_ADMIN_KEY', '') or None  # empty string → None (prevents bypass)
 
+def _check_admin(key):
+    """타이밍-안전 admin key 검증"""
+    if not ADMIN_KEY: return False
+    if not key: return False
+    return hmac.compare_digest(str(ADMIN_KEY), str(key))
+
 def issue_token(name):
     token = secrets.token_hex(16)
     player_tokens[name] = (token, time.time())
@@ -1230,7 +1236,7 @@ def verify_token(name, token):
     if time.time() - ts > _TOKEN_MAX_AGE:
         del player_tokens[name]
         return False
-    return stored_token == token
+    return hmac.compare_digest(stored_token, token)
 
 def require_token(name, token):
     """모든 name에 토큰 필수. 토큰 미발급이면 거부."""
@@ -1938,19 +1944,20 @@ class Table:
         bb_s['chips']-=bb_a; bb_s['bet']=bb_a; bb_s['_total_invested']+=bb_a
         self.pot+=sb_a+bb_a; self.current_bet=bb_a
         await self.add_log(f"🪙 {sb_s['name']} SB {sb_a} | {bb_s['name']} BB {bb_a}")
-        # 연속 폴드 앤티 페널티 (3연속 폴드 시 BB 앤티 추가)
+        # 연속 폴드 앤티 페널티 (3연속 폴드 시 BB 앤티 추가, ranked 제외 — 실제 돈)
         ante_players=[]
-        for s in self._hand_seats:
-            fs=self.fold_streaks.get(s['name'],0)
-            if fs>=3:
-                ante=min(self.BB,s['chips'])
-                if ante>0:
-                    s['chips']-=ante; s['bet']+=ante; s['_total_invested']+=ante; self.pot+=ante
-                    ante_players.append((s,ante,fs))
-        if ante_players:
-            for s,ante,fs in ante_players:
-                await self.add_log(f"🔥 {s['emoji']} {s['name']} 앤티 {ante}pt (폴드 {fs}연속 페널티!)")
-            await self.broadcast_commentary(f"⚠️ 연속 폴드 페널티! {', '.join(s['name'] for s,_,_ in ante_players)} 강제 앤티!")
+        if not is_ranked_table(self.id):
+            for s in self._hand_seats:
+                fs=self.fold_streaks.get(s['name'],0)
+                if fs>=3:
+                    ante=min(self.BB,s['chips'])
+                    if ante>0:
+                        s['chips']-=ante; s['bet']+=ante; s['_total_invested']+=ante; self.pot+=ante
+                        ante_players.append((s,ante,fs))
+            if ante_players:
+                for s,ante,fs in ante_players:
+                    await self.add_log(f"🔥 {s['emoji']} {s['name']} 앤티 {ante}pt (폴드 {fs}연속 페널티!)")
+                await self.broadcast_commentary(f"⚠️ 연속 폴드 페널티! {', '.join(s['name'] for s,_,_ in ante_players)} 강제 앤티!")
         await self.broadcast_state()
 
         # 프리플랍
@@ -2828,7 +2835,7 @@ async def handle_client(reader, writer):
         await send_json(writer,{'games':games})
     elif method=='POST' and route=='/api/new':
         d=safe_json(body)
-        if not ADMIN_KEY or d.get('admin_key')!=ADMIN_KEY:
+        if not _check_admin(d.get('admin_key','')):
             await send_json(writer,{'ok':False,'code':'UNAUTHORIZED','message':'admin_key required'},401); return
         tid=d.get('table_id',f"table_{int(time.time()*1000)%100000}")
         t=get_or_create_table(tid)
@@ -2860,7 +2867,7 @@ async def handle_client(reader, writer):
         except (ValueError, TypeError): buy_in = 0
         if is_ranked_table(tid):
             # 잠금 상태면 admin_key 필요
-            if RANKED_LOCKED and (not ADMIN_KEY or d.get('admin_key') != ADMIN_KEY):
+            if RANKED_LOCKED and (not _check_admin(d.get('admin_key',''))):
                 await send_json(writer, {'ok': False, 'code': 'RANKED_LOCKED',
                     'message': '랭크 매치는 현재 비공개 테스트 중입니다.'}, 403)
                 return
@@ -3255,7 +3262,7 @@ async def handle_client(reader, writer):
             if not _ak and body:
                 try: _ak = json.loads(body).get('admin_key','')
                 except: _ak = ''
-            if not ADMIN_KEY or _ak != ADMIN_KEY:
+            if not _check_admin(_ak):
                 await send_json(writer, {'error': '랭크 매치는 현재 비공개 테스트 중입니다.', 'code': 'RANKED_LOCKED'}, 403)
                 return
         # ── ranked API (잠금 통과 후) ──
@@ -3278,7 +3285,7 @@ async def handle_client(reader, writer):
                     'sb': cfg['sb'], 'bb': cfg['bb'], 'players': players, 'running': running})
             await send_json(writer, {'rooms': rooms})
         elif method=='GET' and route=='/api/ranked/house':
-            if not ADMIN_KEY or qs.get('admin_key',[''])[0] != ADMIN_KEY:
+            if not _check_admin(qs.get('admin_key',[''])[0]):
                 await send_json(writer, {'error': 'admin_key required'}, 401); return
             house_points = 0
             if MERSOOM_AUTH_ID and MERSOOM_PASSWORD:
@@ -3301,12 +3308,12 @@ async def handle_client(reader, writer):
                 'total_users': total_users, 'warning': warning
             })
         elif method=='GET' and route=='/api/ranked/watchdog':
-            if not ADMIN_KEY or qs.get('admin_key',[''])[0] != ADMIN_KEY:
+            if not _check_admin(qs.get('admin_key',[''])[0]):
                 await send_json(writer, {'error': 'admin_key required'}, 401); return
             report = _ranked_watchdog_report()
             await send_json(writer, report)
         elif method=='GET' and route=='/api/ranked/audit':
-            if not ADMIN_KEY or qs.get('admin_key',[''])[0] != ADMIN_KEY:
+            if not _check_admin(qs.get('admin_key',[''])[0]):
                 await send_json(writer, {'error': 'admin_key required'}, 401); return
             r_auth = qs.get('auth_id',[''])[0]
             try: limit = min(200, max(1, int(qs.get('limit',['50'])[0])))
@@ -3408,7 +3415,7 @@ async def handle_client(reader, writer):
         tid=qs.get('table_id',[''])[0]; t=find_table(tid)
         if not t: await send_json(writer,{'error':'no game'},404); return
         if is_ranked_table(tid):
-            if not ADMIN_KEY or qs.get('admin_key',[''])[0] != ADMIN_KEY:
+            if not _check_admin(qs.get('admin_key',[''])[0]):
                 await send_json(writer,{'error':'ranked recent requires admin_key'},403); return
         await send_json(writer,{'history':t.history[-10:]})
     elif method=='GET' and route=='/api/profile':
@@ -3430,7 +3437,7 @@ async def handle_client(reader, writer):
         # ranked: 본인 분석만 허용 (admin 제외)
         if is_ranked_table(tid):
             req_token=qs.get('token',[''])[0]
-            is_admin=ADMIN_KEY and qs.get('admin_key',[''])[0]==ADMIN_KEY
+            is_admin=_check_admin(qs.get('admin_key',[''])[0])
             if not is_admin:
                 if not name or name=='all':
                     await send_json(writer,{'error':'ranked analysis requires specific player name'},400); return
@@ -3591,7 +3598,7 @@ async def handle_client(reader, writer):
     elif method=='GET' and route=='/api/_v':
         # 스텔스 방문자 통계 (비공개 — URL 모르면 접근 불가)
         k=qs.get('k',[''])[0]
-        if not ADMIN_KEY or k!=ADMIN_KEY: await send_json(writer,{'error':'not found'},404); return
+        if not _check_admin(k): await send_json(writer,{'error':'not found'},404); return
         await send_json(writer,_get_visitor_stats())
     elif method=='GET' and route=='/api/highlights':
         tid=qs.get('table_id',[''])[0]
@@ -3619,7 +3626,7 @@ async def handle_client(reader, writer):
                 if is_ranked_table(tid):
                     req_player=qs.get('player',[''])[0]
                     req_token=qs.get('token',[''])[0]
-                    is_admin=ADMIN_KEY and qs.get('admin_key',[''])[0]==ADMIN_KEY
+                    is_admin=_check_admin(qs.get('admin_key',[''])[0])
                     if not is_admin:
                         import copy; result=copy.deepcopy(result)
                         for p in result.get('players',[]):
@@ -3641,7 +3648,7 @@ async def handle_client(reader, writer):
         # ranked: 토큰 검증 (본인 히스토리만, admin 제외)
         if is_ranked_table(tid):
             req_token=qs.get('token',[''])[0]
-            is_admin=ADMIN_KEY and qs.get('admin_key',[''])[0]==ADMIN_KEY
+            is_admin=_check_admin(qs.get('admin_key',[''])[0])
             if not is_admin and not verify_token(player, req_token):
                 await send_json(writer,{'error':'ranked history requires token authentication'},401); return
         # DB에서 확장 히스토리 로드 (메모리 50개 넘는 것도 포함)
@@ -3685,7 +3692,7 @@ async def handle_client(reader, writer):
         tid=qs.get('table_id',[''])[0]; player=qs.get('player',[''])[0]
         # ranked 테이블 export 차단 (admin만 허용)
         if is_ranked_table(tid):
-            if not ADMIN_KEY or qs.get('admin_key',[''])[0] != ADMIN_KEY:
+            if not _check_admin(qs.get('admin_key',[''])[0]):
                 await send_json(writer,{'error':'ranked table export requires admin_key'},403); return
         fmt=qs.get('format',['csv'])[0]
         try: limit=min(500, max(1, int(qs.get('limit',['500'])[0])))
@@ -3747,7 +3754,7 @@ async def handle_client(reader, writer):
         except: pass
         await send_http(writer,204,'')
     elif method=='GET' and route=='/api/telemetry':
-        if not ADMIN_KEY or qs.get('key',[''])[0] != ADMIN_KEY:
+        if not _check_admin(qs.get('key',[''])[0]):
             await send_json(writer,{'ok':False,'code':'UNAUTHORIZED'},401); return
         await send_json(writer,{'summary':_tele_summary,'alerts':_alert_history[-20:],'streaks':dict(_alert_streaks),'entries':_telemetry_log[-50:]})
     elif method=='OPTIONS':
