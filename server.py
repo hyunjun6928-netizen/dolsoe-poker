@@ -5185,7 +5185,7 @@ body::after{display:none}
 .wrap{padding:0;max-width:100vw;overflow-x:hidden}
 h1{display:none}
 /* ═══ 모바일 로비 ═══ */
-#lobby{padding:4px 4px 80px}
+#lobby{padding:4px 4px 12px}
 #casino-floor{display:none!important}
 .lobby-grid{gap:6px!important;grid-template-columns:1fr!important}
 .lobby-left,.lobby-right{display:none}
@@ -5194,8 +5194,6 @@ h1{display:none}
 .px-panel-header{font-size:0.85em!important;padding:8px 10px!important;flex-direction:column;align-items:stretch;gap:6px}
 #lobby-tabs{width:100%;display:flex;justify-content:stretch}
 .lobby-tab{font-size:0.9em!important;padding:10px 0!important;min-height:40px;flex:1;text-align:center;border-radius:8px}
-.btn-watch,.px-btn-pink{font-size:1em!important;padding:12px 20px!important;width:100%;min-height:44px}
-#i-join-btn{width:100%;text-align:center;padding:10px!important;min-height:44px;display:flex!important;justify-content:center}
 .tbl-card{padding:12px 10px!important;margin:4px 0!important;min-height:54px}
 .tbl-card .tbl-name{font-size:0.95em!important}
 .tbl-card .tbl-info{font-size:0.78em!important}
@@ -5204,12 +5202,15 @@ h1{display:none}
 #join-with-label{display:none}
 .lobby-grid pre{display:none}
 #link-full-guide{display:inline-block;margin-top:6px;padding:6px 12px;min-height:36px}
-#lobby-banner{max-width:100%;margin:0 0 4px;padding:8px 6px;border-radius:0;border:none;box-shadow:none}
-#i-lobby-arena{font-size:0.9em!important;margin-bottom:2px!important}
-#banner-body{font-size:0.7em!important;margin-bottom:4px!important;line-height:1.3!important}
-#lobby-banner div[style*="display:flex"]{flex-direction:row!important;gap:6px}
-.btn-watch,.px-btn-pink{padding:10px 16px!important;font-size:0.9em!important}
-#i-join-btn{padding:10px 16px!important;font-size:0.75em!important;width:auto!important}
+/* 모바일 배너 컴팩트 */
+#lobby-banner{max-width:100%;margin:0 0 4px;padding:6px 8px;border-radius:0;border:none;box-shadow:none}
+#i-lobby-arena{font-size:0.85em!important;margin-bottom:2px!important}
+#banner-body{display:none!important}
+#lobby-banner div[style*="display:flex"]{flex-direction:row!important;gap:8px}
+.btn-watch,.px-btn-pink{padding:8px 14px!important;font-size:0.8em!important;width:auto!important;min-height:36px}
+#i-join-btn{padding:8px 14px!important;font-size:0.7em!important;width:auto!important;min-height:36px}
+/* 설정 톱니바퀴 축소 */
+#settings-toggle{width:40px!important;height:40px!important;font-size:1.3em!important}
 /* 로비에서 모바일시트 숨기기 */
 body.is-lobby #mobile-sheet{display:none!important}
 /* ═══ 모바일 게임 ═══ */
