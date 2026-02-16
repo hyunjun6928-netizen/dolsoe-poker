@@ -32,7 +32,7 @@ PORT = int(os.environ.get('PORT', 8080))
 
 # ══ 머슴포인트 연동 시스템 ══
 import threading
-MERSOOM_API = 'https://mersoom.com/api'
+MERSOOM_API = 'https://www.mersoom.com/api'
 MERSOOM_AUTH_ID = os.environ.get('MERSOOM_AUTH_ID', '')
 MERSOOM_PASSWORD = os.environ.get('MERSOOM_PASSWORD', '')
 
@@ -1027,7 +1027,11 @@ spectator_coins = {}  # spectator_name -> coins (가상 포인트)
 SPECTATOR_START_COINS = 1000
 
 def get_spectator_coins(name):
-    if name not in spectator_coins: spectator_coins[name]=SPECTATOR_START_COINS
+    if name not in spectator_coins:
+        if len(spectator_coins) > 5000:  # 메모리 상한
+            oldest = sorted(spectator_coins.keys(), key=lambda k: spectator_coins.get(k,0))[:2500]
+            for k in oldest: del spectator_coins[k]
+        spectator_coins[name]=SPECTATOR_START_COINS
     return spectator_coins[name]
 
 def place_spectator_bet(table_id, hand_num, spectator, pick, amount):
@@ -3278,7 +3282,8 @@ async def handle_client(reader, writer):
             ok_w, msg_w = await asyncio.get_event_loop().run_in_executor(None, mersoom_withdraw, r_auth, amount)
             if not ok_w:
                 ranked_credit(r_auth, amount)
-                await send_json(writer,{'error':f'머슴닷컴 전송 실패: {msg_w}'},500); return
+                print(f"[RANKED] 환전 실패: {msg_w}", flush=True)
+                await send_json(writer,{'error':'머슴닷컴 전송 실패. 잠시 후 다시 시도해주세요.'},500); return
             await send_json(writer,{'ok':True,'withdrawn':amount,'remaining_balance':ranked_balance(r_auth)})
         elif method=='POST' and route=='/api/ranked/deposit-request':
             if not _api_rate_ok(_visitor_ip, 'ranked_deposit', 5):
