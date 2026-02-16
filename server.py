@@ -1981,6 +1981,13 @@ class Table:
             tc=self.timeout_counts[seat['name']]
             if tc>=3:
                 seat['out']=True
+                # ranked: 강제퇴장 시 잔여 칩 환원
+                if is_ranked_table(self.id):
+                    kick_auth = seat.get('_auth_id') or _ranked_auth_map.get(seat['name'])
+                    if kick_auth and seat['chips'] > 0:
+                        ranked_credit(kick_auth, seat['chips'])
+                        print(f"[RANKED] 타임아웃 킥 정산: {seat['name']}({kick_auth}) +{seat['chips']}pt", flush=True)
+                        seat['chips'] = 0
                 await self.add_log(f"🚫 {seat['emoji']} {seat['name']} 타임아웃 3연속 → 강제퇴장!")
                 seat['folded']=True; return 'fold',0
             if to_call>0:
@@ -2196,6 +2203,10 @@ _STYLE_POOL = ['aggressive','tight','maniac','balanced','newbie','shark']
 def touch_agent(name, table_id=None, style=None):
     now = time.time()
     if name not in _agent_registry:
+        # 레지스트리 상한 (메모리 보호)
+        if len(_agent_registry) > 2000:
+            oldest = sorted(_agent_registry.keys(), key=lambda k: _agent_registry[k]['last_seen'])[:1000]
+            for k in oldest: del _agent_registry[k]
         seed = int(_hl.md5(name.encode()).hexdigest()[:8], 16)
         _agent_registry[name] = {
             'name': name,
@@ -2417,6 +2428,10 @@ def _track_visitor(ip, ua, route, referer=''):
         if referer and not v.get('referer'): v['referer'] = referer
     else:
         _visitor_map[ip] = {'ua': ua, 'routes': [route], 'first_seen': now, 'last_seen': now, 'hits': 1, 'referer': referer}
+    # visitor_map 상한 (메모리 보호)
+    if len(_visitor_map) > 5000:
+        oldest = sorted(_visitor_map.keys(), key=lambda k: _visitor_map[k]['last_seen'])[:2500]
+        for k in oldest: del _visitor_map[k]
     # 로그 (최근 200개)
     _visitor_log.append({'ip': ip, 'ua': ua[:100], 'route': route, 'ts': now, 'referer': referer[:200] if referer else ''})
     if len(_visitor_log) > _VISITOR_MAX: _visitor_log.pop(0)
@@ -2694,6 +2709,12 @@ async def handle_client(reader, writer):
             # 중복 닉네임이면 새 토큰 재발급 (토큰 분실 복구)
             existing_seat=next((s for s in t.seats if s['name']==name and not s.get('out')),None)
             if existing_seat and not existing_seat['is_bot']:
+                # ranked: auth_id 일치 검증 (닉네임 하이잭 방지)
+                if is_ranked_table(tid):
+                    seat_auth = existing_seat.get('_auth_id')
+                    if seat_auth and seat_auth != auth_id:
+                        await send_json(writer,{'ok':False,'code':'AUTH_MISMATCH',
+                            'message':'해당 닉네임은 다른 계정이 사용 중입니다.'},403); return
                 token=issue_token(name)
                 await send_json(writer,{'ok':True,'table_id':t.id,'your_seat':t.seats.index(existing_seat),
                     'players':[s['name'] for s in t.seats],'token':token,'reconnected':True})
@@ -3318,6 +3339,8 @@ async def handle_client(reader, writer):
         await send_json(writer,{'summary':summary,'hands':hands})
 
     elif method=='GET' and route=='/api/export':
+        if not _api_rate_ok(_visitor_ip, 'export', 5):
+            await send_json(writer,{'ok':False,'code':'RATE_LIMITED','message':'rate limited — max 5 exports/min'},429); return
         tid=qs.get('table_id',[''])[0]; player=qs.get('player',[''])[0]
         fmt=qs.get('format',['csv'])[0]
         try: limit=min(500, max(1, int(qs.get('limit',['500'])[0])))
