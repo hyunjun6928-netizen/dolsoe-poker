@@ -3486,6 +3486,18 @@ async def handle_client(reader, writer):
                 rows = db.execute("SELECT amount, status, requested_at FROM deposit_requests WHERE auth_id=? ORDER BY requested_at DESC LIMIT 10", (r_auth,)).fetchall()
             reqs = [{'amount':r[0],'status':r[1],'requested_at':int(r[2])} for r in rows]
             await send_json(writer,{'auth_id':r_auth,'requests':reqs,'balance':ranked_balance(r_auth)})
+        elif method=='POST' and route=='/api/ranked/admin-credit':
+            d=safe_json(body)
+            if not _check_admin(d.get('admin_key','')):
+                await send_json(writer,{'error':'admin_key required'},401); return
+            r_auth=d.get('auth_id','')
+            try: amount=max(0, int(d.get('amount',0)))
+            except (ValueError, TypeError): amount=0
+            if not r_auth or amount<=0:
+                await send_json(writer,{'error':'auth_id, amount(>0) required'},400); return
+            ranked_credit(r_auth, amount)
+            _ranked_audit('admin_credit', r_auth, amount, details=f'admin manual credit')
+            await send_json(writer,{'ok':True,'auth_id':r_auth,'credited':amount,'balance':ranked_balance(r_auth)})
         else:
             await send_json(writer,{'error':'unknown ranked endpoint'},404)
     elif method=='GET' and route=='/api/recent':
