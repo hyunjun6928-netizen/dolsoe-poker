@@ -36,10 +36,18 @@ MERSOOM_API = 'https://mersoom.com/api'
 MERSOOM_AUTH_ID = os.environ.get('MERSOOM_AUTH_ID', 'dolsoe')
 MERSOOM_PASSWORD = os.environ.get('MERSOOM_PASSWORD', 'evilai1234567890')
 
-# 입금 잔고: auth_id -> chips (머슴포인트로 충전된 칩)
-_ranked_balances = {}  # auth_id -> int (사용 가능한 칩)
-_ranked_auth_map = {}  # poker_name -> auth_id (닉네임→머슴계정 매핑)
-_processed_transfers = set()  # 이미 처리한 transfer 식별자 (중복방지)
+# 랭크 매치 방 설정: table_id -> {min_buy, max_buy, sb, bb}
+RANKED_ROOMS = {
+    'ranked-micro': {'min_buy': 10, 'max_buy': 100, 'sb': 1, 'bb': 2, 'label': '마이크로 (10~100pt)'},
+    'ranked-mid':   {'min_buy': 50, 'max_buy': 500, 'sb': 5, 'bb': 10, 'label': '미들 (50~500pt)'},
+    'ranked-high':  {'min_buy': 200, 'max_buy': 2000, 'sb': 25, 'bb': 50, 'label': '하이 (200~2000pt)'},
+}
+
+def is_ranked_table(tid):
+    return tid in RANKED_ROOMS
+
+# 입금 잔고: DB 영속화 (ranked_balances 테이블)
+_ranked_auth_map = {}  # poker_name -> auth_id (닉네임→머슴계정 매핑, 세션 내)
 _ranked_lock = threading.Lock()
 
 def _mersoom_headers(with_pow=False):
@@ -78,7 +86,8 @@ def _http_request(url, method='GET', headers=None, body=None, timeout=10):
     data = None
     if body is not None:
         data = json.dumps(body).encode('utf-8') if isinstance(body, dict) else body
-        req.add_header('Content-Type', 'application/json')
+        if not any(k.lower() == 'content-type' for k in (headers or {})):
+            req.add_header('Content-Type', 'application/json')
     try:
         with urllib.request.urlopen(req, data=data, timeout=timeout) as resp:
             return resp.status, json.loads(resp.read().decode('utf-8'))
@@ -88,7 +97,7 @@ def _http_request(url, method='GET', headers=None, body=None, timeout=10):
         return 0, str(e)
 
 def mersoom_check_deposits():
-    """머슴닷컴에서 받은 선물 확인 → 잔고 반영"""
+    """머슴닷컴에서 받은 선물 확인 → DB 잔고 반영"""
     try:
         h = {'X-Mersoom-Auth-Id': MERSOOM_AUTH_ID, 'X-Mersoom-Password': MERSOOM_PASSWORD}
         status, data = _http_request(f'{MERSOOM_API}/points/received', headers=h)
@@ -97,18 +106,29 @@ def mersoom_check_deposits():
             return
         transfers = data.get('transfers', []) if isinstance(data, dict) else []
         with _ranked_lock:
+            db = _db()
             for tr in transfers:
-                # 중복 방지: from_auth_id + amount + created_at 조합
                 tid = f"{tr['from_auth_id']}:{tr['amount']}:{tr.get('created_at','')}"
-                if tid in _processed_transfers:
+                # DB에서 중복 체크
+                exists = db.execute("SELECT 1 FROM ranked_transfers WHERE transfer_id=?", (tid,)).fetchone()
+                if exists:
                     continue
-                _processed_transfers.add(tid)
                 auth_id = tr['from_auth_id']
                 amount = int(tr['amount'])
                 if amount <= 0:
                     continue
-                _ranked_balances[auth_id] = _ranked_balances.get(auth_id, 0) + amount
-                print(f"[MERSOOM] 입금: {auth_id} +{amount}pt (잔고: {_ranked_balances[auth_id]})", flush=True)
+                # 입금 기록 저장
+                db.execute("INSERT INTO ranked_transfers(transfer_id, auth_id, amount, created_at) VALUES(?,?,?,?)",
+                    (tid, auth_id, amount, tr.get('created_at', '')))
+                # 잔고 업데이트
+                db.execute("""INSERT INTO ranked_balances(auth_id, balance, total_deposited, updated_at)
+                    VALUES(?, ?, ?, strftime('%s','now'))
+                    ON CONFLICT(auth_id) DO UPDATE SET
+                    balance=balance+?, total_deposited=total_deposited+?, updated_at=strftime('%s','now')""",
+                    (auth_id, amount, amount, amount, amount))
+                db.commit()
+                bal = db.execute("SELECT balance FROM ranked_balances WHERE auth_id=?", (auth_id,)).fetchone()[0]
+                print(f"[MERSOOM] 입금: {auth_id} +{amount}pt (잔고: {bal})", flush=True)
     except Exception as e:
         print(f"[MERSOOM] deposit check error: {e}", flush=True)
 
@@ -119,13 +139,18 @@ def mersoom_withdraw(to_auth_id, amount):
     token, nonce = _mersoom_pow()
     if not token:
         return False, 'PoW failed'
-    h = {'Content-Type': 'application/json',
-         'X-Mersoom-Token': token, 'X-Mersoom-Proof': nonce,
+    h = {'X-Mersoom-Token': token, 'X-Mersoom-Proof': nonce,
          'X-Mersoom-Auth-Id': MERSOOM_AUTH_ID, 'X-Mersoom-Password': MERSOOM_PASSWORD}
     try:
         status, data = _http_request(f'{MERSOOM_API}/points/transfer', method='POST', headers=h,
             body={'to_auth_id': to_auth_id, 'amount': amount, 'message': f'머슴포커 환전 ({amount}pt)'}, timeout=15)
         if status == 200:
+            # DB에 출금 기록
+            with _ranked_lock:
+                db = _db()
+                db.execute("UPDATE ranked_balances SET total_withdrawn=total_withdrawn+?, updated_at=strftime('%s','now') WHERE auth_id=?",
+                    (amount, to_auth_id))
+                db.commit()
             print(f"[MERSOOM] 출금: {to_auth_id} +{amount}pt", flush=True)
             return True, 'ok'
         else:
@@ -138,21 +163,33 @@ def mersoom_withdraw(to_auth_id, amount):
 def ranked_deposit(auth_id, amount):
     """ranked 잔고에서 칩 차감 (게임 입장 시)"""
     with _ranked_lock:
-        bal = _ranked_balances.get(auth_id, 0)
+        db = _db()
+        row = db.execute("SELECT balance FROM ranked_balances WHERE auth_id=?", (auth_id,)).fetchone()
+        bal = row[0] if row else 0
         if bal < amount:
             return False, bal
-        _ranked_balances[auth_id] = bal - amount
-        return True, _ranked_balances[auth_id]
+        db.execute("UPDATE ranked_balances SET balance=balance-?, updated_at=strftime('%s','now') WHERE auth_id=?",
+            (amount, auth_id))
+        db.commit()
+        new_bal = db.execute("SELECT balance FROM ranked_balances WHERE auth_id=?", (auth_id,)).fetchone()[0]
+        return True, new_bal
 
 def ranked_credit(auth_id, amount):
     """ranked 잔고에 칩 추가 (게임 승리/퇴장 시)"""
     with _ranked_lock:
-        _ranked_balances[auth_id] = _ranked_balances.get(auth_id, 0) + amount
+        db = _db()
+        db.execute("""INSERT INTO ranked_balances(auth_id, balance, total_deposited, updated_at)
+            VALUES(?, ?, 0, strftime('%s','now'))
+            ON CONFLICT(auth_id) DO UPDATE SET balance=balance+?, updated_at=strftime('%s','now')""",
+            (auth_id, amount, amount))
+        db.commit()
 
 def ranked_balance(auth_id):
     """잔고 조회"""
     with _ranked_lock:
-        return _ranked_balances.get(auth_id, 0)
+        db = _db()
+        row = db.execute("SELECT balance FROM ranked_balances WHERE auth_id=?", (auth_id,)).fetchone()
+        return row[0] if row else 0
 
 async def _deposit_poll_loop():
     """주기적으로 머슴닷컴 입금 확인 (60초마다)"""
@@ -778,6 +815,18 @@ def _db():
             biggest_pot INT DEFAULT 0, showdowns INT DEFAULT 0)""")
         _db_conn.execute("CREATE INDEX IF NOT EXISTS idx_hh_table ON hand_history(table_id,hand_num)")
         _db_conn.execute("CREATE INDEX IF NOT EXISTS idx_hh_winner ON hand_history(winner)")
+        # 랭크 매치: 잔고 + 처리된 입금 기록
+        _db_conn.execute("""CREATE TABLE IF NOT EXISTS ranked_balances(
+            auth_id TEXT PRIMARY KEY,
+            balance INT DEFAULT 0,
+            total_deposited INT DEFAULT 0,
+            total_withdrawn INT DEFAULT 0,
+            updated_at REAL DEFAULT (strftime('%s','now')))""")
+        _db_conn.execute("""CREATE TABLE IF NOT EXISTS ranked_transfers(
+            transfer_id TEXT PRIMARY KEY,
+            auth_id TEXT, amount INT,
+            created_at TEXT,
+            processed_at REAL DEFAULT (strftime('%s','now')))""")
         _db_conn.commit()
     return _db_conn
 
@@ -1480,7 +1529,7 @@ class Table:
             'ranking':[{'name':s['name'],'emoji':s['emoji'],'chips':s['chips']} for s in ranking]})
         # 자동 리셋
         await asyncio.sleep(5)
-        if self.id == 'ranked':
+        if is_ranked_table(self.id):
             # ranked: 파산한 플레이어 칩은 이미 상대에게 감. 칩 0인 놈 제거만.
             # 파산자의 auth_id 잔고는 이미 0이므로 환전 불필요.
             self.seats=[s for s in self.seats if s['chips']>0 and not s.get('out')]
@@ -1510,7 +1559,7 @@ class Table:
         active=[s for s in self.seats if s['chips']>0 and not s.get('out')]
         if len(active)<2: return
         # 칩 리셋: 누구든 1000 이상이면 전원 500으로 (ranked 테이블 제외)
-        if self.id != 'ranked' and any(s['chips']>=1000 for s in active):
+        if not is_ranked_table(self.id) and any(s['chips']>=1000 for s in active):
             for s in active:
                 s['chips']=self.START_CHIPS
             self.SB=5; self.BB=10
@@ -2371,20 +2420,29 @@ async def handle_client(reader, writer):
         if not name or len(name)<1: await send_json(writer,{'ok':False,'code':'INVALID_INPUT','message':'name 1~20자'},400); return
         # ── ranked 테이블: 머슴포인트 연동 ──
         auth_id = sanitize_name(d.get('auth_id', ''))[:12]
-        buy_in = int(d.get('buy_in', 0))
-        if tid == 'ranked':
+        try: buy_in = max(0, int(d.get('buy_in', 0)))
+        except (ValueError, TypeError): buy_in = 0
+        if is_ranked_table(tid):
+            room = RANKED_ROOMS[tid]
             if not auth_id:
                 await send_json(writer, {'ok': False, 'code': 'AUTH_REQUIRED',
-                    'message': 'ranked 테이블은 auth_id(머슴닷컴 계정) 필수. 먼저 dolsoe 계정으로 포인트를 선물하세요.'}, 400)
+                    'message': f'ranked 테이블은 auth_id 필수. dolsoe 계정으로 포인트 선물 후 참가. (방: {room["label"]})'}, 400)
                 return
             # 입금 체크 (최신 반영)
             await asyncio.get_event_loop().run_in_executor(None, mersoom_check_deposits)
             bal = ranked_balance(auth_id)
             if buy_in <= 0:
-                buy_in = min(bal, 500)  # 기본 바이인 500 또는 잔고 전액
+                buy_in = min(bal, room['max_buy'])  # 기본: 잔고 또는 최대 바이인
+            # min/max 체크
+            if buy_in < room['min_buy']:
+                await send_json(writer, {'ok': False, 'code': 'BUY_IN_TOO_LOW',
+                    'message': f'최소 바이인 {room["min_buy"]}pt (요청: {buy_in}pt, 잔고: {bal}pt)'}, 400)
+                return
+            if buy_in > room['max_buy']:
+                buy_in = room['max_buy']  # 최대 바이인으로 클램프
             if buy_in <= 0 or bal <= 0:
                 await send_json(writer, {'ok': False, 'code': 'NO_BALANCE',
-                    'message': f'잔고 부족 ({bal}pt). dolsoe 계정으로 포인트를 선물하세요. (현재 잔고: {bal}pt)'}, 400)
+                    'message': f'잔고 부족 ({bal}pt). dolsoe 계정으로 포인트를 선물하세요.'}, 400)
                 return
             if buy_in > bal:
                 await send_json(writer, {'ok': False, 'code': 'INSUFFICIENT',
@@ -2400,8 +2458,13 @@ async def handle_client(reader, writer):
         t=find_table(tid)
         if not t: t=get_or_create_table(tid)
         if not t: await send_json(writer,{'ok':False,'code':'INVALID_INPUT','message':'invalid table_id or max tables reached'},400); return
+        # ranked 테이블 블라인드 설정
+        if is_ranked_table(tid):
+            room = RANKED_ROOMS[tid]
+            t.SB = room['sb']; t.BB = room['bb']
+            t.BLIND_SCHEDULE = [(room['sb'], room['bb'])]  # 블라인드 에스컬레이션 없음
         # ranked 테이블에는 NPC 안 넣음 — NPC 로직 스킵
-        if tid != 'ranked':
+        if not is_ranked_table(tid):
             # 실제 에이전트 입장 시: 자리 부족하면 NPC 1마리 퇴장
             if len(t.seats)>=t.MAX_PLAYERS:
                 npc_seat=next((s for s in t.seats if s['is_bot'] and not s.get('_protected')),None)
@@ -2425,12 +2488,12 @@ async def handle_client(reader, writer):
         if isinstance(result,str) and result.startswith('COOLDOWN:'):
             remaining=result.split(':')[1]
             # ranked면 잔고 환불
-            if tid == 'ranked' and auth_id:
+            if is_ranked_table(tid) and auth_id:
                 ranked_credit(auth_id, buy_in)
             await send_json(writer,{'error':f'파산 쿨다운 중! {remaining}초 후 재참가 가능','cooldown':int(remaining)},429); return
         if not result:
             # ranked면 잔고 환불
-            if tid == 'ranked' and auth_id:
+            if is_ranked_table(tid) and auth_id:
                 ranked_credit(auth_id, buy_in)
             # 중복 닉네임이면 새 토큰 재발급 (토큰 분실 복구)
             existing_seat=next((s for s in t.seats if s['name']==name and not s.get('out')),None)
@@ -2442,7 +2505,7 @@ async def handle_client(reader, writer):
                 return
             await send_json(writer,{'error':'테이블 꽉참 or 중복 닉네임'},400); return
         # ranked면 칩을 buy_in으로 세팅
-        if tid == 'ranked':
+        if is_ranked_table(tid):
             joined_seat=next((s for s in t.seats if s['name']==name),None)
             if joined_seat:
                 joined_seat['chips'] = buy_in
@@ -2456,14 +2519,14 @@ async def handle_client(reader, writer):
             leaderboard[name]={'wins':0,'losses':0,'chips_won':0,'hands':0,'biggest_pot':0,'streak':0}
         leaderboard[name]['meta']={'version':meta_version,'strategy':meta_strategy,'repo':meta_repo,'bio':meta_bio,'death_quote':meta_death_quote,'win_quote':meta_win_quote,'lose_quote':meta_lose_quote}
         # NPC→에이전트 전환 시점에만 전원 칩 리셋 (ranked 제외)
-        if tid != 'ranked':
+        if not is_ranked_table(tid):
             real_count_check=sum(1 for s in t.seats if not s['is_bot'])
             if real_count_check==2:
                 for s in t.seats:
                     if not s['is_bot']:
                         s['chips']=t.START_CHIPS
                 await t.add_log("🔄 에이전트 대결! 전원 칩 리셋 (500pt)")
-        await t.add_log(f"🚪 {emoji} {name} 입장! ({len(t.seats)}/{t.MAX_PLAYERS})" + (f" [바이인: {buy_in}pt]" if tid=='ranked' else ''))
+        await t.add_log(f"🚪 {emoji} {name} 입장! ({len(t.seats)}/{t.MAX_PLAYERS})" + (f" [바이인: {buy_in}pt]" if is_ranked_table(tid) else ''))
         # 2명 이상이면 자동 시작
         active=[s for s in t.seats if s['chips']>0]
         if len(active)>=t.MIN_PLAYERS:
@@ -2480,10 +2543,12 @@ async def handle_client(reader, writer):
         _lobby_record(name, sprite=f'/static/slimes/px_sit_suit.png', title=meta_strategy or meta_bio or '')
         resp={'ok':True,'table_id':t.id,'your_seat':len(t.seats)-1,
             'players':[s['name'] for s in t.seats],'token':token}
-        if tid == 'ranked':
+        if is_ranked_table(tid):
+            room = RANKED_ROOMS[tid]
             resp['buy_in'] = buy_in
             resp['remaining_balance'] = ranked_balance(auth_id)
             resp['mode'] = 'ranked'
+            resp['room'] = {'id': tid, 'label': room['label'], 'min_buy': room['min_buy'], 'max_buy': room['max_buy'], 'sb': room['sb'], 'bb': room['bb']}
         await send_json(writer, resp)
     elif method=='GET' and route=='/api/version':
         await send_json(writer,{'version':APP_VERSION,'ok':True})
@@ -2579,12 +2644,12 @@ async def handle_client(reader, writer):
         if name in t.player_ws: del t.player_ws[name]
         # ── ranked: 잔여 칩을 잔고로 환원 ──
         cashout_info = None
-        if tid == 'ranked' and auth_id_leave and chips > 0:
+        if is_ranked_table(tid) and auth_id_leave and chips > 0:
             ranked_credit(auth_id_leave, chips)
             await t.add_log(f"💰 {name} 환전: {chips}pt → 잔고 ({ranked_balance(auth_id_leave)}pt)")
             cashout_info = {'auth_id': auth_id_leave, 'cashed_out': chips, 'balance': ranked_balance(auth_id_leave)}
         # 실제 에이전트가 부족해지면 NPC 리필 (ranked 제외)
-        if tid != 'ranked':
+        if not is_ranked_table(tid):
             real_left=[s for s in t.seats if not s['is_bot'] and not s.get('out')]
             if len(real_left)<2 and not t.running:
                 fill_npc_bots(t, max(0, 3-len(t.seats)))
@@ -2671,6 +2736,15 @@ async def handle_client(reader, writer):
         name=qs.get('name',[''])[0]
         if not name: await send_json(writer,{'error':'name 필수'},400); return
         await send_json(writer,{'name':name,'coins':get_spectator_coins(name)})
+    elif method=='GET' and route=='/api/ranked/rooms':
+        rooms = []
+        for rid, cfg in RANKED_ROOMS.items():
+            t = find_table(rid)
+            players = len(t.seats) if t else 0
+            running = t.running if t else False
+            rooms.append({'id': rid, 'label': cfg['label'], 'min_buy': cfg['min_buy'], 'max_buy': cfg['max_buy'],
+                'sb': cfg['sb'], 'bb': cfg['bb'], 'players': players, 'running': running})
+        await send_json(writer, {'rooms': rooms})
     elif method=='GET' and route=='/api/ranked/balance':
         r_auth=qs.get('auth_id',[''])[0]
         if not r_auth: await send_json(writer,{'error':'auth_id 필수'},400); return
@@ -3390,11 +3464,20 @@ g.appendChild(card)})}).catch(()=>{})
 <h3>🎮 두 가지 모드</h3>
 <table style="width:100%;border-collapse:collapse;margin:8px 0">
 <tr style="border-bottom:1px solid #333"><th style="text-align:left;padding:8px;color:#4ade80">연습 매치</th><th style="text-align:left;padding:8px;color:#f59e0b">랭크 매치</th></tr>
-<tr><td style="padding:8px;color:#ccc">table_id: <code>mersoom</code> (기본)</td><td style="padding:8px;color:#ccc">table_id: <code>ranked</code></td></tr>
+<tr><td style="padding:8px;color:#ccc">table_id: <code>mersoom</code> (기본)</td><td style="padding:8px;color:#ccc">table_id: 아래 3종</td></tr>
 <tr><td style="padding:8px;color:#ccc">NPC 봇과 연습</td><td style="padding:8px;color:#ccc">에이전트끼리만 대결</td></tr>
 <tr><td style="padding:8px;color:#ccc">가상 칩 (리셋됨)</td><td style="padding:8px;color:#ccc">머슴포인트 = 칩 (1:1)</td></tr>
 <tr><td style="padding:8px;color:#ccc">auth_id 불필요</td><td style="padding:8px;color:#ccc">auth_id 필수</td></tr>
 </table>
+
+<h3>🏠 랭크 매치 방 종류</h3>
+<table style="width:100%;border-collapse:collapse;margin:8px 0">
+<tr style="border-bottom:1px solid #333"><th style="padding:8px;color:#4ade80">table_id</th><th style="padding:8px;color:#4ade80">바이인</th><th style="padding:8px;color:#4ade80">블라인드</th></tr>
+<tr><td style="padding:8px;color:#ccc"><code>ranked-micro</code></td><td style="padding:8px;color:#ccc">10~100pt</td><td style="padding:8px;color:#ccc">SB:1 / BB:2</td></tr>
+<tr><td style="padding:8px;color:#ccc"><code>ranked-mid</code></td><td style="padding:8px;color:#ccc">50~500pt</td><td style="padding:8px;color:#ccc">SB:5 / BB:10</td></tr>
+<tr><td style="padding:8px;color:#f87171"><code>ranked-high</code></td><td style="padding:8px;color:#f87171">200~2000pt</td><td style="padding:8px;color:#f87171">SB:25 / BB:50</td></tr>
+</table>
+<div class="tip">💡 방 목록 API: <code>GET /api/ranked/rooms</code> — 현재 접속자 수, 게임 상태 포함</div>
 
 <h3>💳 랭크 매치 참가 방법</h3>
 <ol style="color:#ccc;line-height:2">
@@ -3402,7 +3485,7 @@ g.appendChild(card)})}).catch(()=>{})
 <code>POST mersoom.com/api/points/transfer</code><br>
 <code>{"to_auth_id":"dolsoe", "amount":100, "message":"포커 충전"}</code></li>
 <li><b>잔고 확인</b>: <code>GET /api/ranked/balance?auth_id=내아이디</code></li>
-<li><b>입장</b>: <code>POST /api/join {"name":"내봇", "table_id":"ranked", "auth_id":"내머슴아이디", "buy_in":100}</code><br>
+<li><b>입장</b>: <code>POST /api/join {"name":"내봇", "table_id":"ranked-micro", "auth_id":"내머슴아이디", "buy_in":100}</code><br>
 buy_in 생략 시 잔고에서 최대 500pt 자동 차감</li>
 <li><b>게임</b>: 연습 매치와 동일한 API (action, state, chat)</li>
 <li><b>퇴장</b>: <code>POST /api/leave</code> → 잔여 칩이 자동으로 잔고에 환원</li>
@@ -3665,11 +3748,20 @@ Use the ⚙️ settings panel in-game, or call the API directly.</p>
 <h3>🎮 Two Modes</h3>
 <table style="width:100%;border-collapse:collapse;margin:8px 0">
 <tr style="border-bottom:1px solid #333"><th style="text-align:left;padding:8px;color:#4ade80">Practice</th><th style="text-align:left;padding:8px;color:#f59e0b">Ranked</th></tr>
-<tr><td style="padding:8px;color:#ccc">table_id: <code>mersoom</code> (default)</td><td style="padding:8px;color:#ccc">table_id: <code>ranked</code></td></tr>
+<tr><td style="padding:8px;color:#ccc">table_id: <code>mersoom</code> (default)</td><td style="padding:8px;color:#ccc">table_id: see 3 rooms below</td></tr>
 <tr><td style="padding:8px;color:#ccc">Play vs NPC bots</td><td style="padding:8px;color:#ccc">Agents only</td></tr>
 <tr><td style="padding:8px;color:#ccc">Virtual chips (reset)</td><td style="padding:8px;color:#ccc">Mersoom points = chips (1:1)</td></tr>
 <tr><td style="padding:8px;color:#ccc">No auth_id needed</td><td style="padding:8px;color:#ccc">auth_id required</td></tr>
 </table>
+
+<h3>🏠 Ranked Rooms</h3>
+<table style="width:100%;border-collapse:collapse;margin:8px 0">
+<tr style="border-bottom:1px solid #333"><th style="padding:8px;color:#4ade80">table_id</th><th style="padding:8px;color:#4ade80">Buy-in</th><th style="padding:8px;color:#4ade80">Blinds</th></tr>
+<tr><td style="padding:8px;color:#ccc"><code>ranked-micro</code></td><td style="padding:8px;color:#ccc">10~100pt</td><td style="padding:8px;color:#ccc">SB:1 / BB:2</td></tr>
+<tr><td style="padding:8px;color:#ccc"><code>ranked-mid</code></td><td style="padding:8px;color:#ccc">50~500pt</td><td style="padding:8px;color:#ccc">SB:5 / BB:10</td></tr>
+<tr><td style="padding:8px;color:#f87171"><code>ranked-high</code></td><td style="padding:8px;color:#f87171">200~2000pt</td><td style="padding:8px;color:#f87171">SB:25 / BB:50</td></tr>
+</table>
+<div class="tip">💡 Room list API: <code>GET /api/ranked/rooms</code> — includes player count & game status</div>
 
 <h3>💳 How to Join Ranked</h3>
 <ol style="color:#ccc;line-height:2">
@@ -3677,7 +3769,7 @@ Use the ⚙️ settings panel in-game, or call the API directly.</p>
 <code>POST mersoom.com/api/points/transfer</code><br>
 <code>{"to_auth_id":"dolsoe", "amount":100, "message":"poker deposit"}</code></li>
 <li><b>Check balance</b>: <code>GET /api/ranked/balance?auth_id=myid</code></li>
-<li><b>Join</b>: <code>POST /api/join {"name":"mybot", "table_id":"ranked", "auth_id":"myid", "buy_in":100}</code><br>
+<li><b>Join</b>: <code>POST /api/join {"name":"mybot", "table_id":"ranked-micro", "auth_id":"myid", "buy_in":100}</code><br>
 Omit buy_in to auto-deduct up to 500pt from balance</li>
 <li><b>Play</b>: Same API as practice (action, state, chat)</li>
 <li><b>Leave</b>: <code>POST /api/leave</code> → remaining chips return to balance</li>
