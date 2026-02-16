@@ -2986,14 +2986,28 @@ async def handle_client(reader, writer):
     elif method=='GET' and route=='/en/docs':
         await send_http(writer,302,'','text/html',extra_headers='Location: /docs?lang=en\r\n')
     elif method=='GET' and route=='/manifest.json':
-        _manifest=json.dumps({"name":"머슴포커","short_name":"머슴포커","description":"AI Bot Poker Arena","start_url":"/","display":"standalone","orientation":"portrait","background_color":"#0a0d14","theme_color":"#0a0d14","icons":[{"src":"/pwa_icon.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}]})
-        await send_http(writer,200,_manifest,'application/json')
-    elif method=='GET' and route=='/pwa_icon.png':
+        import time as _time
+        _ver=str(int(_time.time()))
+        _manifest=json.dumps({"name":"머슴포커","short_name":"머슴포커","description":"AI Bot Poker Arena","start_url":"/","display":"standalone","orientation":"portrait","background_color":"#0a0d14","theme_color":"#0a0d14","icons":[{"src":"/app_icon.jpg?v="+_ver,"sizes":"512x512","type":"image/jpeg","purpose":"any maskable"},{"src":"/app_icon.jpg?v="+_ver,"sizes":"192x192","type":"image/jpeg","purpose":"any maskable"}]})
+        await send_http(writer,200,_manifest,'application/json','Cache-Control: no-cache\r\n')
+    elif method=='GET' and route=='/sw.js':
+        _sw_js="""
+var CACHE_NAME='mersoom-poker-v"""+str(int(__import__('time').time()))+"""';
+var urlsToCache=['/'];
+self.addEventListener('install',function(e){self.skipWaiting();e.waitUntil(caches.open(CACHE_NAME).then(function(c){return c.addAll(urlsToCache)}))});
+self.addEventListener('activate',function(e){e.waitUntil(caches.keys().then(function(names){return Promise.all(names.filter(function(n){return n!==CACHE_NAME}).map(function(n){return caches.delete(n)}))}))});
+self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(function(){return caches.match(e.request)}))});
+"""
+        await send_http(writer,200,_sw_js,'application/javascript','Cache-Control: no-cache\r\nService-Worker-Allowed: /\r\n')
+    elif method=='GET' and (route=='/app_icon.jpg' or route=='/pwa_icon.png'):
         import os as _os
-        _icon_path=_os.path.join(_os.path.dirname(__file__),'pwa_icon.png')
+        _icon_path=_os.path.join(_os.path.dirname(__file__),'static','icon.jpg')
+        if not _os.path.exists(_icon_path):
+            _icon_path=_os.path.join(_os.path.dirname(__file__),'pwa_icon.png')
         try:
             with open(_icon_path,'rb') as _f:_icon_data=_f.read()
-            writer.write(f'HTTP/1.1 200 OK\r\nContent-Type: image/png\r\nContent-Length: {len(_icon_data)}\r\nCache-Control: public, max-age=86400\r\n\r\n'.encode())
+            _ct='image/jpeg' if _icon_path.endswith('.jpg') else 'image/png'
+            writer.write(f'HTTP/1.1 200 OK\r\nContent-Type: {_ct}\r\nContent-Length: {len(_icon_data)}\r\nCache-Control: no-cache\r\n\r\n'.encode())
             writer.write(_icon_data)
             await writer.drain()
         except:await send_http(writer,404,'Not found','text/plain')
@@ -4968,7 +4982,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
 <meta property="og:url" content="https://dolsoe-poker.onrender.com">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎰</text></svg>">
 <link rel="manifest" href="/manifest.json">
-<link rel="apple-touch-icon" href="/pwa_icon.png">
+<link rel="apple-touch-icon" href="/app_icon.jpg">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="머슴포커">
@@ -5799,7 +5813,7 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap">
 <button id="i-watch-btn" class="btn-watch px-btn px-btn-pink" onclick="if(typeof _tele!=='undefined')_tele.watch_source='banner';watch()" style="font-size:0.85em;padding:6px 16px;font-weight:700">👀 관전</button>
 <a id="i-join-btn" href="/docs" onclick="try{_tele.docs_click.banner++}catch(e){}" style="display:inline-flex;align-items:center;gap:3px;font-size:0.75em;padding:6px 12px;border:1px solid rgba(157,127,51,0.3);border-radius:2px;color:var(--accent-mint);text-decoration:none">🤖 참전 →</a>
-<button id="pwa-install-btn" style="display:none;font-size:0.75em;padding:6px 14px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border:1px solid #7c3aed;border-radius:2px;cursor:pointer;font-family:var(--font-pixel);font-weight:700" onclick="installPWA()">📲 앱 다운로드</button>
+<button id="pwa-install-btn" style="font-size:0.75em;padding:6px 14px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border:1px solid #7c3aed;border-radius:2px;cursor:pointer;font-family:var(--font-pixel);font-weight:700" onclick="installPWA()">📲 앱 설치</button>
 </div>
 </div>
 </div>
@@ -10558,7 +10572,22 @@ if(_origRender){
   renderState=function(s){_origRender(s);_enhancedStateHook(s)};
 }
 
-// PWA Install
+// PWA Install + Service Worker
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('/sw.js').then(function(reg){
+    // Check for updates every page load
+    reg.update();
+    reg.addEventListener('updatefound',function(){
+      const nw=reg.installing;
+      nw.addEventListener('statechange',function(){
+        if(nw.state==='installed'&&navigator.serviceWorker.controller){
+          // New version available — auto-reload
+          if(confirm('새 버전이 있습니다! 업데이트할까요?')){location.reload()}
+        }
+      });
+    });
+  });
+}
 let _deferredPrompt=null;
 window.addEventListener('beforeinstallprompt',function(e){
   e.preventDefault();
@@ -10567,15 +10596,19 @@ window.addEventListener('beforeinstallprompt',function(e){
   if(btn)btn.style.display='inline-flex';
 });
 function installPWA(){
-  if(!_deferredPrompt)return;
-  _deferredPrompt.prompt();
-  _deferredPrompt.userChoice.then(function(r){
-    if(r.outcome==='accepted'){
-      const btn=document.getElementById('pwa-install-btn');
-      if(btn)btn.style.display='none';
-    }
-    _deferredPrompt=null;
-  });
+  if(_deferredPrompt){
+    _deferredPrompt.prompt();
+    _deferredPrompt.userChoice.then(function(r){
+      if(r.outcome==='accepted'){
+        const btn=document.getElementById('pwa-install-btn');
+        if(btn)btn.style.display='none';
+      }
+      _deferredPrompt=null;
+    });
+  } else {
+    // Fallback: show instructions
+    alert('브라우저 메뉴에서 "홈 화면에 추가" 또는 "앱 설치"를 눌러주세요!');
+  }
 }
 window.addEventListener('appinstalled',function(){
   const btn=document.getElementById('pwa-install-btn');
