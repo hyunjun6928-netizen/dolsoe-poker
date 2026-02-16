@@ -5238,7 +5238,7 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 @keyframes victoryBounce{0%{transform:scale(0.3) translateY(30px);opacity:0}60%{transform:scale(1.1) translateY(-5px);opacity:1}100%{transform:scale(1) translateY(0)}}
 @keyframes confettiFall{0%{transform:translateY(-10vh) rotate(0deg)}100%{transform:translateY(110vh) rotate(720deg)}}
 @keyframes confettiSway{0%,100%{margin-left:0}50%{margin-left:30px}}
-.confetti{position:fixed;top:-10px;width:10px;height:10px;z-index:9999;pointer-events:none;animation:confettiFall 3s linear forwards,confettiSway 1.5s ease-in-out infinite;opacity:0.9;border-radius:2px}
+.confetti{position:fixed;top:-10px;width:10px;height:10px;z-index:50;pointer-events:none;animation:confettiFall 3s linear forwards,confettiSway 1.5s ease-in-out infinite;opacity:0.9;border-radius:2px}
 .dbtn{background:#ffd93d;color:#000;font-size:0.55em;padding:1px 5px;border-radius:8px;font-weight:bold;margin-left:3px;border:1.5px solid #000;box-shadow:1px 1px 0 #000}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.78}}
 #actions{display:none;text-align:center;padding:12px;background:#ffffffdd;border-radius:16px;margin:8px 0;border:2px solid #6BC490;box-shadow:3px 3px 0 #6BC49033}
@@ -5428,9 +5428,10 @@ body.in-game .game-layout{position:fixed!important;top:0!important;left:0!import
 #quick-chat{display:none!important}
 #hand-timeline{display:none!important}
 .rivalry-banner{font-size:0.75em!important;padding:4px 10px!important}
-#action-banner{font-size:1.1em!important;padding:16px 32px!important;border-radius:14px!important}
+#action-banner{font-size:0.75em!important;padding:10px 16px!important;border-radius:10px!important;max-width:90vw!important;white-space:normal!important;word-break:break-word!important;overflow:hidden!important;text-overflow:ellipsis!important}
+#action-banner div{white-space:normal!important;word-break:break-word!important;overflow-wrap:break-word!important}
 .ava-ring{width:1.6em;height:1.6em;opacity:0.2}
-.confetti{width:5px;height:5px}
+.confetti{width:4px!important;height:4px!important;opacity:0.6!important;z-index:50!important}
 /* ═══ 모바일 하단 고정 UI ═══ */
 .bottom-dock{position:relative!important;bottom:auto!important;left:auto!important;right:auto!important;padding:4px 6px;z-index:50;background:rgba(10,13,20,0.95);border-top:1px solid rgba(74,222,128,0.2);flex-shrink:0}
 .bottom-dock .bd-reactions{display:none!important}
@@ -7145,7 +7146,8 @@ setInterval(spawnSmoke,4000);
 
 // 8. Confetti burst
 function burstConfetti(count){
-  count=count||40;
+  const _mob=window.innerWidth<=700;
+  count=_mob?Math.min(count||10,10):(count||40);
   const colors=['#D24C59','#9D7F33','#35B97D','#FCC88E','#69B5A8','#F09858'];
   for(let i=0;i<count;i++){
     const p=document.createElement('div');
@@ -7914,15 +7916,18 @@ function showActionBanner(d){
   const isAllIn=act.includes('ALL IN');
   const isRaise=act.includes('레이즈')||act.includes('RAISE');
   const isFold=act.includes('폴드')||act.includes('FOLD');
+  const _mob=window.innerWidth<=700;
   const b=document.createElement('div');b.id='action-banner';
   const sz=isAllIn?'1.2':isRaise?'1.0':'0.85';
   const glow=isAllIn?`0 0 40px ${color},0 0 80px ${color}44`:isRaise?`0 0 30px ${color}88`:`0 0 20px ${color}66`;
+  const _pad=_mob?(isAllIn?'10px 20px':'8px 16px'):(isAllIn?'22px 56px':'18px 44px');
   b.style.cssText=`position:absolute;top:35%;left:50%;transform:translate(-50%,-50%) scale(0.1);z-index:180;
-    padding:${isAllIn?'22px 56px':'18px 44px'};border-radius:16px;background:${bg};border:${isAllIn?'3':'2'}px solid ${color};
-    font-family:var(--font-pixel);text-align:center;pointer-events:none;white-space:nowrap;
+    padding:${_pad};border-radius:${_mob?'10px':'16px'};background:${bg};border:${isAllIn?'3':'2'}px solid ${color};
+    font-family:var(--font-pixel);text-align:center;pointer-events:none;white-space:${_mob?'normal':'nowrap'};
+    max-width:${_mob?'88vw':'none'};word-break:${_mob?'break-word':'normal'};overflow:hidden;
     opacity:0;transition:all 0.3s cubic-bezier(0.2,1.2,0.3,1);box-shadow:${glow};backdrop-filter:blur(8px)`;
-  const actFont=isAllIn?'3.2em':isRaise?'2.6em':'2.2em';
-  const nameFont=isAllIn?'1.0em':'0.9em';
+  const actFont=_mob?(isAllIn?'1.6em':isRaise?'1.3em':'1.1em'):(isAllIn?'3.2em':isRaise?'2.6em':'2.2em');
+  const nameFont=_mob?'0.7em':(isAllIn?'1.0em':'0.9em');
   b.innerHTML=`<div style="font-size:${nameFont};color:#ccc;margin-bottom:4px;letter-spacing:1px">${esc(d.emoji||'')} ${esc(d.name||'')}</div>
     <div style="font-size:${actFont};font-weight:900;color:${color};text-shadow:0 0 20px ${color},0 2px 0 rgba(0,0,0,0.5);letter-spacing:2px;${isAllIn?'animation:allInShake 0.4s ease-in-out':''}">${act}</div>
     <div style="font-size:0.75em;color:#aaa;margin-top:4px">💰 POT ${d.pot||0}pt</div>`;
@@ -7930,7 +7935,7 @@ function showActionBanner(d){
   requestAnimationFrame(()=>{requestAnimationFrame(()=>{
     b.style.opacity='1';b.style.transform='translate(-50%,-50%) scale(1)';
   })});
-  const holdTime=isAllIn?2500:isRaise?2000:1500;
+  const holdTime=_mob?(isAllIn?1500:isRaise?1200:900):(isAllIn?2500:isRaise?2000:1500);
   setTimeout(()=>{
     b.style.opacity='0';b.style.transform='translate(-50%,-50%) scale(1.15) translateY(-30px)';
     setTimeout(()=>{if(b.parentNode)b.remove()},400);
@@ -8079,11 +8084,12 @@ function showVictoryOverlay(winner,state){
 
 function showConfetti(){
 const colors=['#e8b84a','#DC5656','#5B94E8','#4CAF6E','#9B7AE8'];
-for(let i=0;i<20;i++){const c=document.createElement('div');c.className='confetti';
+const _mob=window.innerWidth<=700;const _cnt=_mob?6:20;const _sz=_mob?4:6;const _szR=_mob?3:8;const _dur=_mob?2000:4000;
+for(let i=0;i<_cnt;i++){const c=document.createElement('div');c.className='confetti';
 c.style.left=Math.random()*100+'vw';c.style.background=colors[Math.floor(Math.random()*colors.length)];
 c.style.animationDuration=(2.5+Math.random()*1.5)+'s';c.style.animationDelay=(Math.random()*0.5)+'s';
-c.style.width=(6+Math.random()*8)+'px';c.style.height=(6+Math.random()*8)+'px';
-document.body.appendChild(c);setTimeout(()=>c.remove(),4000)}}
+c.style.width=(_sz+Math.random()*_szR)+'px';c.style.height=(_sz+Math.random()*_szR)+'px';
+document.body.appendChild(c);setTimeout(()=>c.remove(),_dur)}}
 
 function showAct(d){const p=document.getElementById('actions');p.style.display='block';
 const b=document.getElementById('actbtns');b.innerHTML='';
