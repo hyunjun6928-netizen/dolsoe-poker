@@ -5297,6 +5297,18 @@ body.in-game .game-layout{position:fixed!important;top:0!important;left:0!import
 .info-bar>div{display:flex;align-items:center;gap:2px;white-space:nowrap}
 .ms-tab .ms-label{display:none}
 .lobby-tab .tab-label{display:none}
+/* ═══ 모바일 햄버거 메뉴 ═══ */
+#m-hamburger{display:inline-flex!important;align-items:center;justify-content:center;background:none;border:1px solid #4ade80;color:#4ade80;border-radius:4px;width:28px;height:28px;font-size:1.2em;cursor:pointer;padding:0;flex-shrink:0}
+#m-menu{display:none;position:fixed;top:0;right:0;width:220px;height:100dvh;background:rgba(10,13,20,0.97);border-left:1px solid #4ade80;z-index:9999;padding:48px 16px 16px;overflow-y:auto;backdrop-filter:blur(12px);animation:slideIn .2s ease}
+#m-menu.open{display:block}
+#m-menu-close{position:absolute;top:8px;right:12px;background:none;border:none;color:#ff6b6b;font-size:1.5em;cursor:pointer}
+#m-menu .m-item{display:flex;align-items:center;gap:10px;padding:12px 8px;border-bottom:1px solid rgba(255,255,255,0.06);color:#e0e0e0;font-size:0.85em;cursor:pointer;font-family:var(--font-pixel)}
+#m-menu .m-item:active{background:rgba(74,222,128,0.1)}
+#m-menu .m-section{color:#4ade80;font-size:0.7em;padding:8px 8px 4px;font-weight:700;font-family:var(--font-pixel)}
+@keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
+.info-bar .ib-extra{display:none!important}
+#settings-wrap{display:none!important}
+body.in-game #mobile-sheet{display:none}
 #vol-slider{width:28px!important}
 #delay-badge{font-size:0.7em!important;padding:1px 4px!important}
 .lang-btn{font-size:0.75em!important;padding:4px 8px!important;min-height:28px}
@@ -5622,23 +5634,39 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 <div id="game">
 <div class="info-bar">
 <div style="display:flex;align-items:center;gap:8px">
-<span id="home-btn" onclick="location.reload()" style="cursor:pointer;user-select:none">🏠</span>
-<span id="season-tag" style="color:var(--accent-mint);font-weight:bold">🏆</span>
+<span id="home-btn" class="ib-extra" onclick="location.reload()" style="cursor:pointer;user-select:none">🏠</span>
+<span id="season-tag" class="ib-extra" style="color:var(--accent-mint);font-weight:bold">🏆</span>
 <span id="hi" style="color:var(--accent-yellow)">핸드 #0</span>
 <span id="ri" style="color:var(--accent-pink)">대기중</span>
 </div>
 <div style="display:flex;align-items:center;gap:8px">
-<span id="si" style="color:var(--accent-mint)"></span>
-<span id="delay-badge" data-state="live">⚡ LIVE</span>
+<span id="si" class="ib-extra" style="color:var(--accent-mint)"></span>
+<span id="delay-badge" class="ib-extra" data-state="live">⚡ LIVE</span>
 <span id="mi" style="color:var(--accent-yellow)"></span>
 </div>
-<div style="display:flex;align-items:center;gap:4px">
+<div class="ib-extra" style="display:flex;align-items:center;gap:4px">
 <span id="mute-btn" style="display:none"></span>
 <span id="bgm-btn" style="display:none"></span>
 </div>
-<div id="hand-timeline" style="width:100%;text-align:center;padding:2px 0"><span class="tl-step" data-r="preflop"></span><span class="tl-step" data-r="flop"></span><span class="tl-step" data-r="turn"></span><span class="tl-step" data-r="river"></span><span class="tl-step" data-r="showdown"></span></div>
+<button id="m-hamburger" onclick="toggleMobileMenu()" style="display:none">☰</button>
+<div id="hand-timeline" class="ib-extra" style="width:100%;text-align:center;padding:2px 0"><span class="tl-step" data-r="preflop"></span><span class="tl-step" data-r="flop"></span><span class="tl-step" data-r="turn"></span><span class="tl-step" data-r="river"></span><span class="tl-step" data-r="showdown"></span></div>
 <div id="commentary" style="display:none;width:100%;padding:4px 16px;font-size:0.85em;text-align:center"></div>
 </div><!-- end info-bar -->
+<!-- 모바일 햄버거 메뉴 -->
+<div id="m-menu">
+<button id="m-menu-close" onclick="toggleMobileMenu()">✕</button>
+<div class="m-section">🎮 게임</div>
+<div class="m-item" onclick="location.reload()">🏠 로비로 돌아가기</div>
+<div class="m-item" onclick="toggleSettings();toggleMobileMenu()">⚙️ 설정</div>
+<div class="m-section">📊 정보</div>
+<div class="m-item" id="m-spectators">👀 관전자: 0명</div>
+<div class="m-item" id="m-delay">⚡ LIVE</div>
+<div class="m-item" id="m-season">🏆 시즌</div>
+<div class="m-section">💬 소통</div>
+<div class="m-item" onclick="document.getElementById('m-menu').classList.remove('open');mobileSheetShow('chat')">💬 채팅</div>
+<div class="m-item" onclick="document.getElementById('m-menu').classList.remove('open');mobileSheetShow('log')">📜 로그</div>
+<div class="m-item" onclick="document.getElementById('m-menu').classList.remove('open');mobileSheetShow('agents')">🤖 AI 에이전트</div>
+</div>
 <div class="game-layout">
 <!-- 좌측 독: 액션로그 + 리플레이/하이라이트 -->
 <div class="dock-left">
@@ -8307,7 +8335,9 @@ function toggleBgm(){
 function setBgmVol(v){_bgmVol=v/100;if(_bgm&&!_bgmMuted)_bgm.volume=_bgmVol;localStorage.setItem('bgm_vol',v)}
 function skipBgm(){let next;do{next=Math.floor(Math.random()*BGM_TRACKS.length)}while(next===_bgmIdx&&BGM_TRACKS.length>1);_bgmIdx=next;if(_bgm)playBgm()}
 function updateBgmUI(){const btn=document.getElementById('bgm-btn');if(btn)btn.textContent=_bgmMuted?'🎵✗':'🎵';const lbl=document.getElementById('bgm-track');if(lbl)lbl.textContent=BGM_TRACKS[_bgmIdx].name}
-function toggleSettings(){const p=document.getElementById('settings-panel');const b=document.getElementById('settings-toggle');if(p.style.display==='none'){p.style.display='block';b.style.transform='rotate(90deg)';updateSettingsUI()}else{p.style.display='none';b.style.transform='rotate(0deg)'}}
+function toggleSettings(){const p=document.getElementById('settings-panel');const b=document.getElementById('settings-toggle');if(p.style.display==='none'){p.style.display='block';if(b)b.style.transform='rotate(90deg)';updateSettingsUI()}else{p.style.display='none';if(b)b.style.transform='rotate(0deg)'}}
+function toggleMobileMenu(){const m=document.getElementById('m-menu');if(m)m.classList.toggle('open');if(m.classList.contains('open')){const si=document.getElementById('si');const db=document.getElementById('delay-badge');const st=document.getElementById('season-tag');if(si)document.getElementById('m-spectators').textContent='👀 '+si.textContent;if(db)document.getElementById('m-delay').textContent=db.textContent;if(st)document.getElementById('m-season').textContent=st.textContent}}
+function mobileSheetShow(tab){const sheet=document.getElementById('mobile-sheet');if(sheet){sheet.style.display='block';sheet.querySelectorAll('.ms-tab').forEach(b=>{const active=b.dataset.tab===tab;b.classList.toggle('active',active);b.style.color=active?'#4ade80':'#888';b.style.borderBottom=active?'2px solid #4ade80':'none'});sheet.querySelectorAll('.ms-body').forEach(d=>d.style.display=d.dataset.tab===tab?'block':'none')}}
 function updateSettingsUI(){
 const bb=document.getElementById('settings-bgm-btn');if(bb)bb.textContent=_bgmMuted?'🎵 OFF':'🎵 ON';
 const bt=document.getElementById('settings-bgm-track');if(bt)bt.textContent='♪ '+BGM_TRACKS[_bgmIdx].name;
