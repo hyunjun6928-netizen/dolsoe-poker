@@ -8831,7 +8831,7 @@ function drawSlime(name, emotion, size) {
     }
   }
 
-  // === ARMS — holding card (idle) or expressive ===
+  // === SHORT ARMS (2-3px stubs on sides) ===
   const armY = centerY + 1;
   if(emotion==='win'){
     // Arms up! (raised)
@@ -8843,32 +8843,12 @@ function drawSlime(name, emotion, size) {
     px(cx-bodyW-1, armY-5, col.dark); px(cx+bodyW+1, armY-5, col.dark);
     px(cx-bodyW-2, armY-2, col.dark); px(cx+bodyW+2, armY-2, col.dark);
   } else {
-    // Arms angled inward holding card (like app icon)
-    const cardX = cx, cardY = centerY + Math.floor(bodyH*0.3);
-    // Left arm: body edge → card
-    px(cx-bodyW, armY+1, col.body); px(cx-bodyW+1, armY+2, col.body);
-    px(cx-bodyW+2, armY+3, col.body); px(cx-bodyW+3, armY+3, col.body);
-    // Right arm: body edge → card
-    px(cx+bodyW, armY+1, col.body); px(cx+bodyW-1, armY+2, col.body);
-    px(cx+bodyW-2, armY+3, col.body); px(cx+bodyW-3, armY+3, col.body);
-    // outline
-    px(cx-bodyW-1, armY+1, col.dark); px(cx+bodyW+1, armY+1, col.dark);
-    px(cx-bodyW, armY+3, col.dark); px(cx+bodyW, armY+3, col.dark);
-    // === HELD CARD (small playing card) ===
-    const cW=4, cH=6;
-    const cLeft=cx-Math.floor(cW/2), cTop=cardY-1;
-    // Card white background
-    pxR(cLeft, cTop, cW, cH, '#fff');
-    // Card border
-    for(let dx=0;dx<cW;dx++){px(cLeft+dx,cTop,'#aaa');px(cLeft+dx,cTop+cH-1,'#aaa')}
-    for(let dy=0;dy<cH;dy++){px(cLeft,cTop+dy,'#aaa');px(cLeft+cW-1,cTop+dy,'#aaa')}
-    // Spade symbol (♠) in center
-    const sX=cLeft+1, sY=cTop+2;
-    px(sX, sY, '#111'); px(sX+1, sY, '#111');
-    px(sX, sY+1, '#111'); px(sX+1, sY+1, '#111');
-    px(sX, sY-1, '#111'); px(sX+1, sY-1, '#111');
-    // A letter top
-    px(cLeft+1, cTop+1, '#111');
+    // Normal arms (short stubs on sides)
+    for(let i=0;i<2;i++){
+      px(cx-bodyW-1, armY+i, col.body);
+      px(cx+bodyW+1, armY+i, col.body);
+    }
+    px(cx-bodyW-1, armY+2, col.dark); px(cx+bodyW+1, armY+2, col.dark);
   }
 
   // === BIG SPECULAR HIGHLIGHT (top-left dome, jelly feel) ===
