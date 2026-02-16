@@ -8760,16 +8760,16 @@ function drawSlime(name, emotion, size) {
 
   // --- Cute Blob Slime (PX=2, 40x40 grid) ---
   const cx=Math.floor(G/2); // 20
-  // Body dimensions — wider than tall (blob shape)
-  const bodyW = Math.floor(G*0.42); // half-width ~17
-  const bodyH = Math.floor(G*0.32); // half-height ~13
-  const centerY = Math.floor(G*0.50); // vertical center ~20
+  // Body dimensions — rounder blob (nearly circular)
+  const bodyW = Math.floor(G*0.38); // half-width ~15
+  const bodyH = Math.floor(G*0.38); // half-height ~15 (same as W for round)
+  const centerY = Math.floor(G*0.48); // vertical center slightly up
   const bodyTop = centerY - bodyH;
   const bodyBot = centerY + Math.floor(bodyH*0.7);
 
   // Emotion body squish
   let squishX=1.0, squishY=1.0;
-  if(emotion==='lose') { squishX=1.08; squishY=0.85; }
+  if(emotion==='lose') { squishX=1.05; squishY=0.92; }
 
   // === GROUND SHADOW (dark ellipse below body) ===
   const shY = bodyBot + 3;
