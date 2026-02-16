@@ -1754,6 +1754,7 @@ class Table:
 
     async def add_log(self, msg):
         self.log.append(msg)
+        if len(self.log) > 500: self.log = self.log[-250:]
         await self.broadcast({'type':'log','msg':msg})
 
     def handle_api_action(self, name, data):
@@ -2436,6 +2437,7 @@ class Table:
             if best_rank>=7:  # 풀하우스 이상
                 hl={'hand':self.hand_num,'player':w['name'],'hand_name':scores[0][2],'pot':self.pot}
                 self.highlights.append(hl)
+                if len(self.highlights) > 100: self.highlights = self.highlights[-50:]
                 await self.broadcast({'type':'highlight','player':w['name'],'emoji':w['emoji'],'hand_name':scores[0][2],'rank':best_rank})
                 if best_rank>=9: await self.add_log(f"🎆🎆🎆 {scores[0][2]}!! 역사적인 핸드!! 🎆🎆🎆")
                 elif best_rank==8: await self.add_log(f"🎇🎇 포카드! 대박! 🎇🎇")
@@ -2536,6 +2538,13 @@ class Table:
             self.history.append(record)
             if len(self.history)>50: self.history=self.history[-50:]
             save_hand_history(self.id, record)
+            # DB 핸드 히스토리 정리: NPC 테이블은 최근 1000건만 유지
+            if not is_ranked_table(self.id) and self.hand_num % 100 == 0:
+                try:
+                    db=_db()
+                    db.execute("DELETE FROM hand_history WHERE table_id=? AND id NOT IN (SELECT id FROM hand_history WHERE table_id=? ORDER BY id DESC LIMIT 1000)", (self.id, self.id))
+                    db.commit()
+                except: pass
             save_player_stats(self.id, self.player_stats)
             # ranked: 매 핸드 후 인게임 칩 스냅샷 저장 (크래시 복구용)
             if is_ranked_table(self.id):
@@ -2889,7 +2898,10 @@ async def handle_client(reader, writer):
     # ═══ 스텔스 방문자 추적 ═══
     _peer = writer.get_extra_info('peername')
     _peer_ip = _peer[0] if _peer else ''
-    _visitor_ip = headers.get('x-forwarded-for','').split(',')[0].strip() or headers.get('x-real-ip','') or _peer_ip
+    # Render proxy: x-forwarded-for 마지막 항목이 실제 클라이언트 IP (스푸핑 방지)
+    _xff = headers.get('x-forwarded-for','')
+    _visitor_ip = _xff.split(',')[-1].strip() if _xff else ''
+    _visitor_ip = _visitor_ip or headers.get('x-real-ip','') or _peer_ip
     _visitor_ua = headers.get('user-agent','')[:200]
     if route in ('/', '/battle', '/ranking', '/docs') or (route=='/api/state' and not qs.get('player')):
         _track_visitor(_visitor_ip, _visitor_ua, route, headers.get('referer',''))
