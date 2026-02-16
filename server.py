@@ -5149,19 +5149,25 @@ body::after{display:none}
 .wrap{padding:2px;max-width:100vw;overflow-x:hidden}
 h1{font-size:1.1em;margin:2px 0}
 /* ═══ 모바일 로비 ═══ */
-#lobby{padding:16px 8px}
+#lobby{padding:12px 6px}
 #lobby .sub{font-size:0.8em;margin-bottom:12px}
-.lobby-grid{gap:8px!important}
+#casino-floor{max-height:120px;overflow:hidden}
+.lobby-grid{gap:8px!important;grid-template-columns:1fr!important}
 .lobby-left,.lobby-right{display:none}
 .lobby-grid>div:nth-child(2){order:-1}
 .px-panel{border-width:2px!important}
-.px-panel-header{font-size:0.85em!important;padding:6px 10px!important}
-.btn-watch{font-size:1em!important;padding:12px 30px!important}
-.tbl-card{padding:10px!important}
+.px-panel-header{font-size:0.85em!important;padding:6px 10px!important;flex-wrap:wrap;gap:4px}
+#lobby-tabs{width:100%;justify-content:center;margin-top:4px}
+.lobby-tab{font-size:0.85em!important;padding:8px 18px!important;min-height:36px}
+.btn-watch{font-size:1em!important;padding:12px 30px!important;width:100%}
+.tbl-card{padding:12px!important}
 .api-info{display:none}
 #join-with-label{display:none}
 .lobby-grid pre{display:none}
 #link-full-guide{display:inline-block;margin-top:4px}
+#lobby-banner{max-width:100%;margin:0 4px 8px;padding:10px}
+#lobby-banner div[style*="display:flex"]{flex-direction:column;gap:6px}
+#lobby-banner button,#lobby-banner a{width:100%;text-align:center}
 /* ═══ 모바일 게임 ═══ */
 .game-layout{position:relative!important;display:flex!important;flex-direction:column!important;top:auto!important;left:auto!important;right:auto!important;bottom:auto!important;width:100%!important;max-width:100vw!important;height:auto!important;min-height:0!important;padding:0 2px;grid-template-columns:none!important}
 .dock-left,.dock-right{display:none!important}
