@@ -8771,7 +8771,7 @@ function setSlimeTraits(name, profile) {
 }
 function drawSlime(name, emotion, size) {
   const traits = _slimeTraits[name] || {type:'balanced'};
-  const key = name+'_'+emotion+'_'+size+'_'+traits.type+'_'+(traits.eyeStyle||'normal');
+  const key = name+'_'+emotion+'_'+size+'_'+traits.type+'_'+(traits.eyeStyle||'normal')+'_'+(traits.accessories||[]).join(',');
   if (_slimeCache[key]) return _slimeCache[key];
   const PX = 2;
   const sz = size || 80;
@@ -9046,6 +9046,16 @@ function drawSlime(name, emotion, size) {
       }
       // Cape inner highlight
       for(let dy=0;dy<8;dy++){px(cx-bodyW-2,centerY+dy,'#a78bfa66');px(cx+bodyW+2,centerY+dy,'#a78bfa66')}
+    }
+    if(a==='propeller'){
+      // Propeller beanie cap
+      pxR(cx-bodyW+3,bodyTop,bodyW*2-6,2,'#3b82f6');
+      pxR(cx-bodyW+2,bodyTop+1,bodyW*2-4,1,'#2563eb');
+      // Propeller blades
+      px(cx,bodyTop-1,'#888');px(cx,bodyTop-2,'#888');
+      px(cx-3,bodyTop-3,'#ef4444');px(cx-2,bodyTop-3,'#ef4444');px(cx-1,bodyTop-2,'#ef4444');
+      px(cx+1,bodyTop-2,'#ef4444');px(cx+2,bodyTop-3,'#ef4444');px(cx+3,bodyTop-3,'#ef4444');
+      px(cx,bodyTop-3,'#fbbf24'); // hub
     }
     if(a==='antenna'){
       const antY=bodyTop-6;
