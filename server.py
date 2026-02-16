@@ -43,6 +43,9 @@ RANKED_ROOMS = {
     'ranked-high':  {'min_buy': 200, 'max_buy': 2000, 'sb': 25, 'bb': 50, 'label': '하이 (200~2000pt)'},
 }
 
+# ranked 매치 잠금 (True면 admin_key 필요)
+RANKED_LOCKED = os.environ.get('RANKED_LOCKED', 'true').lower() == 'true'
+
 def is_ranked_table(tid):
     return tid in RANKED_ROOMS
 
@@ -2440,6 +2443,11 @@ async def handle_client(reader, writer):
         try: buy_in = max(0, int(d.get('buy_in', 0)))
         except (ValueError, TypeError): buy_in = 0
         if is_ranked_table(tid):
+            # 잠금 상태면 admin_key 필요
+            if RANKED_LOCKED and d.get('admin_key') != ADMIN_KEY:
+                await send_json(writer, {'ok': False, 'code': 'RANKED_LOCKED',
+                    'message': '랭크 매치는 현재 비공개 테스트 중입니다.'}, 403)
+                return
             room = RANKED_ROOMS[tid]
             mersoom_pw = d.get('password', '')
             if not auth_id or not mersoom_pw:
@@ -2778,88 +2786,91 @@ async def handle_client(reader, writer):
         name=qs.get('name',[''])[0]
         if not name: await send_json(writer,{'error':'name 필수'},400); return
         await send_json(writer,{'name':name,'coins':get_spectator_coins(name)})
-    elif method=='GET' and route=='/api/ranked/leaderboard':
-        # ranked 전용 리더보드: DB에서 순수익 기준
-        db = _db()
-        rows = db.execute("""SELECT auth_id, balance, total_deposited, total_withdrawn
-            FROM ranked_balances ORDER BY (balance + total_withdrawn - total_deposited) DESC LIMIT 20""").fetchall()
-        lb = []
-        for r in rows:
-            net_profit = (r[1] + r[3]) - r[2]  # (잔고 + 출금) - 입금 = 순수익
-            lb.append({'auth_id': r[0], 'balance': r[1], 'deposited': r[2], 'withdrawn': r[3], 'net_profit': net_profit})
-        await send_json(writer, {'leaderboard': lb})
-    elif method=='GET' and route=='/api/ranked/rooms':
-        rooms = []
-        for rid, cfg in RANKED_ROOMS.items():
-            t = find_table(rid)
-            players = len(t.seats) if t else 0
-            running = t.running if t else False
-            rooms.append({'id': rid, 'label': cfg['label'], 'min_buy': cfg['min_buy'], 'max_buy': cfg['max_buy'],
-                'sb': cfg['sb'], 'bb': cfg['bb'], 'players': players, 'running': running})
-        await send_json(writer, {'rooms': rooms})
-    elif method=='GET' and route=='/api/ranked/house':
-        # dolsoe(하우스) 잔고 + 총 입출금 통계 (admin용)
-        if ADMIN_KEY and qs.get('admin_key',[''])[0] != ADMIN_KEY:
-            await send_json(writer, {'error': 'admin_key required'}, 401); return
-        # dolsoe 머슴포인트 잔고
-        house_points = 0
-        if MERSOOM_AUTH_ID and MERSOOM_PASSWORD:
-            try:
-                h_status, h_data = await asyncio.get_event_loop().run_in_executor(None,
-                    lambda: _http_request(f'{MERSOOM_API}/points/me',
-                        headers={'X-Mersoom-Auth-Id': MERSOOM_AUTH_ID, 'X-Mersoom-Password': MERSOOM_PASSWORD}))
-                if h_status == 200 and isinstance(h_data, dict):
-                    house_points = h_data.get('points', 0)
-            except: pass
-        # DB에서 총 잔고/입출금 통계
-        db = _db()
-        stats = db.execute("SELECT COALESCE(SUM(balance),0), COALESCE(SUM(total_deposited),0), COALESCE(SUM(total_withdrawn),0), COUNT(*) FROM ranked_balances").fetchone()
-        total_balance, total_deposited, total_withdrawn, total_users = stats
-        # 경고: 하우스 포인트 < 전체 잔고면 환전 불가능
-        warning = None
-        if house_points < total_balance:
-            warning = f'⚠️ 하우스 포인트({house_points}) < 유저 잔고 합계({total_balance}). 환전 불가 위험!'
-        await send_json(writer, {
-            'house_points': house_points, 'total_user_balance': total_balance,
-            'total_deposited': total_deposited, 'total_withdrawn': total_withdrawn,
-            'total_users': total_users, 'warning': warning
-        })
-    elif method=='GET' and route=='/api/ranked/balance':
-        r_auth=qs.get('auth_id',[''])[0]
-        if not r_auth: await send_json(writer,{'error':'auth_id 필수'},400); return
-        # 최신 입금 반영
-        await asyncio.get_event_loop().run_in_executor(None, mersoom_check_deposits)
-        bal=ranked_balance(r_auth)
-        await send_json(writer,{'auth_id':r_auth,'balance':bal})
-    elif method=='POST' and route=='/api/ranked/withdraw':
-        d=json.loads(body) if body else {}
-        r_auth=d.get('auth_id',''); r_pw=d.get('password','')
-        try: amount=max(0, int(d.get('amount',0)))
-        except (ValueError, TypeError): amount=0
-        if not r_auth or not r_pw or amount<=0:
-            await send_json(writer,{'error':'auth_id, password, amount(>0) 필수'},400); return
-        # 머슴닷컴 계정 검증
-        cache_key = _auth_cache_key(r_auth, r_pw)
-        if _verified_auth_cache.get(r_auth) != cache_key:
-            verified, _ = await asyncio.get_event_loop().run_in_executor(
-                None, mersoom_verify_account, r_auth, r_pw)
-            if not verified:
-                await send_json(writer,{'error':'머슴닷컴 계정 인증 실패'},401); return
-            _verified_auth_cache[r_auth] = cache_key
-        # 잔고에서 차감
-        bal=ranked_balance(r_auth)
-        if amount>bal:
-            await send_json(writer,{'error':f'잔고 부족 (잔고: {bal}pt, 요청: {amount}pt)'},400); return
-        ok_d, rem = ranked_deposit(r_auth, amount)
-        if not ok_d:
-            await send_json(writer,{'error':'차감 실패'},500); return
-        # 머슴닷컴으로 포인트 전송
-        ok_w, msg_w = await asyncio.get_event_loop().run_in_executor(None, mersoom_withdraw, r_auth, amount)
-        if not ok_w:
-            # 실패 시 잔고 복구
-            ranked_credit(r_auth, amount)
-            await send_json(writer,{'error':f'머슴닷컴 전송 실패: {msg_w}'},500); return
-        await send_json(writer,{'ok':True,'withdrawn':amount,'remaining_balance':ranked_balance(r_auth)})
+    elif route.startswith('/api/ranked/'):
+        # ranked 전체 잠금 체크
+        if RANKED_LOCKED:
+            _ak = qs.get('admin_key',[''])[0]
+            if not _ak and body:
+                try: _ak = json.loads(body).get('admin_key','')
+                except: _ak = ''
+            if _ak != ADMIN_KEY:
+                await send_json(writer, {'error': '랭크 매치는 현재 비공개 테스트 중입니다.', 'code': 'RANKED_LOCKED'}, 403)
+                return
+        # ── ranked API (잠금 통과 후) ──
+        if method=='GET' and route=='/api/ranked/leaderboard':
+            db = _db()
+            rows = db.execute("""SELECT auth_id, balance, total_deposited, total_withdrawn
+                FROM ranked_balances ORDER BY (balance + total_withdrawn - total_deposited) DESC LIMIT 20""").fetchall()
+            lb = []
+            for r in rows:
+                net_profit = (r[1] + r[3]) - r[2]
+                lb.append({'auth_id': r[0], 'balance': r[1], 'deposited': r[2], 'withdrawn': r[3], 'net_profit': net_profit})
+            await send_json(writer, {'leaderboard': lb})
+        elif method=='GET' and route=='/api/ranked/rooms':
+            rooms = []
+            for rid, cfg in RANKED_ROOMS.items():
+                t = find_table(rid)
+                players = len(t.seats) if t else 0
+                running = t.running if t else False
+                rooms.append({'id': rid, 'label': cfg['label'], 'min_buy': cfg['min_buy'], 'max_buy': cfg['max_buy'],
+                    'sb': cfg['sb'], 'bb': cfg['bb'], 'players': players, 'running': running})
+            await send_json(writer, {'rooms': rooms})
+        elif method=='GET' and route=='/api/ranked/house':
+            if ADMIN_KEY and qs.get('admin_key',[''])[0] != ADMIN_KEY:
+                await send_json(writer, {'error': 'admin_key required'}, 401); return
+            house_points = 0
+            if MERSOOM_AUTH_ID and MERSOOM_PASSWORD:
+                try:
+                    h_status, h_data = await asyncio.get_event_loop().run_in_executor(None,
+                        lambda: _http_request(f'{MERSOOM_API}/points/me',
+                            headers={'X-Mersoom-Auth-Id': MERSOOM_AUTH_ID, 'X-Mersoom-Password': MERSOOM_PASSWORD}))
+                    if h_status == 200 and isinstance(h_data, dict):
+                        house_points = h_data.get('points', 0)
+                except: pass
+            db = _db()
+            stats = db.execute("SELECT COALESCE(SUM(balance),0), COALESCE(SUM(total_deposited),0), COALESCE(SUM(total_withdrawn),0), COUNT(*) FROM ranked_balances").fetchone()
+            total_balance, total_deposited, total_withdrawn, total_users = stats
+            warning = None
+            if house_points < total_balance:
+                warning = f'⚠️ 하우스 포인트({house_points}) < 유저 잔고 합계({total_balance}). 환전 불가 위험!'
+            await send_json(writer, {
+                'house_points': house_points, 'total_user_balance': total_balance,
+                'total_deposited': total_deposited, 'total_withdrawn': total_withdrawn,
+                'total_users': total_users, 'warning': warning
+            })
+        elif method=='GET' and route=='/api/ranked/balance':
+            r_auth=qs.get('auth_id',[''])[0]
+            if not r_auth: await send_json(writer,{'error':'auth_id 필수'},400); return
+            await asyncio.get_event_loop().run_in_executor(None, mersoom_check_deposits)
+            bal=ranked_balance(r_auth)
+            await send_json(writer,{'auth_id':r_auth,'balance':bal})
+        elif method=='POST' and route=='/api/ranked/withdraw':
+            d=json.loads(body) if body else {}
+            r_auth=d.get('auth_id',''); r_pw=d.get('password','')
+            try: amount=max(0, int(d.get('amount',0)))
+            except (ValueError, TypeError): amount=0
+            if not r_auth or not r_pw or amount<=0:
+                await send_json(writer,{'error':'auth_id, password, amount(>0) 필수'},400); return
+            cache_key = _auth_cache_key(r_auth, r_pw)
+            if _verified_auth_cache.get(r_auth) != cache_key:
+                verified, _ = await asyncio.get_event_loop().run_in_executor(
+                    None, mersoom_verify_account, r_auth, r_pw)
+                if not verified:
+                    await send_json(writer,{'error':'머슴닷컴 계정 인증 실패'},401); return
+                _verified_auth_cache[r_auth] = cache_key
+            bal=ranked_balance(r_auth)
+            if amount>bal:
+                await send_json(writer,{'error':f'잔고 부족 (잔고: {bal}pt, 요청: {amount}pt)'},400); return
+            ok_d, rem = ranked_deposit(r_auth, amount)
+            if not ok_d:
+                await send_json(writer,{'error':'차감 실패'},500); return
+            ok_w, msg_w = await asyncio.get_event_loop().run_in_executor(None, mersoom_withdraw, r_auth, amount)
+            if not ok_w:
+                ranked_credit(r_auth, amount)
+                await send_json(writer,{'error':f'머슴닷컴 전송 실패: {msg_w}'},500); return
+            await send_json(writer,{'ok':True,'withdrawn':amount,'remaining_balance':ranked_balance(r_auth)})
+        else:
+            await send_json(writer,{'error':'unknown ranked endpoint'},404)
     elif method=='GET' and route=='/api/recent':
         tid=qs.get('table_id',[''])[0]; t=find_table(tid)
         if not t: await send_json(writer,{'error':'no game'},404); return
@@ -4843,9 +4854,6 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 <div id="room-selector" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:4px 0;font-size:0.75em">
 <select id="room-select" onchange="switchRoom(this.value)" style="background:#1a1a2e;color:#e0e0e0;border:1px solid #444;border-radius:4px;padding:4px 8px;font-size:1em;cursor:pointer">
 <option value="mersoom">🎮 연습 (NPC)</option>
-<option value="ranked-micro">💰 마이크로 (10~100pt)</option>
-<option value="ranked-mid">💰 미들 (50~500pt)</option>
-<option value="ranked-high">🔥 하이 (200~2000pt)</option>
 </select>
 <span id="room-badge" style="color:#888;font-size:0.9em"></span>
 </div>
@@ -6355,7 +6363,7 @@ ws.onerror=e=>{console.warn('WS error',e);if(!wsOk)startPolling()}}
 
 function _teleFlush(){if(Date.now()-_tele._lastFlush<60000)return;const d={...(_tele)};delete d._lastFlush;delete d.rtt_arr;delete d._lastHand;d.sid=_teleSessionId;d.banner=_tele.banner_variant||'?';if(_refSrc)d.ref_src=_refSrc;if(_lastSrc&&_lastSrc!==_refSrc)d.last_src=_lastSrc;d.rtt_avg=_tele.poll_ok?Math.round(_tele.rtt_sum/_tele.poll_ok):0;const sorted=[..._tele.rtt_arr].sort((a,b)=>a-b);d.rtt_p95=sorted.length>=10?sorted[Math.floor(sorted.length*0.95)]||sorted[sorted.length-1]:null;d.success_rate=(_tele.poll_ok+_tele.poll_err)?Math.round(_tele.poll_ok/(_tele.poll_ok+_tele.poll_err)*10000)/100:100;navigator.sendBeacon('/api/telemetry',JSON.stringify(d));_tele.poll_ok=0;_tele.poll_err=0;_tele.rtt_sum=0;_tele.rtt_max=0;_tele.rtt_arr=[];_tele.overlay_allin=0;_tele.overlay_killcam=0;_tele.hands=0;_tele.docs_click={banner:0,overlay:0,intimidation:0};_tele._lastFlush=Date.now()}
 function switchRoom(rid){tableId=rid;const u=new URL(location.href);if(rid==='mersoom')u.searchParams.delete('table');else u.searchParams.set('table',rid);history.replaceState(null,'',u.toString());const sel=document.getElementById('room-select');if(sel)sel.value=rid;const badge=document.getElementById('room-badge');if(badge)badge.textContent=rid.startsWith('ranked')?'💰 실전':'🎮 연습';if(pollId){clearInterval(pollId);pollId=null}startPolling()}
-(function(){const sel=document.getElementById('room-select');if(sel){sel.value=tableId;const badge=document.getElementById('room-badge');if(badge)badge.textContent=tableId.startsWith('ranked')?'💰 실전':'🎮 연습'}})();
+(function(){const sel=document.getElementById('room-select');if(sel){sel.value=tableId;const badge=document.getElementById('room-badge');if(badge)badge.textContent=tableId.startsWith('ranked')?'💰 실전':'🎮 연습'}fetch('/api/ranked/rooms').then(r=>r.json()).then(d=>{if(d.rooms&&sel){d.rooms.forEach(r=>{const o=document.createElement('option');o.value=r.id;o.textContent=(r.id.includes('high')?'🔥':'💰')+' '+r.label+(r.players?' ('+r.players+'명)':'');sel.appendChild(o)});sel.value=tableId}}).catch(()=>{})})();
 function startPolling(){if(pollId)return;pollState();pollId=setInterval(()=>pollState(),_pollInterval)}
 async function pollState(){const t0=performance.now();try{const p=isPlayer?`&player=${encodeURIComponent(myName)}`:`&spectator=${encodeURIComponent(specName||t('specName'))}`;
 const r=await fetch(`/api/state?table_id=${tableId}${p}&lang=${lang}`);
