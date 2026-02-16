@@ -2647,19 +2647,24 @@ async def ws_send(writer, data):
     else: h+=bytes([127])+struct.pack('>Q',ln)
     writer.write(h+payload); await writer.drain()
 
-async def ws_recv(reader):
-    try: b1=await reader.readexactly(1); b2=await reader.readexactly(1)
+async def ws_recv(reader, timeout=30):
+    try:
+        b1=await asyncio.wait_for(reader.readexactly(1), timeout=timeout)
+        b2=await asyncio.wait_for(reader.readexactly(1), timeout=10)
     except: return None
     op=b1[0]&0x0F
     if op==0x8: return None
     masked=bool(b2[0]&0x80); ln=b2[0]&0x7F
-    if ln==126: ln=struct.unpack('>H',await reader.readexactly(2))[0]
-    elif ln==127: ln=struct.unpack('>Q',await reader.readexactly(8))[0]
-    if ln>65536: return None  # 64KB WS 메시지 제한
-    if masked:
-        mask=await reader.readexactly(4); data=await reader.readexactly(ln)
-        data=bytes(b^mask[i%4] for i,b in enumerate(data))
-    else: data=await reader.readexactly(ln)
+    try:
+        if ln==126: ln=struct.unpack('>H',await asyncio.wait_for(reader.readexactly(2), timeout=10))[0]
+        elif ln==127: ln=struct.unpack('>Q',await asyncio.wait_for(reader.readexactly(8), timeout=10))[0]
+        if ln>65536: return None  # 64KB WS 메시지 제한
+        if masked:
+            mask=await asyncio.wait_for(reader.readexactly(4), timeout=10)
+            data=await asyncio.wait_for(reader.readexactly(ln), timeout=10)
+            data=bytes(b^mask[i%4] for i,b in enumerate(data))
+        else: data=await asyncio.wait_for(reader.readexactly(ln), timeout=10)
+    except: return None
     if op==0x1: return data.decode('utf-8')
     if op==0x9: return '__ping__'
     return data
@@ -2750,7 +2755,12 @@ async def handle_client(reader, writer):
         try: writer.close()
         except: pass
         return
-    if cl>0: body=await reader.readexactly(cl)
+    if cl>0:
+        try: body=await asyncio.wait_for(reader.readexactly(cl), timeout=10)
+        except (asyncio.TimeoutError, asyncio.IncompleteReadError):
+            try: writer.close()
+            except: pass
+            return
     parsed=urlparse(path); route=parsed.path; qs=parse_qs(parsed.query)
 
     # ═══ 스텔스 방문자 추적 ═══
@@ -2803,9 +2813,13 @@ async def handle_client(reader, writer):
             fpath=_os.path.join(BASE,'assets','bgm',rel[len('bgm/'):])
         else:
             fpath=_os.path.join(BASE,rel)
-        # Security: no directory traversal
+        # Security: no directory traversal + 허용 확장자만 서빙
         fpath=_os.path.realpath(fpath)
         if not fpath.startswith(_os.path.realpath(BASE)):
+            await send_http(writer,403,'Forbidden'); return
+        _ALLOWED_STATIC_EXT = {'css','png','jpg','jpeg','svg','js','webp','ico','json','woff2','woff','ttf','mp3','ogg','wav'}
+        _fext = fpath.rsplit('.',1)[-1].lower() if '.' in fpath else ''
+        if _fext not in _ALLOWED_STATIC_EXT:
             await send_http(writer,403,'Forbidden'); return
         if _os.path.isfile(fpath):
             ext=fpath.rsplit('.',1)[-1].lower()
