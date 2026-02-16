@@ -5422,6 +5422,7 @@ body.in-game .game-layout{position:fixed!important;top:0!important;left:0!import
 .seat-6{top:-10px!important;left:65%!important;transform:translateX(-50%)!important;bottom:auto!important;right:auto!important}
 .seat-7{top:-10px!important;left:35%!important;transform:translateX(-50%)!important;bottom:auto!important;right:auto!important}
 /* ═══ 모바일 장식 숨기기 ═══ */
+.turn-badge{display:none!important}
 .comm-reveal-slot{display:none!important}
 .thought-bubble{display:none!important}
 .bluff-alert{display:none!important}
