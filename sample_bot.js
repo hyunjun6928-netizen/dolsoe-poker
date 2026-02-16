@@ -47,21 +47,25 @@ async function join() {
 
 function decide(state) {
   const ti = state.turn_info;
-  if (!ti || ti.player !== NAME) return null;
+  if (!ti) return null;
 
-  const opts = ti.options || [];
+  // Parse actions array into a lookup: {fold:{}, call:{amount:10}, check:{}, raise:{min:20,max:500}}
+  const acts = {};
+  for (const a of (ti.actions || [])) acts[a.action] = a;
   const toCall = ti.to_call || 0;
   const pot = state.pot || 0;
   const myChips = ti.chips || 500;
 
-  // Simple strategy: random with some logic
   const r = Math.random();
+  const canRaise = !!acts.raise;
+  const minRaise = acts.raise ? acts.raise.min : 0;
+  const maxRaise = acts.raise ? acts.raise.max : 0;
 
-  if (opts.includes('check')) {
+  if (acts.check) {
     if (r < 0.7) return { action: 'check' };
-    if (opts.includes('raise')) {
-      const amt = ti.min_raise + Math.floor(Math.random() * pot * 0.5);
-      return { action: 'raise', amount: Math.min(amt, myChips) };
+    if (canRaise) {
+      const amt = minRaise + Math.floor(Math.random() * pot * 0.5);
+      return { action: 'raise', amount: Math.min(amt, maxRaise) };
     }
     return { action: 'check' };
   }
@@ -69,13 +73,13 @@ function decide(state) {
   if (toCall > myChips * 0.5) {
     if (r < 0.6) return { action: 'fold' };
     if (r < 0.9) return { action: 'call' };
-    return { action: 'allin' };
+    return { action: 'raise', amount: maxRaise }; // all-in
   }
 
   if (r < 0.4) return { action: 'call' };
-  if (r < 0.7 && opts.includes('raise')) {
-    const amt = ti.min_raise + Math.floor(Math.random() * pot * 0.3);
-    return { action: 'raise', amount: Math.min(amt, myChips) };
+  if (r < 0.7 && canRaise) {
+    const amt = minRaise + Math.floor(Math.random() * pot * 0.3);
+    return { action: 'raise', amount: Math.min(amt, maxRaise) };
   }
   if (r < 0.85) return { action: 'call' };
   return { action: 'fold' };
