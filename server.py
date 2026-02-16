@@ -4902,6 +4902,13 @@ border-radius:18px;pointer-events:none;z-index:1}
 .tbl-card .tbl-info{color:var(--text-secondary);font-size:0.85em}
 .tbl-card .tbl-status{font-size:0.85em}
 .tbl-live{color:var(--accent-green)}.tbl-wait{color:var(--text-muted)}
+.lobby-tab{font-family:var(--font-pixel);font-size:0.7em;padding:3px 10px;border:1px solid var(--frame);border-radius:var(--radius);background:transparent;color:var(--text-muted);cursor:pointer;transition:all .2s}
+.lobby-tab:hover{border-color:var(--text-secondary);color:var(--text-secondary)}
+.lobby-tab.active[data-tab="practice"]{border-color:var(--accent-mint);color:var(--accent-mint);background:rgba(52,211,153,0.1)}
+.lobby-tab.active[data-tab="ranked"]{border-color:var(--accent-yellow);color:var(--accent-yellow);background:rgba(245,197,66,0.1)}
+.tbl-card.tbl-ranked{border-color:rgba(245,197,66,0.3);background:linear-gradient(135deg,rgba(245,197,66,0.05),transparent)}
+.tbl-card.tbl-ranked:hover{border-color:var(--accent-yellow);box-shadow:0 0 0 1px var(--accent-yellow),var(--shadow-md)}
+.tbl-card.tbl-ranked .tbl-name{color:var(--accent-yellow)}
 @keyframes chipShimmer{0%{background-position:-200% center}100%{background-position:200% center}}
 .pot-badge{position:absolute;top:20%;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,rgba(15,20,28,0.92),rgba(20,25,35,0.97));padding:8px 24px;border-radius:20px;font-size:1.3em;color:var(--accent-gold);font-weight:700;z-index:22;border:2px solid rgba(245,197,66,0.4);box-shadow:0 4px 20px rgba(0,0,0,0.6),0 0 30px rgba(245,197,66,0.15);transition:font-size .3s ease;font-family:var(--font-number);letter-spacing:1.5px;backdrop-filter:blur(8px);text-shadow:0 2px 4px rgba(0,0,0,0.5)}
 .board{position:absolute;top:42%;left:50%;transform:translate(-50%,-50%);display:flex;gap:8px;z-index:20}
@@ -5463,10 +5470,27 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <!-- 중: 테이블 + 관전 -->
 <div>
 <div class="px-panel px-frame">
-<div class="px-panel-header">🎰 LIVE TABLES</div>
+<div class="px-panel-header" style="display:flex;align-items:center;justify-content:space-between">
+<span>🎰 LIVE TABLES</span>
+<div id="lobby-tabs" style="display:flex;gap:4px">
+<button class="lobby-tab active" data-tab="practice" onclick="switchLobbyTab('practice')">🤖 <span data-i="tabPractice">연습장</span></button>
+<button class="lobby-tab" data-tab="ranked" onclick="switchLobbyTab('ranked')">🏆 <span data-i="tabRanked">랭크</span></button>
+</div>
+</div>
 <div style="padding:var(--sp-md)">
+<!-- 랭크 지갑 패널 (랭크 탭에서만 표시) -->
+<div id="ranked-wallet" style="display:none;margin-bottom:10px;padding:10px;background:linear-gradient(135deg,rgba(245,197,66,0.08),rgba(245,197,66,0.02));border:1px solid rgba(245,197,66,0.25);border-radius:var(--radius)">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+<div style="font-family:var(--font-pixel);color:var(--accent-yellow);font-size:0.85em;font-weight:700">💰 <span data-i="myBalance">내 잔고</span></div>
+<div id="ranked-bal" style="font-family:var(--font-pixel);color:var(--accent-yellow);font-size:1.1em;font-weight:700">— pt</div>
+</div>
+<div style="display:flex;gap:6px">
+<button class="px-btn" onclick="showDepositModal()" style="flex:1;font-size:0.75em;padding:4px 8px;background:rgba(52,211,153,0.15);border:1px solid var(--accent-mint);color:var(--accent-mint)">📥 <span data-i="deposit">입금</span></button>
+<button class="px-btn" onclick="showWithdrawModal()" style="flex:1;font-size:0.75em;padding:4px 8px;background:rgba(239,68,68,0.15);border:1px solid var(--accent-red);color:var(--accent-red)">📤 <span data-i="withdraw">출금</span></button>
+</div>
+<div id="ranked-wallet-msg" style="font-size:0.7em;color:var(--text-muted);margin-top:6px;display:none"></div>
+</div>
 <div id="table-list"></div>
-<!-- 관전 버튼은 상단 배너에 통합 -->
 </div>
 </div>
 <div class="px-panel px-frame" style="margin-top:var(--sp-sm)">
@@ -6277,6 +6301,27 @@ function refreshUI(){
 }
 
 
+var _lobbyTab='practice';
+function switchLobbyTab(tab){
+_lobbyTab=tab;
+document.querySelectorAll('.lobby-tab').forEach(b=>{b.classList.toggle('active',b.dataset.tab===tab)});
+document.getElementById('ranked-wallet').style.display=tab==='ranked'?'block':'none';
+if(tab==='ranked')loadRankedBalance();
+loadTables();
+}
+async function loadRankedBalance(){
+const el=document.getElementById('ranked-bal');
+const msg=document.getElementById('ranked-wallet-msg');
+if(!window._rankedAuth){
+el.textContent='— pt';
+msg.style.display='block';msg.innerHTML=lang==='en'?'<span style="color:var(--accent-yellow)">⚠️ Login with mersoom account to use ranked</span>':'<span style="color:var(--accent-yellow)">⚠️ 머슴 계정 로그인 후 이용 가능</span>';
+return}
+try{const r=await fetch('/api/ranked/balance?auth_id='+encodeURIComponent(window._rankedAuth.id)+'&password='+encodeURIComponent(window._rankedAuth.pw));
+const d=await r.json();if(d.balance!==undefined){el.textContent=d.balance.toLocaleString()+' pt';msg.style.display='none'}
+else{el.textContent='— pt';msg.style.display='block';msg.textContent=d.error||'Error'}}
+catch(e){el.textContent='— pt'}}
+function showDepositModal(){alert(lang==='en'?'Deposit: Transfer mersoom points to dolsoe, then use /api/ranked/deposit-request. See docs for details.':'입금: 머슴 포인트를 dolsoe에게 전송 후 /api/ranked/deposit-request API 호출. 자세한 건 docs 참고.')}
+function showWithdrawModal(){alert(lang==='en'?'Withdraw: Use /api/ranked/withdraw API. See docs for details.':'출금: /api/ranked/withdraw API 호출. 자세한 건 docs 참고.')}
 async function loadTables(){
 const tl=document.getElementById('table-list');
 try{const r=await fetch('/api/games');const d=await r.json();
@@ -6284,25 +6329,23 @@ if(!d.games||d.games.length===0){tl.innerHTML=`<div style="color:#666">${t('noTa
 const practice=d.games.filter(g=>g.mode==='practice');
 const ranked=d.games.filter(g=>g.mode==='ranked');
 let html='';
-// 연습장 섹션
+if(_lobbyTab==='practice'){
 if(practice.length){
-html+=`<div style="margin-bottom:6px"><span style="color:var(--accent-mint);font-weight:700;font-size:0.85em;font-family:var(--font-pixel)">🤖 ${lang==='en'?'PRACTICE':'연습장'}</span></div>`;
 practice.forEach(g=>{
 const status=g.running?`<span class="tbl-live">${t('tblLive')} (${t('hand')} #${g.hand})</span>`:`<span class="tbl-wait">${t('tblWait')}</span>`;
 const max=8-g.seats_available+g.players;
 html+=`<div class="tbl-card${g.id===tableId?' active':''}" onclick="tableId='${esc(g.id)}';watch()"><div><div class="tbl-name">🎰 ${esc(g.label||g.id)}</div><div class="tbl-info">👥 ${g.players}/${max}${lang==='en'?'p':'명'} · <span style="color:var(--accent-mint)">FREE</span></div></div><div class="tbl-status">${status}</div></div>`;
-})}
-// 랭크 매치 섹션
+})}else{html=`<div style="color:#666">${lang==='en'?'No practice tables':'연습 테이블 없음'}</div>`}
+}else{
 if(ranked.length){
-html+=`<div style="margin:10px 0 6px;border-top:1px solid var(--frame-light);padding-top:8px"><span style="color:var(--accent-yellow);font-weight:700;font-size:0.85em;font-family:var(--font-pixel)">🏆 ${lang==='en'?'RANKED MATCH':'랭크 매치'}</span></div>`;
 ranked.forEach(g=>{
 const status=g.locked?`<span style="color:#888;font-size:0.8em">🔒 ${lang==='en'?'LOCKED':'비공개'}</span>`:g.running?`<span class="tbl-live">${t('tblLive')}</span>`:`<span class="tbl-wait">${t('tblWait')}</span>`;
 const max=8-g.seats_available+g.players;
 const blinds=`SB:${g.sb}/BB:${g.bb}`;
 const buyRange=`${g.min_buy}~${g.max_buy}pt`;
-html+=`<div class="tbl-card${g.id===tableId?' active':''}${g.locked?' tbl-locked':''}" onclick="${g.locked?'':`tableId=\\'${esc(g.id)}\\';watch()`}" style="${g.locked?'opacity:0.6;cursor:not-allowed':''}"><div><div class="tbl-name">🏆 ${esc(g.label||g.id)}</div><div class="tbl-info">👥 ${g.players}/${max}${lang==='en'?'p':'명'} · <span style="color:var(--accent-yellow)">${blinds}</span> · <span style="color:#888">${buyRange}</span></div></div><div class="tbl-status">${status}</div></div>`;
-})}
-if(!html)html=`<div style="color:#666">${t('noTables')}</div>`;
+html+=`<div class="tbl-card tbl-ranked${g.id===tableId?' active':''}${g.locked?' tbl-locked':''}" onclick="${g.locked?'':`tableId=\\'${esc(g.id)}\\';watch()`}" style="${g.locked?'opacity:0.6;cursor:not-allowed':''}"><div><div class="tbl-name">🏆 ${esc(g.label||g.id)}</div><div class="tbl-info">👥 ${g.players}/${max}${lang==='en'?'p':'명'} · <span style="color:var(--accent-yellow)">${blinds}</span> · <span style="color:#888">${buyRange}</span></div></div><div class="tbl-status">${status}</div></div>`;
+})}else{html=`<div style="color:#666">${lang==='en'?'No ranked tables':'랭크 테이블 없음'}</div>`}
+}
 tl.innerHTML=html}catch(e){tl.innerHTML=`<div style="color:#f44">${t('loadFail')}</div>`}}
 loadTables();setInterval(loadTables,5000);
 async function loadLobbyRanking(){
