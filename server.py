@@ -1202,7 +1202,7 @@ _TOKEN_MAX_AGE = 86400  # 24시간 후 토큰 만료
 chat_cooldowns = {}  # name -> last_chat_timestamp
 CHAT_COOLDOWN = 5  # 5초
 
-ADMIN_KEY = os.environ.get('POKER_ADMIN_KEY', '')
+ADMIN_KEY = os.environ.get('POKER_ADMIN_KEY', '') or None  # empty string → None (prevents bypass)
 
 def issue_token(name):
     token = secrets.token_hex(16)
@@ -3466,7 +3466,7 @@ async def handle_client(reader, writer):
     elif method=='GET' and route=='/api/_v':
         # 스텔스 방문자 통계 (비공개 — URL 모르면 접근 불가)
         k=qs.get('k',[''])[0]
-        if (not ADMIN_KEY or k!=ADMIN_KEY) and k!='dolsoe_peek_2026': await send_json(writer,{'error':'not found'},404); return
+        if not ADMIN_KEY or k!=ADMIN_KEY: await send_json(writer,{'error':'not found'},404); return
         await send_json(writer,_get_visitor_stats())
     elif method=='GET' and route=='/api/highlights':
         tid=qs.get('table_id',[''])[0]
@@ -3611,7 +3611,7 @@ async def handle_client(reader, writer):
 async def send_http(writer, status, body, ct='text/plain; charset=utf-8', extra_headers=''):
     st={200:'OK',400:'Bad Request',404:'Not Found',302:'Found'}.get(status,'OK')
     if isinstance(body,str): body=body.encode('utf-8')
-    h=f"HTTP/1.1 {status} {st}\r\nContent-Type: {ct}\r\nContent-Length: {len(body)}\r\n{extra_headers}Access-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type\r\nX-Content-Type-Options: nosniff\r\nX-Frame-Options: SAMEORIGIN\r\nConnection: close\r\n\r\n"
+    h=f"HTTP/1.1 {status} {st}\r\nContent-Type: {ct}\r\nContent-Length: {len(body)}\r\n{extra_headers}Access-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type\r\nX-Content-Type-Options: nosniff\r\nX-Frame-Options: DENY\r\nContent-Security-Policy: default-src 'self'; script-src 'unsafe-inline' 'self'; style-src 'unsafe-inline' 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' wss: ws:; object-src 'none'; base-uri 'self'\r\nConnection: close\r\n\r\n"
     try: writer.write(h.encode()+body); await writer.drain()
     except: pass
 
@@ -7237,7 +7237,7 @@ if(s.turn){const _tb=_$('#turnb');if(_tb){_tb.style.display='block';_tb.textCont
 else document.getElementById('turnb').style.display='none';
 const op=document.getElementById('turn-options');
 if(s.turn_options&&!isPlayer){
-const to=s.turn_options;let oh=`<span style="color:#ffaa00">${to.player}</span> ${t('options')}`;
+const to=s.turn_options;let oh=`<span style="color:#ffaa00">${esc(to.player)}</span> ${t('options')}`;
 oh+=to.actions.map(a=>{
 if(a.action==='fold')return`<span style="color:#ff4444">${t('optFold')}</span>`;
 if(a.action==='call')return`<span style="color:#4488ff">${t('optCall')} ${a.amount}pt</span>`;
@@ -7530,7 +7530,7 @@ try{const r=await fetch(`/api/replay?table_id=${tableId}&hand=${num}`);const d=a
 let html=`<div style="margin-bottom:8px"><span style="color:#ffaa00;font-weight:bold">핸드 #${d.hand}</span> <button onclick="loadReplays()" style="background:#333;color:#aaa;border:none;padding:2px 8px;border-radius:4px;cursor:pointer;font-size:0.85em">${t('backList')}</button></div>`;
 html+=`<button onclick="copyHandLink(${d.hand})" style="background:#2d8a4e;color:#fff;border:none;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:0.8em;margin-left:8px">📋 공유 링크 복사</button></div>`;
 html+=`<div style="color:#888;margin-bottom:4px">👥 ${d.players.map(p=>p.name+'('+p.hole.join(' ')+')').join(' | ')}</div>`;
-if(d.community.length)html+=`<div style="color:#88f;margin-bottom:4px">🃏 ${d.community.join(' ')}</div>`;
+if(d.community.length)html+=`<div style="color:#88f;margin-bottom:4px">🃏 ${d.community.map(c=>esc(c)).join(' ')}</div>`;
 html+=`<div style="color:#4f4;margin-bottom:6px">🏆 ${d.winner} +${d.pot}pt</div>`;
 html+='<div style="border-top:1px solid #1a1e2e;padding-top:4px">';
 let curRound='';d.actions.forEach(a=>{if(a.round!==curRound){curRound=a.round;html+=`<div style="color:#ff8;margin-top:4px">── ${curRound} ──</div>`}
@@ -7550,7 +7550,7 @@ const typeIcon={bigpot:'💰',rarehand:'🃏',allin_showdown:'🔥'}[h.type]||'�
 const typeLabel={bigpot:t('hlBigpot'),rarehand:t('hlRare'),allin_showdown:t('hlAllin')}[h.type]||h.type;
 const ago=Math.round((Date.now()/1000-h.ts)/60);
 const timeStr=ago<1?t('timeJust'):ago<60?ago+t('timeMin'):Math.round(ago/60)+t('timeHour');
-el.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><span><span style="color:#ffaa00;font-weight:bold">${typeIcon} 핸드 #${h.hand}</span> <span style="color:#888;font-size:0.85em">${typeLabel}</span></span><span style="color:#555;font-size:0.8em">${timeStr}</span></div><div style="margin-top:3px"><span style="color:#44ff44">🏆 ${esc(h.winner)}</span> <span style="color:#ffaa00">+${h.pot}pt</span>${h.hand_name?' <span style="color:#ff8800">'+esc(h.hand_name)+'</span>':''} <span style="color:#888">| ${h.players.map(n=>esc(n)).join(' vs ')}</span></div>${h.community.length?'<div style="color:#88ccff;font-size:0.85em;margin-top:2px">🃏 '+h.community.join(' ')+'</div>':''}`;
+el.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><span><span style="color:#ffaa00;font-weight:bold">${typeIcon} 핸드 #${h.hand}</span> <span style="color:#888;font-size:0.85em">${typeLabel}</span></span><span style="color:#555;font-size:0.8em">${timeStr}</span></div><div style="margin-top:3px"><span style="color:#44ff44">🏆 ${esc(h.winner)}</span> <span style="color:#ffaa00">+${h.pot}pt</span>${h.hand_name?' <span style="color:#ff8800">'+esc(h.hand_name)+'</span>':''} <span style="color:#888">| ${h.players.map(n=>esc(n)).join(' vs ')}</span></div>${h.community.length?'<div style="color:#88ccff;font-size:0.85em;margin-top:2px">🃏 '+h.community.map(c=>esc(c)).join(' ')+'</div>':''}`;
 el.onclick=()=>loadHand(h.hand);
 hp.appendChild(el)})}catch(e){hp.innerHTML=`<div style="color:#f44">${t('loadFail')}</div>`}}
 
@@ -7565,6 +7565,7 @@ function copyHandLink(hand){
 if(hp){setTimeout(()=>{const rp=document.getElementById('replay-panel');if(rp){rp.style.display='block';loadHand(parseInt(hp))}},2000)}})();
 
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+function escJs(s){return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'\\"').replace(/</g,'\\x3c')}
 function addLog(m){const l=document.getElementById('log');const d=document.createElement('div');
 if(m.includes('━━━')){d.style.cssText='color:#ffaa00;font-weight:bold;border-top:2px solid #ffaa0044;padding-top:6px;margin-top:6px'}
 else if(m.includes('──')){d.style.cssText='color:#88ccff;font-weight:bold;background:#88ccff11;padding:2px 4px;border-radius:4px;margin:4px 0'}
@@ -7794,19 +7795,19 @@ function showBustDownloadPrompt(victim,emoji,bc,cd){
 const existing=document.getElementById('bust-dl-modal');if(existing)existing.remove();
 const m=document.createElement('div');m.id='bust-dl-modal';
 m.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:linear-gradient(180deg,#1a0a0a,#2a1515);border:3px solid #ff4444;border-radius:16px;padding:24px;z-index:200;text-align:center;color:#fff;font-family:var(--font-pixel);min-width:300px;max-width:400px;box-shadow:0 0 40px rgba(255,0,0,0.3);animation:fadeIn .3s';
-const vn=esc(victim);
+const vn=esc(victim);const vnJs=escJs(victim);
 m.innerHTML=`
 <div style="font-size:2em;margin-bottom:8px">☠️</div>
 <div style="font-size:1.2em;font-weight:bold;color:#ff6666;margin-bottom:6px">${emoji} ${vn}</div>
 <div style="color:#ffaa00;font-size:0.9em;margin-bottom:4px">${lang==='en'?'BANKRUPT!':'파산!'} (💀×${bc})</div>
 <div style="color:#aaa;font-size:0.8em;margin-bottom:12px">${lang==='en'?'Download analysis to improve your bot':'봇 개선용 분석 데이터 다운로드'}</div>
 <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:center;margin-bottom:8px">
-<button onclick="bustDlAnalysis('${vn}','hands')" style="background:rgba(74,222,128,0.2);border:1px solid #4ade80;color:#4ade80;border-radius:6px;padding:5px 10px;cursor:pointer;font-family:var(--font-pixel);font-size:0.75em">📋 핸드로그</button>
-<button onclick="bustDlAnalysis('${vn}','winrate')" style="background:rgba(96,165,250,0.2);border:1px solid #60a5fa;color:#60a5fa;border-radius:6px;padding:5px 10px;cursor:pointer;font-family:var(--font-pixel);font-size:0.75em">🧠 승률분석</button>
-<button onclick="bustDlAnalysis('${vn}','position')" style="background:rgba(251,191,36,0.2);border:1px solid #fbbf24;color:#fbbf24;border-radius:6px;padding:5px 10px;cursor:pointer;font-family:var(--font-pixel);font-size:0.75em">🎯 포지션</button>
-<button onclick="bustDlAnalysis('${vn}','ev')" style="background:rgba(248,113,113,0.2);border:1px solid #f87171;color:#f87171;border-radius:6px;padding:5px 10px;cursor:pointer;font-family:var(--font-pixel);font-size:0.75em">💰 EV</button>
-<button onclick="bustDlAnalysis('${vn}','matchup')" style="background:rgba(192,132,252,0.2);border:1px solid #c084fc;color:#c084fc;border-radius:6px;padding:5px 10px;cursor:pointer;font-family:var(--font-pixel);font-size:0.75em">⚔️ 전적</button>
-<button onclick="bustDownload('${vn}','csv')" style="background:rgba(255,255,255,0.08);border:1px solid #888;color:#aaa;border-radius:6px;padding:5px 10px;cursor:pointer;font-family:var(--font-pixel);font-size:0.75em">📊 CSV</button>
+<button onclick="bustDlAnalysis('${vnJs}','hands')" style="background:rgba(74,222,128,0.2);border:1px solid #4ade80;color:#4ade80;border-radius:6px;padding:5px 10px;cursor:pointer;font-family:var(--font-pixel);font-size:0.75em">📋 핸드로그</button>
+<button onclick="bustDlAnalysis('${vnJs}','winrate')" style="background:rgba(96,165,250,0.2);border:1px solid #60a5fa;color:#60a5fa;border-radius:6px;padding:5px 10px;cursor:pointer;font-family:var(--font-pixel);font-size:0.75em">🧠 승률분석</button>
+<button onclick="bustDlAnalysis('${vnJs}','position')" style="background:rgba(251,191,36,0.2);border:1px solid #fbbf24;color:#fbbf24;border-radius:6px;padding:5px 10px;cursor:pointer;font-family:var(--font-pixel);font-size:0.75em">🎯 포지션</button>
+<button onclick="bustDlAnalysis('${vnJs}','ev')" style="background:rgba(248,113,113,0.2);border:1px solid #f87171;color:#f87171;border-radius:6px;padding:5px 10px;cursor:pointer;font-family:var(--font-pixel);font-size:0.75em">💰 EV</button>
+<button onclick="bustDlAnalysis('${vnJs}','matchup')" style="background:rgba(192,132,252,0.2);border:1px solid #c084fc;color:#c084fc;border-radius:6px;padding:5px 10px;cursor:pointer;font-family:var(--font-pixel);font-size:0.75em">⚔️ 전적</button>
+<button onclick="bustDownload('${vnJs}','csv')" style="background:rgba(255,255,255,0.08);border:1px solid #888;color:#aaa;border-radius:6px;padding:5px 10px;cursor:pointer;font-family:var(--font-pixel);font-size:0.75em">📊 CSV</button>
 </div>
 <button onclick="this.parentElement.remove()" style="background:#444;color:#999;border:1px solid #666;border-radius:8px;padding:6px 20px;cursor:pointer;font-family:var(--font-pixel);font-size:0.8em">${lang==='en'?'Close':'닫기'}</button>`;
 document.body.appendChild(m);
