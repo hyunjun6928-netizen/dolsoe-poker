@@ -60,11 +60,18 @@ def mersoom_verify_account(auth_id, password):
     except:
         return False, 0
 
-# 검증된 auth_id→password 캐시 (세션 내, 재검증 방지)
-_verified_auth_cache = {}  # auth_id -> password_hash (검증 통과 시 저장)
+# 검증된 auth_id→password 캐시 (세션 내, 재검증 방지, 최대 500건)
+_verified_auth_cache = {}  # auth_id -> password_hash
 
 def _auth_cache_key(auth_id, password):
     return hashlib.sha256(f'{auth_id}:{password}'.encode()).hexdigest()
+
+def _auth_cache_set(auth_id, cache_key):
+    if len(_verified_auth_cache) > 500:
+        # FIFO: 절반 삭제
+        keys = list(_verified_auth_cache.keys())[:250]
+        for k in keys: del _verified_auth_cache[k]
+    _verified_auth_cache[auth_id] = cache_key
 
 # 입금 잔고: DB 영속화 (ranked_balances 테이블)
 _ranked_auth_map = {}  # poker_name -> auth_id (닉네임→머슴계정 매핑, 세션 내)
@@ -847,6 +854,9 @@ def _db():
             auth_id TEXT, amount INT,
             created_at TEXT,
             processed_at REAL DEFAULT (strftime('%s','now')))""")
+        _db_conn.execute("""CREATE TABLE IF NOT EXISTS ranked_ingame(
+            table_id TEXT, auth_id TEXT, name TEXT, chips INT,
+            updated_at REAL, PRIMARY KEY(table_id, auth_id))""")
         _db_conn.commit()
     return _db_conn
 
@@ -1562,10 +1572,20 @@ class Table:
         # 자동 리셋
         await asyncio.sleep(5)
         if is_ranked_table(self.id):
-            # ranked: 파산한 플레이어 칩은 이미 상대에게 감. 칩 0인 놈 제거만.
-            # 파산자의 auth_id 잔고는 이미 0이므로 환전 불필요.
-            self.seats=[s for s in self.seats if s['chips']>0 and not s.get('out')]
-            # 칩 리셋 안 함. NPC 안 넣음.
+            # ranked: 게임 종료 시 모든 플레이어 칩을 DB 잔고에 즉시 반영
+            for s in self.seats:
+                auth_id = s.get('_auth_id') or _ranked_auth_map.get(s['name'])
+                if auth_id and s['chips'] > 0:
+                    ranked_credit(auth_id, s['chips'])
+                    print(f"[RANKED] 게임종료 정산: {s['name']}({auth_id}) +{s['chips']}pt → 잔고 {ranked_balance(auth_id)}pt", flush=True)
+                    s['chips'] = 0  # 이중 크레딧 방지
+            self.seats=[]  # ranked 게임 끝나면 전원 퇴장 (재입장 필요)
+            # ingame 스냅샷 정리 (정산 완료)
+            try:
+                db = _db()
+                db.execute("DELETE FROM ranked_ingame WHERE table_id=?", (self.id,))
+                db.commit()
+            except: pass
         else:
             self.seats=[s for s in self.seats if s['chips']>0 and not s.get('out')]
             real_players=[s for s in self.seats if not s['is_bot']]
@@ -1584,7 +1604,9 @@ class Table:
                 for s in self.seats:
                     if s['is_bot'] and s['chips']<self.START_CHIPS//2:
                         s['chips']=self.START_CHIPS
-        self.hand_num=0; self.SB=5; self.BB=10; self.highlights=[]
+        self.hand_num=0; self.highlights=[]
+        if not is_ranked_table(self.id):
+            self.SB=5; self.BB=10
         return  # finally 블록에서 자동 재시작 처리
 
     async def play_hand(self):
@@ -2047,6 +2069,15 @@ class Table:
             if len(self.history)>50: self.history=self.history[-50:]
             save_hand_history(self.id, record)
             save_player_stats(self.id, self.player_stats)
+            # ranked: 매 핸드 후 인게임 칩 스냅샷 저장 (크래시 복구용)
+            if is_ranked_table(self.id):
+                db = _db()
+                for s in self.seats:
+                    auth_id = s.get('_auth_id') or _ranked_auth_map.get(s['name'])
+                    if auth_id:
+                        db.execute("INSERT OR REPLACE INTO ranked_ingame(table_id, auth_id, name, chips, updated_at) VALUES(?,?,?,?,?)",
+                            (self.id, auth_id, s['name'], s['chips'], time.time()))
+                db.commit()
         # 투표 결과 → 관전자에게 방송
         if self.spectator_votes and record.get('winner'):
             correct=[vid for vid,pick in self.spectator_votes.items() if pick==record['winner']]
@@ -2498,7 +2529,7 @@ async def handle_client(reader, writer):
                     await send_json(writer, {'ok': False, 'code': 'AUTH_FAILED',
                         'message': '머슴닷컴 계정 인증 실패. auth_id와 password를 확인하세요.'}, 401)
                     return
-                _verified_auth_cache[auth_id] = cache_key
+                _auth_cache_set(auth_id, cache_key)
             # 동일 auth_id 다중좌석 방지 (모든 ranked 테이블 검색)
             for rtid in RANKED_ROOMS:
                 rt = find_table(rtid)
@@ -2900,7 +2931,7 @@ async def handle_client(reader, writer):
                     None, mersoom_verify_account, r_auth, r_pw)
                 if not verified:
                     await send_json(writer,{'error':'머슴닷컴 계정 인증 실패'},401); return
-                _verified_auth_cache[r_auth] = cache_key
+                _auth_cache_set(r_auth, cache_key)
             bal=ranked_balance(r_auth)
             if amount>bal:
                 await send_json(writer,{'error':f'잔고 부족 (잔고: {bal}pt, 요청: {amount}pt)'},400); return
@@ -9362,6 +9393,21 @@ async def main():
     # 초기화는 포트 열린 후에
     load_leaderboard()
     init_mersoom_table()
+    # 크래시 복구: 미정산 ranked 인게임 칩을 잔고에 복구
+    try:
+        db = _db()
+        rows = db.execute("SELECT auth_id, name, chips, table_id FROM ranked_ingame").fetchall()
+        if rows:
+            print(f"⚠️ [RANKED] 크래시 복구: {len(rows)}건 미정산 발견", flush=True)
+            for auth_id, name, chips, tid in rows:
+                if chips > 0:
+                    ranked_credit(auth_id, chips)
+                    print(f"  ✅ 복구: {name}({auth_id}) +{chips}pt → 잔고 {ranked_balance(auth_id)}pt", flush=True)
+            db.execute("DELETE FROM ranked_ingame")
+            db.commit()
+            print(f"✅ [RANKED] 크래시 복구 완료", flush=True)
+    except Exception as e:
+        print(f"⚠️ [RANKED] 크래시 복구 실패: {e}", flush=True)
     asyncio.create_task(_tele_log_loop())
     asyncio.create_task(_deposit_poll_loop())
     async with server: await server.serve_forever()
