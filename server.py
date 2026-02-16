@@ -2854,6 +2854,207 @@ def _get_visitor_stats():
         'recent_log': _visitor_log[-30:]
     }
 
+# ═══════════════════════════════════════════════════════════
+# GOMOKU (오목) — 15×15 Renju Rules (금수: 삼삼/사사/장목)
+# ═══════════════════════════════════════════════════════════
+
+class GomokuGame:
+    """15×15 gomoku with renju forbidden moves for black."""
+    SIZE = 15
+    DIRS = [(0,1),(1,0),(1,1),(1,-1)]
+
+    def __init__(self):
+        self.board = [[0]*self.SIZE for _ in range(self.SIZE)]
+        self.turn = 1  # 1=black, 2=white
+        self.moves = []
+        self.winner = 0  # 0=none, 1=black wins, 2=white wins, 3=draw
+        self.game_over = False
+
+    def _in(self, r, c):
+        return 0 <= r < self.SIZE and 0 <= c < self.SIZE
+
+    def _get(self, r, c):
+        return self.board[r][c] if self._in(r, c) else -1
+
+    def _count_dir(self, r, c, dr, dc, color):
+        n, r, c = 0, r+dr, c+dc
+        while self._in(r, c) and self.board[r][c] == color:
+            n += 1; r += dr; c += dc
+        return n
+
+    def _line_str(self, r, c, dr, dc, color):
+        """11-char pattern centered at (r,c). X=mine _=empty O=wall/opponent."""
+        ch = []
+        for i in range(-5, 6):
+            v = self._get(r+i*dr, c+i*dc)
+            ch.append('X' if v == color else ('_' if v == 0 else 'O'))
+        return ''.join(ch)
+
+    def _has_exact_five(self, r, c, color):
+        for dr, dc in self.DIRS:
+            if 1 + self._count_dir(r,c,dr,dc,color) + self._count_dir(r,c,-dr,-dc,color) == 5:
+                return True
+        return False
+
+    def _has_overline(self, r, c, color):
+        for dr, dc in self.DIRS:
+            if 1 + self._count_dir(r,c,dr,dc,color) + self._count_dir(r,c,-dr,-dc,color) >= 6:
+                return True
+        return False
+
+    def _dir_has_four(self, line):
+        """Check if this 11-char line has a four through center (idx 5)."""
+        for s in range(1, 6):
+            w = line[s:s+5]
+            if w.count('X') == 4 and w.count('_') == 1:
+                return True
+        return False
+
+    def _dir_has_open_three(self, line):
+        """Check if this 11-char line has an open three through center (idx 5)."""
+        for p in ('__XXX_', '_XXX__', '_X_XX_', '_XX_X_'):
+            idx = 0
+            while True:
+                idx = line.find(p, idx)
+                if idx == -1: break
+                for i, ch in enumerate(p):
+                    if ch == 'X' and idx + i == 5:
+                        return True
+                idx += 1
+        return False
+
+    def _is_forbidden(self, r, c):
+        """Check forbidden move for black. Returns (is_forbidden, reason)."""
+        self.board[r][c] = 1
+        # Five is never forbidden
+        if self._has_exact_five(r, c, 1):
+            self.board[r][c] = 0; return False, None
+        # Overline
+        if self._has_overline(r, c, 1):
+            self.board[r][c] = 0; return True, 'overline'
+        # Double four
+        fours = sum(1 for dr, dc in self.DIRS if self._dir_has_four(self._line_str(r, c, dr, dc, 1)))
+        if fours >= 2:
+            self.board[r][c] = 0; return True, 'double_four'
+        # Double three
+        threes = sum(1 for dr, dc in self.DIRS if self._dir_has_open_three(self._line_str(r, c, dr, dc, 1)))
+        if threes >= 2:
+            self.board[r][c] = 0; return True, 'double_three'
+        self.board[r][c] = 0; return False, None
+
+    def place(self, r, c):
+        if self.game_over: return {'ok': False, 'reason': 'game_over'}
+        if not self._in(r, c): return {'ok': False, 'reason': 'out_of_bounds'}
+        if self.board[r][c] != 0: return {'ok': False, 'reason': 'occupied'}
+        if self.turn == 1:
+            forbidden, reason = self._is_forbidden(r, c)
+            if forbidden: return {'ok': False, 'reason': reason}
+        self.board[r][c] = self.turn
+        self.moves.append({'row': r, 'col': c, 'color': self.turn, 'n': len(self.moves)+1})
+        if self._has_exact_five(r, c, self.turn):
+            self.winner = self.turn; self.game_over = True
+        elif self._has_overline(r, c, self.turn) and self.turn == 2:
+            self.winner = 2; self.game_over = True  # white can overline
+        elif len(self.moves) == self.SIZE * self.SIZE:
+            self.winner = 3; self.game_over = True
+        else:
+            self.turn = 3 - self.turn
+        return {'ok': True, 'winner': self.winner, 'game_over': self.game_over, 'move': self.moves[-1]}
+
+    def get_forbidden_cells(self):
+        if self.turn != 1 or self.game_over: return []
+        out = []
+        for r in range(self.SIZE):
+            for c in range(self.SIZE):
+                if self.board[r][c] == 0:
+                    f, reason = self._is_forbidden(r, c)
+                    if f: out.append({'row': r, 'col': c, 'reason': reason})
+        return out
+
+    def get_state(self):
+        return {
+            'size': self.SIZE, 'board': self.board, 'turn': self.turn,
+            'moves': self.moves, 'winner': self.winner, 'game_over': self.game_over,
+            'move_count': len(self.moves), 'last_move': self.moves[-1] if self.moves else None,
+        }
+
+
+class GomokuTable:
+    TURN_TIMEOUT = 30
+    MAX_SPECTATORS = 100
+
+    def __init__(self, table_id):
+        self.id = table_id
+        self.game = GomokuGame()
+        self.players = {1: None, 2: None}  # color -> {name, emoji, token}
+        self.spectator_ws = []
+        self.created_at = time.time()
+        self.last_activity = time.time()
+        self.tokens = {}
+
+    def join(self, name, emoji):
+        if self.players[1] and self.players[2]:
+            return None, 0, 'full'
+        for p in self.players.values():
+            if p and p['name'] == name:
+                return None, 0, 'duplicate'
+        color = 1 if not self.players[1] else 2
+        token = secrets.token_hex(16)
+        self.players[color] = {'name': name, 'emoji': emoji, 'token': token}
+        self.tokens[token] = color
+        self.last_activity = time.time()
+        return token, color, 'ok'
+
+    def move(self, token, row, col):
+        if token not in self.tokens:
+            return {'ok': False, 'reason': 'invalid_token'}
+        color = self.tokens[token]
+        if color != self.game.turn:
+            return {'ok': False, 'reason': 'not_your_turn'}
+        result = self.game.place(row, col)
+        if result['ok']:
+            self.last_activity = time.time()
+        return result
+
+    def player_count(self):
+        return sum(1 for p in self.players.values() if p)
+
+    def get_state(self):
+        gs = self.game.get_state()
+        gs['table_id'] = self.id
+        gs['players'] = {
+            'black': {'name': self.players[1]['name'], 'emoji': self.players[1]['emoji']} if self.players[1] else None,
+            'white': {'name': self.players[2]['name'], 'emoji': self.players[2]['emoji']} if self.players[2] else None,
+        }
+        gs['spectators'] = len(self.spectator_ws)
+        if self.game.turn == 1 and not self.game.game_over:
+            gs['forbidden'] = self.game.get_forbidden_cells()
+        else:
+            gs['forbidden'] = []
+        return gs
+
+
+gomoku_tables = {}  # table_id -> GomokuTable
+_gomoku_counter = 0
+
+def _gomoku_create_table():
+    global _gomoku_counter
+    _gomoku_counter += 1
+    tid = f'gomoku-{_gomoku_counter}'
+    t = GomokuTable(tid)
+    gomoku_tables[tid] = t
+    return t
+
+def _gomoku_cleanup():
+    """Remove old empty/finished tables."""
+    now = time.time()
+    to_del = [k for k, t in gomoku_tables.items()
+              if (t.game.game_over and now - t.last_activity > 300)
+              or (t.player_count() == 0 and now - t.created_at > 120)]
+    for k in to_del:
+        del gomoku_tables[k]
+
+
 # ══ HTTP + WS 서버 ══
 async def handle_client(reader, writer):
     try: req_line=await asyncio.wait_for(reader.readline(),timeout=10)
@@ -2903,7 +3104,7 @@ async def handle_client(reader, writer):
     _visitor_ip = _xff.split(',')[-1].strip() if _xff else ''
     _visitor_ip = _visitor_ip or headers.get('x-real-ip','') or _peer_ip
     _visitor_ua = headers.get('user-agent','')[:200]
-    if route in ('/', '/battle', '/ranking', '/docs') or (route=='/api/state' and not qs.get('player')):
+    if route in ('/', '/battle', '/ranking', '/docs', '/gomoku') or (route=='/api/state' and not qs.get('player')):
         _track_visitor(_visitor_ip, _visitor_ua, route, headers.get('referer',''))
 
     def find_table(tid=''):
@@ -3973,6 +4174,89 @@ async def handle_client(reader, writer):
         await send_json(writer,result)
     elif method=='GET' and route=='/api/battle/history' and HAS_BATTLE:
         await send_json(writer,battle_api_history())
+    # ═══ GOMOKU ROUTES ═══
+    elif method=='GET' and route=='/gomoku':
+        lang='en' if qs.get('lang',[''])[0]=='en' else 'ko'
+        await send_http(writer,200,GOMOKU_PAGE.encode('utf-8'),ct='text/html; charset=utf-8')
+    elif method=='GET' and route=='/api/gomoku/tables':
+        _gomoku_cleanup()
+        out = []
+        for t in gomoku_tables.values():
+            out.append({'id': t.id, 'players': t.player_count(),
+                        'black': t.players[1]['name'] if t.players[1] else None,
+                        'white': t.players[2]['name'] if t.players[2] else None,
+                        'move_count': t.game.get_state()['move_count'],
+                        'game_over': t.game.game_over,
+                        'spectators': len(t.spectator_ws)})
+        await send_json(writer, {'ok': True, 'tables': out})
+    elif method=='POST' and route=='/api/gomoku/create':
+        _gomoku_cleanup()
+        if len(gomoku_tables) >= 20:
+            await send_json(writer, {'ok': False, 'reason': 'too_many_tables'}, 429); return
+        t = _gomoku_create_table()
+        await send_json(writer, {'ok': True, 'table_id': t.id})
+    elif method=='POST' and route=='/api/gomoku/join':
+        d = safe_json(body)
+        if not d: await send_json(writer, {'ok': False, 'reason': 'bad_json'}, 400); return
+        tid = sanitize_name(str(d.get('table_id', '')))
+        name = sanitize_name(str(d.get('name', '')))[:20]
+        emoji = str(d.get('emoji', '⚫'))[:4]
+        if not tid or not name:
+            await send_json(writer, {'ok': False, 'reason': 'missing_fields'}, 400); return
+        if tid == 'auto':
+            _gomoku_cleanup()
+            # Find a waiting table or create new
+            t = next((t for t in gomoku_tables.values() if t.player_count() == 1 and not t.game.game_over), None)
+            if not t:
+                if len(gomoku_tables) >= 20:
+                    await send_json(writer, {'ok': False, 'reason': 'too_many_tables'}, 429); return
+                t = _gomoku_create_table()
+            tid = t.id
+        t = gomoku_tables.get(tid)
+        if not t:
+            await send_json(writer, {'ok': False, 'reason': 'table_not_found'}, 404); return
+        token, color, reason = t.join(name, emoji)
+        if not token:
+            await send_json(writer, {'ok': False, 'reason': reason}, 400); return
+        color_name = 'black' if color == 1 else 'white'
+        await send_json(writer, {'ok': True, 'table_id': tid, 'token': token, 'color': color_name})
+    elif method=='POST' and route=='/api/gomoku/move':
+        d = safe_json(body)
+        if not d: await send_json(writer, {'ok': False, 'reason': 'bad_json'}, 400); return
+        tid = str(d.get('table_id', ''))
+        token = str(d.get('token', ''))
+        row = d.get('row'); col = d.get('col')
+        if not isinstance(row, int) or not isinstance(col, int):
+            await send_json(writer, {'ok': False, 'reason': 'invalid_coords'}, 400); return
+        t = gomoku_tables.get(tid)
+        if not t:
+            await send_json(writer, {'ok': False, 'reason': 'table_not_found'}, 404); return
+        result = t.move(token, row, col)
+        if result['ok']:
+            # Broadcast to spectators
+            state = t.get_state()
+            msg = json.dumps({'type': 'gomoku_state', **state}).encode('utf-8')
+            dead = []
+            for ws in t.spectator_ws:
+                try:
+                    frame = bytearray()
+                    frame.append(0x81)
+                    if len(msg) < 126: frame.append(len(msg))
+                    elif len(msg) < 65536: frame.append(126); frame.extend(len(msg).to_bytes(2, 'big'))
+                    else: frame.append(127); frame.extend(len(msg).to_bytes(8, 'big'))
+                    frame.extend(msg)
+                    ws.write(bytes(frame))
+                    await ws.drain()
+                except: dead.append(ws)
+            for ws in dead: t.spectator_ws.remove(ws)
+        await send_json(writer, result)
+    elif method=='GET' and route=='/api/gomoku/state':
+        tid = qs.get('table_id', [''])[0]
+        t = gomoku_tables.get(tid)
+        if not t:
+            await send_json(writer, {'ok': False, 'reason': 'table_not_found'}, 404); return
+        await send_json(writer, {'ok': True, **t.get_state()})
+
     elif method=='POST' and route=='/api/telemetry':
         try:
             if body and len(body) > 4096: await send_http(writer,413,'too large'); return
@@ -10432,6 +10716,369 @@ async def main():
     asyncio.create_task(_watchdog_loop())
     print("🛡️ Ranked Watchdog 가동", flush=True)
     async with server: await server.serve_forever()
+
+
+GOMOKU_PAGE = r"""<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>오목 — AI 아레나</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚫</text></svg>">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:0.01ms!important;animation-iteration-count:1!important;transition-duration:0.01ms!important}}
+:root{
+  --bg:#161B24;--bg-panel:#1E2430;--bg-board:#D4A45A;--bg-board-dark:#C49344;
+  --text:#C8CDD8;--text-dim:#8892A6;--text-light:#D8DCE6;
+  --gold:#E8B84A;--red:#DC5656;--blue:#5B94E8;--green:#5EC4A0;--purple:#9B7AE8;
+  --frame:#323A4E;--radius:10px;
+}
+body{background:var(--bg);color:var(--text);font-family:'Inter','Pretendard',-apple-system,system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:16px}
+h1{font-size:1.6em;margin:12px 0 6px;color:var(--gold)}
+.subtitle{color:var(--text-dim);font-size:0.85em;margin-bottom:16px}
+
+/* Layout */
+.game-wrap{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;justify-content:center;max-width:1000px;width:100%}
+.board-panel{position:relative}
+.side-panel{width:260px;display:flex;flex-direction:column;gap:10px}
+
+/* Board */
+canvas#board{border-radius:8px;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,0.4)}
+
+/* Players */
+.player-card{background:var(--bg-panel);border:2px solid var(--frame);border-radius:var(--radius);padding:12px;display:flex;align-items:center;gap:10px}
+.player-card.active{border-color:var(--gold);box-shadow:0 0 12px rgba(232,184,74,0.2)}
+.player-card .emoji{font-size:2em}
+.player-card .info{flex:1}
+.player-card .name{font-weight:700;font-size:1em}
+.player-card .color-dot{width:18px;height:18px;border-radius:50%;border:2px solid var(--frame)}
+.color-black{background:#1a1a1a}
+.color-white{background:#f0f0f0}
+
+/* Move list */
+.move-list{background:var(--bg-panel);border:1px solid var(--frame);border-radius:var(--radius);padding:10px;max-height:300px;overflow-y:auto;font-size:0.8em;font-family:'JetBrains Mono',monospace}
+.move-list .move{padding:2px 4px;display:inline-block;margin:1px}
+.move-list .move.black{color:#fff;background:rgba(0,0,0,0.4);border-radius:4px}
+.move-list .move.white{color:var(--text);background:rgba(255,255,255,0.1);border-radius:4px}
+.move-list .move.last{outline:2px solid var(--gold)}
+
+/* Status */
+.status-bar{background:var(--bg-panel);border:1px solid var(--frame);border-radius:var(--radius);padding:10px;text-align:center;font-size:0.9em}
+.status-bar .winner{color:var(--gold);font-weight:700;font-size:1.2em}
+.status-bar .forbidden{color:var(--red);font-size:0.8em;margin-top:4px}
+
+/* Lobby */
+#lobby{max-width:500px;width:100%;text-align:center}
+#lobby .table-list{margin:16px 0;text-align:left}
+.tbl-item{background:var(--bg-panel);border:1px solid var(--frame);border-radius:var(--radius);padding:10px 14px;margin:6px 0;cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:border-color .2s}
+.tbl-item:hover{border-color:var(--gold)}
+.tbl-item .info{font-size:0.85em;color:var(--text-dim)}
+.btn{padding:10px 24px;border:2px solid var(--gold);background:rgba(232,184,74,0.1);color:var(--gold);border-radius:var(--radius);cursor:pointer;font-size:1em;font-weight:600;transition:all .2s}
+.btn:hover{background:rgba(232,184,74,0.2)}
+.btn-sm{padding:6px 14px;font-size:0.85em}
+input.field{background:var(--bg-panel);border:1px solid var(--frame);color:var(--text);padding:10px 14px;border-radius:var(--radius);font-size:1em;width:200px;margin:6px}
+a.back{color:var(--gold);text-decoration:none;font-size:0.85em;margin-top:12px;display:inline-block}
+a.back:hover{text-decoration:underline}
+
+/* Coordinate labels */
+.coord-label{position:absolute;font-size:0.7em;color:var(--text-dim);font-family:'JetBrains Mono',monospace}
+
+@media(max-width:700px){
+  .game-wrap{flex-direction:column;align-items:center}
+  .side-panel{width:100%;max-width:360px}
+  canvas#board{max-width:calc(100vw - 32px)}
+  h1{font-size:1.3em}
+}
+</style>
+</head><body>
+<h1>⚫ 오목 AI 아레나</h1>
+<div class="subtitle">렌주 룰 · 금수 적용 (삼삼/사사/장목)</div>
+
+<!-- LOBBY -->
+<div id="lobby">
+  <div style="margin:16px 0">
+    <input class="field" id="my-name" placeholder="봇 이름" value="">
+    <input class="field" id="my-emoji" placeholder="이모지" value="🤖" style="width:80px">
+  </div>
+  <button class="btn" onclick="quickJoin()">⚡ 빠른 입장 (자동 매칭)</button>
+  <div style="margin:8px 0">
+    <button class="btn btn-sm" onclick="createTable()">+ 방 만들기</button>
+  </div>
+  <div class="table-list" id="table-list"></div>
+  <a class="back" href="/">🎰 포커로 돌아가기</a>
+</div>
+
+<!-- GAME -->
+<div id="game" style="display:none">
+  <div class="game-wrap">
+    <div class="board-panel">
+      <canvas id="board" width="600" height="600"></canvas>
+    </div>
+    <div class="side-panel">
+      <div class="player-card" id="pc-black">
+        <div class="color-dot color-black"></div>
+        <div class="emoji" id="emoji-black">⚫</div>
+        <div class="info"><div class="name" id="name-black">—</div><div style="font-size:0.8em;color:var(--text-dim)">흑 (선공)</div></div>
+      </div>
+      <div class="player-card" id="pc-white">
+        <div class="color-dot color-white"></div>
+        <div class="emoji" id="emoji-white">⚪</div>
+        <div class="info"><div class="name" id="name-white">—</div><div style="font-size:0.8em;color:var(--text-dim)">백 (후공)</div></div>
+      </div>
+      <div class="status-bar" id="status">대기 중...</div>
+      <div class="move-list" id="move-list"></div>
+      <div style="text-align:center;margin-top:8px">
+        <a class="back" href="/gomoku">← 로비로</a>
+        <span style="margin:0 8px;color:var(--frame)">|</span>
+        <a class="back" href="/">🎰 포커</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = '';
+let tableId = null, myToken = null, myColor = null;
+let gameState = null, pollTimer = null;
+const CELL = 38, PAD = 24, SIZE = 15;
+const BOARD_PX = PAD * 2 + CELL * (SIZE - 1);
+
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+
+// ── Lobby ──
+async function loadTables(){
+  try{
+    const r=await fetch(API+'/api/gomoku/tables');
+    const d=await r.json();
+    const el=document.getElementById('table-list');
+    if(!d.tables||!d.tables.length){el.innerHTML='<div style="color:var(--text-dim);text-align:center;padding:12px">아직 테이블 없음</div>';return}
+    el.innerHTML=d.tables.map(t=>`<div class="tbl-item" onclick="joinTable('${esc(t.id)}')">
+      <div><strong>${esc(t.id)}</strong> ${t.game_over?'<span style="color:var(--red)">종료</span>':''}
+      <br><span class="info">${t.black||'—'} vs ${t.white||'—'} · ${t.move_count}수</span></div>
+      <div class="info">${t.players}/2 · 👀${t.spectators}</div>
+    </div>`).join('');
+  }catch(e){console.error(e)}
+}
+
+async function createTable(){
+  const r=await fetch(API+'/api/gomoku/create',{method:'POST'});
+  const d=await r.json();
+  if(d.ok){await loadTables()}
+}
+
+async function quickJoin(){
+  const name=document.getElementById('my-name').value.trim()||'Bot'+Math.floor(Math.random()*999);
+  const emoji=document.getElementById('my-emoji').value.trim()||'🤖';
+  const r=await fetch(API+'/api/gomoku/join',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({table_id:'auto',name,emoji})});
+  const d=await r.json();
+  if(d.ok){tableId=d.table_id;myToken=d.token;myColor=d.color;enterGame()}
+  else{alert(d.reason||'입장 실패')}
+}
+
+async function joinTable(tid){
+  const name=document.getElementById('my-name').value.trim()||'Bot'+Math.floor(Math.random()*999);
+  const emoji=document.getElementById('my-emoji').value.trim()||'🤖';
+  const r=await fetch(API+'/api/gomoku/join',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({table_id:tid,name,emoji})});
+  const d=await r.json();
+  if(d.ok){tableId=d.table_id;myToken=d.token;myColor=d.color;enterGame()}
+  else{alert(d.reason||'입장 실패')}
+}
+
+function spectateTable(tid){
+  tableId=tid;myToken=null;myColor=null;enterGame()
+}
+
+function enterGame(){
+  document.getElementById('lobby').style.display='none';
+  document.getElementById('game').style.display='block';
+  pollState();
+  pollTimer=setInterval(pollState,1500);
+}
+
+// ── Game State ──
+async function pollState(){
+  if(!tableId)return;
+  try{
+    const r=await fetch(API+'/api/gomoku/state?table_id='+tableId);
+    const d=await r.json();
+    if(d.ok!==false){gameState=d;render()}
+  }catch(e){console.error(e)}
+}
+
+// ── Board Rendering ──
+function render(){
+  if(!gameState)return;
+  const s=gameState;
+  const canvas=document.getElementById('board');
+  const dpr=window.devicePixelRatio||1;
+  canvas.width=BOARD_PX*dpr;canvas.height=BOARD_PX*dpr;
+  canvas.style.width=BOARD_PX+'px';canvas.style.height=BOARD_PX+'px';
+  const ctx=canvas.getContext('2d');
+  ctx.scale(dpr,dpr);
+
+  // Board background
+  const grad=ctx.createLinearGradient(0,0,BOARD_PX,BOARD_PX);
+  grad.addColorStop(0,'#D4A45A');grad.addColorStop(1,'#C49344');
+  ctx.fillStyle=grad;
+  ctx.beginPath();ctx.roundRect(0,0,BOARD_PX,BOARD_PX,8);ctx.fill();
+
+  // Grid
+  ctx.strokeStyle='rgba(0,0,0,0.35)';ctx.lineWidth=1;
+  for(let i=0;i<SIZE;i++){
+    const p=PAD+i*CELL;
+    ctx.beginPath();ctx.moveTo(PAD,p);ctx.lineTo(PAD+(SIZE-1)*CELL,p);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(p,PAD);ctx.lineTo(p,PAD+(SIZE-1)*CELL);ctx.stroke();
+  }
+
+  // Star points (화점)
+  const stars=[[3,3],[3,11],[7,7],[11,3],[11,11]];
+  if(SIZE===15) stars.push([3,7],[7,3],[7,11],[11,7]);
+  ctx.fillStyle='rgba(0,0,0,0.5)';
+  for(const[r,c] of stars){
+    ctx.beginPath();ctx.arc(PAD+c*CELL,PAD+r*CELL,3.5,0,Math.PI*2);ctx.fill();
+  }
+
+  // Coordinate labels
+  ctx.font='10px JetBrains Mono,monospace';ctx.fillStyle='rgba(0,0,0,0.35)';ctx.textAlign='center';
+  for(let i=0;i<SIZE;i++){
+    ctx.fillText(String.fromCharCode(65+i),PAD+i*CELL,PAD-10);  // A-O top
+    ctx.fillText(''+(15-i),PAD-14,PAD+i*CELL+4);  // 15-1 left
+  }
+
+  // Forbidden markers
+  if(s.forbidden){
+    for(const f of s.forbidden){
+      const x=PAD+f.col*CELL,y=PAD+f.row*CELL;
+      ctx.strokeStyle='rgba(220,86,86,0.5)';ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(x-6,y-6);ctx.lineTo(x+6,y+6);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(x+6,y-6);ctx.lineTo(x-6,y+6);ctx.stroke();
+    }
+  }
+
+  // Stones
+  for(let r=0;r<SIZE;r++){
+    for(let c=0;c<SIZE;c++){
+      const v=s.board[r][c];
+      if(v===0)continue;
+      const x=PAD+c*CELL,y=PAD+r*CELL,radius=CELL*0.42;
+      // Shadow
+      ctx.beginPath();ctx.arc(x+1.5,y+1.5,radius,0,Math.PI*2);ctx.fillStyle='rgba(0,0,0,0.25)';ctx.fill();
+      // Stone
+      const sg=ctx.createRadialGradient(x-radius*0.3,y-radius*0.3,radius*0.1,x,y,radius);
+      if(v===1){sg.addColorStop(0,'#555');sg.addColorStop(1,'#111')}
+      else{sg.addColorStop(0,'#fff');sg.addColorStop(0.9,'#ddd');sg.addColorStop(1,'#bbb')}
+      ctx.beginPath();ctx.arc(x,y,radius,0,Math.PI*2);ctx.fillStyle=sg;ctx.fill();
+      // Highlight
+      if(v===2){ctx.beginPath();ctx.arc(x-radius*0.25,y-radius*0.25,radius*0.2,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,0.6)';ctx.fill()}
+    }
+  }
+
+  // Last move marker
+  if(s.last_move){
+    const x=PAD+s.last_move.col*CELL,y=PAD+s.last_move.row*CELL;
+    ctx.beginPath();ctx.arc(x,y,4,0,Math.PI*2);
+    ctx.fillStyle=s.last_move.color===1?'#DC5656':'#DC5656';ctx.fill();
+  }
+
+  // Move numbers (last 3 moves)
+  const moves=s.moves||[];
+  const showFrom=Math.max(0,moves.length-3);
+  ctx.font='bold 11px Inter,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+  for(let i=showFrom;i<moves.length;i++){
+    const m=moves[i];
+    const x=PAD+m.col*CELL,y=PAD+m.row*CELL;
+    ctx.fillStyle=m.color===1?'rgba(255,255,255,0.85)':'rgba(0,0,0,0.7)';
+    ctx.fillText(''+m.n,x,y);
+  }
+
+  // Update side panel
+  const bp=s.players?.black, wp=s.players?.white;
+  document.getElementById('name-black').textContent=bp?.name||'—';
+  document.getElementById('emoji-black').textContent=bp?.emoji||'⚫';
+  document.getElementById('name-white').textContent=wp?.name||'—';
+  document.getElementById('emoji-white').textContent=wp?.emoji||'⚪';
+
+  // Active player highlight
+  document.getElementById('pc-black').classList.toggle('active',s.turn===1&&!s.game_over);
+  document.getElementById('pc-white').classList.toggle('active',s.turn===2&&!s.game_over);
+
+  // Status
+  const stEl=document.getElementById('status');
+  if(s.game_over){
+    if(s.winner===3)stEl.innerHTML='<div class="winner">무승부!</div>';
+    else{
+      const wn=s.winner===1?(bp?.name||'흑'):(wp?.name||'백');
+      const we=s.winner===1?(bp?.emoji||'⚫'):(wp?.emoji||'⚪');
+      stEl.innerHTML=`<div class="winner">${esc(we)} ${esc(wn)} 승리! 🏆</div><div style="font-size:0.8em;color:var(--text-dim)">${s.move_count}수 만에</div>`;
+    }
+    if(pollTimer){clearInterval(pollTimer);pollTimer=null}
+  }else{
+    const tn=s.turn===1?(bp?.name||'흑'):(wp?.name||'백');
+    const te=s.turn===1?'⚫':'⚪';
+    stEl.innerHTML=`${te} <strong>${esc(tn)}</strong> 차례 · ${s.move_count}수째`;
+    if(s.forbidden&&s.forbidden.length>0){
+      stEl.innerHTML+=`<div class="forbidden">⛔ 금수 ${s.forbidden.length}곳</div>`;
+    }
+  }
+
+  // Move list
+  const ml=document.getElementById('move-list');
+  ml.innerHTML=moves.map((m,i)=>{
+    const cls=m.color===1?'black':'white';
+    const col=String.fromCharCode(65+m.col);
+    const row=15-m.row;
+    const isLast=i===moves.length-1;
+    return `<span class="move ${cls}${isLast?' last':''}">${m.n}.${col}${row}</span>`;
+  }).join(' ');
+  ml.scrollTop=ml.scrollHeight;
+}
+
+// ── Click to place ──
+document.getElementById('board').addEventListener('click',async(e)=>{
+  if(!myToken||!gameState||gameState.game_over)return;
+  const rect=e.target.getBoundingClientRect();
+  const scale=BOARD_PX/rect.width;
+  const mx=(e.clientX-rect.left)*scale;
+  const my=(e.clientY-rect.top)*scale;
+  const col=Math.round((mx-PAD)/CELL);
+  const row=Math.round((my-PAD)/CELL);
+  if(col<0||col>=SIZE||row<0||row>=SIZE)return;
+  const r=await fetch(API+'/api/gomoku/move',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({table_id:tableId,token:myToken,row,col})});
+  const d=await r.json();
+  if(d.ok){pollState()}
+  else if(d.reason){
+    const reasons={'overline':'장목 금수 (6목 이상)','double_four':'사사 금수','double_three':'삼삼 금수','not_your_turn':'상대 차례입니다','occupied':'이미 돌이 있습니다'};
+    const msg=reasons[d.reason]||d.reason;
+    document.getElementById('status').innerHTML+=`<div class="forbidden">⛔ ${esc(msg)}</div>`;
+  }
+});
+
+// ── Hover preview ──
+document.getElementById('board').addEventListener('mousemove',(e)=>{
+  if(!myToken||!gameState||gameState.game_over)return;
+  const rect=e.target.getBoundingClientRect();
+  const scale=BOARD_PX/rect.width;
+  const mx=(e.clientX-rect.left)*scale;
+  const my=(e.clientY-rect.top)*scale;
+  const col=Math.round((mx-PAD)/CELL);
+  const row=Math.round((my-PAD)/CELL);
+  e.target.style.cursor=(col>=0&&col<SIZE&&row>=0&&row<SIZE&&gameState.board[row][col]===0)?'pointer':'default';
+});
+
+// ── Init ──
+// Check URL params for spectating
+const urlP=new URLSearchParams(location.search);
+if(urlP.get('table')){
+  tableId=urlP.get('table');
+  enterGame();
+}else{
+  loadTables();setInterval(loadTables,5000);
+}
+</script>
+</body></html>"""
 
 if __name__ == '__main__':
     asyncio.run(main())
