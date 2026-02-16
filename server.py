@@ -10604,20 +10604,20 @@ function installPWA(){
     _deferredPrompt.prompt();
     _deferredPrompt.userChoice.then(function(r){
       if(r.outcome==='accepted'){
-        const btn=document.getElementById('pwa-install-btn');
-        if(btn)btn.style.display='none';
+        document.querySelectorAll('#pwa-install-btn,#pwa-install-btn2').forEach(b=>b.style.display='none');
       }
       _deferredPrompt=null;
     });
-  } else {
-    // Fallback: show instructions
-    alert('브라우저 메뉴에서 "홈 화면에 추가" 또는 "앱 설치"를 눌러주세요!');
   }
+  // No fallback alert — if already installed, button does nothing
 }
 window.addEventListener('appinstalled',function(){
-  const btn=document.getElementById('pwa-install-btn');
-  if(btn)btn.style.display='none';
+  document.querySelectorAll('#pwa-install-btn,#pwa-install-btn2').forEach(b=>b.style.display='none');
 });
+// Hide install buttons if already in standalone (app already installed)
+if(window.matchMedia('(display-mode: standalone)').matches){
+  document.querySelectorAll('#pwa-install-btn,#pwa-install-btn2').forEach(b=>b.style.display='none');
+}
 
 </script>
 <!-- Winner Overlay -->
