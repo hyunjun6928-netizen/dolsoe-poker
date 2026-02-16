@@ -5608,6 +5608,13 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 #profile-popup .pp-close{position:absolute;top:10px;right:14px;color:#D24C59;cursor:pointer;font-size:1.3em;transition:color .15s}
 #profile-popup .pp-close:hover{color:#F09858}
 #profile-backdrop{position:fixed;top:0;left:0;right:0;bottom:0;background:#000000aa;z-index:149;display:none}
+/* ═══ 모바일 전용 요소: 데스크톱에서 숨기기 ═══ */
+#m-menu{display:none;position:fixed;top:0;right:0;width:220px;height:100dvh;background:rgba(10,13,20,0.97);border-left:1px solid #6BC490;z-index:9999;padding:48px 16px 16px;overflow-y:auto;backdrop-filter:blur(12px)}
+#m-menu.open{display:block}
+#m-menu-close{position:absolute;top:8px;right:12px;background:none;border:none;color:#DC6868;font-size:1.5em;cursor:pointer}
+#m-hamburger{display:none}
+/* ═══ 게임 모드: wrap 숨기기 (데스크톱 포함) ═══ */
+body.in-game .wrap{display:none!important}
 @media(max-width:700px){
 *{box-sizing:border-box}
 body{overflow-x:hidden;-webkit-text-size-adjust:100%;padding-bottom:0}
