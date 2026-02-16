@@ -2047,7 +2047,7 @@ class Table:
         active=[s for s in self.seats if s['chips']>0 and not s.get('out')]
         if active: self.dealer=(self.dealer+1)%len(active)
 
-    def _count_alive(self): return sum(1 for s in self._hand_seats if not s['folded'])
+    def _count_alive(self): return sum(1 for s in self._hand_seats if not s['folded'] and not s.get('out'))
 
     async def _slowmo_broadcast(self, street, index, hand_record, deal=False):
         """슬로모션: 승률 계산 + 브로드캐스트. deal=True면 카드도 뽑음"""
@@ -2113,7 +2113,7 @@ class Table:
                 idx=(start+i)%n
                 if idx>=len(self._hand_seats): return  # safety
                 s=self._hand_seats[idx]
-                if s['folded'] or s['chips']<=0: continue
+                if s['folded'] or s.get('out') or s['chips']<=0: continue
                 if s['name']==last_raiser and s['name'] in acted: continue
                 if self._count_alive()<=1: return
                 to_call=self.current_bet-s['bet']
@@ -4109,7 +4109,7 @@ async def handle_ws(reader, writer, path):
                         db.execute("DELETE FROM ranked_ingame WHERE table_id=? AND auth_id=?", (t.id, auth_id_leave))
                         db.commit()
                     except: pass
-                seat['out']=True
+                seat['out']=True; seat['folded']=True
                 print(f"[RANKED] WS disconnect auto-cashout: {name} → {chips}pt returned to {auth_id_leave}", flush=True)
         try: writer.close()
         except: pass
