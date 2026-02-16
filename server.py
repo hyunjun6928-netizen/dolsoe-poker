@@ -1894,7 +1894,7 @@ class Table:
         hand_record = {'hand':self.hand_num,'players':[],'actions':[],'community':[],'winner':None,'pot':0}
 
         for s in self._hand_seats:
-            s['hole']=[self.deck.pop(),self.deck.pop()]; s['folded']=False; s['bet']=0; s['last_action']=None
+            s['hole']=[self.deck.pop(),self.deck.pop()]; s['folded']=False; s['bet']=0; s['last_action']=None; s['_total_invested']=0
             hand_record['players'].append({'name':s['name'],'emoji':s['emoji'],'hole':[card_str(c) for c in s['hole']],'chips':s['chips']})
         self.dealer=self.dealer%len(self._hand_seats)
         await self.add_log(f"━━━ 핸드 #{self.hand_num} ({len(self._hand_seats)}명) ━━━")
@@ -1929,7 +1929,8 @@ class Table:
         else:
             sb_s=self._hand_seats[(self.dealer+1)%n]; bb_s=self._hand_seats[(self.dealer+2)%n]
         sb_a=min(self.SB,sb_s['chips']); bb_a=min(self.BB,bb_s['chips'])
-        sb_s['chips']-=sb_a; sb_s['bet']=sb_a; bb_s['chips']-=bb_a; bb_s['bet']=bb_a
+        sb_s['chips']-=sb_a; sb_s['bet']=sb_a; sb_s['_total_invested']+=sb_a
+        bb_s['chips']-=bb_a; bb_s['bet']=bb_a; bb_s['_total_invested']+=bb_a
         self.pot+=sb_a+bb_a; self.current_bet=bb_a
         await self.add_log(f"🪙 {sb_s['name']} SB {sb_a} | {bb_s['name']} BB {bb_a}")
         # 연속 폴드 앤티 페널티 (3연속 폴드 시 BB 앤티 추가)
@@ -1939,7 +1940,7 @@ class Table:
             if fs>=3:
                 ante=min(self.BB,s['chips'])
                 if ante>0:
-                    s['chips']-=ante; s['bet']+=ante; self.pot+=ante
+                    s['chips']-=ante; s['bet']+=ante; s['_total_invested']+=ante; self.pot+=ante
                     ante_players.append((s,ante,fs))
         if ante_players:
             for s,ante,fs in ante_players:
@@ -2083,7 +2084,7 @@ class Table:
                     await self.broadcast_commentary(cmt)
                 elif act=='raise':
                     total=min(amt+min(to_call,s['chips']),s['chips'])
-                    s['chips']-=total; s['bet']+=total; self.pot+=total
+                    s['chips']-=total; s['bet']+=total; s['_total_invested']+=total; self.pot+=total
                     self.current_bet=s['bet']; last_raiser=s['name']; raises+=1; all_done=False
                     if s['chips']==0:
                         await self.add_log(f"🔥🔥🔥 {s['emoji']} {s['name']} ALL IN {total}pt!! 🔥🔥🔥")
@@ -2101,7 +2102,7 @@ class Table:
                 elif act=='check':
                     await self.add_log(f"✋ {s['emoji']} {s['name']} 체크")
                 else:
-                    ca=min(to_call,s['chips']); s['chips']-=ca; s['bet']+=ca; self.pot+=ca
+                    ca=min(to_call,s['chips']); s['chips']-=ca; s['bet']+=ca; s['_total_invested']+=ca; self.pot+=ca
                     if s['chips']==0 and ca>0:
                         await self.add_log(f"🔥🔥🔥 {s['emoji']} {s['name']} ALL IN 콜 {ca}pt!! 🔥🔥🔥")
                         await self.broadcast({'type':'allin','name':s['name'],'emoji':s['emoji'],'amount':ca,'pot':self.pot})
@@ -2241,17 +2242,63 @@ class Table:
             scores.sort(key=lambda x:x[1],reverse=True)
             if not scores:
                 await self.add_log("⚠️ 승자 없음 — 팟 소멸"); record['pot']=self.pot; return
-            w=scores[0][0]; w['chips']+=self.pot
-            sd=[{'name':s['name'],'emoji':s['emoji'],'hole':[card_dict(c) for c in (s['hole'] or [])],'hand':hn,'winner':s==w} for s,_,hn in scores]
+            # ═══ 사이드팟 계산 ═══
+            # 각 플레이어의 총 투입액 = bet (현재 라운드) + 이전 라운드 누적
+            # _hand_seats 전체(폴드 포함)의 bet 총합이 self.pot
+            # 올인 플레이어별로 사이드팟 분리
+            all_in_amounts = sorted(set(
+                s.get('_total_invested',s['bet']) for s in self._hand_seats
+                if s.get('_total_invested',s['bet'])>0 and s['chips']==0 and not s.get('out')
+            ))
+            # 간단한 사이드팟: 올인이 없으면 메인팟만
+            pots = []  # [(amount, [eligible_player_names])]
+            if not all_in_amounts:
+                pots = [(self.pot, [s['name'] for s,_,_ in scores])]
+            else:
+                prev_level = 0
+                remaining_pot = self.pot
+                all_contributors = [s for s in self._hand_seats if s.get('_total_invested',s['bet'])>0]
+                for level in all_in_amounts:
+                    increment = level - prev_level
+                    eligible = [s for s in all_contributors if s.get('_total_invested',s['bet'])>=level]
+                    pot_size = min(increment * len(eligible), remaining_pot)
+                    if pot_size > 0:
+                        eligible_names = [s['name'] for s in eligible if not s['folded']]
+                        pots.append((pot_size, eligible_names))
+                        remaining_pot -= pot_size
+                    prev_level = level
+                # 남은 팟 (올인 이상 베팅한 플레이어들)
+                if remaining_pot > 0:
+                    top_eligible = [s['name'] for s,_,_ in scores]
+                    pots.append((remaining_pot, top_eligible))
+            # 각 팟을 해당 eligible 중 최고 핸드에게 배분
+            total_won = {}
+            main_winner = None
+            for pot_amount, eligible in pots:
+                pot_scores = [(s,sc,hn) for s,sc,hn in scores if s['name'] in eligible]
+                if pot_scores:
+                    pw = pot_scores[0][0]  # 이미 정렬됨
+                    pw['chips'] += pot_amount
+                    total_won[pw['name']] = total_won.get(pw['name'],0) + pot_amount
+                    if main_winner is None: main_winner = pw
+            w = main_winner or scores[0][0]
+            sd=[{'name':s['name'],'emoji':s['emoji'],'hole':[card_dict(c) for c in (s['hole'] or [])],'hand':hn,'winner':s['name'] in total_won} for s,_,hn in scores]
             self.last_showdown=sd
             await self.broadcast({'type':'showdown','players':sd,'community':[card_dict(c) for c in self.community],'pot':self.pot})
             for s,_,hn in scores:
                 mark=" 👑" if s==w else ""
                 await self.add_log(f"🃏 {s['emoji']}{s['name']}: {card_str(s['hole'][0])} {card_str(s['hole'][1])} → {hn}{mark}")
-            await self.add_log(f"🏆 {w['emoji']} {w['name']} +{self.pot}pt ({scores[0][2]})")
+            w_total=total_won.get(w['name'],self.pot)
+            await self.add_log(f"🏆 {w['emoji']} {w['name']} +{w_total}pt ({scores[0][2]})")
+            # 사이드팟 수혜자 로그
+            for sp_name, sp_amount in total_won.items():
+                if sp_name != w['name']:
+                    sp_seat = next((s for s,_,_ in scores if s['name']==sp_name), None)
+                    sp_hn = next((hn for s,_,hn in scores if s['name']==sp_name), '?')
+                    if sp_seat: await self.add_log(f"💰 {sp_seat['emoji']} {sp_name} 사이드팟 +{sp_amount}pt ({sp_hn})")
             win_q=w.get('meta',{}).get('win_quote','')
             commentary_extra=f' 💬 "{win_q}"' if win_q else ''
-            await self.broadcast_commentary(f"🏆 {w['name']} 승리! {scores[0][2]}로 +{self.pot}pt 획득!{commentary_extra}")
+            await self.broadcast_commentary(f"🏆 {w['name']} 승리! {scores[0][2]}로 +{w_total}pt 획득!{commentary_extra}")
             # 패자 lose_quote 로그
             for s_item,_,_ in scores:
                 if s_item!=w:
