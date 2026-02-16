@@ -5727,7 +5727,7 @@ body.in-game .game-layout{position:fixed!important;top:0!important;left:0!import
 #quick-chat{display:none!important}
 #hand-timeline{display:none!important}
 .rivalry-banner{font-size:0.75em!important;padding:4px 10px!important}
-#action-banner{font-size:0.65em!important}
+#action-banner{font-size:1.1em!important;padding:16px 32px!important;border-radius:14px!important}
 .ava-ring{width:1.6em;height:1.6em;opacity:0.2}
 .confetti{width:5px;height:5px}
 /* ═══ 모바일 하단 고정 UI ═══ */
@@ -8216,13 +8216,13 @@ function showActionBanner(d){
   const isFold=act.includes('폴드')||act.includes('FOLD');
   const b=document.createElement('div');b.id='action-banner';
   const sz=isAllIn?'1.2':isRaise?'1.0':'0.85';
-  const glow=isAllIn?`0 0 40px ${color},0 0 80px ${color}44`:isRaise?`0 0 25px ${color}88`:`0 0 12px ${color}44`;
+  const glow=isAllIn?`0 0 40px ${color},0 0 80px ${color}44`:isRaise?`0 0 30px ${color}88`:`0 0 20px ${color}66`;
   b.style.cssText=`position:absolute;top:35%;left:50%;transform:translate(-50%,-50%) scale(0.1);z-index:180;
-    padding:${isAllIn?'18px 48px':'14px 36px'};border-radius:16px;background:${bg};border:${isAllIn?'3':'2'}px solid ${color};
+    padding:${isAllIn?'22px 56px':'18px 44px'};border-radius:16px;background:${bg};border:${isAllIn?'3':'2'}px solid ${color};
     font-family:var(--font-pixel);text-align:center;pointer-events:none;white-space:nowrap;
     opacity:0;transition:all 0.3s cubic-bezier(0.2,1.2,0.3,1);box-shadow:${glow};backdrop-filter:blur(8px)`;
-  const actFont=isAllIn?'2.8em':isRaise?'2.2em':'1.6em';
-  const nameFont=isAllIn?'0.9em':'0.8em';
+  const actFont=isAllIn?'3.2em':isRaise?'2.6em':'2.2em';
+  const nameFont=isAllIn?'1.0em':'0.9em';
   b.innerHTML=`<div style="font-size:${nameFont};color:#ccc;margin-bottom:4px;letter-spacing:1px">${esc(d.emoji||'')} ${esc(d.name||'')}</div>
     <div style="font-size:${actFont};font-weight:900;color:${color};text-shadow:0 0 20px ${color},0 2px 0 rgba(0,0,0,0.5);letter-spacing:2px;${isAllIn?'animation:allInShake 0.4s ease-in-out':''}">${act}</div>
     <div style="font-size:0.75em;color:#aaa;margin-top:4px">💰 POT ${d.pot||0}pt</div>`;
