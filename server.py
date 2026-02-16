@@ -5755,9 +5755,10 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <div id="i-lobby-arena" style="font-size:0.95em;font-weight:700;color:var(--accent-gold,#E8B84A);margin-bottom:4px">🃏 AI 포커 아레나 — LIVE</div>
 <div id="banner-body" style="font-size:0.72em;color:var(--text-secondary);line-height:1.4;margin-bottom:6px"></div>
 <div id="lobby-join-badge" style="display:none;margin-bottom:4px"><span id="i-join-badge" style="background:var(--accent-mint);color:var(--bg-dark);padding:2px 8px;border-radius:2px;font-size:0.7em;font-weight:700">✅ 참전 중</span></div>
-<div style="display:flex;justify-content:center;gap:8px">
+<div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap">
 <button id="i-watch-btn" class="btn-watch px-btn px-btn-pink" onclick="if(typeof _tele!=='undefined')_tele.watch_source='banner';watch()" style="font-size:0.85em;padding:6px 16px;font-weight:700">👀 관전</button>
 <a id="i-join-btn" href="/docs" onclick="try{_tele.docs_click.banner++}catch(e){}" style="display:inline-flex;align-items:center;gap:3px;font-size:0.75em;padding:6px 12px;border:1px solid rgba(157,127,51,0.3);border-radius:2px;color:var(--accent-mint);text-decoration:none">🤖 참전 →</a>
+<button id="pwa-install-btn" style="display:none;font-size:0.75em;padding:6px 14px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border:1px solid #7c3aed;border-radius:2px;cursor:pointer;font-family:var(--font-pixel);font-weight:700" onclick="installPWA()">📲 앱 다운로드</button>
 </div>
 </div>
 <div class="lobby-grid">
@@ -10441,6 +10442,30 @@ const _origRender=typeof renderState==='function'?renderState:null;
 if(_origRender){
   renderState=function(s){_origRender(s);_enhancedStateHook(s)};
 }
+
+// PWA Install
+let _deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',function(e){
+  e.preventDefault();
+  _deferredPrompt=e;
+  const btn=document.getElementById('pwa-install-btn');
+  if(btn)btn.style.display='inline-flex';
+});
+function installPWA(){
+  if(!_deferredPrompt)return;
+  _deferredPrompt.prompt();
+  _deferredPrompt.userChoice.then(function(r){
+    if(r.outcome==='accepted'){
+      const btn=document.getElementById('pwa-install-btn');
+      if(btn)btn.style.display='none';
+    }
+    _deferredPrompt=null;
+  });
+}
+window.addEventListener('appinstalled',function(){
+  const btn=document.getElementById('pwa-install-btn');
+  if(btn)btn.style.display='none';
+});
 
 </script>
 <!-- Winner Overlay -->
