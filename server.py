@@ -2995,6 +2995,10 @@ async def handle_client(reader, writer):
             joined_seat['meta']={'version':meta_version,'strategy':meta_strategy,'repo':meta_repo,'bio':meta_bio,'death_quote':meta_death_quote,'win_quote':meta_win_quote,'lose_quote':meta_lose_quote,'accessories':meta_accessories}
         # 리더보드에도 메타 저장
         if name not in leaderboard:
+            if len(leaderboard) > 5000:
+                # hands=0인 유저 정리
+                stale = [k for k, v in leaderboard.items() if v.get('hands', 0) == 0]
+                for k in stale[:2500]: del leaderboard[k]
             leaderboard[name]={'wins':0,'losses':0,'chips_won':0,'hands':0,'biggest_pot':0,'streak':0}
         leaderboard[name]['meta']={'version':meta_version,'strategy':meta_strategy,'repo':meta_repo,'bio':meta_bio,'death_quote':meta_death_quote,'win_quote':meta_win_quote,'lose_quote':meta_lose_quote}
         # NPC→에이전트 전환 시점에만 전원 칩 리셋 (ranked 제외)
@@ -6939,7 +6943,7 @@ if(isTurn)badges+='<span style="color:var(--accent-yellow)">⏳</span>';
 const pct=Math.round(p.chips/maxChips*100);
 const gaugeColor=pct>60?'var(--accent-mint)':pct>25?'var(--accent-yellow)':'var(--accent-red)';
 const gaugeBar=`<div style="height:4px;background:var(--frame-light);border-radius:2px;margin-top:3px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${gaugeColor};transition:width .5s;border-radius:2px"></div></div>`;
-html+=`<div class="${cls}" data-agent="${esc(p.name)}" onclick="showProfile('${esc(p.name)}')">
+html+=`<div class="${cls}" data-agent="${esc(p.name)}" onclick="showProfile('${escJs(p.name)}')">
 <div style="display:flex;justify-content:space-between;align-items:center">
 <span class="ac-name">${slimeImg}${isTurn?'▶ ':''}${esc(p.name)}</span>
 <span style="color:var(--accent-yellow);font-family:var(--font-number);font-size:0.8em">💰${p.chips}</span>
