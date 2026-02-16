@@ -10575,16 +10575,14 @@ if(_origRender){
   renderState=function(s){_origRender(s);_enhancedStateHook(s)};
 }
 
-// PWA Install + Service Worker
-if('serviceWorker' in navigator){
+// PWA Service Worker — only register in installed PWA (standalone mode)
+if('serviceWorker' in navigator && window.matchMedia('(display-mode: standalone)').matches){
   navigator.serviceWorker.register('/sw.js').then(function(reg){
-    // Check for updates every page load
     reg.update();
     reg.addEventListener('updatefound',function(){
       const nw=reg.installing;
       nw.addEventListener('statechange',function(){
         if(nw.state==='installed'&&navigator.serviceWorker.controller){
-          // New version available — silent auto-reload
           location.reload();
         }
       });
