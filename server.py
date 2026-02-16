@@ -38,6 +38,7 @@ MERSOOM_PASSWORD = os.environ.get('MERSOOM_PASSWORD', '')
 
 # 랭크 매치 방 설정: table_id -> {min_buy, max_buy, sb, bb}
 RANKED_ROOMS = {
+    'ranked-nano':  {'min_buy': 1, 'max_buy': 10, 'sb': 1, 'bb': 1, 'label': '나노 (1~10pt)', 'label_en': 'Nano (1~10pt)'},
     'ranked-micro': {'min_buy': 10, 'max_buy': 100, 'sb': 1, 'bb': 2, 'label': '마이크로 (10~100pt)', 'label_en': 'Micro (10~100pt)'},
     'ranked-mid':   {'min_buy': 50, 'max_buy': 500, 'sb': 5, 'bb': 10, 'label': '미들 (50~500pt)', 'label_en': 'Mid (50~500pt)'},
     'ranked-high':  {'min_buy': 200, 'max_buy': 2000, 'sb': 25, 'bb': 50, 'label': '하이 (200~2000pt)', 'label_en': 'High (200~2000pt)'},
@@ -2883,7 +2884,7 @@ async def handle_client(reader, writer):
                 g['locked']=RANKED_LOCKED
             else:
                 g['mode']='practice'
-                g['label']=('🤖 NPC Practice' if _lang=='en' else '🤖 NPC 연습장') if t.id=='mersoom' else t.id
+                g['label']=('🤖 Gold Table — NPC Practice' if _lang=='en' else '🤖 골드 테이블 — NPC 연습장') if t.id=='mersoom' else t.id
             games.append(g)
         await send_json(writer,{'games':games})
     elif method=='POST' and route=='/api/new':
@@ -4271,6 +4272,7 @@ g.appendChild(card)})}).catch(()=>{})
 <h3>🏠 랭크 매치 방 종류</h3>
 <table style="width:100%;border-collapse:collapse;margin:8px 0">
 <tr style="border-bottom:1px solid #333"><th style="padding:8px;color:#4ade80">table_id</th><th style="padding:8px;color:#4ade80">바이인</th><th style="padding:8px;color:#4ade80">블라인드</th></tr>
+<tr><td style="padding:8px;color:#a78bfa"><code>ranked-nano</code></td><td style="padding:8px;color:#a78bfa">1~10pt</td><td style="padding:8px;color:#a78bfa">SB:1 / BB:1</td></tr>
 <tr><td style="padding:8px;color:#ccc"><code>ranked-micro</code></td><td style="padding:8px;color:#ccc">10~100pt</td><td style="padding:8px;color:#ccc">SB:1 / BB:2</td></tr>
 <tr><td style="padding:8px;color:#ccc"><code>ranked-mid</code></td><td style="padding:8px;color:#ccc">50~500pt</td><td style="padding:8px;color:#ccc">SB:5 / BB:10</td></tr>
 <tr><td style="padding:8px;color:#f87171"><code>ranked-high</code></td><td style="padding:8px;color:#f87171">200~2000pt</td><td style="padding:8px;color:#f87171">SB:25 / BB:50</td></tr>
@@ -4571,6 +4573,7 @@ Use the ⚙️ settings panel in-game, or call the API directly.</p>
 <h3>🏠 Ranked Rooms</h3>
 <table style="width:100%;border-collapse:collapse;margin:8px 0">
 <tr style="border-bottom:1px solid #333"><th style="padding:8px;color:#4ade80">table_id</th><th style="padding:8px;color:#4ade80">Buy-in</th><th style="padding:8px;color:#4ade80">Blinds</th></tr>
+<tr><td style="padding:8px;color:#a78bfa"><code>ranked-nano</code></td><td style="padding:8px;color:#a78bfa">1~10pt</td><td style="padding:8px;color:#a78bfa">SB:1 / BB:1</td></tr>
 <tr><td style="padding:8px;color:#ccc"><code>ranked-micro</code></td><td style="padding:8px;color:#ccc">10~100pt</td><td style="padding:8px;color:#ccc">SB:1 / BB:2</td></tr>
 <tr><td style="padding:8px;color:#ccc"><code>ranked-mid</code></td><td style="padding:8px;color:#ccc">50~500pt</td><td style="padding:8px;color:#ccc">SB:5 / BB:10</td></tr>
 <tr><td style="padding:8px;color:#f87171"><code>ranked-high</code></td><td style="padding:8px;color:#f87171">200~2000pt</td><td style="padding:8px;color:#f87171">SB:25 / BB:50</td></tr>
@@ -4904,11 +4907,14 @@ border-radius:18px;pointer-events:none;z-index:1}
 .tbl-live{color:var(--accent-green)}.tbl-wait{color:var(--text-muted)}
 .lobby-tab{font-family:var(--font-pixel);font-size:0.7em;padding:3px 10px;border:1px solid var(--frame);border-radius:var(--radius);background:transparent;color:var(--text-muted);cursor:pointer;transition:all .2s}
 .lobby-tab:hover{border-color:var(--text-secondary);color:var(--text-secondary)}
-.lobby-tab.active[data-tab="practice"]{border-color:var(--accent-mint);color:var(--accent-mint);background:rgba(52,211,153,0.1)}
-.lobby-tab.active[data-tab="ranked"]{border-color:var(--accent-yellow);color:var(--accent-yellow);background:rgba(245,197,66,0.1)}
-.tbl-card.tbl-ranked{border-color:rgba(245,197,66,0.3);background:linear-gradient(135deg,rgba(245,197,66,0.05),transparent)}
-.tbl-card.tbl-ranked:hover{border-color:var(--accent-yellow);box-shadow:0 0 0 1px var(--accent-yellow),var(--shadow-md)}
-.tbl-card.tbl-ranked .tbl-name{color:var(--accent-yellow)}
+.lobby-tab.active[data-tab="practice"]{border-color:var(--accent-yellow);color:var(--accent-yellow);background:rgba(245,197,66,0.1)}
+.lobby-tab.active[data-tab="ranked"]{border-color:#a78bfa;color:#a78bfa;background:rgba(167,139,250,0.1)}
+.tbl-card.tbl-gold{border-color:rgba(245,197,66,0.35);background:linear-gradient(135deg,rgba(245,197,66,0.08),rgba(245,197,66,0.02))}
+.tbl-card.tbl-gold:hover{border-color:var(--accent-yellow);box-shadow:0 0 0 1px var(--accent-yellow),0 0 12px rgba(245,197,66,0.15)}
+.tbl-card.tbl-gold .tbl-name{color:var(--accent-yellow);font-weight:700}
+.tbl-card.tbl-ranked{border-color:rgba(167,139,250,0.3);background:linear-gradient(135deg,rgba(167,139,250,0.06),transparent)}
+.tbl-card.tbl-ranked:hover{border-color:#a78bfa;box-shadow:0 0 0 1px #a78bfa,var(--shadow-md)}
+.tbl-card.tbl-ranked .tbl-name{color:#a78bfa}
 @keyframes chipShimmer{0%{background-position:-200% center}100%{background-position:200% center}}
 .pot-badge{position:absolute;top:20%;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,rgba(15,20,28,0.92),rgba(20,25,35,0.97));padding:8px 24px;border-radius:20px;font-size:1.3em;color:var(--accent-gold);font-weight:700;z-index:22;border:2px solid rgba(245,197,66,0.4);box-shadow:0 4px 20px rgba(0,0,0,0.6),0 0 30px rgba(245,197,66,0.15);transition:font-size .3s ease;font-family:var(--font-number);letter-spacing:1.5px;backdrop-filter:blur(8px);text-shadow:0 2px 4px rgba(0,0,0,0.5)}
 .board{position:absolute;top:42%;left:50%;transform:translate(-50%,-50%);display:flex;gap:8px;z-index:20}
@@ -5473,7 +5479,7 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <div class="px-panel-header" style="display:flex;align-items:center;justify-content:space-between">
 <span>🎰 LIVE TABLES</span>
 <div id="lobby-tabs" style="display:flex;gap:4px">
-<button class="lobby-tab active" data-tab="practice" onclick="switchLobbyTab('practice')">🤖 <span data-i="tabPractice">연습장</span></button>
+<button class="lobby-tab active" data-tab="practice" onclick="switchLobbyTab('practice')">🪙 <span data-i="tabPractice">골드</span></button>
 <button class="lobby-tab" data-tab="ranked" onclick="switchLobbyTab('ranked')">🏆 <span data-i="tabRanked">랭크</span></button>
 </div>
 </div>
@@ -6334,7 +6340,7 @@ if(practice.length){
 practice.forEach(g=>{
 const status=g.running?`<span class="tbl-live">${t('tblLive')} (${t('hand')} #${g.hand})</span>`:`<span class="tbl-wait">${t('tblWait')}</span>`;
 const max=8-g.seats_available+g.players;
-html+=`<div class="tbl-card${g.id===tableId?' active':''}" onclick="tableId='${esc(g.id)}';watch()"><div><div class="tbl-name">🎰 ${esc(g.label||g.id)}</div><div class="tbl-info">👥 ${g.players}/${max}${lang==='en'?'p':'명'} · <span style="color:var(--accent-mint)">FREE</span></div></div><div class="tbl-status">${status}</div></div>`;
+html+=`<div class="tbl-card tbl-gold${g.id===tableId?' active':''}" onclick="tableId='${esc(g.id)}';watch()"><div><div class="tbl-name">🪙 ${esc(g.label||g.id)}</div><div class="tbl-info">👥 ${g.players}/${max}${lang==='en'?'p':'명'} · <span style="color:var(--accent-yellow)">GOLD</span></div></div><div class="tbl-status">${status}</div></div>`;
 })}else{html=`<div style="color:#666">${lang==='en'?'No practice tables':'연습 테이블 없음'}</div>`}
 }else{
 if(ranked.length){
