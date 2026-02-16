@@ -29,11 +29,13 @@ print("=" * 70)
 def sanitize_name(name):
     if not name: return ''
     name = ''.join(c for c in name if c.isprintable())
+    name = name.replace('<','').replace('>','').replace('&','').replace('"','').replace("'",'')
     return name.strip()[:20]
 
 def sanitize_msg(msg, max_len=120):
     if not msg: return ''
     msg = ''.join(c for c in str(msg) if c.isprintable())
+    msg = msg.replace('<','').replace('>','')
     return msg.strip()[:max_len]
 
 def sanitize_url(url):

@@ -1254,18 +1254,20 @@ def require_token(name, token):
     return verify_token(name, token)
 
 def sanitize_name(name):
-    """이름 정제: 제어문자 제거, 공백 정리, 길이 제한"""
+    """이름 정제: 제어문자+HTML 태그 제거, 공백 정리, 길이 제한"""
     if not name: return ''
     # 제어문자 제거
     name = ''.join(c for c in name if c.isprintable())
+    # HTML 위험 문자 제거 (서버 단에서 원천 차단)
+    name = name.replace('<','').replace('>','').replace('&','').replace('"','').replace("'",'')
     name = name.strip()[:20]
-    # HTML 특수문자는 허용 (서버에서 저장, 클라이언트에서 esc() 처리)
     return name
 
 def sanitize_msg(msg, max_len=120):
-    """메시지 정제: 제어문자 제거, 길이 제한"""
+    """메시지 정제: 제어문자+HTML 제거, 길이 제한"""
     if not msg: return ''
-    msg = ''.join(c for c in msg if c.isprintable())
+    msg = ''.join(c for c in str(msg) if c.isprintable())
+    msg = msg.replace('<','').replace('>','')
     return msg.strip()[:max_len]
 
 def sanitize_url(url):
