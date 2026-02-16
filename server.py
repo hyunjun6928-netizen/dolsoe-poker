@@ -190,7 +190,7 @@ def mersoom_check_deposits():
         remaining = delta
         with _ranked_lock:
             db = _db()
-            pending = db.execute("SELECT id, auth_id, amount FROM deposit_requests WHERE status='pending' ORDER BY requested_at ASC").fetchall()
+            pending = db.execute("SELECT id, auth_id, amount FROM deposit_requests WHERE status='pending' ORDER BY requested_at ASC LIMIT 100").fetchall()
 
             # 1차: 정확 매칭
             for row in pending:
@@ -2478,7 +2478,9 @@ async def handle_client(reader, writer):
     parsed=urlparse(path); route=parsed.path; qs=parse_qs(parsed.query)
 
     # ═══ 스텔스 방문자 추적 ═══
-    _visitor_ip = headers.get('x-forwarded-for','').split(',')[0].strip() or headers.get('x-real-ip','')
+    _peer = writer.get_extra_info('peername')
+    _peer_ip = _peer[0] if _peer else ''
+    _visitor_ip = headers.get('x-forwarded-for','').split(',')[0].strip() or headers.get('x-real-ip','') or _peer_ip
     _visitor_ua = headers.get('user-agent','')[:200]
     if route in ('/', '/battle', '/ranking', '/docs') or (route=='/api/state' and not qs.get('player')):
         _track_visitor(_visitor_ip, _visitor_ua, route, headers.get('referer',''))
@@ -2931,7 +2933,9 @@ async def handle_client(reader, writer):
         if not _api_rate_ok(_visitor_ip, 'bet', 10):
             await send_json(writer,{'ok':False,'code':'RATE_LIMITED','message':'rate limited — max 10 bets/min'},429); return
         d=safe_json(body)
-        name=sanitize_name(d.get('name','')); pick=sanitize_name(d.get('pick','')); amount=int(d.get('amount',0))
+        name=sanitize_name(d.get('name','')); pick=sanitize_name(d.get('pick',''))
+        try: amount=max(0, int(d.get('amount',0)))
+        except (ValueError, TypeError): amount=0
         tid=d.get('table_id','mersoom'); t=find_table(tid)
         if not t or not t.running: await send_json(writer,{'error':'게임 진행중 아님'},400); return
         if not name or not pick: await send_json(writer,{'error':'name, pick 필수'},400); return
@@ -3387,13 +3391,40 @@ async def handle_ws(reader, writer, path):
     if not t: t=get_or_create_table('mersoom')
 
     if mode=='play' and name:
-        t.add_player(name,'🎮')
+        name=sanitize_name(name)
+        if not name:
+            try: writer.close()
+            except: pass
+            return
+        # WS play 모드: 토큰 검증 필수
+        ws_token=qs.get('token',[''])[0]
+        if not ws_token or not verify_token(name, ws_token):
+            await ws_send(writer,json.dumps({'error':'token required for play mode'},ensure_ascii=False))
+            try: writer.close()
+            except: pass
+            return
+        # ranked 테이블은 WS play 금지 (HTTP join만 허용)
+        if is_ranked_table(tid):
+            await ws_send(writer,json.dumps({'error':'ranked tables require HTTP /api/join'},ensure_ascii=False))
+            try: writer.close()
+            except: pass
+            return
         t.player_ws[name]=writer
-        active=[s for s in t.seats if s['chips']>0]
-        if len(active)>=t.MIN_PLAYERS and not t.running:
-            asyncio.create_task(t.run())
+        # 이미 seat에 있는 경우만 연결 (WS로 직접 add_player 금지)
+        existing_seat = next((s for s in t.seats if s['name']==name and not s.get('out')), None)
+        if not existing_seat:
+            await ws_send(writer,json.dumps({'error':'join via /api/join first'},ensure_ascii=False))
+            try: writer.close()
+            except: pass
+            return
         await ws_send(writer,json.dumps(t.get_public_state(viewer=name),ensure_ascii=False))
     else:
+        # 관전자 상한 (DoS 방지)
+        if len(t.spectator_ws) >= 200:
+            await ws_send(writer,json.dumps({'error':'spectator limit reached'},ensure_ascii=False))
+            try: writer.close()
+            except: pass
+            return
         t.spectator_ws.add(writer)
         # 관전자: 딜레이된 state
         init_state=t.last_spectator_state or json.dumps(t.get_spectator_state(),ensure_ascii=False)
@@ -3405,7 +3436,7 @@ async def handle_ws(reader, writer, path):
             if msg=='__ping__': writer.write(bytes([0x8A,0])); await writer.drain(); continue
             try: data=json.loads(msg)
             except: continue
-            if data.get('type')=='action' and mode=='play': t.handle_api_action(name,data)
+            if data.get('type')=='action' and mode=='play' and name and verify_token(name, ws_token): t.handle_api_action(name,data)
             elif data.get('type')=='chat':
                 chat_name=sanitize_name(data.get('name',name)) or name or '관객'
                 chat_msg=sanitize_msg(data.get('msg',''),120)
@@ -9524,7 +9555,7 @@ async def main():
     # 크래시 복구: 미정산 ranked 인게임 칩을 잔고에 복구
     try:
         db = _db()
-        rows = db.execute("SELECT auth_id, name, chips, table_id FROM ranked_ingame").fetchall()
+        rows = db.execute("SELECT auth_id, name, chips, table_id FROM ranked_ingame LIMIT 200").fetchall()
         if rows:
             print(f"⚠️ [RANKED] 크래시 복구: {len(rows)}건 미정산 발견", flush=True)
             for auth_id, name, chips, tid in rows:
