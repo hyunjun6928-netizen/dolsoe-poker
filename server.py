@@ -5197,13 +5197,13 @@ body.is-lobby #mobile-sheet{display:none!important}
 /* ═══ 모바일 게임 ═══ */
 body.in-game .game-layout{position:fixed!important;top:0!important;left:0!important;right:0!important;bottom:0!important;display:flex!important;flex-direction:column!important;width:100vw!important;height:100vh!important;height:100dvh!important;padding:0;grid-template-columns:none!important;overflow:hidden!important;z-index:10}
 .dock-left,.dock-right{display:none!important}
-.game-main{flex:1!important;display:flex!important;flex-direction:column!important;overflow-y:auto!important;overflow-x:hidden!important;-ms-overflow-style:none!important;scrollbar-width:none!important;min-height:0!important;padding-bottom:8px}
+.game-main{flex:1!important;display:flex!important;flex-direction:column!important;overflow:hidden!important;-ms-overflow-style:none!important;scrollbar-width:none!important;min-height:0!important;padding:0}
 .game-main::-webkit-scrollbar{display:none!important}
 /* ═══ 모바일 펠트 (테이블) ═══ */
-.felt-wrap{margin:2px auto 4px;width:100%!important;flex:0 0 auto!important;min-height:0!important;height:auto!important;overflow:hidden!important}
+.felt-wrap{margin:0 auto 2px;width:100%!important;flex:1 1 auto!important;min-height:0!important;height:auto!important;overflow:visible!important;display:flex!important;flex-direction:column!important}
 .felt-border{top:-6px;left:-4px;right:-4px;bottom:-6px;border-radius:10px}
 .felt-border::before{top:-4px;left:-3px;right:-3px;bottom:-4px;border-radius:12px}
-.felt{position:relative!important;height:58vw!important;max-height:320px!important;min-height:200px!important;border-radius:8px;box-shadow:inset 0 2px 6px #00000033;overflow:visible!important;padding-bottom:0!important}
+.felt{position:relative!important;height:auto!important;max-height:none!important;min-height:55vw!important;flex:1!important;border-radius:8px;box-shadow:inset 0 2px 6px #00000033;overflow:visible!important;padding-bottom:0!important}
 .board{gap:2px;top:38%!important;z-index:20!important}
 .pot-badge{top:15%!important;font-size:0.8em!important;padding:4px 12px!important}
 .card{width:30px;height:42px;font-size:0.55em;border-radius:3px;box-shadow:0 1px 0 0 #000}
@@ -5233,6 +5233,8 @@ body.in-game .game-layout{position:fixed!important;top:0!important;left:0!import
 .bluff-alert{display:none!important}
 .style-tags{display:none!important}
 .pred-tag{display:none!important}
+#quick-chat{display:none!important}
+#hand-timeline{display:none!important}
 .rivalry-banner{font-size:0.75em!important;padding:4px 10px!important}
 #action-banner{font-size:0.65em!important}
 .ava-ring{width:1.6em;height:1.6em;opacity:0.2}
@@ -5249,9 +5251,9 @@ body.in-game .game-layout{position:fixed!important;top:0!important;left:0!import
 /* ═══ 모바일 패널 ═══ */
 #actions{padding:6px;margin:2px 0;display:none;flex-direction:column;align-items:center;flex-shrink:0}
 #actions button{padding:10px 20px;margin:3px;font-size:0.9em;min-height:40px;width:90%}
-.bottom-panel{flex-direction:column;flex-shrink:0}
-#log,#replay-panel{height:60px;font-size:0.7em;flex-shrink:0}
-#chatbox{width:100%;height:80px;flex-shrink:0}
+.bottom-panel{display:none!important}
+#log,#replay-panel{display:none!important}
+#chatbox{display:none!important}
 #turn-options{font-size:0.6em;padding:3px 6px}
 #bet-panel{font-size:0.75em;padding:8px;margin-top:4px}
 #bet-panel select,#bet-panel input{font-size:0.85em;padding:6px;min-height:36px}
