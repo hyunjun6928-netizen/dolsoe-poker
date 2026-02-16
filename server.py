@@ -993,7 +993,12 @@ def _tele_rate_ok(ip):
     else:
         _tele_rate[ip] = (1, now)
     if len(_tele_rate) > 200:
-        _tele_rate.clear()
+        cutoff = now - 120
+        stale = [k for k, v in _tele_rate.items() if v[1] < cutoff]
+        for k in stale: del _tele_rate[k]
+        if len(_tele_rate) > 200:
+            oldest = sorted(_tele_rate.keys(), key=lambda k: _tele_rate[k][1])[:100]
+            for k in oldest: del _tele_rate[k]
     return True
 
 # hands tracking for 5min window
@@ -1261,6 +1266,14 @@ def sanitize_msg(msg, max_len=120):
     if not msg: return ''
     msg = ''.join(c for c in msg if c.isprintable())
     return msg.strip()[:max_len]
+
+def sanitize_url(url):
+    """URL 정제: http/https만 허용 (javascript: XSS 방지)"""
+    if not url: return ''
+    url = url.strip()
+    if url.startswith('http://') or url.startswith('https://'):
+        return url[:200]
+    return ''
 
 # ══ 게임 테이블 ══
 class Table:
@@ -2868,7 +2881,7 @@ async def handle_client(reader, writer):
         tid=d.get('table_id','mersoom')
         meta_version=sanitize_name(d.get('version',''))[:20]
         meta_strategy=sanitize_msg(d.get('strategy',''),30)
-        meta_repo=sanitize_msg(d.get('repo',''),100)
+        meta_repo=sanitize_url(d.get('repo',''))
         meta_bio=sanitize_msg(d.get('bio',''),50)
         meta_accessories=d.get('accessories',[])
         if isinstance(meta_accessories,list):
@@ -3130,7 +3143,13 @@ async def handle_client(reader, writer):
         if not t: await send_json(writer,{'ok':False,'code':'NOT_FOUND','message':'no game'},404); return
         # 쿨다운 체크
         now=time.time()
-        if len(chat_cooldowns) > 2000: chat_cooldowns.clear()
+        if len(chat_cooldowns) > 2000:
+            cutoff = now - 30
+            stale = [k for k, v in chat_cooldowns.items() if v < cutoff]
+            for k in stale: del chat_cooldowns[k]
+            if len(chat_cooldowns) > 2000:
+                oldest = sorted(chat_cooldowns.keys(), key=lambda k: chat_cooldowns[k])[:1000]
+                for k in oldest: del chat_cooldowns[k]
         last=chat_cooldowns.get(name,0)
         if now-last<CHAT_COOLDOWN:
             retry_after=round((CHAT_COOLDOWN-(now-last))*1000)
@@ -3169,6 +3188,12 @@ async def handle_client(reader, writer):
             seat['chips'] = 0  # ★ 칩 즉시 0으로 (재호출 시 chips=0이라 환전 안 됨)
             ranked_credit(auth_id_leave, chips)
             _ranked_audit('leave_cashout', auth_id_leave, chips, details=f'table:{tid} name:{name}')
+            # ranked_ingame 스냅샷 삭제 (크래시 복구 이중 크레딧 방지)
+            try:
+                db = _db()
+                db.execute("DELETE FROM ranked_ingame WHERE table_id=? AND auth_id=?", (tid, auth_id_leave))
+                db.commit()
+            except: pass
             cashout_info = {'auth_id': auth_id_leave, 'cashed_out': chips, 'balance': ranked_balance(auth_id_leave)}
         if not t.running:
             t.seats.remove(seat)
@@ -3837,10 +3862,16 @@ async def handle_ws(reader, writer, path):
         # 관전자: 딜레이된 state
         init_state=t.last_spectator_state or json.dumps(t.get_spectator_state(),ensure_ascii=False)
         await ws_send(writer,init_state)
+    _ws_last_activity = time.time()
+    _WS_IDLE_TIMEOUT = 300  # 5분 무활동 시 킥
     try:
         while True:
-            msg=await ws_recv(reader)
+            # idle 타임아웃 체크
+            remaining = _WS_IDLE_TIMEOUT - (time.time() - _ws_last_activity)
+            if remaining <= 0: break  # idle timeout
+            msg=await ws_recv(reader, timeout=min(30, remaining))
             if msg is None: break
+            _ws_last_activity = time.time()
             if msg=='__ping__': writer.write(bytes([0x8A,0])); await writer.drain(); continue
             try: data=json.loads(msg)
             except: continue
