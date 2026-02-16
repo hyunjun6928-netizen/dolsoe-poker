@@ -3045,9 +3045,12 @@ async def handle_client(reader, writer):
         meta_bio=sanitize_msg(d.get('bio',''),50)
         meta_accessories=d.get('accessories',[])
         if isinstance(meta_accessories,list):
-            VALID_ACC={'crown','horns','mask','shield','propeller','flame','heart','sunglasses','tophat','bowtie','scar','bandana','monocle','cigar','halo','devil_tail','earring','headphones','scarf','flower'}
+            VALID_ACC={'crown','horns','mask','shield','propeller','flame','heart','sunglasses','tophat','bowtie','scar','bandana','monocle','cigar','halo','devil_tail','earring','headphones','scarf','flower','eyepatch','gem_crown','leaf','ribbon','round_glasses','cape','antenna','mustache','wizard_hat','ninja_mask'}
             meta_accessories=[str(a)[:20] for a in meta_accessories[:5] if str(a) in VALID_ACC]
         else: meta_accessories=[]
+        VALID_EYE_STYLES={'normal','heart','star','money','sleepy','wink'}
+        meta_eye_style=sanitize_name(d.get('eye_style','normal'))[:20]
+        if meta_eye_style not in VALID_EYE_STYLES: meta_eye_style='normal'
         meta_death_quote=sanitize_msg(d.get('death_quote',''),50)
         meta_win_quote=sanitize_msg(d.get('win_quote',''),50)
         meta_lose_quote=sanitize_msg(d.get('lose_quote',''),50)
@@ -3190,7 +3193,7 @@ async def handle_client(reader, writer):
         # 메타데이터 저장
         joined_seat=next((s for s in t.seats if s['name']==name),None)
         if joined_seat:
-            joined_seat['meta']={'version':meta_version,'strategy':meta_strategy,'repo':meta_repo,'bio':meta_bio,'death_quote':meta_death_quote,'win_quote':meta_win_quote,'lose_quote':meta_lose_quote,'accessories':meta_accessories}
+            joined_seat['meta']={'version':meta_version,'strategy':meta_strategy,'repo':meta_repo,'bio':meta_bio,'death_quote':meta_death_quote,'win_quote':meta_win_quote,'lose_quote':meta_lose_quote,'accessories':meta_accessories,'eye_style':meta_eye_style}
         # 리더보드에도 메타 저장
         if name not in leaderboard:
             if len(leaderboard) > 5000:
@@ -8740,11 +8743,13 @@ function setSlimeTraits(name, profile) {
   if(t.type==='newbie' && !t.accessories.includes('propeller')) t.accessories.push('propeller');
   if(t.allinAddict && !t.accessories.includes('flame')) t.accessories.push('flame');
   if(t.emotional && !t.accessories.includes('heart')) t.accessories.push('heart');
+  // Eye style from profile meta
+  t.eyeStyle = (profile.meta && profile.meta.eye_style) ? profile.meta.eye_style : 'normal';
   _slimeTraits[name] = t;
 }
 function drawSlime(name, emotion, size) {
   const traits = _slimeTraits[name] || {type:'balanced'};
-  const key = name+'_'+emotion+'_'+size+'_'+traits.type;
+  const key = name+'_'+emotion+'_'+size+'_'+traits.type+'_'+(traits.eyeStyle||'normal');
   if (_slimeCache[key]) return _slimeCache[key];
   const PX = 2;
   const sz = size || 80;
@@ -8975,6 +8980,93 @@ function drawSlime(name, emotion, size) {
       px(fx,fy-1,'#f472b6');px(fx-1,fy,'#f472b6');px(fx+1,fy,'#f472b6');
       px(fx,fy+1,'#f472b6');px(fx,fy,'#fbbf24');
     }
+    if(a==='eyepatch'){
+      // Pirate eyepatch over left eye
+      pxR(eyeL-3,eyeY-3,7,7,'#1a1a2e');pxR(eyeL-2,eyeY-2,5,5,'#2d2520');
+      px(eyeL-3,eyeY-3,'#333');px(eyeL+3,eyeY-3,'#333');
+      // Strap
+      for(let dx=eyeL+3;dx<=cx+bodyW;dx++) px(dx,eyeY-2,'#333');
+    }
+    if(a==='gem_crown'){
+      const gcY=bodyTop-3;
+      pxR(cx-6,gcY,13,2,'#fbbf24');
+      for(let i=0;i<3;i++){px(cx-5+i*5,gcY-1,'#fbbf24');px(cx-5+i*5,gcY-2,'#fbbf24')}
+      px(cx-5,gcY-2,'#ef4444');px(cx,gcY-3,'#3b82f6');px(cx+5,gcY-2,'#22c55e');
+      pxR(cx-1,gcY-2,3,1,'#fde68a');
+    }
+    if(a==='leaf'){
+      const lfX=cx+2,lfY=bodyTop-3;
+      px(lfX,lfY,'#22c55e');px(lfX+1,lfY-1,'#22c55e');px(lfX-1,lfY-1,'#22c55e');
+      px(lfX+2,lfY-2,'#16a34a');px(lfX-2,lfY-2,'#16a34a');
+      px(lfX,lfY-2,'#15803d'); // stem
+    }
+    if(a==='ribbon'){
+      const rbX=cx-bodyW+2,rbY=bodyTop;
+      px(rbX,rbY,'#f472b6');px(rbX-1,rbY-1,'#f472b6');px(rbX+1,rbY-1,'#f472b6');
+      px(rbX-2,rbY-2,'#ec4899');px(rbX+2,rbY-2,'#ec4899');
+      px(rbX,rbY-1,'#fbbf24'); // knot
+      px(rbX-1,rbY+1,'#f472b6');px(rbX+1,rbY+1,'#f472b6');
+    }
+    if(a==='round_glasses'){
+      // Round glasses (drawn after eyes covers area)
+      for(let a2=0;a2<16;a2++){const ax=Math.round(Math.cos(a2/16*Math.PI*2)*4),ay=Math.round(Math.sin(a2/16*Math.PI*2)*4);px(eyeL+ax,eyeY+ay,'#888');px(eyeR+ax,eyeY+ay,'#888')}
+      // Bridge
+      for(let bx=eyeL+4;bx<=eyeR-4;bx++) px(bx,eyeY-1,'#888');
+    }
+    if(a==='cape'){
+      // Cape flowing behind (drawn on sides)
+      for(let dy=0;dy<10;dy++){
+        const cw=3+Math.floor(dy*0.5);
+        for(let dx=0;dx<cw;dx++){
+          px(cx-bodyW-1-dx,centerY+dy,'#7c3aed'+(dy<3?'cc':'88'));
+          px(cx+bodyW+1+dx,centerY+dy,'#7c3aed'+(dy<3?'cc':'88'));
+        }
+      }
+      // Cape inner highlight
+      for(let dy=0;dy<8;dy++){px(cx-bodyW-2,centerY+dy,'#a78bfa66');px(cx+bodyW+2,centerY+dy,'#a78bfa66')}
+    }
+    if(a==='antenna'){
+      const antY=bodyTop-6;
+      px(cx,bodyTop-1,'#888');px(cx,bodyTop-2,'#888');px(cx,bodyTop-3,'#888');
+      px(cx,antY,'#888');px(cx,antY-1,'#888');
+      // Glowing ball
+      px(cx-1,antY-2,'#22d3ee');px(cx,antY-2,'#22d3ee');px(cx+1,antY-2,'#22d3ee');
+      px(cx,antY-3,'#22d3ee');
+    }
+    if(a==='mustache'){
+      const msY=eyeY+4;
+      // Handlebar mustache
+      px(cx-1,msY,col.eye);px(cx,msY,col.eye);px(cx+1,msY,col.eye);
+      px(cx-2,msY,'#4a3728');px(cx+2,msY,'#4a3728');
+      px(cx-3,msY-1,'#4a3728');px(cx+3,msY-1,'#4a3728');
+      px(cx-4,msY-1,'#4a3728');px(cx+4,msY-1,'#4a3728');
+    }
+    if(a==='wizard_hat'){
+      const whY=bodyTop-8;
+      // Tall pointed hat
+      pxR(cx-6,bodyTop-1,13,2,'#7c3aed');
+      pxR(cx-5,bodyTop-3,11,2,'#7c3aed');
+      pxR(cx-4,bodyTop-5,9,2,'#6d28d9');
+      pxR(cx-3,whY,7,1,'#6d28d9');
+      pxR(cx-2,whY-1,5,1,'#5b21b6');
+      pxR(cx-1,whY-2,3,1,'#5b21b6');
+      px(cx,whY-3,'#5b21b6');
+      // Brim
+      pxR(cx-8,bodyTop-1,17,1,'#7c3aed');
+      // Stars on hat
+      px(cx-3,bodyTop-4,'#fde68a');px(cx+2,whY,'#fde68a');
+    }
+    if(a==='ninja_mask'){
+      // Black mask covering lower face, only eyes visible
+      const nmTop=eyeY+2;
+      for(let dy=0;dy<(bodyBot-nmTop);dy++){
+        for(let dx=-bodyW+1;dx<=bodyW-1;dx++){
+          px(cx+dx,nmTop+dy,'#1a1a2ecc');
+        }
+      }
+      // Eye slit opening
+      pxR(eyeL-2,eyeY-1,eyeR-eyeL+5,3,'rgba(0,0,0,0)');
+    }
     if(a==='monocle'){/* drawn after eyes */}
     if(a==='sunglasses'){/* drawn after eyes */}
   });
@@ -9065,8 +9157,56 @@ function drawSlime(name, emotion, size) {
     px(eyeL-1,eyeY-1,col.eye);px(eyeL+1,eyeY+1,col.eye);px(eyeL+1,eyeY-1,col.eye);px(eyeL-1,eyeY+1,col.eye);
     px(eyeR-1,eyeY-1,col.eye);px(eyeR+1,eyeY+1,col.eye);px(eyeR+1,eyeY-1,col.eye);px(eyeR-1,eyeY+1,col.eye);
   } else {
-    // idle — default cute eyes
-    drawCuteEye(eyeL, eyeY); drawCuteEye(eyeR, eyeY);
+    // idle — eyeStyle variants
+    const _es = traits.eyeStyle || 'normal';
+    if(_es==='heart'){
+      // Heart eyes ♥♥
+      [eyeL,eyeR].forEach(ex=>{
+        px(ex-1,eyeY-2,'#ff4466');px(ex+1,eyeY-2,'#ff4466');
+        px(ex-2,eyeY-1,'#ff4466');px(ex,eyeY-1,'#ff4466');px(ex+2,eyeY-1,'#ff4466');
+        px(ex-2,eyeY,'#ff4466');px(ex-1,eyeY,'#ff4466');px(ex+1,eyeY,'#ff4466');px(ex+2,eyeY,'#ff4466');
+        px(ex-1,eyeY+1,'#ff4466');px(ex+1,eyeY+1,'#ff4466');
+        px(ex,eyeY+2,'#ff4466');
+      });
+    } else if(_es==='star'){
+      // Star eyes ★★
+      [eyeL,eyeR].forEach(ex=>{
+        px(ex,eyeY-2,'#fbbf24');
+        px(ex-2,eyeY-1,'#fbbf24');px(ex-1,eyeY-1,'#fbbf24');px(ex,eyeY-1,'#fbbf24');px(ex+1,eyeY-1,'#fbbf24');px(ex+2,eyeY-1,'#fbbf24');
+        px(ex-1,eyeY,'#fbbf24');px(ex,eyeY,'#fbbf24');px(ex+1,eyeY,'#fbbf24');
+        px(ex-2,eyeY+1,'#fbbf24');px(ex+2,eyeY+1,'#fbbf24');
+      });
+    } else if(_es==='money'){
+      // Dollar sign eyes $$
+      [eyeL,eyeR].forEach(ex=>{
+        px(ex,eyeY-3,'#22c55e');
+        px(ex-1,eyeY-2,'#22c55e');px(ex,eyeY-2,'#22c55e');px(ex+1,eyeY-2,'#22c55e');
+        px(ex-1,eyeY-1,'#22c55e');
+        px(ex,eyeY,'#22c55e');
+        px(ex+1,eyeY+1,'#22c55e');
+        px(ex-1,eyeY+2,'#22c55e');px(ex,eyeY+2,'#22c55e');px(ex+1,eyeY+2,'#22c55e');
+        px(ex,eyeY+3,'#22c55e');
+      });
+    } else if(_es==='sleepy'){
+      // Sleepy half-closed eyes + zzz
+      [eyeL,eyeR].forEach(ex=>{
+        pxR(ex-1,eyeY,3,1,col.eye);
+        pxR(ex-1,eyeY-1,3,1,col.dark); // heavy eyelid
+        pxR(ex-2,eyeY-2,5,1,col.dark);
+      });
+      // zzz floating
+      px(eyeR+3,eyeY-4,'#8AB4DC');px(eyeR+4,eyeY-4,'#8AB4DC');
+      px(eyeR+4,eyeY-6,'#8AB4DC');px(eyeR+5,eyeY-6,'#8AB4DC');
+      px(eyeR+5,eyeY-8,'#8AB4DC');
+    } else if(_es==='wink'){
+      // Wink: left closed, right open
+      // Left: curved line (closed)
+      pxR(eyeL-1,eyeY,3,1,col.eye); px(eyeL-2,eyeY-1,col.eye); px(eyeL+2,eyeY-1,col.eye);
+      // Right: big cute eye
+      drawCuteEye(eyeR, eyeY);
+    } else {
+      drawCuteEye(eyeL, eyeY); drawCuteEye(eyeR, eyeY);
+    }
   }
 
   // Post-eye accessories
@@ -9668,6 +9808,14 @@ function inferTraitsFromStyle(p) {
   // Chip-based inference
   if (p.chips > 800 && t.type === 'balanced') t.type = 'champion';
   if (p.chips <= 50 && t.type === 'balanced') t.type = 'newbie';
+  // Random accessories for NPCs
+  const _npcAccPool=['crown','horns','mask','shield','propeller','flame','heart','sunglasses','tophat','bowtie','scar','bandana','monocle','cigar','halo','devil_tail','earring','headphones','scarf','flower','eyepatch','gem_crown','leaf','ribbon','round_glasses','cape','antenna','mustache','wizard_hat','ninja_mask'];
+  const _npcAccCount=Math.floor(Math.random()*3); // 0~2 random accessories
+  t.accessories=[];
+  for(let i=0;i<_npcAccCount;i++){const ra=_npcAccPool[Math.floor(Math.random()*_npcAccPool.length)];if(!t.accessories.includes(ra))t.accessories.push(ra)}
+  // Random eye style for NPCs
+  const _eyePool=['normal','normal','normal','heart','star','money','sleepy','wink'];
+  t.eyeStyle=_eyePool[Math.floor(Math.random()*_eyePool.length)];
   _slimeTraits[name] = t;
 }
 // === Slime PNG mapping (NPC + generic) ===
