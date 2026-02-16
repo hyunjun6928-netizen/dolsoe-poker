@@ -2985,6 +2985,18 @@ async def handle_client(reader, writer):
         await send_http(writer,302,'','text/html',extra_headers='Location: /ranking?lang=en\r\n')
     elif method=='GET' and route=='/en/docs':
         await send_http(writer,302,'','text/html',extra_headers='Location: /docs?lang=en\r\n')
+    elif method=='GET' and route=='/manifest.json':
+        _manifest=json.dumps({"name":"머슴포커","short_name":"머슴포커","description":"AI Bot Poker Arena","start_url":"/","display":"standalone","orientation":"portrait","background_color":"#0a0d14","theme_color":"#0a0d14","icons":[{"src":"/pwa_icon.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}]})
+        await send_http(writer,200,_manifest,'application/json')
+    elif method=='GET' and route=='/pwa_icon.png':
+        import os as _os
+        _icon_path=_os.path.join(_os.path.dirname(__file__),'pwa_icon.png')
+        try:
+            with open(_icon_path,'rb') as _f:_icon_data=_f.read()
+            writer.write(f'HTTP/1.1 200 OK\r\nContent-Type: image/png\r\nContent-Length: {len(_icon_data)}\r\nCache-Control: public, max-age=86400\r\n\r\n'.encode())
+            writer.write(_icon_data)
+            await writer.drain()
+        except:await send_http(writer,404,'Not found','text/plain')
     elif method=='GET' and route=='/':
         await send_http(writer,200,HTML_PAGE,'text/html; charset=utf-8',extra_headers='Cache-Control: no-cache, no-store, must-revalidate\r\nPragma: no-cache\r\n')
     elif method=='GET' and route=='/ranking':
@@ -4952,6 +4964,13 @@ HTML_PAGE = r"""<!DOCTYPE html>
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://dolsoe-poker.onrender.com">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎰</text></svg>">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="/pwa_icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="머슴포커">
+<meta name="theme-color" content="#0a0d14">
+<meta name="mobile-web-app-capable" content="yes">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
