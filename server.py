@@ -5412,7 +5412,7 @@ h1{display:none}
 #link-full-guide{display:inline-block;margin-top:6px;padding:6px 12px;min-height:36px}
 /* 모바일: 배너 완전 숨김 — 하단 버튼바로 대체 */
 #lobby-banner{display:none!important}
-#mobile-action-bar{display:flex!important}
+#mobile-action-bar{display:block!important;margin:6px 4px!important}
 .btn-watch,.px-btn-pink{padding:10px 20px!important;font-size:0.85em!important;min-height:44px;border-radius:8px!important}
 #pwa-install-btn{min-height:44px!important;border-radius:8px!important;padding:10px 16px!important}
 /* 설정 톱니바퀴 축소 */
@@ -10579,18 +10579,21 @@ if(_origRender){
   renderState=function(s){_origRender(s);_enhancedStateHook(s)};
 }
 
-// PWA Service Worker — only register in installed PWA (standalone mode)
-if('serviceWorker' in navigator && window.matchMedia('(display-mode: standalone)').matches){
+// PWA Service Worker — register for all (needed for install prompt)
+if('serviceWorker' in navigator){
   navigator.serviceWorker.register('/sw.js').then(function(reg){
-    reg.update();
-    reg.addEventListener('updatefound',function(){
-      const nw=reg.installing;
-      nw.addEventListener('statechange',function(){
-        if(nw.state==='installed'&&navigator.serviceWorker.controller){
-          location.reload();
-        }
+    // Auto-update only in standalone (installed app)
+    if(window.matchMedia('(display-mode: standalone)').matches){
+      reg.update();
+      reg.addEventListener('updatefound',function(){
+        const nw=reg.installing;
+        nw.addEventListener('statechange',function(){
+          if(nw.state==='installed'&&navigator.serviceWorker.controller){
+            location.reload();
+          }
+        });
       });
-    });
+    }
   });
 }
 let _deferredPrompt=null;
