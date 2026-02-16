@@ -5262,6 +5262,7 @@ body.in-game .game-layout{position:fixed!important;top:0!important;left:0!import
 .bottom-dock{position:relative!important;bottom:auto!important;left:auto!important;right:auto!important;padding:4px 6px;z-index:50;background:rgba(10,13,20,0.95);border-top:1px solid rgba(74,222,128,0.2);flex-shrink:0}
 .bottom-dock .bd-reactions{display:none!important}
 .bottom-dock .bd-qchat{display:none!important}
+.bottom-dock>span{display:none!important}
 .bottom-dock .bd-reactions::-webkit-scrollbar{display:none}
 .bottom-dock .bd-reactions button{width:32px;height:32px;font-size:1em;flex-shrink:0;min-height:32px}
 /* ═══ 모바일 해설/타임라인 ═══ */
@@ -5294,6 +5295,8 @@ body.in-game .game-layout{position:fixed!important;top:0!important;left:0!import
 .result-box{padding:16px;min-width:unset;width:90vw;border-radius:14px}
 .info-bar{flex-wrap:nowrap;gap:2px 4px;padding:2px 4px;font-size:0.55em;justify-content:center;flex-shrink:0;overflow-x:auto}
 .info-bar>div{display:flex;align-items:center;gap:2px;white-space:nowrap}
+.ms-tab .ms-label{display:none}
+.lobby-tab .tab-label{display:none}
 #vol-slider{width:28px!important}
 #delay-badge{font-size:0.7em!important;padding:1px 4px!important}
 .lang-btn{font-size:0.75em!important;padding:4px 8px!important;min-height:28px}
@@ -5559,8 +5562,8 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <div class="px-panel-header" style="display:flex;align-items:center;justify-content:space-between">
 <span>🎰 LIVE TABLES</span>
 <div id="lobby-tabs" style="display:flex;gap:4px">
-<button class="lobby-tab active" data-tab="practice" onclick="switchLobbyTab('practice')">🪙 <span data-i="tabPractice">골드</span></button>
-<button class="lobby-tab" data-tab="ranked" onclick="switchLobbyTab('ranked')">🏆 <span data-i="tabRanked">랭크</span></button>
+<button class="lobby-tab active" data-tab="practice" onclick="switchLobbyTab('practice')">🪙 <span class="tab-label" data-i="tabPractice">골드</span></button>
+<button class="lobby-tab" data-tab="ranked" onclick="switchLobbyTab('ranked')">🏆 <span class="tab-label" data-i="tabRanked">랭크</span></button>
 </div>
 </div>
 <div style="padding:var(--sp-md)">
@@ -7341,7 +7344,7 @@ if (s.turn && s.turn !== prevTurn) {
   clearTimeout(window._preturnTimer);
   window._preturnTimer = setTimeout(() => { window._preturnTarget = null; }, 400);
 }
-_set('#hi','textContent',`${t('hand')} #${s.hand}`);if(s.hand&&s.hand!=_tele._lastHand){_tele.hands++;_tele._lastHand=s.hand}
+_set('#hi','textContent',window.innerWidth<=700?`🃏#${s.hand}`:`${t('hand')} #${s.hand}`);if(s.hand&&s.hand!=_tele._lastHand){_tele.hands++;_tele._lastHand=s.hand}
 const roundNames={preflop:t('preflop'),flop:t('flop'),turn:t('turn'),river:t('river'),showdown:t('showdown'),between:t('between'),finished:t('finished'),waiting:t('waiting')};
 _set('#ri','textContent',roundNames[s.round]||s.round||t('waiting'));
 // 해설 업데이트 (폴링 모드 대응)
@@ -7355,10 +7358,10 @@ if(s.hand!==window._sndHand){window._sndHand=s.hand;if(s.hand>1)sfx('newhand')}
 if(s.round!==window._sndRound){
 if(s.round==='showdown'||s.round==='between'&&s.showdown_result){sfx('win');if(typeof showConfetti==='function')showConfetti()}
 window._sndRound=s.round}
-if(s.spectator_count!==undefined)_set('#si','textContent',`👀 ${t('spectators')} ${s.spectator_count}${t('specUnit')}`);
+if(s.spectator_count!==undefined)_set('#si','textContent',window.innerWidth<=700?`👀${s.spectator_count}`:`👀 ${t('spectators')} ${s.spectator_count}${t('specUnit')}`);
 if(s.season){const se=document.getElementById('season-tag');if(se)se.textContent=`🏆 ${s.season.season} (D-${s.season.days_left})`}
 // delay-badge 상태 반영 (캐시: 값 변할 때만 업데이트)
-{const db=document.getElementById('delay-badge');if(db){const dl=s.delay||0;if(db._prev!==dl){db._prev=dl;const live=dl===0;db.dataset.state=live?'live':'delay';db.classList.toggle('is-delayed',!live);db.textContent=live?'⚡ LIVE':`⏳ ${dl}s`}}}
+{const db=document.getElementById('delay-badge');if(db){const dl=s.delay||0;if(db._prev!==dl){db._prev=dl;const live=dl===0;db.dataset.state=live?'live':'delay';db.classList.toggle('is-delayed',!live);db.textContent=live?(window.innerWidth<=700?'⚡':'⚡ LIVE'):`⏳${dl}s`}}}
 // 타임라인 업데이트
 const rounds=['preflop','flop','turn','river','showdown'];
 const ri=rounds.indexOf(s.round);
@@ -10016,9 +10019,9 @@ function initMobileSheet(){
   const tabs=document.createElement('div');
   tabs.style.cssText='display:flex;gap:0;flex-shrink:0;border-bottom:1px solid #222';
   tabs.innerHTML=`
-    <button class="ms-tab active" data-tab="chat" style="flex:1;background:transparent;border:none;color:#4ade80;padding:8px;font-family:var(--font-pixel);font-size:0.8em;cursor:pointer;border-bottom:2px solid #4ade80">💬 채팅</button>
-    <button class="ms-tab" data-tab="log" style="flex:1;background:transparent;border:none;color:#888;padding:8px;font-family:var(--font-pixel);font-size:0.8em;cursor:pointer">📜 로그</button>
-    <button class="ms-tab" data-tab="agents" style="flex:1;background:transparent;border:none;color:#888;padding:8px;font-family:var(--font-pixel);font-size:0.8em;cursor:pointer">🤖 AI</button>`;
+    <button class="ms-tab active" data-tab="chat" style="flex:1;background:transparent;border:none;color:#4ade80;padding:8px;font-family:var(--font-pixel);font-size:0.8em;cursor:pointer;border-bottom:2px solid #4ade80">💬<span class="ms-label"> 채팅</span></button>
+    <button class="ms-tab" data-tab="log" style="flex:1;background:transparent;border:none;color:#888;padding:8px;font-family:var(--font-pixel);font-size:0.8em;cursor:pointer">📜<span class="ms-label"> 로그</span></button>
+    <button class="ms-tab" data-tab="agents" style="flex:1;background:transparent;border:none;color:#888;padding:8px;font-family:var(--font-pixel);font-size:0.8em;cursor:pointer">🤖<span class="ms-label"> AI</span></button>`;
   // 콘텐츠
   const content=document.createElement('div');content.id='ms-content';
   content.style.cssText='flex:1;overflow-y:auto;padding:8px;font-size:0.85em;color:#ccc;font-family:var(--font-pixel)';
