@@ -5406,7 +5406,7 @@ body.in-game .game-layout{position:fixed!important;top:0!important;left:0!import
 .seat{min-width:44px!important;max-width:62px!important;position:absolute!important}
 .seat .ava{font-size:1.1em;min-height:28px}
 .seat .ava img{width:28px!important;height:28px!important}
-.seat .nm{font-size:0.55em;padding:1px 2px;max-width:48px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.seat .nm{font-size:0.6em;padding:2px 4px;max-width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .seat .ch{font-size:0.5em!important;padding:1px 2px}
 .seat .eq-bar{max-width:50px!important;height:5px!important;margin:1px auto!important}
 .seat .hand-name{font-size:0.45em!important}
@@ -5505,7 +5505,7 @@ input,select,textarea{font-size:16px!important}
 .seat{min-width:42px!important;max-width:60px!important}
 .seat .ava{font-size:1em;min-height:28px}
 .seat .ava img{width:28px!important;height:28px!important}
-.seat .nm{font-size:0.5em;max-width:45px}
+.seat .nm{font-size:0.55em;max-width:64px}
 .seat .ch{font-size:0.5em!important}
 .pot-badge{font-size:0.7em!important;padding:3px 8px!important}
 #commentary{font-size:0.8em;padding:4px 8px}
