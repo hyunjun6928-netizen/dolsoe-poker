@@ -1239,6 +1239,7 @@ def issue_token(name):
     return token
 
 def verify_token(name, token):
+    if not name or not token: return False
     entry = player_tokens.get(name)
     if not entry: return False
     stored_token, ts = entry
