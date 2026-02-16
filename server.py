@@ -8881,6 +8881,11 @@ function drawSlime(name, emotion, size) {
   // Small secondary highlight (top right)
   pxR(cx+Math.floor(bodyW*0.15), bodyTop+2, 2, 2, '#ffffff55');
 
+  // === EYE COORDINATES (needed by accessories + eyes) ===
+  const eyeY = centerY - Math.floor(bodyH*0.15);
+  const eyeSpacing = Math.floor(bodyW*0.38);
+  const eyeL = cx - eyeSpacing, eyeR = cx + eyeSpacing;
+
   // === NPC-SPECIFIC ACCESSORIES ===
   const npcKey = name.toLowerCase();
   if(npcKey.includes('딜러')||npcKey.includes('dealer')){
@@ -9114,10 +9119,6 @@ function drawSlime(name, emotion, size) {
   }
 
   // === EYES — big cute 3x3 eyes with highlight ===
-  const eyeY = centerY - Math.floor(bodyH*0.15);
-  const eyeSpacing = Math.floor(bodyW*0.38);
-  const eyeL = cx - eyeSpacing, eyeR = cx + eyeSpacing;
-
   function drawCuteEye(ex, ey){
     // 2x2 black pupil (matches app icon)
     pxR(ex, ey, 2, 2, col.eye);
