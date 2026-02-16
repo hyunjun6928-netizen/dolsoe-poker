@@ -70,7 +70,7 @@ def _auth_cache_check(auth_id, cache_key):
     entry = _verified_auth_cache.get(auth_id)
     if not entry: return False
     stored_key, ts = entry
-    if stored_key != cache_key: return False
+    if not hmac.compare_digest(stored_key, cache_key): return False
     if time.time() - ts > 600: # 10분 TTL
         del _verified_auth_cache[auth_id]
         return False
@@ -4171,7 +4171,7 @@ card.onmouseleave=()=>card.style.borderColor='#333';
 card.innerHTML=`<div style="font-weight:bold;font-size:1.05em;margin-bottom:4px">${esc(p.name)}</div>`
 +`<div style="font-size:0.85em;color:#888">${meta.strategy||'전략 비공개'}</div>`
 +`<div style="margin-top:6px;font-size:0.8em"><span style="color:#44ff88">승률 ${wr}%</span> · <span style="color:#888">${p.hands}핸드</span> · <span style="color:#ffaa00">+${p.chips_won.toLocaleString()}pt</span></div>`
-+(meta.repo?`<a href="${meta.repo}" target="_blank" style="font-size:0.75em;color:#3B82F6;display:block;margin-top:4px">📦 소스코드</a>`:'');
++(meta.repo&&(meta.repo.startsWith('http://')||meta.repo.startsWith('https://'))?`<a href="${esc(meta.repo)}" target="_blank" style="font-size:0.75em;color:#3B82F6;display:block;margin-top:4px">📦 소스코드</a>`:'');
 g.appendChild(card)})}).catch(()=>{})
 </script>
 
@@ -7870,7 +7870,7 @@ const streakTag=p.streak>=3?`<div style="color:#44ff88">🔥 ${p.streak}${t('win
 // 공격성 바
 const agrBar=`<div style="margin:6px 0"><span style="color:#938B7B;font-size:0.8em;font-weight:600">${t('profAggr')}</span><div style="height:8px;background:#221C20;border-radius:4px;overflow:hidden;margin-top:3px"><div style="width:${p.aggression}%;height:100%;background:${p.aggression>50?'#ef4444':p.aggression>25?'#f59e0b':'#3b82f6'};transition:width .5s;border-radius:4px"></div></div></div>`;
 const vpipBar=`<div style="margin:6px 0"><span style="color:#938B7B;font-size:0.8em;font-weight:600">${t('profVPIP')}</span><div style="height:8px;background:#221C20;border-radius:4px;overflow:hidden;margin-top:3px"><div style="width:${p.vpip}%;height:100%;background:#10b981;transition:width .5s;border-radius:4px"></div></div></div>`;
-const metaHtml=p.meta&&(p.meta.version||p.meta.strategy||p.meta.repo)?`<div class="pp-stat" style="margin-top:8px;border-top:1px solid #9D7F33;padding-top:8px">${p.meta.version?'🏷️ v'+esc(p.meta.version):''}${p.meta.strategy?' · 전략: '+esc(p.meta.strategy):''}${p.meta.repo?'<br>📦 <a href="'+esc(p.meta.repo)+'" target="_blank" style="color:#35B97D">'+esc(p.meta.repo)+'</a>':''}</div>`:'';
+const metaHtml=p.meta&&(p.meta.version||p.meta.strategy||p.meta.repo)?`<div class="pp-stat" style="margin-top:8px;border-top:1px solid #9D7F33;padding-top:8px">${p.meta.version?'🏷️ v'+esc(p.meta.version):''}${p.meta.strategy?' · 전략: '+esc(p.meta.strategy):''}${p.meta.repo&&(p.meta.repo.startsWith('http://')||p.meta.repo.startsWith('https://'))?'<br>📦 <a href="'+esc(p.meta.repo)+'" target="_blank" style="color:#35B97D">'+esc(p.meta.repo)+'</a>':''}</div>`:'';
 const bioHtml=p.meta&&p.meta.bio?`<div class="pp-stat" style="color:#69B5A8;font-style:italic;margin:6px 0;background:rgba(7,57,53,0.4);padding:6px 10px;border-radius:4px;border:1px solid rgba(157,127,51,0.2)">📝 ${esc(p.meta.bio)}</div>`:'';
 let matchupHtml='';
 if(p.matchups&&p.matchups.length>0){matchupHtml='<div class="pp-stat" style="margin-top:8px;border-top:1px solid #9D7F33;padding-top:8px"><b style="color:#35B97D">⚔️ vs 전적</b>';p.matchups.forEach(m=>{matchupHtml+=`<div style="font-size:0.85em;margin:3px 0">vs ${esc(m.opponent)}: <span style="color:#10b981;font-weight:600">${m.wins}승</span> / <span style="color:#ef4444;font-weight:600">${m.losses}패</span></div>`});matchupHtml+='</div>'}

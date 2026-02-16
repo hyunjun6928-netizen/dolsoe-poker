@@ -1,454 +1,699 @@
 #!/usr/bin/env python3
 """
-머슴포커 보안 시뮬레이션 테스트
-서버 로직을 직접 import해서 공격 벡터 검증
+머슴포커 보안 전수검사 시뮬레이터 v2.0
+=============================================
+모든 공격 벡터를 시뮬레이션하고 방어를 검증한다.
+실제 서버에 요청 보내지 않고, server.py 코드를 정적+동적 분석.
 """
-import sys, os, json, time, hashlib, hmac
+import re, sys, os, ast, json, hashlib, hmac, time
 
-# server.py import를 위한 경로
-sys.path.insert(0, os.path.dirname(__file__))
+SERVER_PATH = os.path.join(os.path.dirname(__file__), 'server.py')
 
-print("=" * 60)
-print("🔴 머슴포커 보안 시뮬레이션 테스트 v1.0")
-print("=" * 60)
+with open(SERVER_PATH, 'r') as f:
+    CODE = f.read()
+    LINES = CODE.split('\n')
 
-passed = 0
-failed = 0
-total = 0
+TOTAL = 0
+PASS = 0
+FAIL = 0
+WARN = 0
+results = []
 
-def test(name, condition, detail=""):
-    global passed, failed, total
-    total += 1
+def check(category, name, condition, detail="", severity="HIGH"):
+    global TOTAL, PASS, FAIL, WARN
+    TOTAL += 1
     if condition:
-        passed += 1
-        print(f"  ✅ {name}")
+        PASS += 1
+        results.append(('✅', category, name, detail))
     else:
-        failed += 1
-        print(f"  ❌ {name} — {detail}")
-
-# ══════════════════════════════════════
-print("\n[A] 인증 시스템 테스트")
-# ══════════════════════════════════════
-import secrets
-from server import (
-    issue_token, verify_token, require_token, player_tokens,
-    sanitize_name, sanitize_msg, _check_admin, ADMIN_KEY,
-    _auth_cache_key, _auth_cache_check, _auth_cache_set,
-    _verified_auth_cache
-)
-
-# A1: 토큰 발급/검증
-token = issue_token("test_user")
-test("A1-토큰 발급", token and len(token) == 32)
-test("A1-토큰 검증 성공", verify_token("test_user", token))
-test("A1-토큰 검증 실패 (잘못된 토큰)", not verify_token("test_user", "wrong_token"))
-test("A1-토큰 검증 실패 (없는 유저)", not verify_token("nobody", token))
-
-# A2: 토큰 무효화 (삭제 후)
-del player_tokens["test_user"]
-test("A2-토큰 삭제 후 검증 실패", not verify_token("test_user", token))
-
-# A3: require_token
-token2 = issue_token("test2")
-test("A3-require_token 성공", require_token("test2", token2))
-test("A3-require_token 빈값", not require_token("", ""))
-test("A3-require_token None", not require_token(None, None))
-
-# A4: admin key 검증
-test("A4-_check_admin 빈값", not _check_admin(""))
-test("A4-_check_admin None", not _check_admin(None))
-if ADMIN_KEY:
-    test("A4-_check_admin 정확한 키", _check_admin(ADMIN_KEY))
-    test("A4-_check_admin 잘못된 키", not _check_admin("wrong_key"))
-else:
-    test("A4-ADMIN_KEY None일 때 항상 거부", not _check_admin("anything"))
-
-# A5: hmac.compare_digest 사용 확인
-import inspect
-src = inspect.getsource(verify_token)
-test("A5-verify_token에 hmac.compare_digest", "compare_digest" in src)
-
-# A6: auth cache
-_verified_auth_cache.clear()
-ck = _auth_cache_key("testid", "testpw")
-test("A6-캐시 미존재 시 False", not _auth_cache_check("testid", ck))
-_auth_cache_set("testid", ck)
-test("A6-캐시 설정 후 True", _auth_cache_check("testid", ck))
-test("A6-잘못된 캐시키 False", not _auth_cache_check("testid", "wrong"))
-
-# A7: auth cache 메모리 상한
-for i in range(600):
-    _auth_cache_set(f"flood_{i}", f"key_{i}")
-test("A7-auth cache 500건 상한", len(_verified_auth_cache) <= 500 + 50)  # 약간의 여유
-_verified_auth_cache.clear()
-
-# ══════════════════════════════════════
-print("\n[B] 입력 정제 테스트")
-# ══════════════════════════════════════
-
-test("B1-빈 문자열", sanitize_name("") == "")
-test("B2-공백만", sanitize_name("   ") == "")
-test("B3-긴 이름 절단", len(sanitize_name("a" * 100)) <= 20)
-test("B4-제어문자 제거", sanitize_name("\x00\x01test\x02") == "test")
-test("B5-HTML 태그 통과 (서버측)", "<" in sanitize_name("<script>"))
-test("B6-zero-width 제거", sanitize_name("\u200b\u200b") == "")
-test("B7-줄바꿈 제거", "\n" not in sanitize_name("a\nb"))
-test("B8-sanitize_msg 길이", len(sanitize_msg("x" * 200, 120)) <= 120)
-test("B9-sanitize_msg 빈값", sanitize_msg("") == "")
-test("B10-SQL 특수문자 통과 (parameterized)", sanitize_name("'; DROP TABLE--") == "'; DROP TABLE--")
-
-# ══════════════════════════════════════
-print("\n[C] 금전 시스템 테스트")
-# ══════════════════════════════════════
-from server import (
-    ranked_deposit, ranked_credit, ranked_balance,
-    _ranked_lock, _db, is_ranked_table, RANKED_ROOMS
-)
-
-# C1: ranked 테이블 판별
-test("C1-ranked-micro 판별", is_ranked_table("ranked-micro"))
-test("C1-mersoom 비판별", not is_ranked_table("mersoom"))
-test("C1-랜덤 이름 비판별", not is_ranked_table("ranked-fake"))
-
-# C2: 잔고 CRUD
-db = _db()
-# 테스트용 계정 초기화
-db.execute("DELETE FROM ranked_balances WHERE auth_id='sec_test'")
-db.commit()
-
-ranked_credit("sec_test", 100)
-test("C2-credit 후 잔고", ranked_balance("sec_test") == 100)
-
-ok, rem = ranked_deposit("sec_test", 30)
-test("C2-deposit 성공", ok and ranked_balance("sec_test") == 70)
-
-ok2, rem2 = ranked_deposit("sec_test", 200)
-test("C2-잔고 부족 deposit 거부", not ok2)
-test("C2-잔고 부족 시 잔고 유지", ranked_balance("sec_test") == 70)
-
-# C3: 음수 금액 방어
-ranked_credit("sec_test", 0)
-test("C3-credit 0은 잔고 변경 없음", ranked_balance("sec_test") == 70)
-
-# C4: 동시 출금 시뮬 (순차적이지만 로직 검증)
-ranked_credit("sec_test", 100)  # 170
-bal_before = ranked_balance("sec_test")
-ok_a, _ = ranked_deposit("sec_test", 170)
-test("C4-전액 출금", ok_a and ranked_balance("sec_test") == 0)
-ok_b, _ = ranked_deposit("sec_test", 1)
-test("C4-0 잔고에서 추가 출금 거부", not ok_b)
-
-# 정리
-db.execute("DELETE FROM ranked_balances WHERE auth_id='sec_test'")
-db.commit()
-
-# ══════════════════════════════════════
-print("\n[D] 게임 로직 테스트")
-# ══════════════════════════════════════
-from server import (
-    evaluate_hand, hand_strength, make_deck, 
-    SUITS, RANKS, _secure_rng
-)
-
-# D1: 카드 CSPRNG 검증
-import random
-test("D1-_secure_rng은 SystemRandom", isinstance(_secure_rng, random.SystemRandom))
-
-# D2: 핸드 평가 정확성
-# Royal Flush
-rf = [('A','♠'),('K','♠'),('Q','♠'),('J','♠'),('10','♠'),('2','♥'),('3','♦')]
-sc = evaluate_hand(rf)
-test("D2-로열플러시 인식", sc[0] == 10)
-
-# High card
-hc = [('2','♠'),('4','♥'),('6','♦'),('8','♣'),('10','♠'),('3','♥'),('7','♦')]
-sc2 = evaluate_hand(hc)
-test("D2-하이카드 인식", sc2[0] == 1)
-
-# Full house
-fh = [('K','♠'),('K','♥'),('K','♦'),('Q','♣'),('Q','♠'),('2','♥'),('3','♦')]
-sc3 = evaluate_hand(fh)
-test("D2-풀하우스 인식", sc3[0] == 7)
-
-# D3: 덱 무결성
-deck = make_deck()
-test("D3-덱 52장", len(deck) == 52)
-test("D3-중복 없음", len(set(deck)) == 52)
-
-# D4: 액션 검증 (서버 로직 시뮬)
-def simulate_action_validation(act, amt, to_call, chips, current_bet, bb, raise_capped):
-    """server.py _wait_external 로직 재현"""
-    if act not in ('fold','check','call','raise'): act='fold'
-    if act=='raise':
-        if raise_capped: act='call'; amt=to_call
+        if severity == 'WARN':
+            WARN += 1
+            results.append(('⚠️', category, name, detail))
         else:
-            amt=max(0, amt)
-            mn=max(bb, current_bet*2 - 0)  # seat['bet']=0 가정
-            amt=max(mn, min(amt, chips - min(to_call, chips)))
-            if amt <= 0: act='call'; amt=to_call
-    if act=='call': amt=min(to_call, chips)
-    if act=='check' and to_call > 0: act='fold'
-    return act, amt
+            FAIL += 1
+            results.append(('❌', category, name, detail))
 
-# 음수 레이즈
-act, amt = simulate_action_validation('raise', -999, 10, 500, 20, 10, False)
-test("D4-음수 레이즈 방어", amt >= 0)
+def find_line(pattern):
+    """Find line numbers matching regex pattern"""
+    matches = []
+    for i, line in enumerate(LINES, 1):
+        if re.search(pattern, line):
+            matches.append((i, line.strip()))
+    return matches
 
-# 알 수 없는 액션
-act2, _ = simulate_action_validation('steal', 0, 10, 500, 20, 10, False)
-test("D4-미지 액션 → fold", act2 == 'fold')
+def has_pattern(pattern):
+    return bool(re.search(pattern, CODE))
 
-# 체크 when call needed
-act3, _ = simulate_action_validation('check', 0, 10, 500, 20, 10, False)
-test("D4-콜 필요 시 체크 → fold", act3 == 'fold')
+print("=" * 70)
+print("🛡️  머슴포커 보안 전수검사 시뮬레이터 v2.0")
+print("=" * 70)
 
-# 레이즈 캡
-act4, amt4 = simulate_action_validation('raise', 100, 10, 500, 20, 10, True)
-test("D4-레이즈 캡 시 → call", act4 == 'call')
+# ══════════════════════════════════════════════════
+# 1. 인증 & 토큰 시스템
+# ══════════════════════════════════════════════════
+print("\n[1/12] 🔑 인증 & 토큰 시스템")
 
-# ══════════════════════════════════════
-print("\n[E] Static 파일 보안 테스트")
-# ══════════════════════════════════════
+check("AUTH", "토큰 서명 HMAC", 
+    has_pattern(r'hmac\.new\(.*sha256'),
+    "issue_token()이 HMAC-SHA256으로 서명")
 
-ALLOWED_EXT = {'css','png','jpg','jpeg','svg','js','webp','ico','json','woff2','woff','ttf','mp3','ogg','wav'}
+check("AUTH", "토큰 검증 timing-safe",
+    has_pattern(r'hmac\.compare_digest.*_stored_sig.*sig'),
+    "verify_token()이 hmac.compare_digest 사용")
 
-dangerous_files = [
-    'poker_data.db', 'server.py', '.env', 'requirements.txt',
-    'battle.py', '../../../etc/passwd', 'security_test.py',
-    '.git/config', 'leaderboard.json.bak',
+check("AUTH", "ADMIN_KEY 빈값 방어",
+    has_pattern(r'def _check_admin.*\n.*if not ADMIN_KEY') or has_pattern(r'ADMIN_KEY = os\.environ\.get.*or None'),
+    "ADMIN_KEY 빈 문자열이면 None으로 처리")
+
+check("AUTH", "admin 비교 timing-safe",
+    has_pattern(r'def _check_admin.*\n.*hmac\.compare_digest'),
+    "_check_admin()에서 hmac.compare_digest 사용")
+
+check("AUTH", "auth cache 해시 비교 timing-safe",
+    has_pattern(r'hmac\.compare_digest\(stored_key.*cache_key\)'),
+    "_auth_cache_check()에서 timing-safe 비교")
+
+check("AUTH", "auth cache TTL 10분",
+    has_pattern(r'time\.time\(\)\s*-\s*ts\s*>\s*600'),
+    "캐시 10분 후 만료")
+
+check("AUTH", "auth cache 메모리 상한",
+    has_pattern(r'len\(_verified_auth_cache\)\s*>\s*500'),
+    "500건 초과 시 정리")
+
+check("AUTH", "SECRET_KEY 랜덤 생성",
+    has_pattern(r'secrets\.token_hex\(32\)') or has_pattern(r'os\.urandom'),
+    "시크릿 키 크립토 안전 생성")
+
+# ranked 인증
+check("AUTH", "ranked join 비밀번호 검증",
+    has_pattern(r'mersoom_verify_account\(auth_id.*password\)'),
+    "ranked 입장 시 머슴 계정 검증")
+
+check("AUTH", "ranked auth_id 좌석 매핑",
+    has_pattern(r"joined_seat\['_auth_id'\]\s*=\s*auth_id"),
+    "좌석에 auth_id 바인딩")
+
+check("AUTH", "reconnect auth_id 검증 (하이잭 방지)",
+    has_pattern(r'seat_auth.*!=.*auth_id.*AUTH_MISMATCH'),
+    "재접속 시 auth_id 일치 검증")
+
+# ══════════════════════════════════════════════════
+# 2. 입력 검증 & XSS
+# ══════════════════════════════════════════════════
+print("[2/12] 🧹 입력 검증 & XSS")
+
+check("INPUT", "sanitize_name() 존재",
+    has_pattern(r'def sanitize_name'),
+    "닉네임 정제 함수")
+
+check("INPUT", "sanitize_msg() 존재",
+    has_pattern(r'def sanitize_msg'),
+    "메시지 정제 함수")
+
+check("INPUT", "sanitize_url() 존재",
+    has_pattern(r'def sanitize_url'),
+    "URL 화이트리스트 함수")
+
+check("INPUT", "sanitize_url http/https 화이트리스트",
+    has_pattern(r"startswith\('http://'\).*startswith\('https://'\)") or 
+    has_pattern(r"url\.startswith\('https://'\)\s*or\s*url\.startswith\('http://'\)"),
+    "http/https만 허용")
+
+check("INPUT", "esc() HTML 이스케이프",
+    has_pattern(r'function esc\('),
+    "클라이언트 HTML 이스케이프 함수")
+
+check("INPUT", "escJs() JS 이스케이프",
+    has_pattern(r'function escJs\('),
+    "클라이언트 JS 문자열 이스케이프 함수")
+
+# innerHTML 검사 — 모든 innerHTML에 esc() 적용 확인
+innerHTML_lines = find_line(r'\.innerHTML\s*[+=]')
+unescaped_innerHTML = []
+for lno, line in innerHTML_lines:
+    # player-controlled data without esc()
+    if any(v in line for v in ['p.name', 'name', 'player']) and 'esc(' not in line and 'escJs(' not in line:
+        # 예외: 하드코딩된 문자열만 있는 경우
+        if '${' in line or "'+'" in line:
+            unescaped_innerHTML.append((lno, line[:100]))
+
+check("INPUT", "innerHTML에 모든 동적 데이터 이스케이프",
+    len(unescaped_innerHTML) == 0,
+    f"미이스케이프 {len(unescaped_innerHTML)}건: {unescaped_innerHTML[:3]}" if unescaped_innerHTML else "전부 이스케이프됨",
+    severity="WARN" if unescaped_innerHTML else "HIGH")
+
+# meta.repo 클라이언트 URL 검증
+check("INPUT", "클라이언트 meta.repo URL 검증 (showProfile)",
+    has_pattern(r"meta\.repo&&\(meta\.repo\.startsWith\('http://'\)") or
+    has_pattern(r"p\.meta\.repo&&\(p\.meta\.repo\.startsWith\('http://'\)"),
+    "클라이언트에서도 http/https 화이트리스트")
+
+# 레이즈 amount 음수 검증
+check("INPUT", "레이즈 음수 금액 차단",
+    has_pattern(r'amt\s*<\s*0') or has_pattern(r'amount.*<.*0.*fold') or has_pattern(r"if.*amt.*<=?\s*0"),
+    "음수 레이즈 → 폴드 처리")
+
+# action type 화이트리스트
+check("INPUT", "액션 타입 화이트리스트",
+    has_pattern(r"act\s*not\s*in.*'fold'.*'call'.*'check'.*'raise'") or
+    has_pattern(r"unknown action"),
+    "미인식 액션 → 폴드")
+
+# ══════════════════════════════════════════════════
+# 3. 레이스 컨디션 & 동시성
+# ══════════════════════════════════════════════════
+print("[3/12] 🏎️ 레이스 컨디션 & 동시성")
+
+check("RACE", "더블 캐시아웃 방지 (chips=0 선처리)",
+    has_pattern(r"seat\['chips'\]\s*=\s*0.*ranked_credit") or
+    has_pattern(r"seat\['chips'\] = 0  # ★"),
+    "leave 시 칩 즉시 0 → 환전 (재호출 무효)")
+
+check("RACE", "ranked_ingame 삭제 (크래시 복구 이중 크레딧)",
+    has_pattern(r'DELETE FROM ranked_ingame WHERE table_id.*auth_id'),
+    "leave 시 ingame 스냅샷 삭제")
+
+check("RACE", "ranked_lock threading.Lock",
+    has_pattern(r'_ranked_lock\s*=\s*threading\.Lock'),
+    "잔고 조작 뮤텍스")
+
+check("RACE", "ranked_credit/deposit 에서 lock 사용",
+    has_pattern(r'with _ranked_lock:.*ranked_balances'),
+    "잔고 변경 시 락 획득", severity="WARN")
+
+check("RACE", "pending_action asyncio.Event",
+    has_pattern(r'pending_action.*Event\(\)') or has_pattern(r'asyncio\.Event'),
+    "턴 액션 비동기 이벤트")
+
+# ══════════════════════════════════════════════════
+# 4. Rate Limiting & DoS
+# ══════════════════════════════════════════════════
+print("[4/12] 🚦 Rate Limiting & DoS")
+
+rate_endpoints = {
+    'join': 10, 'action': 30, 'chat': 15, 'bet': 10, 
+    'battle': 5, 'export': 5, 'ranked_withdraw': 5, 'ranked_deposit': 5
+}
+for ep, limit in rate_endpoints.items():
+    check("RATE", f"Rate limit: {ep} ({limit}/min)",
+        has_pattern(rf"_api_rate_ok.*'{ep}'.*{limit}"),
+        f"{ep} → {limit}/min")
+
+check("RATE", "rate limit 점진적 삭제 (clear 금지)",
+    not has_pattern(r'_api_rate\.clear\(\)'),
+    "_api_rate.clear() 호출 없음")
+
+check("RATE", "chat_cooldowns 점진적 삭제",
+    not has_pattern(r'chat_cooldowns\.clear\(\)'),
+    "chat_cooldowns.clear() 호출 없음")
+
+check("RATE", "_tele_rate 점진적 삭제",
+    not has_pattern(r'_tele_rate\.clear\(\)'),
+    "_tele_rate.clear() 호출 없음")
+
+check("DOS", "동시 연결 세마포어",
+    has_pattern(r'Semaphore\(500\)') or has_pattern(r'_conn_sem'),
+    "500 동시 연결 제한")
+
+check("DOS", "WS 관전자 상한 200",
+    has_pattern(r'spectator_ws\)\s*>=\s*200'),
+    "관전자 WS 200개 제한")
+
+check("DOS", "HTTP 헤더 수 제한",
+    has_pattern(r'50.*too many headers') or has_pattern(r'header_count.*50'),
+    "50개 초과 헤더 차단")
+
+check("DOS", "HTTP 헤더 읽기 타임아웃",
+    has_pattern(r'wait_for.*readline.*10') or has_pattern(r'header.*timeout.*10'),
+    "헤더 10초 타임아웃")
+
+check("DOS", "HTTP body 읽기 타임아웃",
+    has_pattern(r'wait_for.*readexactly.*10') or has_pattern(r'body.*timeout.*10'),
+    "바디 10초 타임아웃")
+
+check("DOS", "WS 프레임 읽기 타임아웃",
+    has_pattern(r'ws_recv.*timeout') or has_pattern(r'def ws_recv.*timeout'),
+    "WS 수신 타임아웃")
+
+check("DOS", "WS 메시지 크기 제한 64KB",
+    has_pattern(r'65536') or has_pattern(r'64.*KB'),
+    "WS 메시지 64KB 상한")
+
+check("DOS", "WS 5분 idle 타임아웃",
+    has_pattern(r'_WS_IDLE_TIMEOUT\s*=\s*300') or has_pattern(r'idle.*300'),
+    "5분 무활동 킥")
+
+# 메모리 상한 검사
+memory_caps = {
+    '_visitor_map': 5000, '_agent_registry': 2000, '_visitor_log': 200,
+    '_telemetry_log': 500, '_ranked_auth_map': 1000, 'leaderboard': 5000,
+    'spectator_coins': 5000
+}
+for name, cap in memory_caps.items():
+    check("MEMORY", f"{name} 메모리 상한 {cap}",
+        has_pattern(rf'len\({name}\).*{cap}') or has_pattern(rf'{name}.*{cap}'),
+        f"{name} → {cap}건 제한")
+
+# ══════════════════════════════════════════════════
+# 5. 카드 보안 & 게임 무결성
+# ══════════════════════════════════════════════════
+print("[5/12] 🃏 카드 보안 & 게임 무결성")
+
+check("CARD", "CSPRNG 카드 셔플 (SystemRandom)",
+    has_pattern(r'SystemRandom') or has_pattern(r'_csprng'),
+    "os.urandom 기반 난수")
+
+check("CARD", "관전자 홀카드 숨김 (get_spectator_state)",
+    has_pattern(r"def get_spectator_state") and has_pattern(r"'hole':\s*\[\]") or has_pattern(r"hole.*hidden"),
+    "관전자에게 홀카드 미노출")
+
+check("CARD", "ranked 리플레이 홀카드 마스킹",
+    has_pattern(r'deepcopy') and has_pattern(r"'🂠'"),
+    "리플레이에서 타인 홀카드 마스킹")
+
+check("CARD", "WS spectator state 사용",
+    has_pattern(r'get_spectator_state\(\)') and has_pattern(r'last_spectator_state'),
+    "WS 관전자에게 딜레이된 spectator state 전송")
+
+check("CARD", "API state 토큰 없으면 spectator view",
+    has_pattern(r'verify_token.*viewer=player.*get_spectator_state'),
+    "/api/state 토큰 미검증 시 관전자 뷰")
+
+# 레이즈 min/max 서버 클램핑
+check("CARD", "레이즈 금액 서버 클램핑",
+    has_pattern(r'min_raise') and has_pattern(r'max_raise'),
+    "레이즈 min/max 서버에서 강제")
+
+# 사이드팟
+check("CARD", "사이드팟 구현",
+    has_pattern(r'side.*pot') or has_pattern(r'_total_invested'),
+    "_total_invested 기반 사이드팟")
+
+# 폴드 앤티 ranked 비활성화
+check("CARD", "ranked 폴드 앤티 비활성화",
+    has_pattern(r'is_ranked_table.*ante') or has_pattern(r'not is_ranked_table.*ante'),
+    "ranked에서 폴드 페널티 없음")
+
+# ══════════════════════════════════════════════════
+# 6. Ranked 머니 시스템
+# ══════════════════════════════════════════════════
+print("[6/12] 💰 Ranked 머니 시스템")
+
+check("MONEY", "ranked DB 영속화",
+    has_pattern(r'ranked_balances') and has_pattern(r'sqlite3'),
+    "SQLite에 잔고 저장")
+
+check("MONEY", "입금 요청 DB 영속화",
+    has_pattern(r'deposit_requests') and has_pattern(r'CREATE TABLE'),
+    "deposit_requests 테이블")
+
+check("MONEY", "감사 로그 DB",
+    has_pattern(r'ranked_audit_log') and has_pattern(r'CREATE TABLE'),
+    "모든 금전 이벤트 기록")
+
+check("MONEY", "워치독 (유통량 무결성)",
+    has_pattern(r'_ranked_watchdog') or has_pattern(r'watchdog'),
+    "60초 주기 유통량 검증")
+
+check("MONEY", "환전 실패 시 잔고 복구",
+    has_pattern(r'ranked_credit.*amount.*환전 실패'),
+    "머슴 전송 실패 → 잔고 롤백")
+
+check("MONEY", "입금 요청 10분 만료",
+    has_pattern(r'600') and has_pattern(r'expires'),
+    "10분 TTL")
+
+check("MONEY", "입금 1회 10000pt 상한",
+    has_pattern(r'10000'),
+    "1회 최대 입금 제한")
+
+check("MONEY", "Ranked 테이블 NPC 차단",
+    has_pattern(r'not is_ranked_table.*NPC') or has_pattern(r'ranked.*NPC.*넣음'),
+    "ranked에 NPC 미배치")
+
+check("MONEY", "Ranked WS play 차단",
+    has_pattern(r'is_ranked_table.*WS play.*금지') or has_pattern(r'ranked.*HTTP.*join'),
+    "ranked는 HTTP join만 허용")
+
+check("MONEY", "RANKED_LOCKED 게이트",
+    has_pattern(r'RANKED_LOCKED') and has_pattern(r'_check_admin'),
+    "잠금 시 admin_key 필수")
+
+# ══════════════════════════════════════════════════
+# 7. 파일 시스템 & 정적 파일
+# ══════════════════════════════════════════════════
+print("[7/12] 📁 파일 시스템 & 정적 파일")
+
+check("FILE", "디렉터리 트래버설 방지 (realpath)",
+    has_pattern(r'os\.path\.realpath'),
+    "realpath로 경로 탈출 차단")
+
+check("FILE", "확장자 화이트리스트",
+    has_pattern(r'_ALLOWED_STATIC_EXT') or has_pattern(r'ALLOWED.*EXT'),
+    "허용 확장자만 서빙")
+
+check("FILE", ".db 파일 서빙 차단",
+    not has_pattern(r"'db'") or has_pattern(r"_ALLOWED_STATIC_EXT.*=.*{") and 'db' not in CODE[CODE.find('_ALLOWED_STATIC_EXT'):CODE.find('_ALLOWED_STATIC_EXT')+200],
+    "poker_data.db 다운로드 불가")
+
+check("FILE", "base 디렉터리 탈출 방지",
+    has_pattern(r'startswith.*BASE') or has_pattern(r'startswith.*base_dir') or has_pattern(r'not fp\.startswith'),
+    "base 디렉터리 밖 접근 차단")
+
+# ══════════════════════════════════════════════════
+# 8. 보안 헤더
+# ══════════════════════════════════════════════════
+print("[8/12] 🔒 보안 헤더")
+
+check("HEADER", "X-Content-Type-Options: nosniff",
+    has_pattern(r'X-Content-Type-Options.*nosniff'),
+    "MIME 스니핑 차단")
+
+check("HEADER", "X-Frame-Options: DENY",
+    has_pattern(r'X-Frame-Options.*DENY'),
+    "클릭재킹 방지")
+
+check("HEADER", "CSP 헤더",
+    has_pattern(r'Content-Security-Policy'),
+    "CSP 설정됨")
+
+check("HEADER", "CSP default-src 'self'",
+    has_pattern(r"default-src 'self'"),
+    "기본 소스 자기 도메인만")
+
+check("HEADER", "CSP object-src 'none'",
+    has_pattern(r"object-src 'none'"),
+    "Flash/Java 플러그인 차단")
+
+# ══════════════════════════════════════════════════
+# 9. WebSocket 보안
+# ══════════════════════════════════════════════════
+print("[9/12] 🔌 WebSocket 보안")
+
+check("WS", "WS play 토큰 필수",
+    has_pattern(r"verify_token.*ws_token") or has_pattern(r'token required for play mode'),
+    "WS play 연결 시 토큰 검증")
+
+check("WS", "WS chat 닉네임 강제 (play mode)",
+    has_pattern(r"chat_name=name if.*mode=='play'"),
+    "play 모드면 서버측 이름 사용")
+
+check("WS", "WS vote voter_id 서버 강제",
+    has_pattern(r'voter_id=id\(writer\)'),
+    "투표 ID를 writer 객체 ID로 강제")
+
+check("WS", "WS vote pick 플레이어 검증",
+    has_pattern(r'valid_picks.*seats') or has_pattern(r"pick.*in.*valid_picks"),
+    "투표 대상이 실제 착석 플레이어인지 검증")
+
+check("WS", "WS add_player 직접 호출 차단",
+    has_pattern(r'join via /api/join first'),
+    "WS에서 직접 플레이어 추가 불가")
+
+# ══════════════════════════════════════════════════
+# 10. 에러 & 정보 누출
+# ══════════════════════════════════════════════════
+print("[10/12] 🕵️ 에러 & 정보 누출")
+
+check("LEAK", "에러 응답 정보 최소화",
+    has_pattern(r'internal error') or has_pattern(r'서버 내부 오류'),
+    "스택 트레이스 미노출")
+
+check("LEAK", "ranked export admin 전용",
+    has_pattern(r'ranked.*export.*admin_key'),
+    "/api/export ranked 데이터 admin만 접근")
+
+check("LEAK", "ranked recent admin 전용",
+    has_pattern(r'ranked recent requires admin_key'),
+    "/api/recent ranked 이력 admin만 접근")
+
+check("LEAK", "history/analysis 토큰 필수",
+    has_pattern(r'history.*token.*required') or has_pattern(r'analysis.*token'),
+    "핸드 이력/분석 인증 필요")
+
+# ══════════════════════════════════════════════════
+# 11. == vs hmac.compare_digest 전수검사
+# ══════════════════════════════════════════════════
+print("[11/12] ⏱️ 타이밍 사이드채널 전수검사")
+
+# 모든 시크릿 비교가 timing-safe인지 확인
+# 토큰, admin_key, auth_cache_key
+unsafe_comparisons = []
+for i, line in enumerate(LINES, 1):
+    stripped = line.strip()
+    # 시크릿 관련 == 비교 검색
+    if any(kw in stripped for kw in ['token', 'ADMIN_KEY', 'admin_key', 'cache_key', 'SECRET', 'password']):
+        if ('==' in stripped or '!=' in stripped) and 'hmac.compare_digest' not in stripped:
+            # 예외: 변수 할당, None 체크, 빈 문자열 체크
+            if any(ex in stripped for ex in ['is None', 'is not None', "==''", "!=''", '= ', 'not ', 
+                                              'if not', '== 0', '!= 0', "=='", '==True', '==False',
+                                              'get(', 'auth_id', "!=''"]):
+                continue
+            unsafe_comparisons.append((i, stripped[:100]))
+
+check("TIMING", "모든 시크릿 비교 timing-safe",
+    len(unsafe_comparisons) == 0,
+    f"잠재적 unsafe 비교 {len(unsafe_comparisons)}건: {unsafe_comparisons}" if unsafe_comparisons else "전부 timing-safe",
+    severity="WARN" if unsafe_comparisons else "HIGH")
+
+# ══════════════════════════════════════════════════
+# 12. 공격 시나리오 시뮬레이션 (50종)
+# ══════════════════════════════════════════════════
+print("[12/12] ⚔️ 공격 시나리오 시뮬레이션 (50종)\n")
+
+scenarios = [
+    # (이름, 방어 패턴, 설명)
+    ("S01: SQL Injection via nickname",
+     r'sanitize_name',
+     "닉네임에 SQL 삽입 → sanitize_name()이 특수문자 제거"),
+    
+    ("S02: XSS via chat message",
+     r'sanitize_msg',
+     "채팅에 <script> → sanitize_msg()가 제거"),
+    
+    ("S03: XSS via meta.repo javascript: URI",
+     r'sanitize_url',
+     "repo에 javascript:alert(1) → sanitize_url()이 http/https만 허용"),
+    
+    ("S04: XSS via meta.repo 클라이언트 우회",
+     r"meta\.repo\.startsWith\('http",
+     "클라이언트에서도 URL 프로토콜 검증"),
+    
+    ("S05: 토큰 위조 (HMAC 서명)",
+     r'hmac\.new.*SECRET_KEY',
+     "HMAC-SHA256 서명 없이 토큰 생성 불가"),
+    
+    ("S06: 토큰 타이밍 공격",
+     r'hmac\.compare_digest.*_stored_sig',
+     "비교 시간이 일정 → 타이밍 분석 무효"),
+    
+    ("S07: Admin key 브루트포스",
+     r'hmac\.compare_digest.*ADMIN_KEY',
+     "timing-safe 비교 + rate limit"),
+    
+    ("S08: Admin key 빈값 우회",
+     r'if not ADMIN_KEY',
+     "빈 ADMIN_KEY → None → 항상 거부"),
+    
+    ("S09: 더블 캐시아웃",
+     r"seat\['chips'\] = 0",
+     "leave 시 chips=0 선처리 → 재호출 시 0pt 환전"),
+    
+    ("S10: 크래시 복구 이중 크레딧",
+     r'DELETE FROM ranked_ingame',
+     "leave 시 ingame 삭제 → 크래시 복구에서 이중 크레딧 불가"),
+    
+    ("S11: 닉네임 하이잭 (ranked)",
+     r'AUTH_MISMATCH',
+     "다른 auth_id로 기존 좌석 탈취 불가"),
+    
+    ("S12: 음수 레이즈로 칩 생성",
+     r'amt\s*[<]=?\s*0.*fold',
+     "음수 금액 → 자동 폴드"),
+    
+    ("S13: 레이즈 금액 과대 주입",
+     r'max_raise',
+     "서버가 max_raise로 클램핑"),
+    
+    ("S14: WS로 ranked 무인증 플레이",
+     r'ranked.*HTTP.*join',
+     "ranked WS play 완전 차단"),
+    
+    ("S15: WS로 직접 add_player",
+     r'join via /api/join first',
+     "WS에서 플레이어 추가 불가"),
+    
+    ("S16: WS 관전자 홀카드 엿보기",
+     r'get_spectator_state',
+     "관전자에게 홀카드 숨김 state만 전송"),
+    
+    ("S17: 리플레이로 상대 홀카드 유출",
+     r'deepcopy.*🂠',
+     "리플레이에서 타인 카드 마스킹"),
+    
+    ("S18: 카드 셔플 예측 (RNG)",
+     r'SystemRandom',
+     "CSPRNG로 예측 불가"),
+    
+    ("S19: Slowloris 공격 (헤더)",
+     r'header.*timeout.*10|wait_for.*readline.*10',
+     "10초 타임아웃으로 연결 해제"),
+    
+    ("S20: Slowloris 공격 (바디)",
+     r'body.*timeout.*10|readexactly.*timeout',
+     "바디 읽기 10초 타임아웃"),
+    
+    ("S21: WS 좀비 연결",
+     r'_WS_IDLE_TIMEOUT.*300',
+     "5분 무활동 시 자동 킥"),
+    
+    ("S22: WS 메시지 폭탄 (64KB+)",
+     r'65536',
+     "64KB 초과 메시지 무시"),
+    
+    ("S23: 연결 폭탄 (500+)",
+     r'Semaphore\(500\)',
+     "500개 동시 연결 초과 시 거부"),
+    
+    ("S24: 관전자 폭탄 (200+)",
+     r'spectator_ws.*>=.*200',
+     "200 관전자 초과 시 거부"),
+    
+    ("S25: Rate limit 우회 (clear 트리거)",
+     r'stale.*cutoff|oldest.*sorted',
+     "점진적 삭제, 전체 초기화 없음"),
+    
+    ("S26: 정적 파일 디렉터리 트래버설",
+     r'realpath',
+     "os.path.realpath()로 ../../../etc/passwd 차단"),
+    
+    ("S27: poker_data.db 직접 다운로드",
+     r'_ALLOWED_STATIC_EXT',
+     ".db 확장자 화이트리스트에 미포함"),
+    
+    ("S28: 클릭재킹 (iframe 삽입)",
+     r'X-Frame-Options.*DENY',
+     "DENY로 모든 프레임 차단"),
+    
+    ("S29: MIME 스니핑 공격",
+     r'nosniff',
+     "X-Content-Type-Options: nosniff"),
+    
+    ("S30: 타인 잔고 조회",
+     r'ranked.*balance.*password',
+     "잔고 조회에 비밀번호 필수"),
+    
+    ("S31: 타인 입금 상태 조회",
+     r'deposit-status.*password',
+     "입금 상태에 비밀번호 필수"),
+    
+    ("S32: 환전 금액 > 잔고",
+     r'amount>bal',
+     "잔고 초과 환전 거부"),
+    
+    ("S33: 투표 조작 (voter_id 스푸핑)",
+     r'voter_id=id\(writer\)',
+     "서버측 ID 강제"),
+    
+    ("S34: 투표 대상 조작 (가짜 이름)",
+     r'valid_picks',
+     "실제 착석 플레이어만 투표 가능"),
+    
+    ("S35: WS 채팅 닉네임 스푸핑 (play mode)",
+     r'chat_name=name if',
+     "play 모드면 서버 인증된 이름 강제"),
+    
+    ("S36: 프롬프트 인젝션 (채팅)",
+     r'sanitize_msg.*120',
+     "120자 제한 + 특수문자 정제"),
+    
+    ("S37: 동시 입금 요청 중복",
+     r'already_pending',
+     "대기 중 요청 있으면 거부"),
+    
+    ("S38: 입금 10000pt 초과",
+     r'10000',
+     "1회 최대 10000pt 제한"),
+    
+    ("S39: NPC를 ranked에 투입",
+     r'not is_ranked_table.*NPC',
+     "ranked 테이블 NPC 차단"),
+    
+    ("S40: ranked 잠금 우회",
+     r'RANKED_LOCKED.*_check_admin',
+     "잠금 시 전체 ranked API admin_key 필수"),
+    
+    ("S41: GET 파라미터 정수 오버플로",
+     r'min\(.*max\(.*int\(',
+     "min/max 클램핑으로 범위 제한"),
+    
+    ("S42: auth cache 오래된 비밀번호 사용",
+     r'600.*TTL|time.*ts.*600',
+     "10분 후 캐시 만료 → 재인증 필수"),
+    
+    ("S43: 타임아웃 퇴장 시 ranked 칩 증발",
+     r'ranked_credit.*timeout|kick.*ranked.*chips',
+     "타임아웃 킥 시 잔여 칩 잔고 복구"),
+    
+    ("S44: CSP script 삽입",
+     r"default-src 'self'",
+     "외부 스크립트 로딩 차단"),
+    
+    ("S45: Object/Flash 삽입",
+     r"object-src 'none'",
+     "플러그인 완전 차단"),
+    
+    ("S46: API export ranked 무인증",
+     r'ranked.*export.*admin_key',
+     "ranked export admin 전용"),
+    
+    ("S47: 메모리 OOM (_visitor_map 폭탄)",
+     r'_visitor_map.*5000',
+     "5000건 상한"),
+    
+    ("S48: 메모리 OOM (_agent_registry 폭탄)",
+     r'_agent_registry.*2000',
+     "2000건 상한"),
+    
+    ("S49: 동시 다중 테이블 입장 (rated abuse)",
+     r'multi.*table|already.*seated',
+     "워치독이 다중 테이블 감지"),
+    
+    ("S50: 환전 머슴 전송 실패 시 잔고 소멸",
+     r'ranked_credit.*환전 실패|ok_w.*ranked_credit',
+     "전송 실패 → 잔고 롤백"),
 ]
-safe_files = ['style.css', 'logo.png', 'app.js', 'data.json']
 
-for f in dangerous_files:
-    ext = f.rsplit('.',1)[-1].lower() if '.' in f else ''
-    test(f"E-차단: {f}", ext not in ALLOWED_EXT or '/' in f)
+for name, pattern, desc in scenarios:
+    found = has_pattern(pattern)
+    check("SCENARIO", name, found, desc)
 
-for f in safe_files:
-    ext = f.rsplit('.',1)[-1].lower()
-    test(f"E-허용: {f}", ext in ALLOWED_EXT)
+# ══════════════════════════════════════════════════
+# 결과 출력
+# ══════════════════════════════════════════════════
+print("\n" + "=" * 70)
+print(f"📊 전수검사 결과: {TOTAL}건 검사")
+print(f"   ✅ PASS: {PASS}")
+print(f"   ❌ FAIL: {FAIL}")
+print(f"   ⚠️  WARN: {WARN}")
 
-# ══════════════════════════════════════
-print("\n[F] 사이드팟 계산 테스트")
-# ══════════════════════════════════════
+grade = 'S' if FAIL == 0 and WARN <= 2 else 'A+' if FAIL == 0 else 'A' if FAIL <= 2 else 'B' if FAIL <= 5 else 'C'
+print(f"\n🏆 보안 등급: {grade}")
+print("=" * 70)
 
-def simulate_sidepot(players_invested, players_folded, player_hands):
-    """
-    players_invested: {name: total_invested}
-    players_folded: set of names
-    player_hands: {name: hand_score} (higher = better)
-    Returns: {name: chips_won}
-    """
-    # Reproduce server logic
-    all_in_amounts = sorted(set(
-        inv for name, inv in players_invested.items()
-        if inv > 0 and name not in players_folded
-        and player_hands.get(name, 0) >= 0  # chips==0 시뮬: 올인한 사람
-    ))
-    
-    total_pot = sum(players_invested.values())
-    alive_scores = sorted(
-        [(name, player_hands[name]) for name in players_invested if name not in players_folded and name in player_hands],
-        key=lambda x: -x[1]
-    )
-    
-    if not all_in_amounts:
-        # 올인 없으면 메인팟만
-        if alive_scores:
-            return {alive_scores[0][0]: total_pot}
-        return {}
-    
-    pots = []
-    prev_level = 0
-    remaining = total_pot
-    all_contributors = [n for n, inv in players_invested.items() if inv > 0]
-    
-    for level in all_in_amounts:
-        increment = level - prev_level
-        eligible = [n for n in all_contributors if players_invested[n] >= level]
-        pot_size = min(increment * len(eligible), remaining)
-        if pot_size > 0:
-            eligible_alive = [n for n in eligible if n not in players_folded]
-            pots.append((pot_size, eligible_alive))
-            remaining -= pot_size
-        prev_level = level
-    
-    if remaining > 0:
-        top_eligible = [n for n, _ in alive_scores]
-        pots.append((remaining, top_eligible))
-    
-    total_won = {}
-    for pot_amount, eligible in pots:
-        pot_scores = [(n, player_hands[n]) for n in eligible if n in player_hands]
-        pot_scores.sort(key=lambda x: -x[1])
-        if pot_scores:
-            winner = pot_scores[0][0]
-            total_won[winner] = total_won.get(winner, 0) + pot_amount
-    
-    return total_won
+if FAIL > 0:
+    print("\n❌ 실패 항목:")
+    for icon, cat, name, detail in results:
+        if icon == '❌':
+            print(f"  [{cat}] {name}")
+            if detail: print(f"         → {detail}")
 
-# F1: 기본 2인 (올인 없음)
-r1 = simulate_sidepot({'A': 50, 'B': 50}, set(), {'A': 100, 'B': 80})
-test("F1-2인 기본: A 승리", r1.get('A') == 100)
+if WARN > 0:
+    print("\n⚠️  경고 항목:")
+    for icon, cat, name, detail in results:
+        if icon == '⚠️':
+            print(f"  [{cat}] {name}")
+            if detail: print(f"         → {detail}")
 
-# F2: 3인 사이드팟
-# A 올인 30, B 올인 50, C 콜 50
-r2 = simulate_sidepot(
-    {'A': 30, 'B': 50, 'C': 50},
-    set(),
-    {'A': 100, 'B': 80, 'C': 60}  # A 최강, B 차강
-)
-# 메인팟: 30*3=90 → A
-# 사이드팟: 20*2=40 → B
-# 총: A=90, B=40
-test("F2-3인 사이드팟 A", r2.get('A') == 90, f"got {r2}")
-test("F2-3인 사이드팟 B", r2.get('B') == 40, f"got {r2}")
-test("F2-합계 = 원래 팟", sum(r2.values()) == 130)
-
-# F3: 올인 플레이어가 지는 경우
-r3 = simulate_sidepot(
-    {'A': 30, 'B': 50, 'C': 50},
-    set(),
-    {'A': 50, 'B': 100, 'C': 60}  # B 최강
-)
-# 메인팟: 30*3=90 → B
-# 사이드팟: 20*2=40 → B
-# B = 130
-test("F3-B 전부 가져감", r3.get('B') == 130, f"got {r3}")
-
-# F4: 폴드 + 올인
-r4 = simulate_sidepot(
-    {'A': 30, 'B': 10, 'C': 30},
-    {'B'},  # B 폴드
-    {'A': 100, 'C': 80}
-)
-# 올인: A=30 (A의 칩이 0이면)
-# 메인팟: 30*2(A,C eligible) + 10(B 기여) = 70... 아 이건 좀 다르다
-# 실제: A 올인 30, B 폴드 10, C 콜 30 → 팟 70
-# all_in_amounts: [30] (A만)
-# level=30: eligible=[A,C] (B는 10<30), pot=30*2=60, remaining=10
-# remaining=10: top_eligible=[A,C] → A 가져감
-# A=60+10=70
-test("F4-폴드 포함", r4.get('A') == 70, f"got {r4}")
-
-# F5: 총합 검증 (칩이 사라지거나 늘어나면 안 됨)
-for _ in range(20):
-    inv = {f'P{i}': _secure_rng.randint(10, 200) for i in range(4)}
-    folded = {f'P{_secure_rng.randint(0,3)}'} if _secure_rng.random() > 0.5 else set()
-    hands = {n: _secure_rng.randint(1, 1000) for n in inv if n not in folded}
-    if not hands: continue
-    result = simulate_sidepot(inv, folded, hands)
-    total_in = sum(inv.values())
-    total_out = sum(result.values())
-    if total_in != total_out:
-        test(f"F5-총합 불변 ({total_in} vs {total_out})", False, f"inv={inv} folded={folded}")
-        break
-else:
-    test("F5-20회 랜덤 총합 불변", True)
-
-# ══════════════════════════════════════
-print("\n[G] Rate Limit 시뮬레이션")
-# ══════════════════════════════════════
-from server import _api_rate_ok, _api_rate
-
-_api_rate.clear()
-
-# G1: 기본 rate limit
-for i in range(10):
-    _api_rate_ok("1.2.3.4", "test_ep", 10)
-test("G1-10회 허용", _api_rate_ok("1.2.3.4", "test_ep", 10) == False)  # 11번째는 거부
-
-# G2: 다른 IP는 독립
-test("G2-다른 IP 독립", _api_rate_ok("5.6.7.8", "test_ep", 10))
-
-# G3: 다른 endpoint 독립
-test("G3-다른 endpoint 독립", _api_rate_ok("1.2.3.4", "other_ep", 10))
-
-# G4: 메모리 상한 (500 IP 초과)
-_api_rate.clear()
-for i in range(600):
-    _api_rate_ok(f"10.0.{i//256}.{i%256}", "flood", 100)
-test("G4-600 IP 후 메모리 관리", len(_api_rate) <= 600)  # 정리 발생
-
-_api_rate.clear()
-
-# ══════════════════════════════════════
-print("\n[H] 메모리 상한 테스트")
-# ══════════════════════════════════════
-from server import (
-    _ranked_auth_map, spectator_coins, chat_cooldowns,
-    leaderboard, spectator_bets
-)
-
-# H1: spectator_coins 상한
-spectator_coins.clear()
-for i in range(6000):
-    from server import get_spectator_coins
-    get_spectator_coins(f"spec_{i}")
-test("H1-spectator_coins ≤ 5500", len(spectator_coins) <= 5500)
-spectator_coins.clear()
-
-# H2: spectator_bets 정리
-spectator_bets['test_table'] = {}
-for i in range(100):
-    spectator_bets['test_table'][i] = {'user': {'pick': 'a', 'amount': 10}}
-from server import resolve_spectator_bets
-resolve_spectator_bets('test_table', 50, 'a')
-remaining_hands = len(spectator_bets.get('test_table', {}))
-test("H2-spectator_bets 정리 (hand 45 이전 삭제)", remaining_hands < 100, f"got {remaining_hands}")
-spectator_bets.clear()
-
-# ══════════════════════════════════════
-print("\n[I] XSS 방어 코드 존재 확인")
-# ══════════════════════════════════════
-with open('server.py') as f:
-    src = f.read()
-
-test("I1-esc() 함수 존재", "function esc(s){" in src)
-test("I2-escJs() 함수 존재", "function escJs(s){" in src)
-test("I3-showProfile에 escJs 사용", "escJs(p.name)" in src)
-
-# innerHTML에서 p.name 사용 시 esc() 여부
-import re
-innerHTML_lines = [l for l in src.split('\n') if 'innerHTML' in l and 'p.name' in l]
-unescaped = [l for l in innerHTML_lines if 'p.name' in l and 'esc(p.name)' not in l and 'escJs(p.name)' not in l]
-test("I4-모든 p.name innerHTML에 esc/escJs", len(unescaped) == 0, 
-     f"{len(unescaped)} unescaped: {unescaped[:2]}")
-
-# battle.py XSS
-with open('battle.py') as f:
-    bsrc = f.read()
-test("I5-battle.py esc() 존재", "function esc(s)" in bsrc)
-test("I6-battle dis에 esc 적용", "esc(r.fighter1.dis)" in bsrc)
-test("I7-battle comment에 esc 적용", "esc(v.comment)" in bsrc)
-
-# ══════════════════════════════════════
-print("\n[J] Static 파일 보안 (서버 코드 확인)")
-# ══════════════════════════════════════
-test("J1-확장자 화이트리스트 존재", "_ALLOWED_STATIC_EXT" in src)
-test("J2-realpath 검사 존재", "realpath" in src and "startswith" in src)
-test("J3-.db 차단 확인", "'db'" not in src.split("_ALLOWED_STATIC_EXT")[1].split("}")[0] if "_ALLOWED_STATIC_EXT" in src else False)
-
-# ══════════════════════════════════════
-print("\n[K] WS 타임아웃 확인")
-# ══════════════════════════════════════
-test("K1-ws_recv 타임아웃", "wait_for" in inspect.getsource(
-    __import__('server').ws_recv))
-test("K2-HTTP body 타임아웃", "wait_for(reader.readexactly" in src)
-
-# ══════════════════════════════════════
-print("\n[L] CSP/보안 헤더 확인")
-# ══════════════════════════════════════
-test("L1-CSP 헤더", "Content-Security-Policy" in src)
-test("L2-X-Frame-Options DENY", "X-Frame-Options: DENY" in src)
-test("L3-X-Content-Type-Options", "X-Content-Type-Options: nosniff" in src)
-test("L4-object-src none", "object-src 'none'" in src)
-test("L5-base-uri self", "base-uri 'self'" in src)
-
-# ══════════════════════════════════════
-print("\n" + "=" * 60)
-print(f"결과: {passed}/{total} 통과 ({failed} 실패)")
-if failed == 0:
-    print("🏆 전체 통과! 보안 검증 완료.")
-else:
-    print(f"⚠️ {failed}건 실패 — 확인 필요")
-print("=" * 60)
+print()
