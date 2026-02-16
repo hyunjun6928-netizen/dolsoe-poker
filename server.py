@@ -5222,7 +5222,7 @@ body.in-game .game-layout{position:fixed!important;top:0!important;left:0!import
 .felt-wrap{margin:0 auto 2px;width:100%!important;flex:1 1 auto!important;min-height:0!important;height:auto!important;overflow:visible!important;display:flex!important;flex-direction:column!important}
 .felt-border{top:-6px;left:-4px;right:-4px;bottom:-6px;border-radius:10px}
 .felt-border::before{top:-4px;left:-3px;right:-3px;bottom:-4px;border-radius:12px}
-.felt{position:relative!important;height:auto!important;max-height:none!important;min-height:55vw!important;flex:1!important;border-radius:8px;box-shadow:inset 0 2px 6px #00000033;overflow:visible!important;padding-bottom:0!important}
+.felt{position:relative!important;height:auto!important;max-height:none!important;min-height:48vw!important;flex:1!important;border-radius:8px;box-shadow:inset 0 2px 6px #00000033;overflow:visible!important;padding-bottom:0!important}
 .board{gap:2px;top:38%!important;z-index:20!important}
 .pot-badge{top:15%!important;font-size:0.8em!important;padding:4px 12px!important}
 .card{width:30px;height:42px;font-size:0.55em;border-radius:3px;box-shadow:0 1px 0 0 #000}
@@ -5260,7 +5260,8 @@ body.in-game .game-layout{position:fixed!important;top:0!important;left:0!import
 .confetti{width:5px;height:5px}
 /* ═══ 모바일 하단 고정 UI ═══ */
 .bottom-dock{position:relative!important;bottom:auto!important;left:auto!important;right:auto!important;padding:4px 6px;z-index:50;background:rgba(10,13,20,0.95);border-top:1px solid rgba(74,222,128,0.2);flex-shrink:0}
-.bottom-dock .bd-reactions{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.bottom-dock .bd-reactions{display:none!important}
+.bottom-dock .bd-qchat{display:none!important}
 .bottom-dock .bd-reactions::-webkit-scrollbar{display:none}
 .bottom-dock .bd-reactions button{width:32px;height:32px;font-size:1em;flex-shrink:0;min-height:32px}
 /* ═══ 모바일 해설/타임라인 ═══ */
@@ -5739,7 +5740,7 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 <div class="bd-reactions">
 <button onclick="react('👏')">👏</button><button onclick="react('🔥')">🔥</button><button onclick="react('😱')">😱</button><button onclick="react('💀')">💀</button><button onclick="react('😂')">😂</button>
 </div>
-<div style="display:flex;gap:3px;flex-shrink:0">
+<div class="bd-qchat" style="display:flex;gap:3px;flex-shrink:0">
 <button onclick="qChat('ㅋㅋ')" style="background:#3a3c56;color:#fff;border:1px solid #4a4c66;border-radius:var(--radius);padding:2px 8px;font-size:0.75em;cursor:pointer;font-family:var(--font-pixel)">ㅋㅋ</button>
 <button onclick="qChat('GG')" style="background:#3a3c56;color:#fff;border:1px solid #4a4c66;border-radius:var(--radius);padding:2px 8px;font-size:0.75em;cursor:pointer;font-family:var(--font-pixel)">GG</button>
 <button onclick="qChat('사기!')" style="background:#3a3c56;color:#fff;border:1px solid #4a4c66;border-radius:var(--radius);padding:2px 8px;font-size:0.75em;cursor:pointer;font-family:var(--font-pixel)">사기!</button>
