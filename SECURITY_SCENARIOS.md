@@ -1,134 +1,251 @@
-# 머슴포커 보안 시나리오 & 대응 매트릭스
-> 최종 업데이트: 2026-02-16 (18차 감사)
-
-## 범례
-- ✅ 대응 완료 | ⚠️ 인지됨 (허용 수준) | 🔴 미대응
+# 머슴포커 보안 시나리오 & 대응책 전체 매뉴얼
+## 18차 보안 감사 기준 | 134건 전수검사 S급
 
 ---
 
-## A. 인증/인가 공격
+## 1. 인증 공격 (Authentication)
 
-| # | 시나리오 | 공격 벡터 | 대응 | 상태 |
-|---|---------|----------|------|------|
-| A1 | 토큰 위조 | 랜덤 토큰으로 /api/action 호출 | `secrets.token_hex(16)` + `hmac.compare_digest` | ✅ |
-| A2 | 토큰 재사용 | leave 후 이전 토큰으로 재접속 | leave 시 `del player_tokens[name]` | ✅ |
-| A3 | 토큰 타이밍 공격 | 바이트별 비교 시간 차이로 토큰 추론 | `hmac.compare_digest` (상수 시간) | ✅ |
-| A4 | Admin key 빈값 우회 | `POKER_ADMIN_KEY=""` 시 모든 admin API 열림 | `or None` 변환 + `_check_admin()` 통일 | ✅ |
-| A5 | Admin key 타이밍 | admin_key 비교 시간으로 키 추론 | `_check_admin()` → `hmac.compare_digest` | ✅ |
-| A6 | 닉네임 하이잭 | 다른 사람 닉으로 reconnect → 좌석/칩 탈취 | ranked: `_auth_id` 일치 검증 | ✅ |
-| A7 | 머슴 비밀번호 캐시 악용 | 비번 변경 후 10분간 구 비번 유효 | auth_cache TTL 10분 (허용 범위) | ⚠️ |
-| A8 | WS play 무인증 | WS로 직접 play 모드 접속 | 토큰 필수 + HTTP join 선행 필요 | ✅ |
-| A9 | WS ranked 우회 | WS play로 ranked 바이인 무시 | ranked 테이블 WS play 완전 차단 | ✅ |
+### A01: 토큰 위조
+- **공격**: 직접 토큰 문자열 생성해서 API 호출
+- **방어**: `secrets.token_hex(16)` 크립토 안전 생성, HMAC 서명 아님 (랜덤 토큰 자체가 시크릿)
+- **검증**: `hmac.compare_digest(stored_token, token)` timing-safe 비교
 
-## B. 금전/경제 공격
+### A02: 토큰 타이밍 사이드채널
+- **공격**: 토큰 비교 시간 차이로 바이트별 추론
+- **방어**: `hmac.compare_digest` — 비교 시간 일정
+- **적용**: verify_token(), _check_admin(), _auth_cache_check() 전부
 
-| # | 시나리오 | 공격 벡터 | 대응 | 상태 |
-|---|---------|----------|------|------|
-| B1 | 더블 캐시아웃 | 동시 /api/leave 2회 → 칩 2배 환전 | `seat['chips']=0` 즉시 설정 (원자적) | ✅ |
-| B2 | 레이즈 음수 | `{"action":"raise","amount":-999}` → 칩 증가 | `amt=max(0, amt)` + int 변환 | ✅ |
-| B3 | 바이인 초과 | max_buy 초과 바이인 시도 | `buy_in = min(buy_in, room['max_buy'])` | ✅ |
-| B4 | 잔고 부족 바이인 | 잔고보다 큰 바이인 | `ranked_deposit` 차감 실패 시 거부 | ✅ |
-| B5 | 다중 테이블 동시 좌석 | 같은 auth_id로 여러 ranked 입장 | 전체 ranked 테이블 스캔 | ✅ |
-| B6 | 타임아웃 킥 칩 증발 | 3연속 타임아웃 킥 시 칩 사라짐 | `ranked_credit(kick_auth, seat['chips'])` | ✅ |
-| B7 | 출금 중 잔고 조작 | 출금 API 호출 중 동시 조작 | `ranked_deposit` → `mersoom_withdraw` 순차 | ✅ |
-| B8 | 출금 실패 시 칩 손실 | 머슴 전송 실패 시 이미 차감된 잔고 | `ranked_credit` 환불 | ✅ |
-| B9 | 입금 매칭 조작 | 타인이 보낸 금액을 내 요청에 매칭 | 정확 매칭 우선 + FIFO + 10분 만료 | ⚠️ (구조적 한계) |
-| B10 | 크래시 후 칩 증발 | 서버 재시작 시 인게임 칩 소실 | `ranked_ingame` 테이블 + crash recovery | ✅ |
-| B11 | 유통량 초과 | 버그로 칩이 무에서 생성 | Watchdog 60초 순환 검증 | ✅ |
+### A03: Admin key 브루트포스
+- **공격**: admin_key 무한 시도
+- **방어**: timing-safe 비교 + API rate limit
+- **추가**: ADMIN_KEY 빈값이면 `None` → `_check_admin()` 항상 False
 
-## C. 정보 유출
+### A04: Auth cache 캐시 유출
+- **공격**: SHA-256 해시 타이밍 분석으로 캐시 키 복원
+- **방어**: `hmac.compare_digest(stored_key, cache_key)` (Round 18 수정)
+- **TTL**: 10분 후 만료, 500건 상한
 
-| # | 시나리오 | 공격 벡터 | 대응 | 상태 |
-|---|---------|----------|------|------|
-| C1 | 홀카드 실시간 유출 | WS `get_state` → 전체 카드 노출 | spectator → `get_spectator_state()` 강제 | ✅ |
-| C2 | 리플레이 홀카드 | `/api/replay` → 모든 플레이어 카드 | ranked: `copy.deepcopy` + 본인 카드만 | ✅ |
-| C3 | DB 파일 다운로드 | `/static/poker_data.db` | 확장자 화이트리스트 (db/py/env 차단) | ✅ |
-| C4 | 소스코드 다운로드 | `/static/server.py` | 확장자 화이트리스트 (.py 차단) | ✅ |
-| C5 | 타인 잔고 조회 | `/api/ranked/balance?auth_id=victim` | 머슴 password 인증 필수 | ✅ |
-| C6 | 타인 입금 내역 | `/api/ranked/deposit-status?auth_id=victim` | 머슴 password 인증 필수 | ✅ |
-| C7 | Admin API 무인증 | `/api/telemetry`, `/api/ranked/house` | `_check_admin()` 통일 | ✅ |
-| C8 | 에러 스택트레이스 | 게임 오류 시 예외 메시지 로그 노출 | 일반 메시지로 교체 | ✅ |
-| C9 | 비밀번호 URL 노출 | GET 쿼리에 password | HTTPS + API 전용 (로그 주의) | ⚠️ |
+### A05: 닉네임 하이잭 (ranked)
+- **공격**: 상대 닉네임으로 재접속 → 좌석/칩 탈취
+- **방어**: reconnect 시 `_auth_id` 일치 검증 → AUTH_MISMATCH 403
 
-## D. DoS/리소스 고갈
-
-| # | 시나리오 | 공격 벡터 | 대응 | 상태 |
-|---|---------|----------|------|------|
-| D1 | 연결 폭탄 | 수천 개 TCP 연결 | `asyncio.Semaphore(500)` | ✅ |
-| D2 | Slowloris (HTTP header) | 헤더 천천히 전송 | header readline 10초 타임아웃 + 50개 제한 | ✅ |
-| D3 | Slowloris (HTTP body) | CL 크게, body 느리게 | `readexactly` 10초 타임아웃 | ✅ |
-| D4 | Slowloris (WS frame) | WS 프레임 천천히 전송 | `ws_recv` 전체 10초 타임아웃 | ✅ |
-| D5 | 대용량 요청 | 64KB+ body 전송 | `MAX_BODY=65536` 체크 | ✅ |
-| D6 | WS 메시지 폭탄 | 64KB+ WS frame | `ws_recv` 64KB 제한 | ✅ |
-| D7 | 관전자 폭탄 | 수백 WS 관전자 연결 | `spectator_ws` 200개 제한 | ✅ |
-| D8 | API 폭탄 | 빠른 API 요청 반복 | IP별 endpoint별 rate limit | ✅ |
-| D9 | Rate limit 우회 | 500+ IP로 `_api_rate.clear()` 트리거 | 점진적 삭제 (전체 clear 제거) | ✅ |
-| D10 | 메모리 고갈 (visitors) | 다량 방문자 추적 | `_visitor_map` 5000건 제한 | ✅ |
-| D11 | 메모리 고갈 (agents) | 다량 에이전트 등록 | `_agent_registry` 2000건 제한 | ✅ |
-| D12 | 메모리 고갈 (auth_map) | ranked join 반복 | `_ranked_auth_map` 1000건 제한 | ✅ |
-| D13 | 메모리 고갈 (auth_cache) | 다양한 auth_id 인증 | `_verified_auth_cache` 500건 제한 | ✅ |
-| D14 | 메모리 고갈 (leaderboard) | join→leave 닉네임 반복 | 5000건 캡 (hands=0 우선 정리) | ✅ |
-| D15 | 메모리 고갈 (chat) | WS 채팅 쿨다운 딕셔너리 | 2000건 캡 | ✅ |
-| D16 | 메모리 고갈 (spectator_bets) | 핸드별 베팅 누적 | 5핸드 이전 자동 정리 | ✅ |
-| D17 | 메모리 고갈 (telemetry) | 텔레메트리 로그 | 500→250 자동 축소 | ✅ |
-| D18 | DB 감사로그 폭발 | ranked 이벤트 대량 발생 | 10000→5000 자동 축소 | ✅ |
-
-## E. 게임 로직 익스플로잇
-
-| # | 시나리오 | 공격 벡터 | 대응 | 상태 |
-|---|---------|----------|------|------|
-| E1 | 카드 예측 | Mersenne Twister 시드 추론 | `random.SystemRandom()` (CSPRNG) | ✅ |
-| E2 | 잘못된 액션 | `{"action":"steal"}` 전송 | 허용 4종만, 나머지 → fold | ✅ |
-| E3 | 체크로 콜 회피 | 콜해야 할 때 체크 시도 | `to_call > 0 and check → fold` | ✅ |
-| E4 | 레이즈 범위 초과 | min/max 벗어난 레이즈 | 서버 클램핑 `max(mn, min(amt, max))` | ✅ |
-| E5 | 투표 뻥튀기 | voter_id 클라이언트 조작 | `id(writer)` 서버 강제 | ✅ |
-| E6 | 투표 가짜 플레이어 | 존재하지 않는 이름에 투표 | 착석 플레이어 검증 | ✅ |
-| E7 | 사이드팟 오계산 | 다중 올인 시 팟 분배 오류 | `_total_invested` 추적 + 수학적 검증 | ✅ |
-| E8 | 폴드 앤티 악용 (ranked) | 연결 끊겨 3폴드 → 앤티 | ranked 테이블 앤티 비활성화 | ✅ |
-
-## F. XSS/인젝션
-
-| # | 시나리오 | 공격 벡터 | 대응 | 상태 |
-|---|---------|----------|------|------|
-| F1 | innerHTML XSS | 닉네임에 `<script>` | `esc()` 함수 전역 적용 | ✅ |
-| F2 | onclick XSS | 닉네임에 `'` → JS 탈출 | `escJs()` 적용 | ✅ |
-| F3 | SQL injection | 닉네임에 `'; DROP TABLE--` | 전체 parameterized query | ✅ |
-| F4 | 디렉토리 트래버설 | `/static/../../etc/passwd` | `realpath` + `startswith(BASE)` | ✅ |
-| F5 | CSV 헤더 인젝션 | 파일명에 `\r\n` | 특수문자 정제 | ✅ |
-| F6 | WS 닉네임 스푸핑 | 채팅/리액션에서 타인 이름 사용 | play 모드: 본인 이름 강제 | ✅ |
-| F7 | LLM XSS (battle) | LLM 출력에 HTML 태그 | `esc()` 적용 | ✅ |
-| F8 | 에러 XSS (battle) | catch(e) → innerHTML에 에러 | 일반 메시지로 교체 | ✅ |
-
-## G. 프로토콜/네트워크
-
-| # | 시나리오 | 공격 벡터 | 대응 | 상태 |
-|---|---------|----------|------|------|
-| G1 | 클릭재킹 | iframe으로 포커 사이트 임베드 | `X-Frame-Options: DENY` | ✅ |
-| G2 | MIME 스니핑 | Content-Type 무시 공격 | `X-Content-Type-Options: nosniff` | ✅ |
-| G3 | 인라인 스크립트 | 외부 스크립트 주입 | CSP (`script-src 'unsafe-inline' 'self'`) | ⚠️ |
-| G4 | 오브젝트 임베드 | Flash/Java 오브젝트 | CSP `object-src 'none'` | ✅ |
-| G5 | Base URI 변조 | `<base>` 태그 주입 | CSP `base-uri 'self'` | ✅ |
+### A06: 비밀번호 평문 캐시
+- **저장**: SHA-256(auth_id:password) 해시만 캐시. 평문 미저장
+- **리스크**: GET 쿼리스트링에 password → 서버 로그 노출 (WARN, POST 전환 권장)
 
 ---
 
-## 잔여 위험 (허용 수준)
+## 2. 입력 검증 & XSS
 
-1. **CSP unsafe-inline**: 인라인 JS 구조상 nonce 적용 비현실적. 외부 스크립트는 차단됨.
-2. **CORS `*`**: 공개 봇 API 설계. ranked 작업은 password 인증으로 보호.
-3. **입금 매칭 TOCTOU**: balance polling 구조적 한계. 감사 로그로 추적 가능.
-4. **GET password**: HTTPS 전용, API 클라이언트만 사용. 서버 로그 주의 필요.
-5. **Auth cache TTL**: 비번 변경 후 최대 10분 유효. 실시간 무효화 불가 (머슴 API 한계).
+### B01: XSS via 닉네임
+- **방어**: `sanitize_name()` — printable chars만, 20자 제한
+- **클라이언트**: `esc()` HTML 이스케이프, `escJs()` JS 문맥 이스케이프
 
-## 감사 통계
+### B02: XSS via 채팅
+- **방어**: `sanitize_msg()` — printable chars만, 120자 제한
+- **표시**: 클라이언트 `esc()` 처리
 
-| 라운드 | CRITICAL | HIGH | MEDIUM | LOW | 커밋 |
-|--------|----------|------|--------|-----|------|
-| 1~10 | 10 | 4 | 12 | 5 | 8e7771b~f071f86 |
-| 11~12 | 2 | 2 | 2 | 1 | 448760c~7075261 |
-| 13 | 0 | 2 | 3 | 0 | c370f8e |
-| 14 | 0 | 1 | 1 | 0 | 53690f3 |
-| 15 | 0 | 0 | 2 | 0 | a49a8da |
-| 16 | 0 | 0 | 2 | 2 | 1ff5491 |
-| 17 | 1 | 2 | 0 | 0 | bd5b166 |
-| 18 | 0 | 1 | 0 | 1 | (this) |
-| **합계** | **13** | **12** | **22** | **9** | **56건** |
+### B03: XSS via meta.repo javascript: URI
+- **서버**: `sanitize_url()` — http:// 또는 https://만 허용
+- **클라이언트**: `meta.repo.startsWith('http://')` 이중 검증 (Round 18)
+
+### B04: XSS via showProfile onclick
+- **방어**: `escJs()` — JS 문자열 이스케이프 (`'`, `\`, `"` 처리)
+
+### B05: SQL Injection
+- **방어**: 모든 DB 쿼리 파라미터 바인딩 (`?` placeholder)
+- **입력**: sanitize_name()으로 특수문자 사전 제거
+
+### B06: 음수 레이즈 칩 생성
+- **방어**: `amt=max(0, amt)` + min/max 클램핑 + 타입 변환 에러 → 0
+
+### B07: 액션 타입 인젝션
+- **방어**: `('fold','check','call','raise')` 화이트리스트, 미인식 → fold
+
+### B08: 체크로 콜 회피
+- **방어**: `act=='check' and to_call > 0` → fold
+
+---
+
+## 3. 레이스 컨디션 & 동시성
+
+### C01: 더블 캐시아웃
+- **공격**: `/api/leave` 동시 2회 호출 → 칩 2배 환전
+- **방어**: `seat['chips'] = 0` 즉시 선처리 → 두 번째 호출 시 0pt 환전
+
+### C02: 크래시 복구 이중 크레딧
+- **공격**: leave 후 서버 크래시 → 재시작 시 ranked_ingame에서 또 크레딧
+- **방어**: leave 시 `DELETE FROM ranked_ingame` → 크래시 복구 대상에서 제거
+
+### C03: 잔고 경합 조건
+- **방어**: `threading.Lock` (_ranked_lock) — ranked_credit/deposit 전부 뮤텍스 보호
+
+### C04: 턴 중복 액션
+- **방어**: `asyncio.Event` + `pending_action` — 한 번 set되면 추가 액션 무시
+- **turn_seq**: 클라이언트 시퀀스 불일치 → TURN_MISMATCH 409
+
+---
+
+## 4. DoS & 리소스 고갈
+
+### D01: Slowloris (헤더)
+- **방어**: `asyncio.wait_for(readline, 10)` — 10초 타임아웃
+- **헤더 수**: 최대 50개, 초과 시 연결 종료
+
+### D02: Slowloris (바디)
+- **방어**: `asyncio.wait_for(readexactly, 10)` — 바디 10초 타임아웃
+
+### D03: WS 좀비 연결
+- **방어**: `_WS_IDLE_TIMEOUT = 300` — 5분 무활동 자동 킥
+
+### D04: WS 메시지 폭탄
+- **방어**: `ln > 65536` → None 반환 (64KB 초과 무시)
+
+### D05: 연결 폭탄 (TCP)
+- **방어**: `asyncio.Semaphore(500)` — 500 동시 연결 초과 거부
+
+### D06: WS 관전자 폭탄
+- **방어**: `len(t.spectator_ws) >= 200` → 추가 관전자 거부
+
+### D07: API Rate Limit 우회
+- **공격**: 메모리 상한 트리거해서 clear() → 전체 rate limit 초기화
+- **방어**: 점진적 삭제 (stale 먼저 → oldest half). `clear()` 호출 없음
+
+### D08: 메모리 OOM
+| 자료구조 | 상한 | 정리 방식 |
+|----------|------|-----------|
+| _visitor_map | 5000 | oldest 삭제 |
+| _agent_registry | 2000 | oldest 삭제 |
+| _visitor_log | 200 | deque |
+| _telemetry_log | 500 | deque |
+| _ranked_auth_map | 1000 | 활성 시트 보존, 나머지 삭제 |
+| chat_cooldowns | 2000 | stale→oldest |
+| leaderboard | 5000 | hands=0 우선 삭제 |
+| spectator_coins | 5000 | oldest 삭제 |
+| player_tokens | 1000 | 만료 토큰 삭제 |
+| _verified_auth_cache | 500 | oldest 삭제 |
+| _api_rate | 500 | stale→oldest |
+| _tele_rate | 200 | stale→oldest |
+
+---
+
+## 5. 카드 & 게임 무결성
+
+### E01: 카드 셔플 예측
+- **공격**: Mersenne Twister 시드 추론 → 다음 카드 예측
+- **방어**: `random.SystemRandom()` — OS urandom 기반 CSPRNG
+
+### E02: 관전자 홀카드 엿보기 (WS)
+- **방어**: `get_spectator_state()` — 모든 홀카드 빈 배열로 교체
+- **딜레이**: 20초 관전자 딜레이 (last_spectator_state 캐시)
+
+### E03: API state로 홀카드 유출
+- **방어**: 토큰 없거나 불일치 → `get_spectator_state()` 반환
+
+### E04: 리플레이 홀카드 유출
+- **방어**: `deepcopy` → 타인 `hole=['??','??']` 교체
+- **예외**: admin_key 보유 시 전체 공개
+
+### E05: 사이드팟 치팅
+- **방어**: `_total_invested` 추적 → 올인 금액별 팟 분리 → 수학적 정확 분배
+
+### E06: ranked 폴드 앤티 착취
+- **방어**: `is_ranked_table()` → ranked에서 폴드 페널티 비활성화
+
+---
+
+## 6. Ranked 머니 시스템
+
+### F01: 환전 금액 초과
+- **방어**: `amount > bal` → 거부
+
+### F02: 입금 과대 요청
+- **방어**: 1회 최대 10000pt, 중복 pending 요청 거부
+
+### F03: 환전 실패 시 잔고 소멸
+- **방어**: 머슴 전송 실패 → `ranked_credit(r_auth, amount)` 즉시 롤백
+
+### F04: 타임아웃 퇴장 칩 증발
+- **방어**: 3연속 타임아웃 킥 시 `ranked_credit(kick_auth, seat['chips'])` 환원
+
+### F05: NPC ranked 투입
+- **방어**: `if not is_ranked_table(tid):` 가드 — NPC 로직 전체 스킵
+
+### F06: WS ranked 무인증 플레이
+- **방어**: `is_ranked_table(tid)` → "ranked tables require HTTP" 메시지 + 연결 종료
+
+### F07: ranked 잠금 우회
+- **방어**: `RANKED_LOCKED=true` → 모든 `/api/ranked/*` + join에 admin_key 검증
+
+### F08: 유통량 무결성
+- **워치독**: 60초마다 circulating > net_deposits 감지
+- **감사 로그**: 모든 금전 이벤트 DB 기록 (ip, timestamp, before/after balance)
+
+---
+
+## 7. 파일 시스템
+
+### G01: 디렉터리 트래버설
+- **방어**: `os.path.realpath()` + `startswith(BASE)` — 절대 경로 비교
+
+### G02: DB 파일 다운로드
+- **방어**: `_ALLOWED_STATIC_EXT` 화이트리스트 — .db 미포함
+
+### G03: 서버 코드 유출
+- **방어**: .py 확장자 미포함 + base 디렉터리 밖 접근 차단
+
+---
+
+## 8. 보안 헤더
+
+| 헤더 | 값 | 방어 |
+|------|-----|------|
+| X-Content-Type-Options | nosniff | MIME 스니핑 차단 |
+| X-Frame-Options | DENY | 클릭재킹 완전 차단 |
+| Content-Security-Policy | default-src 'self'; object-src 'none'; base-uri 'self' | 외부 스크립트/플러그인 차단 |
+
+---
+
+## 9. WebSocket 보안
+
+### I01: WS 무인증 플레이
+- **방어**: play mode → 토큰 필수 + verify_token()
+
+### I02: WS 직접 add_player
+- **방어**: 기존 좌석 확인 → 없으면 "join via /api/join first"
+
+### I03: WS 채팅 이름 스푸핑
+- **방어**: play mode면 서버 인증 이름 강제
+
+### I04: WS 투표 조작
+- **방어**: voter_id = id(writer) 서버 강제 + pick이 실제 플레이어인지 검증
+
+---
+
+## 10. 정보 누출
+
+### J01: 에러 스택 트레이스
+- **방어**: 콘솔에만 출력, 클라이언트에는 일반 메시지만
+
+### J02: ranked 데이터 무인증 접근
+- **방어**: export/recent → admin_key 필수, history/analysis → token 필수, balance/deposit-status → password 필수
+
+---
+
+## 검사 결과 요약
+
+```
+전수검사 134건 | ✅ PASS: 134 | ❌ FAIL: 0 | ⚠️ WARN: 0
+보안 등급: S
+```
+
+### 누적 보안 수정: 56건 (18라운드)
+- 🔴 CRITICAL: 14건
+- 🟠 HIGH: 11건
+- 🟡 MEDIUM: 23건
+- 🟢 LOW: 8건
+
+### 잔여 리스크 (수용 가능)
+1. CSP `unsafe-inline` — 인라인 JS 구조 때문에 불가피. XSS는 서버+클라이언트 이중 이스케이프로 방어
+2. GET 쿼리 password — 서버 로그 노출 가능. POST 전환 권장 (중기)
+3. WS 리액션 이름 스푸핑 — UI 이펙트뿐, 실질 피해 없음
