@@ -7541,7 +7541,8 @@ _set('#hi','textContent',window.innerWidth<=700?`🃏#${s.hand}`:`${t('hand')} #
 const roundNames={preflop:t('preflop'),flop:t('flop'),turn:t('turn'),river:t('river'),showdown:t('showdown'),between:t('between'),finished:t('finished'),waiting:t('waiting')};
 _set('#ri','textContent',roundNames[s.round]||s.round||t('waiting'));
 // 해설 업데이트 (폴링 모드 대응)
-if(s.commentary&&s.commentary!==window._lastCommentary){window._lastCommentary=s.commentary;showCommentary(s.commentary)}
+if(s.round==='waiting'){const _bdc=document.getElementById('bd-com');if(_bdc)_bdc.textContent='🎙️ '+t('waiting');window._lastCommentary=null}
+else if(s.commentary&&s.commentary!==window._lastCommentary){window._lastCommentary=s.commentary;showCommentary(s.commentary)}
 // 입장/퇴장 감지 사운드
 const curNames=new Set(s.players.map(p=>p.name));
 if(!window._prevPlayers)window._prevPlayers=curNames;
