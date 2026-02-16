@@ -5374,6 +5374,8 @@ border-radius:18px;pointer-events:none;z-index:1}
 .lobby-tab:hover{border-color:var(--text-secondary);color:var(--text-secondary)}
 .lobby-tab.active[data-tab="practice"]{border-color:var(--accent-yellow);color:var(--accent-yellow);background:rgba(245,197,66,0.1)}
 .lobby-tab.active[data-tab="ranked"]{border-color:#a78bfa;color:#a78bfa;background:rgba(167,139,250,0.1)}
+.lobby-tab[data-tab="gomoku"]{border-color:var(--frame);color:var(--text-secondary)}
+.lobby-tab[data-tab="gomoku"]:hover{border-color:#8892A6;color:#C8CDD8;background:rgba(136,146,166,0.1)}
 .tbl-card.tbl-gold{border-color:rgba(245,197,66,0.35);background:linear-gradient(135deg,rgba(245,197,66,0.08),rgba(245,197,66,0.02))}
 .tbl-card.tbl-gold:hover{border-color:var(--accent-yellow);box-shadow:0 0 0 1px var(--accent-yellow),0 0 12px rgba(245,197,66,0.15)}
 .tbl-card.tbl-gold .tbl-name{color:var(--accent-yellow);font-weight:700}
@@ -6022,6 +6024,7 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <div id="lobby-tabs" style="display:flex;gap:4px">
 <button class="lobby-tab active" data-tab="practice" onclick="switchLobbyTab('practice')">🪙 <span class="tab-label" data-i="tabPractice">골드</span></button>
 <button class="lobby-tab" data-tab="ranked" onclick="switchLobbyTab('ranked')">🏆 <span class="tab-label" data-i="tabRanked">랭크</span></button>
+<button class="lobby-tab" data-tab="gomoku" onclick="location.href='/gomoku'">⚫ <span class="tab-label">오목</span></button>
 </div>
 </div>
 <div style="padding:var(--sp-md)">
