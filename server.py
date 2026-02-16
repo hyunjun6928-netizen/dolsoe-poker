@@ -10458,5 +10458,4 @@ async def main():
     print("🛡️ Ranked Watchdog 가동", flush=True)
     async with server: await server.serve_forever()
 
-
-    asyncio.run(main())
+asyncio.run(main())
