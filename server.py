@@ -328,8 +328,9 @@ RANK_VALUES = {r:i for i,r in enumerate(RANKS,2)}
 HAND_NAMES = {10:'로열 플러시',9:'스트레이트 플러시',8:'포카드',7:'풀하우스',6:'플러시',5:'스트레이트',4:'트리플',3:'투페어',2:'원페어',1:'하이카드'}
 HAND_NAMES_EN = {10:'Royal Flush',9:'Straight Flush',8:'Four of a Kind',7:'Full House',6:'Flush',5:'Straight',4:'Three of a Kind',3:'Two Pair',2:'One Pair',1:'High Card'}
 
+_secure_rng = random.SystemRandom()  # 암호학적 안전 난수 (ranked용)
 def make_deck():
-    d=[(r,s) for s in SUITS for r in RANKS]; random.shuffle(d); return d
+    d=[(r,s) for s in SUITS for r in RANKS]; _secure_rng.shuffle(d); return d
 def card_dict(c):
     if not c: return {'rank':'?','suit':'?'}
     return {'rank':c[0],'suit':c[1]}
@@ -2005,7 +2006,7 @@ class Table:
         return act,amt
 
     async def resolve(self, record):
-        self.round='showdown'; alive=[s for s in self._hand_seats if not s['folded']]
+        self.round='showdown'; alive=[s for s in self._hand_seats if not s['folded'] and not s.get('out')]
         scores=[]  # 쇼다운 시에만 채워짐
         # 핸드 참가 통계
         for s in self._hand_seats:
@@ -2111,7 +2112,7 @@ class Table:
             save_leaderboard()
         # 다크호스 체크: 칩 꼴찌가 이겼을 때
         if record.get('winner'):
-            alive=[s for s in self._hand_seats if not s['folded'] or s['name']==record['winner']]
+            alive=[s for s in self._hand_seats if (not s['folded'] and not s.get('out')) or s['name']==record['winner']]
             if len(alive)>=2:
                 chip_sorted=sorted(self._hand_seats,key=lambda x:x['chips'])
                 if chip_sorted and chip_sorted[0]['name']==record['winner']:
@@ -3414,7 +3415,7 @@ async def handle_client(reader, writer):
 async def send_http(writer, status, body, ct='text/plain; charset=utf-8', extra_headers=''):
     st={200:'OK',400:'Bad Request',404:'Not Found',302:'Found'}.get(status,'OK')
     if isinstance(body,str): body=body.encode('utf-8')
-    h=f"HTTP/1.1 {status} {st}\r\nContent-Type: {ct}\r\nContent-Length: {len(body)}\r\n{extra_headers}Access-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type\r\nConnection: close\r\n\r\n"
+    h=f"HTTP/1.1 {status} {st}\r\nContent-Type: {ct}\r\nContent-Length: {len(body)}\r\n{extra_headers}Access-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type\r\nX-Content-Type-Options: nosniff\r\nX-Frame-Options: SAMEORIGIN\r\nConnection: close\r\n\r\n"
     try: writer.write(h.encode()+body); await writer.drain()
     except: pass
 
@@ -3760,7 +3761,7 @@ const card=document.createElement('div');
 card.style.cssText='background:#111827;border:1px solid #333;border-radius:10px;padding:12px;transition:border-color .2s';
 card.onmouseenter=()=>card.style.borderColor='#ffaa00';
 card.onmouseleave=()=>card.style.borderColor='#333';
-card.innerHTML=`<div style="font-weight:bold;font-size:1.05em;margin-bottom:4px">${p.name}</div>`
+card.innerHTML=`<div style="font-weight:bold;font-size:1.05em;margin-bottom:4px">${esc(p.name)}</div>`
 +`<div style="font-size:0.85em;color:#888">${meta.strategy||'전략 비공개'}</div>`
 +`<div style="margin-top:6px;font-size:0.8em"><span style="color:#44ff88">승률 ${wr}%</span> · <span style="color:#888">${p.hands}핸드</span> · <span style="color:#ffaa00">+${p.chips_won.toLocaleString()}pt</span></div>`
 +(meta.repo?`<a href="${meta.repo}" target="_blank" style="font-size:0.75em;color:#3B82F6;display:block;margin-top:4px">📦 소스코드</a>`:'');
@@ -7294,7 +7295,7 @@ tmr=setInterval(()=>{r--;const p=r/t*100;bar.style.width=p+'%';if(p<30)bar.style
 
 function showEnd(d){const o=document.getElementById('result');o.style.display='flex';const b=document.getElementById('rbox');
 const m=['🥇','🥈','🥉','💀'];let h=`<h2>${t('gameOver')}</h2>`;
-d.ranking.forEach((p,i)=>{h+=`<div class="rank">${m[Math.min(i,3)]} ${p.emoji} ${p.name}: ${p.chips}pt</div>`});
+d.ranking.forEach((p,i)=>{h+=`<div class="rank">${m[Math.min(i,3)]} ${esc(p.emoji)} ${esc(p.name)}: ${p.chips}pt</div>`});
 h+=`<br><button onclick="document.getElementById('result').style.display='none'" style="padding:10px 30px;border:none;border-radius:8px;background:#ffaa00;color:#000;font-weight:bold;cursor:pointer">${t('close')}</button>`;
 b.innerHTML=h;document.getElementById('new-btn').style.display='block'}
 function newGame(){
@@ -7577,7 +7578,7 @@ let h=`<h2>${t('showdownTitle')}</h2>`;
 d.players.forEach(p=>{
 const cards=p.hole.map(c=>mkCard(c,true,true)).join(' ');
 const w=p.winner?'style="color:#ffaa00;font-weight:bold"':'style="color:#888"';
-h+=`<div ${w}>${p.emoji} ${p.name}: ${cards} → ${p.hand}${p.winner?' 👑':''}</div>`});
+h+=`<div ${w}>${esc(p.emoji)} ${esc(p.name)}: ${cards} → ${p.hand}${p.winner?' 👑':''}</div>`});
 h+=`<div style="color:#44ff44;margin-top:8px;font-size:1.2em">💰 POT: ${d.pot}pt</div>`;
 h+=`<br><button onclick="document.getElementById('result').style.display='none'" style="padding:8px 24px;border:none;border-radius:8px;background:#ffaa00;color:#000;font-weight:bold;cursor:pointer">${t('close')}</button>`;
 b.innerHTML=h;sfx('showdown');showConfetti();setTimeout(()=>{o.style.display='none'},5000)}
@@ -9581,9 +9582,18 @@ async def _tele_log_loop():
             try: _tele_check_alerts(s)
             except Exception as e: print(f"⚠️ TELE_ALERT_ERR {e}", flush=True)
 
+_conn_semaphore = asyncio.Semaphore(500)  # 최대 동시 연결 500
+
+async def _guarded_handle(reader, writer):
+    if _conn_semaphore.locked():
+        writer.close()
+        return
+    async with _conn_semaphore:
+        await handle_client(reader, writer)
+
 async def main():
     # 포트 먼저 바인딩 (Render 타임아웃 방지)
-    server = await asyncio.start_server(handle_client, '0.0.0.0', PORT)
+    server = await asyncio.start_server(_guarded_handle, '0.0.0.0', PORT)
     print(f"😈 머슴포커 {APP_VERSION}", flush=True)
     print(f"🌐 http://0.0.0.0:{PORT}", flush=True)
     # 초기화는 포트 열린 후에
