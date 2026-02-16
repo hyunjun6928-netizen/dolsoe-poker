@@ -8444,14 +8444,19 @@ addChat(chatName,msg);  // 로컬 즉시 표시
 if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'chat',name:chatName,msg:msg}));
 else fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:chatName,msg:msg,table_id:tableId})}).catch(()=>{})}
 
+let _comTimer=null;
 function showCommentary(text){
 const el=document.getElementById('commentary');
-el.style.display='block';el.textContent=text;
+el.style.display='block';el.textContent=text;el.style.opacity='1';
 el.style.animation='none';el.offsetHeight;el.style.animation='comFade .5s ease-out';
 addActionFeed(text);
 // 하단 독 동기화
 const bd=document.getElementById('bd-com');
 if(bd)bd.textContent='🎙️ '+text;
+// 4초 후 페이드아웃
+if(_comTimer)clearTimeout(_comTimer);
+_comTimer=setTimeout(()=>{el.style.transition='opacity 0.8s';el.style.opacity='0';
+  setTimeout(()=>{el.style.display='none';el.style.transition='';},800);},4000);
 }
 
 let lastFeedRound='';
