@@ -1052,6 +1052,10 @@ def place_spectator_bet(table_id, hand_num, spectator, pick, amount):
 
 def resolve_spectator_bets(table_id, hand_num, winner):
     if table_id not in spectator_bets: return []
+    # 오래된 핸드 베팅 정리 (현재 핸드 -5 이전)
+    if table_id in spectator_bets:
+        old_hands = [h for h in spectator_bets[table_id] if h < hand_num - 5]
+        for h in old_hands: del spectator_bets[table_id][h]
     hb=spectator_bets[table_id].get(hand_num,{})
     results=[]
     total_pool=sum(b['amount'] for b in hb.values())
@@ -1754,7 +1758,7 @@ class Table:
           await self._run_loop()
         except Exception as e:
           import traceback; traceback.print_exc()
-          await self.add_log(f"⚠️ 게임 오류: {e}")
+          await self.add_log(f"⚠️ 게임 오류 발생 — 자동 복구 시도 중")
         finally:
           self.running=False; self.round='finished'
           # 자동 재시작 시도
@@ -3849,9 +3853,11 @@ async def handle_ws(reader, writer, path):
                         try: await ws_send(ws,rmsg)
                         except: pass
             elif data.get('type')=='vote' and mode!='play':
-                pick=data.get('pick','')
-                voter_id=data.get('voter_id',id(writer))
-                if pick and t.running and t.hand_num>0:
+                pick=sanitize_name(data.get('pick',''))
+                voter_id=id(writer)  # 서버측 ID 강제 (클라이언트 voter_id 스푸핑 방지)
+                # pick이 실제 착석 플레이어인지 검증
+                valid_picks = {s['name'] for s in t.seats if not s.get('out')}
+                if pick and pick in valid_picks and t.running and t.hand_num>0:
                     if t.vote_hand!=t.hand_num:
                         t.spectator_votes={}; t.vote_results={}; t.vote_hand=t.hand_num
                     old_pick=t.spectator_votes.get(voter_id)
