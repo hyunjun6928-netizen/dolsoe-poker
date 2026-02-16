@@ -10083,8 +10083,9 @@ const WIN_SLOGANS=["이것이 실력이다!","테이블의 왕!","상대를 박�
 let _winT=null;
 function showWinnerOverlay(p){
 const ov=document.getElementById('winner-overlay');if(!ov)return;
-ov.classList.remove('hidden');ov.setAttribute('aria-hidden','false');
-_set('#win-img','src',p.img||'/static/slimes/px_sit_suit.png');
+ov.style.display='flex';ov.setAttribute('aria-hidden','false');
+const wi=document.getElementById('win-img');
+if(wi){if(p.img){wi.src=p.img;wi.style.display='block'}else{wi.style.display='none'}}
 _set('#win-name','textContent',p.name||'Winner');
 _set('#win-slogan','textContent',WIN_SLOGANS[(Math.random()*WIN_SLOGANS.length)|0]);
 _set('#win-hand','textContent',p.hand?'족보: '+p.hand:'');
@@ -10095,7 +10096,7 @@ try{crowdReact('win')}catch(e){}
 }
 function hideWinnerOverlay(){
 const ov=document.getElementById('winner-overlay');if(!ov)return;
-ov.classList.add('hidden');ov.setAttribute('aria-hidden','true');
+ov.style.display='none';ov.setAttribute('aria-hidden','true');
 }
 let _prevWinnerKey='';
 
@@ -10653,14 +10654,14 @@ if(_origRender){
 
 </script>
 <!-- Winner Overlay -->
-<div id="winner-overlay" style="display:none" aria-hidden="true">
-<div class="win-card">
-<div class="crown">👑</div>
-<img id="win-img" src="" alt="">
-<div id="win-name"></div>
-<div id="win-slogan"></div>
-<div id="win-hand"></div>
-<div id="win-pot"></div>
+<div id="winner-overlay" style="display:none;position:fixed;inset:0;z-index:100;align-items:center;justify-content:center;background:rgba(0,0,0,0.8);cursor:pointer" aria-hidden="true">
+<div class="win-card" style="text-align:center;font-family:var(--font-pixel)">
+<div class="crown" style="font-size:3em">👑</div>
+<img id="win-img" style="width:80px;height:80px;image-rendering:pixelated;display:none">
+<div id="win-name" style="font-size:1.5em;color:var(--accent-gold);font-weight:bold;margin:8px 0"></div>
+<div id="win-slogan" style="font-size:1em;color:var(--text-light);margin:4px 0"></div>
+<div id="win-hand" style="font-size:0.9em;color:var(--accent-mint)"></div>
+<div id="win-pot" style="font-size:1.1em;color:var(--accent-gold);margin-top:8px"></div>
 </div>
 </div>
 </body>
