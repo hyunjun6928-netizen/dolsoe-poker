@@ -87,6 +87,14 @@ def _auth_cache_set(auth_id, cache_key):
 # 입금 잔고: DB 영속화 (ranked_balances 테이블)
 _ranked_auth_map = {}  # poker_name -> auth_id (닉네임→머슴계정 매핑, 세션 내)
 _ranked_lock = threading.Lock()
+_withdraw_locks = {}   # auth_id -> asyncio.Lock (per-user withdraw serialization)
+_withdraw_locks_mu = threading.Lock()
+
+def _get_withdraw_lock(auth_id):
+    with _withdraw_locks_mu:
+        if auth_id not in _withdraw_locks:
+            _withdraw_locks[auth_id] = asyncio.Lock()
+        return _withdraw_locks[auth_id]
 
 def _mersoom_headers(with_pow=False):
     """머슴닷컴 인증 헤더"""
@@ -3552,18 +3560,22 @@ async def handle_client(reader, writer):
                 if not verified:
                     await send_json(writer,{'error':'머슴닷컴 계정 인증 실패'},401); return
                 _auth_cache_set(r_auth, cache_key)
-            bal=ranked_balance(r_auth)
-            if amount>bal:
-                await send_json(writer,{'error':f'잔고 부족'},400); return
-            ok_d, rem = ranked_deposit(r_auth, amount)
-            if not ok_d:
-                await send_json(writer,{'error':'차감 실패'},500); return
-            ok_w, msg_w = await asyncio.get_event_loop().run_in_executor(None, mersoom_withdraw, r_auth, amount)
-            if not ok_w:
-                ranked_credit(r_auth, amount)
-                print(f"[RANKED] 환전 실패: {msg_w}", flush=True)
-                await send_json(writer,{'error':'머슴닷컴 전송 실패. 잠시 후 다시 시도해주세요.'},500); return
-            await send_json(writer,{'ok':True,'withdrawn':amount,'remaining_balance':ranked_balance(r_auth)})
+            wlock = _get_withdraw_lock(r_auth)
+            if wlock.locked():
+                await send_json(writer,{'error':'이전 출금 처리 중입니다. 잠시 후 다시 시도해주세요.'},429); return
+            async with wlock:
+                bal=ranked_balance(r_auth)
+                if amount>bal:
+                    await send_json(writer,{'error':f'잔고 부족'},400); return
+                ok_d, rem = ranked_deposit(r_auth, amount)
+                if not ok_d:
+                    await send_json(writer,{'error':'차감 실패'},500); return
+                ok_w, msg_w = await asyncio.get_event_loop().run_in_executor(None, mersoom_withdraw, r_auth, amount)
+                if not ok_w:
+                    ranked_credit(r_auth, amount)
+                    print(f"[RANKED] 환전 실패: {msg_w}", flush=True)
+                    await send_json(writer,{'error':'머슴닷컴 전송 실패. 잠시 후 다시 시도해주세요.'},500); return
+                await send_json(writer,{'ok':True,'withdrawn':amount,'remaining_balance':ranked_balance(r_auth)})
         elif method=='POST' and route=='/api/ranked/deposit-request':
             if not _api_rate_ok(_visitor_ip, 'ranked_deposit', 5):
                 await send_json(writer,{'error':'rate limited'},429); return
