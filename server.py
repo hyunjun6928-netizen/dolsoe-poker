@@ -4284,7 +4284,7 @@ async def handle_client(reader, writer):
 async def send_http(writer, status, body, ct='text/plain; charset=utf-8', extra_headers=''):
     st={200:'OK',400:'Bad Request',404:'Not Found',302:'Found'}.get(status,'OK')
     if isinstance(body,str): body=body.encode('utf-8')
-    h=f"HTTP/1.1 {status} {st}\r\nContent-Type: {ct}\r\nContent-Length: {len(body)}\r\n{extra_headers}Access-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type\r\nX-Content-Type-Options: nosniff\r\nX-Frame-Options: DENY\r\nContent-Security-Policy: default-src 'self'; script-src 'unsafe-inline' 'self'; style-src 'unsafe-inline' 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' wss: ws:; object-src 'none'; base-uri 'self'\r\nConnection: close\r\n\r\n"
+    h=f"HTTP/1.1 {status} {st}\r\nContent-Type: {ct}\r\nContent-Length: {len(body)}\r\n{extra_headers}Access-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type\r\nX-Content-Type-Options: nosniff\r\nX-Frame-Options: DENY\r\nContent-Security-Policy: default-src 'self'; script-src 'unsafe-inline' 'self'; style-src 'unsafe-inline' 'self' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data: blob:; connect-src 'self' wss: ws:; object-src 'none'; base-uri 'self'\r\nConnection: close\r\n\r\n"
     try: writer.write(h.encode()+body); await writer.drain()
     except: pass
 
