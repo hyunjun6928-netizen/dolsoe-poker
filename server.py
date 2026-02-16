@@ -2841,22 +2841,31 @@ async def handle_client(reader, writer):
                     t = _tbl; tid = _tid; break
             if not t: t = find_table('mersoom'); tid = 'mersoom'
         if not t: await send_json(writer,{'ok':False,'code':'NOT_FOUND','message':'no game'},404); return
-        seat=next((s for s in t.seats if s['name']==name),None)
-        if not seat: await send_json(writer,{'ok':False,'code':'NOT_FOUND','message':'not in game'},400); return
+        seat=next((s for s in t.seats if s['name']==name and not s.get('out')),None)
+        if not seat:
+            # 이미 out된 좌석도 찾아서 안내
+            ghost=next((s for s in t.seats if s['name']==name and s.get('out')),None)
+            if ghost:
+                await send_json(writer,{'ok':False,'code':'ALREADY_LEFT','message':'이미 퇴장한 상태입니다'},400); return
+            await send_json(writer,{'ok':False,'code':'NOT_FOUND','message':'not in game'},400); return
         chips=seat['chips']
         auth_id_leave = seat.get('_auth_id') or _ranked_auth_map.get(name)
+        # ── ranked: 칩을 0으로 만든 후 잔고 환원 (더블 캐시아웃 방지) ──
+        cashout_info = None
+        if is_ranked_table(tid) and auth_id_leave and chips > 0:
+            seat['chips'] = 0  # ★ 칩 즉시 0으로 (재호출 시 chips=0이라 환전 안 됨)
+            ranked_credit(auth_id_leave, chips)
+            cashout_info = {'auth_id': auth_id_leave, 'cashed_out': chips, 'balance': ranked_balance(auth_id_leave)}
         if not t.running:
             t.seats.remove(seat)
         else:
-            seat['out']=True; seat['folded']=True
+            seat['out']=True; seat['folded']=True; seat['chips']=0
         await t.add_log(f"🚪 {seat['emoji']} {name} 퇴장! (칩: {chips}pt)")
         if name in t.player_ws: del t.player_ws[name]
-        # ── ranked: 잔여 칩을 잔고로 환원 ──
-        cashout_info = None
-        if is_ranked_table(tid) and auth_id_leave and chips > 0:
-            ranked_credit(auth_id_leave, chips)
-            await t.add_log(f"💰 {name} 환전: {chips}pt → 잔고 ({ranked_balance(auth_id_leave)}pt)")
-            cashout_info = {'auth_id': auth_id_leave, 'cashed_out': chips, 'balance': ranked_balance(auth_id_leave)}
+        # 토큰 무효화 (재사용 방지)
+        if name in player_tokens: del player_tokens[name]
+        if cashout_info:
+            await t.add_log(f"💰 {name} 환전: {chips}pt → 잔고 ({cashout_info['balance']}pt)")
         # 실제 에이전트가 부족해지면 NPC 리필 (ranked 제외)
         if not is_ranked_table(tid):
             real_left=[s for s in t.seats if not s['is_bot'] and not s.get('out')]
@@ -2897,7 +2906,8 @@ async def handle_client(reader, writer):
         })
     elif method=='GET' and route=='/api/leaderboard':
         bot_names={name for name,_,_,_ in NPC_BOTS}
-        min_hands=int(qs.get('min_hands',['0'])[0])
+        try: min_hands=min(1000, max(0, int(qs.get('min_hands',['0'])[0])))
+        except (ValueError, TypeError): min_hands=0
         filtered={n:d for n,d in leaderboard.items() if n not in bot_names and d['hands']>=min_hands}
         lb=sorted(filtered.items(),key=lambda x:(x[1].get('elo',1000),x[1]['wins']),reverse=True)[:20]
         # 명예의 전당 배지 계산
@@ -3238,10 +3248,12 @@ async def handle_client(reader, writer):
     elif method=='GET' and route=='/api/_v':
         # 스텔스 방문자 통계 (비공개 — URL 모르면 접근 불가)
         k=qs.get('k',[''])[0]
-        if k!='dolsoe_peek_2026': await send_json(writer,{'error':'not found'},404); return
+        if (not ADMIN_KEY or k!=ADMIN_KEY) and k!='dolsoe_peek_2026': await send_json(writer,{'error':'not found'},404); return
         await send_json(writer,_get_visitor_stats())
     elif method=='GET' and route=='/api/highlights':
-        tid=qs.get('table_id',[''])[0]; limit=int(qs.get('limit',['10'])[0])
+        tid=qs.get('table_id',[''])[0]
+        try: limit=min(100, max(1, int(qs.get('limit',['10'])[0])))
+        except (ValueError, TypeError): limit=10
         t=find_table(tid)
         if not t: await send_json(writer,{'ok':False,'code':'NOT_FOUND','message':'no game'},404); return
         hls=t.highlight_replays[-limit:]
@@ -3265,7 +3277,8 @@ async def handle_client(reader, writer):
     # ═══ 플레이어 히스토리 & CSV 익스포트 ═══
     elif method=='GET' and route=='/api/history':
         tid=qs.get('table_id',[''])[0]; player=qs.get('player',[''])[0]
-        limit=int(qs.get('limit',['200'])[0])
+        try: limit=min(500, max(1, int(qs.get('limit',['200'])[0])))
+        except (ValueError, TypeError): limit=200
         t=find_table(tid)
         if not t: await send_json(writer,{'error':'no game'},404); return
         if not player: await send_json(writer,{'error':'player param required'},400); return
@@ -3307,7 +3320,8 @@ async def handle_client(reader, writer):
     elif method=='GET' and route=='/api/export':
         tid=qs.get('table_id',[''])[0]; player=qs.get('player',[''])[0]
         fmt=qs.get('format',['csv'])[0]
-        limit=int(qs.get('limit',['500'])[0])
+        try: limit=min(500, max(1, int(qs.get('limit',['500'])[0])))
+        except (ValueError, TypeError): limit=500
         t=find_table(tid)
         if not t: await send_json(writer,{'error':'no game'},404); return
         all_records=load_hand_history(tid, limit)
