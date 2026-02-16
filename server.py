@@ -3955,6 +3955,23 @@ async def handle_ws(reader, writer, path):
     finally:
         if mode=='play' and name in t.player_ws: del t.player_ws[name]
         t.spectator_ws.discard(writer)
+        # ranked: WS 끊기면 자동 leave + 칩 환불
+        if mode=='play' and name and is_ranked_table(t.id):
+            seat=next((s for s in t.seats if s['name']==name and not s.get('out')),None)
+            if seat and seat['chips']>0:
+                chips=seat['chips']
+                auth_id_leave=seat.get('_auth_id') or _ranked_auth_map.get(name)
+                if auth_id_leave:
+                    seat['chips']=0
+                    ranked_credit(auth_id_leave, chips)
+                    _ranked_audit('ws_disconnect_cashout', auth_id_leave, chips, details=f'table:{t.id} name:{name}')
+                    try:
+                        db=_db()
+                        db.execute("DELETE FROM ranked_ingame WHERE table_id=? AND auth_id=?", (t.id, auth_id_leave))
+                        db.commit()
+                    except: pass
+                seat['out']=True
+                print(f"[RANKED] WS disconnect auto-cashout: {name} → {chips}pt returned to {auth_id_leave}", flush=True)
         try: writer.close()
         except: pass
 
