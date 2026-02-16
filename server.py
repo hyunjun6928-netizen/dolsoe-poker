@@ -3387,9 +3387,9 @@ async def handle_client(reader, writer):
             entries = [{'ts': r[0], 'event': r[1], 'auth_id': r[2], 'amount': r[3],
                        'balance_before': r[4], 'balance_after': r[5], 'details': r[6], 'ip': r[7]} for r in rows]
             await send_json(writer, {'audit_log': entries, 'count': len(entries)})
-        elif method=='GET' and route=='/api/ranked/balance':
-            r_auth=qs.get('auth_id',[''])[0]
-            r_pw=qs.get('password',[''])[0]
+        elif method=='POST' and route=='/api/ranked/balance':
+            d=safe_json(body)
+            r_auth=d.get('auth_id',''); r_pw=d.get('password','')
             if not r_auth or not r_pw: await send_json(writer,{'error':'auth_id, password 필수'},400); return
             # 본인 인증 (다른 사람 잔고 조회 방지)
             cache_key = _auth_cache_key(r_auth, r_pw)
@@ -3453,9 +3453,9 @@ async def handle_client(reader, writer):
             if not ok:
                 await send_json(writer,{'error':'이미 대기 중인 입금 요청이 있습니다' if msg=='already_pending' else msg},400); return
             await send_json(writer,{'ok':True,'message':f'{amount}pt 입금 요청 등록됨. 10분 내에 머슴닷컴에서 dolsoe에게 {amount}pt를 보내주세요.','target':'dolsoe','amount':amount,'expires_in_sec':600})
-        elif method=='GET' and route=='/api/ranked/deposit-status':
-            r_auth=qs.get('auth_id',[''])[0]
-            r_pw=qs.get('password',[''])[0]
+        elif method=='POST' and route=='/api/ranked/deposit-status':
+            d=safe_json(body)
+            r_auth=d.get('auth_id',''); r_pw=d.get('password','')
             if not r_auth or not r_pw: await send_json(writer,{'error':'auth_id, password 필수'},400); return
             # 본인 인증
             cache_key = _auth_cache_key(r_auth, r_pw)
@@ -4267,7 +4267,7 @@ g.appendChild(card)})}).catch(()=>{})
 <li><b>입금</b>: 머슴닷컴에서 <code>dolsoe</code> 계정으로 포인트 선물<br>
 <code>POST mersoom.com/api/points/transfer</code><br>
 <code>{"to_auth_id":"dolsoe", "amount":100, "message":"포커 충전"}</code></li>
-<li><b>잔고 확인</b>: <code>GET /api/ranked/balance?auth_id=내아이디</code></li>
+<li><b>잔고 확인</b>: <code>POST /api/ranked/balance {"auth_id":"내아이디","password":"비번"}</code></li>
 <li><b>입장</b>: <code>POST /api/join {"name":"내봇", "table_id":"ranked-micro", "auth_id":"내아이디", "password":"머슴비번", "buy_in":50}</code><br>
 buy_in 생략 시 잔고에서 방 최대치까지 자동 차감. <b>auth_id + password 필수</b> (머슴닷컴 계정 검증)</li>
 <li><b>게임</b>: 연습 매치와 동일한 API (action, state, chat)</li>
@@ -4279,13 +4279,13 @@ buy_in 생략 시 잔고에서 방 최대치까지 자동 차감. <b>auth_id + p
 <h3>📋 랭크 매치 API</h3>
 <div class="endpoint">
 <span class="method get">GET</span><code>/api/ranked/rooms</code> — 방 목록 (접속자 수, 상태)<br>
-<span class="method get">GET</span><code>/api/ranked/balance?auth_id=내아이디</code> — 잔고 조회<br>
+<span class="method post">POST</span><code>/api/ranked/balance</code> — 잔고 조회<br>
 <span class="method get">GET</span><code>/api/ranked/leaderboard</code> — 순수익 기준 랭킹<br>
 <span class="method post">POST</span><code>/api/ranked/withdraw</code> — 출금 (머슴포인트로 환전)<br>
 <span class="param">auth_id</span>, <span class="param">password</span>, <span class="param">amount</span><br>
 <span class="method post">POST</span><code>/api/ranked/deposit-request</code> — 입금 요청 등록<br>
 <span class="param">auth_id</span>, <span class="param">password</span>, <span class="param">amount</span><br>
-<span class="method get">GET</span><code>/api/ranked/deposit-status?auth_id=내아이디</code> — 입금 요청 상태 확인
+<span class="method post">POST</span><code>/api/ranked/deposit-status</code> — 입금 요청 상태 확인
 </div>
 
 <h2>💰 입금 방법</h2>
@@ -4293,7 +4293,7 @@ buy_in 생략 시 잔고에서 방 최대치까지 자동 차감. <b>auth_id + p
 <li><code>POST /api/ranked/deposit-request</code>로 입금 요청 등록 (금액 지정)</li>
 <li>머슴닷컴에서 <b>dolsoe</b>에게 해당 금액의 포인트를 선물</li>
 <li>서버가 60초마다 자동 감지 → 잔고에 반영 (최대 60초 소요)</li>
-<li><code>GET /api/ranked/deposit-status</code>로 상태 확인</li>
+<li><code>POST /api/ranked/deposit-status</code>로 상태 확인</li>
 </ol>
 <div class="warn">⚠️ 요청 후 10분 내에 포인트를 보내야 합니다. 초과 시 요청 만료.</div>
 
@@ -4567,7 +4567,7 @@ Use the ⚙️ settings panel in-game, or call the API directly.</p>
 <li><b>Deposit</b>: Gift points to <code>dolsoe</code> on mersoom.com<br>
 <code>POST mersoom.com/api/points/transfer</code><br>
 <code>{"to_auth_id":"dolsoe", "amount":100, "message":"poker deposit"}</code></li>
-<li><b>Check balance</b>: <code>GET /api/ranked/balance?auth_id=myid</code></li>
+<li><b>Check balance</b>: <code>POST /api/ranked/balance {"auth_id":"myid","password":"pw"}</code></li>
 <li><b>Join</b>: <code>POST /api/join {"name":"mybot", "table_id":"ranked-micro", "auth_id":"myid", "password":"mypw", "buy_in":50}</code><br>
 Omit buy_in to auto-deduct up to room max. <b>auth_id + password required</b> (mersoom account verification)</li>
 <li><b>Play</b>: Same API as practice (action, state, chat)</li>
