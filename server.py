@@ -7141,6 +7141,12 @@ function watch(){
 isPlayer=false;var ni=document.getElementById('inp-name');specName=(ni?ni.value.trim():'')||t('specName')+Math.floor(Math.random()*999);
 document.getElementById('lobby').style.display='none';
 document.getElementById('game').style.display='block';
+// 이전 테이블 잔여 UI 클리어
+var _ab=document.getElementById('action-banner');if(_ab)_ab.remove();
+var _com=document.getElementById('commentary');if(_com){_com.style.display='none';_com.textContent=''}
+var _bdc=document.getElementById('bd-com');if(_bdc)_bdc.textContent='🎙️ 게임 대기중...';
+var _fc=document.getElementById('fair-comment');if(_fc)_fc.remove();
+window._lastCommentary=null;
 document.body.classList.add('in-game');
 document.body.classList.remove('is-lobby');
 _casinoFloorCanvas=null;_ingameFloorCanvas=null;
