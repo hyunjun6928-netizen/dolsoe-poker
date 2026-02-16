@@ -5646,6 +5646,7 @@ h1{display:none}
 /* 로비에서 모바일시트 숨기기 */
 body.is-lobby #mobile-sheet{display:none!important}
 /* ═══ 모바일 게임 ═══ */
+body.in-game .wrap{display:none!important}
 body.in-game .game-layout{position:fixed!important;top:0!important;left:0!important;right:0!important;bottom:0!important;display:flex!important;flex-direction:column!important;width:100vw!important;height:100vh!important;height:100dvh!important;padding:0;grid-template-columns:none!important;overflow:hidden!important;z-index:10}
 .dock-left,.dock-right{display:none!important}
 .game-main{flex:1!important;display:flex!important;flex-direction:column!important;overflow:hidden!important;-ms-overflow-style:none!important;scrollbar-width:none!important;min-height:0!important;padding:0}
