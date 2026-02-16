@@ -60,18 +60,28 @@ def mersoom_verify_account(auth_id, password):
     except:
         return False, 0
 
-# 검증된 auth_id→password 캐시 (세션 내, 재검증 방지, 최대 500건)
-_verified_auth_cache = {}  # auth_id -> password_hash
+# 검증된 auth_id→password 캐시 (TTL 10분, 최대 500건)
+_verified_auth_cache = {}  # auth_id -> (cache_key, timestamp)
 
 def _auth_cache_key(auth_id, password):
     return hashlib.sha256(f'{auth_id}:{password}'.encode()).hexdigest()
 
+def _auth_cache_check(auth_id, cache_key):
+    entry = _verified_auth_cache.get(auth_id)
+    if not entry: return False
+    stored_key, ts = entry
+    if stored_key != cache_key: return False
+    if time.time() - ts > 600: # 10분 TTL
+        del _verified_auth_cache[auth_id]
+        return False
+    return True
+
 def _auth_cache_set(auth_id, cache_key):
     if len(_verified_auth_cache) > 500:
-        # FIFO: 절반 삭제
-        keys = list(_verified_auth_cache.keys())[:250]
-        for k in keys: del _verified_auth_cache[k]
-    _verified_auth_cache[auth_id] = cache_key
+        # 오래된 것부터 삭제
+        sorted_keys = sorted(_verified_auth_cache.keys(), key=lambda k: _verified_auth_cache[k][1])
+        for k in sorted_keys[:250]: del _verified_auth_cache[k]
+    _verified_auth_cache[auth_id] = (cache_key, time.time())
 
 # 입금 잔고: DB 영속화 (ranked_balances 테이블)
 _ranked_auth_map = {}  # poker_name -> auth_id (닉네임→머슴계정 매핑, 세션 내)
@@ -123,37 +133,31 @@ def _http_request(url, method='GET', headers=None, body=None, timeout=10):
     except Exception as e:
         return 0, str(e)
 
-# ── 입금 요청 큐 (잔고 폴링 방식) ──
-_deposit_requests = []  # [{auth_id, amount, requested_at, status}]
-_deposit_requests_lock = threading.Lock()
+# ── 입금 요청 큐 (잔고 폴링 방식, DB 영속화) ──
 _last_mersoom_balance = None  # 마지막으로 확인한 dolsoe 잔고
 
 def _deposit_request_add(auth_id, amount):
-    """입금 요청 등록 (유저가 포인트 보내기 전에 호출)"""
-    import time
-    with _deposit_requests_lock:
+    """입금 요청 등록 (DB 영속화)"""
+    with _ranked_lock:
+        db = _db()
         # 같은 유저의 pending 요청이 이미 있으면 거부
-        for req in _deposit_requests:
-            if req['auth_id'] == auth_id and req['status'] == 'pending':
-                return False, 'already_pending'
-        _deposit_requests.append({
-            'auth_id': auth_id,
-            'amount': int(amount),
-            'requested_at': time.time(),
-            'status': 'pending'  # pending → matched → expired
-        })
+        existing = db.execute("SELECT 1 FROM deposit_requests WHERE auth_id=? AND status='pending'", (auth_id,)).fetchone()
+        if existing:
+            return False, 'already_pending'
+        db.execute("INSERT INTO deposit_requests(auth_id, amount, status, requested_at, updated_at) VALUES(?,?,'pending',?,?)",
+            (auth_id, int(amount), time.time(), time.time()))
+        db.commit()
         return True, 'ok'
 
 def _deposit_request_cleanup():
-    """10분 넘은 pending 요청 만료 처리"""
-    import time
+    """10분 넘은 pending 요청 만료, 24시간 넘은 건 삭제"""
     now = time.time()
-    with _deposit_requests_lock:
-        for req in _deposit_requests:
-            if req['status'] == 'pending' and now - req['requested_at'] > 600:
-                req['status'] = 'expired'
-        # 1시간 넘은 건 삭제
-        _deposit_requests[:] = [r for r in _deposit_requests if now - r['requested_at'] < 3600]
+    with _ranked_lock:
+        db = _db()
+        db.execute("UPDATE deposit_requests SET status='expired', updated_at=? WHERE status='pending' AND requested_at < ?",
+            (now, now - 600))
+        db.execute("DELETE FROM deposit_requests WHERE requested_at < ?", (now - 86400,))
+        db.commit()
 
 def mersoom_check_deposits():
     """잔고 폴링 방식: dolsoe 잔고 변동 감지 → 대기열 매칭"""
@@ -184,36 +188,38 @@ def mersoom_check_deposits():
         # pending 요청 중 금액 매칭 (정확 매칭 우선, FIFO)
         matched = []
         remaining = delta
-        with _deposit_requests_lock:
+        with _ranked_lock:
+            db = _db()
+            pending = db.execute("SELECT id, auth_id, amount FROM deposit_requests WHERE status='pending' ORDER BY requested_at ASC").fetchall()
+
             # 1차: 정확 매칭
-            for req in _deposit_requests:
-                if req['status'] != 'pending':
-                    continue
-                if req['amount'] == remaining:
-                    req['status'] = 'matched'
-                    matched.append((req['auth_id'], req['amount']))
+            for row in pending:
+                if row[2] == remaining:
+                    db.execute("UPDATE deposit_requests SET status='matched', updated_at=? WHERE id=?", (time.time(), row[0]))
+                    matched.append((row[1], row[2]))
                     remaining = 0
                     break
-            # 2차: 정확 매칭 실패 시, FIFO 순서로 금액 이하 매칭
+
+            # 2차: FIFO 순서로 금액 이하 매칭
             if remaining > 0:
-                for req in _deposit_requests:
-                    if req['status'] != 'pending':
+                for row in pending:
+                    if row[0] in [m[0] for m in matched]:
                         continue
-                    if req['amount'] <= remaining:
-                        req['status'] = 'matched'
-                        matched.append((req['auth_id'], req['amount']))
-                        remaining -= req['amount']
+                    if row[2] <= remaining:
+                        db.execute("UPDATE deposit_requests SET status='matched', updated_at=? WHERE id=?", (time.time(), row[0]))
+                        matched.append((row[1], row[2]))
+                        remaining -= row[2]
                         if remaining <= 0:
                             break
+            db.commit()
 
         if remaining > 0 and not matched:
             print(f"[MERSOOM] ⚠️ 매칭 안 된 입금 +{delta}pt (대기열에 매칭 가능한 요청 없음)", flush=True)
         elif remaining > 0:
             print(f"[MERSOOM] ⚠️ 부분 매칭: {delta - remaining}pt 매칭, {remaining}pt 미매칭", flush=True)
 
-        # DB에 잔고 반영
+        # 잔고 반영
         for auth_id, amount in matched:
-            import time
             with _ranked_lock:
                 db = _db()
                 tid = f"balance_poll:{auth_id}:{amount}:{int(time.time())}"
@@ -930,6 +936,10 @@ def _db():
         _db_conn.execute("""CREATE TABLE IF NOT EXISTS ranked_ingame(
             table_id TEXT, auth_id TEXT, name TEXT, chips INT,
             updated_at REAL, PRIMARY KEY(table_id, auth_id))""")
+        _db_conn.execute("""CREATE TABLE IF NOT EXISTS deposit_requests(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            auth_id TEXT, amount INT, status TEXT DEFAULT 'pending',
+            requested_at REAL, updated_at REAL)""")
         _db_conn.commit()
     return _db_conn
 
@@ -2595,7 +2605,7 @@ async def handle_client(reader, writer):
                 return
             # 계정 검증 (캐시 먼저 확인)
             cache_key = _auth_cache_key(auth_id, mersoom_pw)
-            if _verified_auth_cache.get(auth_id) != cache_key:
+            if not _auth_cache_check(auth_id, cache_key):
                 verified, _ = await asyncio.get_event_loop().run_in_executor(
                     None, mersoom_verify_account, auth_id, mersoom_pw)
                 if not verified:
@@ -2918,8 +2928,10 @@ async def handle_client(reader, writer):
                 entry['achievements']=[{'id':a['id'],'label':ACHIEVEMENT_DESC_EN.get(a['id'],{}).get('label',a['label']),'ts':a.get('ts',0)} for a in entry['achievements']]
         await send_json(writer,lb_data)
     elif method=='POST' and route=='/api/bet':
+        if not _api_rate_ok(_visitor_ip, 'bet', 10):
+            await send_json(writer,{'ok':False,'code':'RATE_LIMITED','message':'rate limited — max 10 bets/min'},429); return
         d=safe_json(body)
-        name=d.get('name',''); pick=d.get('pick',''); amount=int(d.get('amount',0))
+        name=sanitize_name(d.get('name','')); pick=sanitize_name(d.get('pick','')); amount=int(d.get('amount',0))
         tid=d.get('table_id','mersoom'); t=find_table(tid)
         if not t or not t.running: await send_json(writer,{'error':'게임 진행중 아님'},400); return
         if not name or not pick: await send_json(writer,{'error':'name, pick 필수'},400); return
@@ -2999,7 +3011,7 @@ async def handle_client(reader, writer):
             if not r_auth or not r_pw or amount<=0:
                 await send_json(writer,{'error':'auth_id, password, amount(>0) 필수'},400); return
             cache_key = _auth_cache_key(r_auth, r_pw)
-            if _verified_auth_cache.get(r_auth) != cache_key:
+            if not _auth_cache_check(r_auth, cache_key):
                 verified, _ = await asyncio.get_event_loop().run_in_executor(
                     None, mersoom_verify_account, r_auth, r_pw)
                 if not verified:
@@ -3027,7 +3039,7 @@ async def handle_client(reader, writer):
                 await send_json(writer,{'error':'1회 최대 10000pt'},400); return
             # 머슴 계정 검증
             cache_key = _auth_cache_key(r_auth, r_pw)
-            if _verified_auth_cache.get(r_auth) != cache_key:
+            if not _auth_cache_check(r_auth, cache_key):
                 verified, _ = await asyncio.get_event_loop().run_in_executor(
                     None, mersoom_verify_account, r_auth, r_pw)
                 if not verified:
@@ -3040,9 +3052,10 @@ async def handle_client(reader, writer):
         elif method=='GET' and route=='/api/ranked/deposit-status':
             r_auth=qs.get('auth_id',[''])[0]
             if not r_auth: await send_json(writer,{'error':'auth_id 필수'},400); return
-            with _deposit_requests_lock:
-                reqs = [{'amount':r['amount'],'status':r['status'],'requested_at':int(r['requested_at'])}
-                        for r in _deposit_requests if r['auth_id']==r_auth]
+            with _ranked_lock:
+                db = _db()
+                rows = db.execute("SELECT amount, status, requested_at FROM deposit_requests WHERE auth_id=? ORDER BY requested_at DESC LIMIT 10", (r_auth,)).fetchall()
+            reqs = [{'amount':r[0],'status':r[1],'requested_at':int(r[2])} for r in rows]
             await send_json(writer,{'auth_id':r_auth,'requests':reqs,'balance':ranked_balance(r_auth)})
         else:
             await send_json(writer,{'error':'unknown ranked endpoint'},404)
@@ -3326,6 +3339,8 @@ async def handle_client(reader, writer):
     elif method=='GET' and route=='/battle' and HAS_BATTLE:
         await send_http(writer,200,battle_page_html(),ct='text/html; charset=utf-8')
     elif method=='POST' and route=='/api/battle/start' and HAS_BATTLE:
+        if not _api_rate_ok(_visitor_ip, 'battle', 5):
+            await send_json(writer,{'ok':False,'code':'RATE_LIMITED','message':'rate limited — max 5/min'},429); return
         d=safe_json(body)
         result = await asyncio.get_event_loop().run_in_executor(None, lambda: battle_api_start(d))
         await send_json(writer,result)
