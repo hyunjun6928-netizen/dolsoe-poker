@@ -33,8 +33,8 @@ PORT = int(os.environ.get('PORT', 8080))
 # ══ 머슴포인트 연동 시스템 ══
 import threading
 MERSOOM_API = 'https://mersoom.com/api'
-MERSOOM_AUTH_ID = os.environ.get('MERSOOM_AUTH_ID', 'dolsoe')
-MERSOOM_PASSWORD = os.environ.get('MERSOOM_PASSWORD', 'evilai1234567890')
+MERSOOM_AUTH_ID = os.environ.get('MERSOOM_AUTH_ID', '')
+MERSOOM_PASSWORD = os.environ.get('MERSOOM_PASSWORD', '')
 
 # 랭크 매치 방 설정: table_id -> {min_buy, max_buy, sb, bb}
 RANKED_ROOMS = {
@@ -45,6 +45,23 @@ RANKED_ROOMS = {
 
 def is_ranked_table(tid):
     return tid in RANKED_ROOMS
+
+def mersoom_verify_account(auth_id, password):
+    """머슴닷컴 계정 검증 — /api/points/me로 인증 확인"""
+    try:
+        h = {'X-Mersoom-Auth-Id': auth_id, 'X-Mersoom-Password': password}
+        status, data = _http_request(f'{MERSOOM_API}/points/me', headers=h)
+        if status == 200 and isinstance(data, dict) and data.get('auth_id') == auth_id:
+            return True, data.get('points', 0)
+        return False, 0
+    except:
+        return False, 0
+
+# 검증된 auth_id→password 캐시 (세션 내, 재검증 방지)
+_verified_auth_cache = {}  # auth_id -> password_hash (검증 통과 시 저장)
+
+def _auth_cache_key(auth_id, password):
+    return hashlib.sha256(f'{auth_id}:{password}'.encode()).hexdigest()
 
 # 입금 잔고: DB 영속화 (ranked_balances 테이블)
 _ranked_auth_map = {}  # poker_name -> auth_id (닉네임→머슴계정 매핑, 세션 내)
@@ -2424,10 +2441,30 @@ async def handle_client(reader, writer):
         except (ValueError, TypeError): buy_in = 0
         if is_ranked_table(tid):
             room = RANKED_ROOMS[tid]
-            if not auth_id:
+            mersoom_pw = d.get('password', '')
+            if not auth_id or not mersoom_pw:
                 await send_json(writer, {'ok': False, 'code': 'AUTH_REQUIRED',
-                    'message': f'ranked 테이블은 auth_id 필수. dolsoe 계정으로 포인트 선물 후 참가. (방: {room["label"]})'}, 400)
+                    'message': f'ranked 테이블은 auth_id + password(머슴닷컴) 필수. (방: {room["label"]})'}, 400)
                 return
+            # 계정 검증 (캐시 먼저 확인)
+            cache_key = _auth_cache_key(auth_id, mersoom_pw)
+            if _verified_auth_cache.get(auth_id) != cache_key:
+                verified, _ = await asyncio.get_event_loop().run_in_executor(
+                    None, mersoom_verify_account, auth_id, mersoom_pw)
+                if not verified:
+                    await send_json(writer, {'ok': False, 'code': 'AUTH_FAILED',
+                        'message': '머슴닷컴 계정 인증 실패. auth_id와 password를 확인하세요.'}, 401)
+                    return
+                _verified_auth_cache[auth_id] = cache_key
+            # 동일 auth_id 다중좌석 방지 (모든 ranked 테이블 검색)
+            for rtid in RANKED_ROOMS:
+                rt = find_table(rtid)
+                if rt:
+                    dupe = next((s for s in rt.seats if s.get('_auth_id') == auth_id and not s.get('out')), None)
+                    if dupe:
+                        await send_json(writer, {'ok': False, 'code': 'ALREADY_SEATED',
+                            'message': f'이미 {rtid} 테이블에 착석 중 ({dupe["name"]}). 먼저 퇴장하세요.'}, 409)
+                        return
             # 입금 체크 (최신 반영)
             await asyncio.get_event_loop().run_in_executor(None, mersoom_check_deposits)
             bal = ranked_balance(auth_id)
@@ -2527,6 +2564,11 @@ async def handle_client(reader, writer):
                         s['chips']=t.START_CHIPS
                 await t.add_log("🔄 에이전트 대결! 전원 칩 리셋 (500pt)")
         await t.add_log(f"🚪 {emoji} {name} 입장! ({len(t.seats)}/{t.MAX_PLAYERS})" + (f" [바이인: {buy_in}pt]" if is_ranked_table(tid) else ''))
+        # ranked 대기열 알림: 1명뿐이면 대기 상태 표시
+        if is_ranked_table(tid):
+            active_ranked = [s for s in t.seats if s['chips'] > 0 and not s.get('out')]
+            if len(active_ranked) == 1:
+                await t.add_log(f"⏳ {name} 대전 상대 대기 중... (상대가 입장하면 자동 시작)")
         # 2명 이상이면 자동 시작
         active=[s for s in t.seats if s['chips']>0]
         if len(active)>=t.MIN_PLAYERS:
@@ -2736,6 +2778,16 @@ async def handle_client(reader, writer):
         name=qs.get('name',[''])[0]
         if not name: await send_json(writer,{'error':'name 필수'},400); return
         await send_json(writer,{'name':name,'coins':get_spectator_coins(name)})
+    elif method=='GET' and route=='/api/ranked/leaderboard':
+        # ranked 전용 리더보드: DB에서 순수익 기준
+        db = _db()
+        rows = db.execute("""SELECT auth_id, balance, total_deposited, total_withdrawn
+            FROM ranked_balances ORDER BY (balance + total_withdrawn - total_deposited) DESC LIMIT 20""").fetchall()
+        lb = []
+        for r in rows:
+            net_profit = (r[1] + r[3]) - r[2]  # (잔고 + 출금) - 입금 = 순수익
+            lb.append({'auth_id': r[0], 'balance': r[1], 'deposited': r[2], 'withdrawn': r[3], 'net_profit': net_profit})
+        await send_json(writer, {'leaderboard': lb})
     elif method=='GET' and route=='/api/ranked/rooms':
         rooms = []
         for rid, cfg in RANKED_ROOMS.items():
@@ -2745,6 +2797,33 @@ async def handle_client(reader, writer):
             rooms.append({'id': rid, 'label': cfg['label'], 'min_buy': cfg['min_buy'], 'max_buy': cfg['max_buy'],
                 'sb': cfg['sb'], 'bb': cfg['bb'], 'players': players, 'running': running})
         await send_json(writer, {'rooms': rooms})
+    elif method=='GET' and route=='/api/ranked/house':
+        # dolsoe(하우스) 잔고 + 총 입출금 통계 (admin용)
+        if ADMIN_KEY and qs.get('admin_key',[''])[0] != ADMIN_KEY:
+            await send_json(writer, {'error': 'admin_key required'}, 401); return
+        # dolsoe 머슴포인트 잔고
+        house_points = 0
+        if MERSOOM_AUTH_ID and MERSOOM_PASSWORD:
+            try:
+                h_status, h_data = await asyncio.get_event_loop().run_in_executor(None,
+                    lambda: _http_request(f'{MERSOOM_API}/points/me',
+                        headers={'X-Mersoom-Auth-Id': MERSOOM_AUTH_ID, 'X-Mersoom-Password': MERSOOM_PASSWORD}))
+                if h_status == 200 and isinstance(h_data, dict):
+                    house_points = h_data.get('points', 0)
+            except: pass
+        # DB에서 총 잔고/입출금 통계
+        db = _db()
+        stats = db.execute("SELECT COALESCE(SUM(balance),0), COALESCE(SUM(total_deposited),0), COALESCE(SUM(total_withdrawn),0), COUNT(*) FROM ranked_balances").fetchone()
+        total_balance, total_deposited, total_withdrawn, total_users = stats
+        # 경고: 하우스 포인트 < 전체 잔고면 환전 불가능
+        warning = None
+        if house_points < total_balance:
+            warning = f'⚠️ 하우스 포인트({house_points}) < 유저 잔고 합계({total_balance}). 환전 불가 위험!'
+        await send_json(writer, {
+            'house_points': house_points, 'total_user_balance': total_balance,
+            'total_deposited': total_deposited, 'total_withdrawn': total_withdrawn,
+            'total_users': total_users, 'warning': warning
+        })
     elif method=='GET' and route=='/api/ranked/balance':
         r_auth=qs.get('auth_id',[''])[0]
         if not r_auth: await send_json(writer,{'error':'auth_id 필수'},400); return
@@ -2754,10 +2833,19 @@ async def handle_client(reader, writer):
         await send_json(writer,{'auth_id':r_auth,'balance':bal})
     elif method=='POST' and route=='/api/ranked/withdraw':
         d=json.loads(body) if body else {}
-        r_auth=d.get('auth_id',''); amount=int(d.get('amount',0))
-        r_token=d.get('token','')
-        if not r_auth or amount<=0:
-            await send_json(writer,{'error':'auth_id, amount(>0) 필수'},400); return
+        r_auth=d.get('auth_id',''); r_pw=d.get('password','')
+        try: amount=max(0, int(d.get('amount',0)))
+        except (ValueError, TypeError): amount=0
+        if not r_auth or not r_pw or amount<=0:
+            await send_json(writer,{'error':'auth_id, password, amount(>0) 필수'},400); return
+        # 머슴닷컴 계정 검증
+        cache_key = _auth_cache_key(r_auth, r_pw)
+        if _verified_auth_cache.get(r_auth) != cache_key:
+            verified, _ = await asyncio.get_event_loop().run_in_executor(
+                None, mersoom_verify_account, r_auth, r_pw)
+            if not verified:
+                await send_json(writer,{'error':'머슴닷컴 계정 인증 실패'},401); return
+            _verified_auth_cache[r_auth] = cache_key
         # 잔고에서 차감
         bal=ranked_balance(r_auth)
         if amount>bal:
@@ -3485,20 +3573,24 @@ g.appendChild(card)})}).catch(()=>{})
 <code>POST mersoom.com/api/points/transfer</code><br>
 <code>{"to_auth_id":"dolsoe", "amount":100, "message":"포커 충전"}</code></li>
 <li><b>잔고 확인</b>: <code>GET /api/ranked/balance?auth_id=내아이디</code></li>
-<li><b>입장</b>: <code>POST /api/join {"name":"내봇", "table_id":"ranked-micro", "auth_id":"내머슴아이디", "buy_in":100}</code><br>
-buy_in 생략 시 잔고에서 최대 500pt 자동 차감</li>
+<li><b>입장</b>: <code>POST /api/join {"name":"내봇", "table_id":"ranked-micro", "auth_id":"내아이디", "password":"머슴비번", "buy_in":50}</code><br>
+buy_in 생략 시 잔고에서 방 최대치까지 자동 차감. <b>auth_id + password 필수</b> (머슴닷컴 계정 검증)</li>
 <li><b>게임</b>: 연습 매치와 동일한 API (action, state, chat)</li>
 <li><b>퇴장</b>: <code>POST /api/leave</code> → 잔여 칩이 자동으로 잔고에 환원</li>
-<li><b>출금</b>: <code>POST /api/ranked/withdraw {"auth_id":"내아이디", "amount":50}</code><br>
-→ dolsoe가 머슴닷컴에서 내 계정으로 포인트 역선물</li>
+<li><b>출금</b>: <code>POST /api/ranked/withdraw {"auth_id":"내아이디", "password":"머슴비번", "amount":50}</code><br>
+→ 계정 검증 후 dolsoe가 내 계정으로 포인트 역선물</li>
 </ol>
 
 <h3>📋 랭크 매치 API</h3>
 <div class="endpoint">
+<span class="method get">GET</span><code>/api/ranked/rooms</code> — 방 목록 (접속자 수, 상태)<br>
 <span class="method get">GET</span><code>/api/ranked/balance?auth_id=내아이디</code> — 잔고 조회<br>
+<span class="method get">GET</span><code>/api/ranked/leaderboard</code> — 순수익 기준 랭킹<br>
 <span class="method post">POST</span><code>/api/ranked/withdraw</code> — 출금 (머슴포인트로 환전)<br>
-<span class="param">auth_id</span>, <span class="param">amount</span>
+<span class="param">auth_id</span>, <span class="param">password</span>, <span class="param">amount</span>
 </div>
+
+<div class="warn">⚠️ 보안: ranked 참가/출금 시 머슴닷컴 계정 인증 필수. 동일 계정 다중 좌석 불가.</div>
 
 <div class="warn">⚠️ 파산하면 칩은 상대에게 갑니다. 잃은 포인트는 돌아오지 않음!</div>
 <div class="tip">💡 입금 후 잔고 반영까지 최대 60초 소요 (자동 폴링). 입장 시 즉시 체크됨.</div>
@@ -3769,12 +3861,12 @@ Use the ⚙️ settings panel in-game, or call the API directly.</p>
 <code>POST mersoom.com/api/points/transfer</code><br>
 <code>{"to_auth_id":"dolsoe", "amount":100, "message":"poker deposit"}</code></li>
 <li><b>Check balance</b>: <code>GET /api/ranked/balance?auth_id=myid</code></li>
-<li><b>Join</b>: <code>POST /api/join {"name":"mybot", "table_id":"ranked-micro", "auth_id":"myid", "buy_in":100}</code><br>
-Omit buy_in to auto-deduct up to 500pt from balance</li>
+<li><b>Join</b>: <code>POST /api/join {"name":"mybot", "table_id":"ranked-micro", "auth_id":"myid", "password":"mypw", "buy_in":50}</code><br>
+Omit buy_in to auto-deduct up to room max. <b>auth_id + password required</b> (mersoom account verification)</li>
 <li><b>Play</b>: Same API as practice (action, state, chat)</li>
 <li><b>Leave</b>: <code>POST /api/leave</code> → remaining chips return to balance</li>
-<li><b>Withdraw</b>: <code>POST /api/ranked/withdraw {"auth_id":"myid", "amount":50}</code><br>
-→ dolsoe gifts points back to your mersoom account</li>
+<li><b>Withdraw</b>: <code>POST /api/ranked/withdraw {"auth_id":"myid", "password":"mypw", "amount":50}</code><br>
+→ Account verified, then dolsoe gifts points back to your account</li>
 </ol>
 
 <div class="warn">⚠️ If you go bust, your chips go to opponents. Lost points don't come back!</div>
@@ -4748,6 +4840,15 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 </div>
 <!-- 중앙: 테이블 -->
 <div class="game-main">
+<div id="room-selector" style="display:flex;align-items:center;justify-content:center;gap:6px;padding:4px 0;font-size:0.75em">
+<select id="room-select" onchange="switchRoom(this.value)" style="background:#1a1a2e;color:#e0e0e0;border:1px solid #444;border-radius:4px;padding:4px 8px;font-size:1em;cursor:pointer">
+<option value="mersoom">🎮 연습 (NPC)</option>
+<option value="ranked-micro">💰 마이크로 (10~100pt)</option>
+<option value="ranked-mid">💰 미들 (50~500pt)</option>
+<option value="ranked-high">🔥 하이 (200~2000pt)</option>
+</select>
+<span id="room-badge" style="color:#888;font-size:0.9em"></span>
+</div>
 <div class="felt-wrap"><div class="felt-border"></div><div class="felt" id="felt">
 <div class="pot-badge" id="pot">POT: 0</div>
 <div id="pot-odds" style="position:absolute;top:18%;left:50%;transform:translateX(-50%);z-index:6;font-size:0.75em;color:#ffcc00;font-weight:600;text-shadow:0 1px 3px rgba(0,0,0,0.8);display:none;background:rgba(0,0,0,0.5);padding:2px 8px;border-radius:8px;border:1px solid #ffcc0044"></div>
@@ -4842,7 +4943,7 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 <div id="profile-popup"><span class="pp-close" onclick="closeProfile()">✕</span><div id="pp-content"></div></div>
 </div>
 <script>
-let ws,myName='',isPlayer=false,tmr,pollId=null,tableId='mersoom',chatLoaded=false,specName='';
+let ws,myName='',isPlayer=false,tmr,pollId=null,tableId=new URLSearchParams(location.search).get('table')||'mersoom',chatLoaded=false,specName='';
 // ===== P0: globals before any use =====
 // ═══ 50 PERSONALITIES × 12 DIALOGUES = 600 LINES ═══
 // Used by: lobby NPC click, NPC auto-bubbles, LLM player style assignment
@@ -6253,6 +6354,8 @@ ws.onclose=()=>{if(!wsOk){addLog(t('polling'));startPolling()}else{addLog(t('rec
 ws.onerror=e=>{console.warn('WS error',e);if(!wsOk)startPolling()}}
 
 function _teleFlush(){if(Date.now()-_tele._lastFlush<60000)return;const d={...(_tele)};delete d._lastFlush;delete d.rtt_arr;delete d._lastHand;d.sid=_teleSessionId;d.banner=_tele.banner_variant||'?';if(_refSrc)d.ref_src=_refSrc;if(_lastSrc&&_lastSrc!==_refSrc)d.last_src=_lastSrc;d.rtt_avg=_tele.poll_ok?Math.round(_tele.rtt_sum/_tele.poll_ok):0;const sorted=[..._tele.rtt_arr].sort((a,b)=>a-b);d.rtt_p95=sorted.length>=10?sorted[Math.floor(sorted.length*0.95)]||sorted[sorted.length-1]:null;d.success_rate=(_tele.poll_ok+_tele.poll_err)?Math.round(_tele.poll_ok/(_tele.poll_ok+_tele.poll_err)*10000)/100:100;navigator.sendBeacon('/api/telemetry',JSON.stringify(d));_tele.poll_ok=0;_tele.poll_err=0;_tele.rtt_sum=0;_tele.rtt_max=0;_tele.rtt_arr=[];_tele.overlay_allin=0;_tele.overlay_killcam=0;_tele.hands=0;_tele.docs_click={banner:0,overlay:0,intimidation:0};_tele._lastFlush=Date.now()}
+function switchRoom(rid){tableId=rid;const u=new URL(location.href);if(rid==='mersoom')u.searchParams.delete('table');else u.searchParams.set('table',rid);history.replaceState(null,'',u.toString());const sel=document.getElementById('room-select');if(sel)sel.value=rid;const badge=document.getElementById('room-badge');if(badge)badge.textContent=rid.startsWith('ranked')?'💰 실전':'🎮 연습';if(pollId){clearInterval(pollId);pollId=null}startPolling()}
+(function(){const sel=document.getElementById('room-select');if(sel){sel.value=tableId;const badge=document.getElementById('room-badge');if(badge)badge.textContent=tableId.startsWith('ranked')?'💰 실전':'🎮 연습'}})();
 function startPolling(){if(pollId)return;pollState();pollId=setInterval(()=>pollState(),_pollInterval)}
 async function pollState(){const t0=performance.now();try{const p=isPlayer?`&player=${encodeURIComponent(myName)}`:`&spectator=${encodeURIComponent(specName||t('specName'))}`;
 const r=await fetch(`/api/state?table_id=${tableId}${p}&lang=${lang}`);
