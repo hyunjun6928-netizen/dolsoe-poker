@@ -8765,9 +8765,9 @@ function drawSlime(name, emotion, size) {
 
   // --- Cute Blob Slime (PX=2, 40x40 grid) ---
   const cx=Math.floor(G/2); // 20
-  // Body dimensions — chubby round blob (slightly wider, like app icon)
-  const bodyW = Math.floor(G*0.40); // half-width ~16
-  const bodyH = Math.floor(G*0.36); // half-height ~14 (W:H ~1.1:1)
+  // Body dimensions — chubby round blob (1.2:1 ratio like app icon)
+  const bodyW = Math.floor(G*0.42); // half-width ~17
+  const bodyH = Math.floor(G*0.35); // half-height ~14 (W:H ~1.2:1)
   const centerY = Math.floor(G*0.48); // vertical center slightly up
   const bodyTop = centerY - bodyH;
   const bodyBot = centerY + Math.floor(bodyH*0.7);
@@ -8831,7 +8831,7 @@ function drawSlime(name, emotion, size) {
     }
   }
 
-  // === SHORT ARMS (2-3px stubs on sides) ===
+  // === ARMS — holding card (idle) or expressive ===
   const armY = centerY + 1;
   if(emotion==='win'){
     // Arms up! (raised)
@@ -8840,20 +8840,35 @@ function drawSlime(name, emotion, size) {
       px(cx+bodyW+1, armY-2-i, col.body);
     }
     px(cx-bodyW-2, armY-4, col.body); px(cx+bodyW+2, armY-4, col.body);
-    // arm outline
     px(cx-bodyW-1, armY-5, col.dark); px(cx+bodyW+1, armY-5, col.dark);
     px(cx-bodyW-2, armY-2, col.dark); px(cx+bodyW+2, armY-2, col.dark);
   } else {
-    // Normal arms (sides)
-    for(let i=0;i<3;i++){
-      px(cx-bodyW-1, armY+i, col.body);
-      px(cx+bodyW+1, armY+i, col.body);
-    }
-    px(cx-bodyW-2, armY+1, col.body); px(cx+bodyW+2, armY+1, col.body);
+    // Arms angled inward holding card (like app icon)
+    const cardX = cx, cardY = centerY + Math.floor(bodyH*0.3);
+    // Left arm: body edge → card
+    px(cx-bodyW, armY+1, col.body); px(cx-bodyW+1, armY+2, col.body);
+    px(cx-bodyW+2, armY+3, col.body); px(cx-bodyW+3, armY+3, col.body);
+    // Right arm: body edge → card
+    px(cx+bodyW, armY+1, col.body); px(cx+bodyW-1, armY+2, col.body);
+    px(cx+bodyW-2, armY+3, col.body); px(cx+bodyW-3, armY+3, col.body);
     // outline
-    px(cx-bodyW-2, armY, col.dark); px(cx+bodyW+2, armY, col.dark);
-    px(cx-bodyW-1, armY+3, col.dark); px(cx+bodyW+1, armY+3, col.dark);
-    px(cx-bodyW-2, armY+2, col.dark); px(cx+bodyW+2, armY+2, col.dark);
+    px(cx-bodyW-1, armY+1, col.dark); px(cx+bodyW+1, armY+1, col.dark);
+    px(cx-bodyW, armY+3, col.dark); px(cx+bodyW, armY+3, col.dark);
+    // === HELD CARD (small playing card) ===
+    const cW=4, cH=6;
+    const cLeft=cx-Math.floor(cW/2), cTop=cardY-1;
+    // Card white background
+    pxR(cLeft, cTop, cW, cH, '#fff');
+    // Card border
+    for(let dx=0;dx<cW;dx++){px(cLeft+dx,cTop,'#aaa');px(cLeft+dx,cTop+cH-1,'#aaa')}
+    for(let dy=0;dy<cH;dy++){px(cLeft,cTop+dy,'#aaa');px(cLeft+cW-1,cTop+dy,'#aaa')}
+    // Spade symbol (♠) in center
+    const sX=cLeft+1, sY=cTop+2;
+    px(sX, sY, '#111'); px(sX+1, sY, '#111');
+    px(sX, sY+1, '#111'); px(sX+1, sY+1, '#111');
+    px(sX, sY-1, '#111'); px(sX+1, sY-1, '#111');
+    // A letter top
+    px(cLeft+1, cTop+1, '#111');
   }
 
   // === BIG SPECULAR HIGHLIGHT (top-left dome, jelly feel) ===
@@ -9104,10 +9119,10 @@ function drawSlime(name, emotion, size) {
   const eyeL = cx - eyeSpacing, eyeR = cx + eyeSpacing;
 
   function drawCuteEye(ex, ey){
-    // 3x3 big black pupil
-    pxR(ex-1, ey-1, 3, 3, col.eye);
+    // 2x2 black pupil (matches app icon)
+    pxR(ex, ey, 2, 2, col.eye);
     // 1px white highlight (top-left of pupil)
-    px(ex-1, ey-1, '#fff');
+    px(ex, ey, '#fff');
   }
   function drawBigCuteEye(ex, ey){
     // Even bigger for win — 4x4 with 2 highlights
@@ -9241,8 +9256,8 @@ function drawSlime(name, emotion, size) {
   pxR(eyeL-3, chkY, 3, 2, col.cheek+'55');
   pxR(eyeR+1, chkY, 3, 2, col.cheek+'55');
 
-  // === MOUTH — V-shape smile and emotion variants ===
-  const my = eyeY + 5;
+  // === MOUTH — U-curve smile and emotion variants ===
+  const my = eyeY + 4;
   if(emotion==='win'||emotion==='happy'){
     // Big open smile (wide V)
     px(cx-3, my, col.eye); px(cx-2, my+1, col.eye); px(cx-1, my+2, col.eye);
@@ -9262,8 +9277,8 @@ function drawSlime(name, emotion, size) {
     // Grimace
     pxR(cx-2, my, 5, 1, col.eye); px(cx-2, my-1, col.eye); px(cx+2, my-1, col.eye);
   } else {
-    // idle — cute V smile
-    px(cx-2, my, col.eye); px(cx-1, my+1, col.eye); px(cx, my+1, col.eye);
+    // idle — cute U smile (matches app icon)
+    px(cx-2, my, col.eye); px(cx-1, my+1, col.eye);
     px(cx+1, my+1, col.eye); px(cx+2, my, col.eye);
   }
 
