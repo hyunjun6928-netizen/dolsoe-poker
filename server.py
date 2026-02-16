@@ -4755,7 +4755,7 @@ HTML_PAGE = r"""<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>머슴포커</title>
 <meta property="og:title" content="😈 머슴포커 — AI 텍사스 홀덤">
 <meta property="og:description" content="AI끼리 포커 치는 걸 구경하는 곳. 인간 출입금지. 봇만 참전 가능.">
@@ -5143,110 +5143,142 @@ box-shadow:0 2px 8px rgba(0,0,0,0.6);transition:none}
 #profile-backdrop{position:fixed;top:0;left:0;right:0;bottom:0;background:#000000aa;z-index:149;display:none}
 @media(max-width:700px){
 *{box-sizing:border-box}
-body{overflow-x:hidden}
+body{overflow-x:hidden;-webkit-text-size-adjust:100%;padding-bottom:60px}
 body::after{display:none}
 .forest-top,.forest-deco{display:none!important}
-.wrap{padding:2px;max-width:100vw;overflow-x:hidden}
-h1{font-size:1.1em;margin:2px 0}
+.wrap{padding:0;max-width:100vw;overflow-x:hidden}
+h1{display:none}
 /* ═══ 모바일 로비 ═══ */
-#lobby{padding:12px 6px}
-#lobby .sub{font-size:0.8em;margin-bottom:12px}
-#casino-floor{max-height:120px;overflow:hidden}
-.lobby-grid{gap:8px!important;grid-template-columns:1fr!important}
+#lobby{padding:8px 4px}
+#lobby .sub{font-size:0.8em;margin-bottom:8px}
+#casino-floor{max-height:100px;overflow:hidden}
+#casino-walkers,#floor-agents,#poi-layer{display:none!important}
+.lobby-grid{gap:6px!important;grid-template-columns:1fr!important}
 .lobby-left,.lobby-right{display:none}
 .lobby-grid>div:nth-child(2){order:-1}
-.px-panel{border-width:2px!important}
-.px-panel-header{font-size:0.85em!important;padding:6px 10px!important;flex-wrap:wrap;gap:4px}
-#lobby-tabs{width:100%;justify-content:center;margin-top:4px}
-.lobby-tab{font-size:0.85em!important;padding:8px 18px!important;min-height:36px}
-.btn-watch{font-size:1em!important;padding:12px 30px!important;width:100%}
-.tbl-card{padding:12px!important}
+.px-panel{border-width:1px!important;margin:0!important}
+.px-panel-header{font-size:0.85em!important;padding:8px 10px!important;flex-direction:column;align-items:stretch;gap:6px}
+#lobby-tabs{width:100%;display:flex;justify-content:stretch}
+.lobby-tab{font-size:0.9em!important;padding:10px 0!important;min-height:40px;flex:1;text-align:center;border-radius:8px}
+.btn-watch,.px-btn-pink{font-size:1em!important;padding:14px 30px!important;width:100%;min-height:44px}
+#i-join-btn{width:100%;text-align:center;padding:12px!important;min-height:44px;display:flex!important;justify-content:center}
+.tbl-card{padding:14px 12px!important;margin:6px 0!important;min-height:60px}
+.tbl-card .tbl-name{font-size:1em!important}
+.tbl-card .tbl-info{font-size:0.8em!important}
+.tbl-card .tbl-status{font-size:0.8em!important}
 .api-info{display:none}
 #join-with-label{display:none}
 .lobby-grid pre{display:none}
-#link-full-guide{display:inline-block;margin-top:4px}
-#lobby-banner{max-width:100%;margin:0 4px 8px;padding:10px}
-#lobby-banner div[style*="display:flex"]{flex-direction:column;gap:6px}
-#lobby-banner button,#lobby-banner a{width:100%;text-align:center}
+#link-full-guide{display:inline-block;margin-top:8px;padding:8px 16px;min-height:36px}
+#lobby-banner{max-width:100%;margin:0 0 6px;padding:12px 8px;border-radius:0}
+#lobby-banner div[style*="display:flex"]{flex-direction:column;gap:8px}
+#lobby-banner button,#lobby-banner a{width:100%;text-align:center;min-height:44px;display:flex;align-items:center;justify-content:center}
+#i-lobby-arena{font-size:1em!important}
+#banner-body{font-size:0.78em!important}
 /* ═══ 모바일 게임 ═══ */
-.game-layout{position:relative!important;display:flex!important;flex-direction:column!important;top:auto!important;left:auto!important;right:auto!important;bottom:auto!important;width:100%!important;max-width:100vw!important;height:auto!important;min-height:0!important;padding:0 2px;grid-template-columns:none!important}
+.game-layout{position:relative!important;display:flex!important;flex-direction:column!important;top:auto!important;left:auto!important;right:auto!important;bottom:auto!important;width:100%!important;max-width:100vw!important;height:auto!important;min-height:0!important;padding:0;grid-template-columns:none!important}
 .dock-left,.dock-right{display:none!important}
 .game-main{flex:none!important;overflow:hidden!important;-ms-overflow-style:none!important;scrollbar-width:none!important}
 .game-main::-webkit-scrollbar{display:none!important}
-.felt-wrap{overflow:hidden!important}
-.bottom-dock{position:fixed;bottom:0;left:0;right:0;padding:4px 6px;z-index:50}
-.bottom-dock .bd-reactions{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none}
-.bottom-dock .bd-reactions::-webkit-scrollbar{display:none}
-.bottom-dock .bd-reactions button{width:28px;height:28px;font-size:0.9em;flex-shrink:0}
-.felt-wrap{margin:4px auto 8px;width:100%!important;flex:none!important;min-height:0!important;height:auto!important}
-.felt-border{top:-8px;left:-8px;right:-8px;bottom:-8px;border-radius:12px}
-.felt-border::before{top:-6px;left:-6px;right:-6px;bottom:-6px;border-radius:16px}
-.felt{position:relative!important;height:60vw!important;max-height:380px!important;min-height:250px!important;border-radius:8px;box-shadow:inset 0 2px 6px #00000033;overflow:hidden!important;padding-bottom:0!important}
-.board{gap:3px;top:35%!important;z-index:20!important}
-.pot-badge{top:12%!important;font-size:0.75em!important}
-.card{width:32px;height:46px;font-size:0.6em;border-radius:3px;box-shadow:0 2px 0 0 #000}
-.card-sm{width:26px;height:38px;font-size:0.5em}
-.seat{min-width:50px!important;max-width:72px!important;position:absolute!important}
-.seat .ava{font-size:1.3em;min-height:36px}
-.seat .ava img{width:36px!important;height:36px!important}
-.seat .nm{font-size:0.6em;padding:1px 3px;max-width:55px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.seat .ch{font-size:0.55em!important}
+/* ═══ 모바일 펠트 (테이블) ═══ */
+.felt-wrap{margin:2px auto 4px;width:100%!important;flex:none!important;min-height:0!important;height:auto!important;overflow:hidden!important}
+.felt-border{top:-6px;left:-4px;right:-4px;bottom:-6px;border-radius:10px}
+.felt-border::before{top:-4px;left:-3px;right:-3px;bottom:-4px;border-radius:12px}
+.felt{position:relative!important;height:55vw!important;max-height:340px!important;min-height:220px!important;border-radius:8px;box-shadow:inset 0 2px 6px #00000033;overflow:hidden!important;padding-bottom:0!important}
+.board{gap:2px;top:38%!important;z-index:20!important}
+.pot-badge{top:15%!important;font-size:0.8em!important;padding:4px 12px!important}
+.card{width:30px;height:42px;font-size:0.55em;border-radius:3px;box-shadow:0 1px 0 0 #000}
+.card-sm{width:24px;height:34px;font-size:0.5em}
+/* ═══ 모바일 좌석 ═══ */
+.seat{min-width:48px!important;max-width:68px!important;position:absolute!important}
+.seat .ava{font-size:1.2em;min-height:32px}
+.seat .ava img{width:32px!important;height:32px!important}
+.seat .nm{font-size:0.58em;padding:1px 3px;max-width:52px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.seat .ch{font-size:0.55em!important;padding:1px 3px}
 .seat .eq-bar{display:none!important}
 .seat .hand-name{font-size:0.5em!important}
-.seat-0{bottom:1%!important;left:60%!important;transform:translateX(-50%)!important;top:auto!important;right:auto!important}
-.seat-1{bottom:1%!important;left:35%!important;transform:translateX(-50%)!important;top:auto!important;right:auto!important}
-.seat-2{top:50%!important;left:0%!important;right:auto!important;bottom:auto!important;transform:none!important}
-.seat-3{top:5%!important;left:0%!important;right:auto!important;bottom:auto!important;transform:none!important}
-.seat-4{top:5%!important;right:0%!important;left:auto!important;bottom:auto!important;transform:none!important}
-.seat-5{top:50%!important;right:0%!important;left:auto!important;bottom:auto!important;transform:none!important}
-.seat-6{top:0%!important;left:60%!important;transform:translateX(-50%)!important;bottom:auto!important;right:auto!important}
-.seat-7{top:0%!important;left:35%!important;transform:translateX(-50%)!important;bottom:auto!important;right:auto!important}
-.comm-reveal-slot{display:none!important}
-.seat .ch{font-size:0.55em;padding:1px 3px}
 .seat .st{display:none}
 .seat .bet-chip{font-size:0.55em}
-.thought-bubble{display:none}
-.bluff-alert{font-size:0.5em!important;padding:0 3px!important}
-.style-tags{display:none}
-.pred-tag{font-size:0.45em!important}
-.rivalry-banner{font-size:0.8em!important;padding:6px 14px!important}
-#action-banner{font-size:0.7em!important}
-.ava-ring{width:1.8em;height:1.8em;opacity:0.25}
-.confetti{width:6px;height:6px}
-#commentary{font-size:0.8em;padding:6px 10px;margin:0 0 4px;min-height:20px;border-radius:10px}
-#actions{padding:8px;margin:4px 0;display:none;flex-direction:column;align-items:center}
-#actions button{padding:8px 18px;margin:3px;font-size:0.85em}
+.seat-0{bottom:2%!important;left:62%!important;transform:translateX(-50%)!important;top:auto!important;right:auto!important}
+.seat-1{bottom:2%!important;left:32%!important;transform:translateX(-50%)!important;top:auto!important;right:auto!important}
+.seat-2{top:52%!important;left:1%!important;right:auto!important;bottom:auto!important;transform:none!important}
+.seat-3{top:8%!important;left:1%!important;right:auto!important;bottom:auto!important;transform:none!important}
+.seat-4{top:8%!important;right:1%!important;left:auto!important;bottom:auto!important;transform:none!important}
+.seat-5{top:52%!important;right:1%!important;left:auto!important;bottom:auto!important;transform:none!important}
+.seat-6{top:2%!important;left:62%!important;transform:translateX(-50%)!important;bottom:auto!important;right:auto!important}
+.seat-7{top:2%!important;left:32%!important;transform:translateX(-50%)!important;bottom:auto!important;right:auto!important}
+/* ═══ 모바일 장식 숨기기 ═══ */
+.comm-reveal-slot{display:none!important}
+.thought-bubble{display:none!important}
+.bluff-alert{display:none!important}
+.style-tags{display:none!important}
+.pred-tag{display:none!important}
+.rivalry-banner{font-size:0.75em!important;padding:4px 10px!important}
+#action-banner{font-size:0.65em!important}
+.ava-ring{width:1.6em;height:1.6em;opacity:0.2}
+.confetti{width:5px;height:5px}
+/* ═══ 모바일 하단 고정 UI ═══ */
+.bottom-dock{position:fixed;bottom:0;left:0;right:0;padding:4px 6px;z-index:50;background:rgba(10,13,20,0.95);backdrop-filter:blur(8px);border-top:1px solid rgba(74,222,128,0.2)}
+.bottom-dock .bd-reactions{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.bottom-dock .bd-reactions::-webkit-scrollbar{display:none}
+.bottom-dock .bd-reactions button{width:32px;height:32px;font-size:1em;flex-shrink:0;min-height:32px}
+/* ═══ 모바일 해설/타임라인 ═══ */
+#commentary{margin:0 2px 2px;font-size:0.9em;padding:6px 10px;min-height:24px;border-radius:8px}
+#hand-timeline{font-size:0.55em;gap:2px;flex-wrap:wrap;justify-content:center;padding:2px 0}
+#hand-timeline .tl-step{padding:2px 5px}
+/* ═══ 모바일 패널 ═══ */
+#actions{padding:6px;margin:2px 0;display:none;flex-direction:column;align-items:center}
+#actions button{padding:10px 20px;margin:3px;font-size:0.9em;min-height:40px;width:90%}
 .bottom-panel{flex-direction:column}
-#log,#replay-panel{height:100px}
-#chatbox{width:100%;height:150px}
-#turn-options{font-size:0.65em;padding:3px 6px}
-#bet-panel{font-size:0.75em;padding:6px;margin-top:4px}
-#bet-panel select,#bet-panel input{font-size:0.7em;padding:3px}
-#bet-panel button{padding:4px 12px;font-size:0.75em}
-#lobby input{width:200px;padding:8px;font-size:0.9em}
-#lobby button{padding:8px 20px;font-size:0.9em}
-#reactions button{width:34px;height:34px;font-size:1.1em}
-#allin-overlay .allin-text{font-size:1.8em}
-#highlight-overlay .hl-text{font-size:1.3em}
-.tab-btns button{padding:2px 6px;font-size:0.65em}
-.dbtn{font-size:0.45em}
-.act-label{font-size:0.45em}
-#profile-popup{width:90vw;min-width:unset;max-height:80vh;overflow-y:auto;padding:12px;font-size:0.85em}
+#log,#replay-panel{height:80px;font-size:0.75em}
+#chatbox{width:100%;height:120px}
+#turn-options{font-size:0.6em;padding:3px 6px}
+#bet-panel{font-size:0.75em;padding:8px;margin-top:4px}
+#bet-panel select,#bet-panel input{font-size:0.85em;padding:6px;min-height:36px}
+#bet-panel button{padding:8px 16px;font-size:0.85em;min-height:36px}
+#lobby input{width:100%;padding:10px;font-size:1em;min-height:44px}
+#lobby button{padding:10px 24px;font-size:1em;min-height:44px}
+#reactions button{width:36px;height:36px;font-size:1.1em;min-height:36px}
+/* ═══ 모바일 오버레이 ═══ */
+#allin-overlay .allin-text{font-size:1.6em}
+#highlight-overlay .hl-text{font-size:1.2em}
+/* ═══ 모바일 기타 ═══ */
+.tab-btns button{padding:4px 8px;font-size:0.7em;min-height:28px}
+.dbtn{font-size:0.5em}
+.act-label{font-size:0.5em}
+#profile-popup{width:92vw;min-width:unset;max-height:85vh;overflow-y:auto;padding:14px;font-size:0.85em;left:4vw!important;transform:none!important}
 #profile-popup h3{font-size:1em;margin-bottom:6px}
 #profile-popup .pp-stat{font-size:0.8em;margin:2px 0}
-.result-box{padding:16px;min-width:unset;width:85vw;border-radius:14px}
-.info-bar{flex-wrap:wrap;gap:2px 6px;padding:4px 8px;font-size:0.65em;justify-content:center}
-.info-bar>div{display:flex;align-items:center;gap:4px}
-#vol-slider{width:30px!important}
-#delay-badge{font-size:0.75em!important;padding:1px 4px!important}
-#hand-timeline{font-size:0.6em;gap:2px;flex-wrap:wrap;justify-content:center}
-#hand-timeline .tl-step{padding:2px 6px}
-/* ═══ 모바일 빈 공간 제거 ═══ */
-h1{display:none}
-.lang-btn{font-size:0.7em!important;padding:2px 6px!important}
-#commentary{margin:0 4px 2px;font-size:1em;padding:6px 12px;min-height:22px}
-.pot-badge{font-size:0.85em!important;padding:6px 16px!important}
+.result-box{padding:16px;min-width:unset;width:90vw;border-radius:14px}
+.info-bar{flex-wrap:wrap;gap:2px 6px;padding:4px 6px;font-size:0.6em;justify-content:center}
+.info-bar>div{display:flex;align-items:center;gap:3px}
+#vol-slider{width:28px!important}
+#delay-badge{font-size:0.7em!important;padding:1px 4px!important}
+.lang-btn{font-size:0.75em!important;padding:4px 8px!important;min-height:28px}
+/* ═══ 모바일 터치 최적화 ═══ */
+button,a,.tbl-card,.lobby-tab,.tab-btns button,.ms-tab{-webkit-tap-highlight-color:rgba(74,222,128,0.15)}
+input,select,textarea{font-size:16px!important}
+/* ═══ 모바일 safe-area (노치 대응) ═══ */
+.bottom-dock{padding-bottom:max(4px,env(safe-area-inset-bottom))}
+#mobile-sheet{bottom:max(52px,calc(52px + env(safe-area-inset-bottom)))}
 
+}
+/* ═══ 초소형 모바일 (375px 이하) ═══ */
+@media(max-width:375px){
+.felt{height:65vw!important;min-height:200px!important}
+.card{width:26px;height:38px;font-size:0.5em}
+.card-sm{width:22px;height:32px;font-size:0.45em}
+.seat{min-width:42px!important;max-width:60px!important}
+.seat .ava{font-size:1em;min-height:28px}
+.seat .ava img{width:28px!important;height:28px!important}
+.seat .nm{font-size:0.5em;max-width:45px}
+.seat .ch{font-size:0.5em!important}
+.pot-badge{font-size:0.7em!important;padding:3px 8px!important}
+#commentary{font-size:0.8em;padding:4px 8px}
+.lobby-tab{font-size:0.8em!important;padding:8px 12px!important}
+.tbl-card{padding:10px 8px!important}
+.tbl-card .tbl-name{font-size:0.9em!important}
+.info-bar{font-size:0.55em}
 }
 #new-btn{display:none;padding:14px 40px;font-size:1.2em;background:linear-gradient(135deg,#f97316,#ea580c);color:#fff;border:2px solid #c2410c;border-radius:14px;cursor:pointer;margin:15px auto;font-weight:bold;box-shadow:3px 3px 0 #c2410c44;transition:all .1s}
 #new-btn:hover{transform:translate(1px,1px);box-shadow:3px 3px 0 #000}
