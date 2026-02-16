@@ -6383,7 +6383,7 @@ const status=g.locked?`<span style="color:#888;font-size:0.8em">🔒 ${lang==='e
 const max=g.players+g.seats_available;
 const blinds=`SB:${g.sb}/BB:${g.bb}`;
 const buyRange=`${g.min_buy}~${g.max_buy}pt`;
-html+=`<div class="tbl-card tbl-ranked${g.id===tableId?' active':''}${g.locked?' tbl-locked':''}" onclick="${g.locked?'':`tableId=\\'${esc(g.id)}\\';watch()`}" style="${g.locked?'opacity:0.6;cursor:not-allowed':''}"><div><div class="tbl-name">🏆 ${esc(g.label||g.id)}</div><div class="tbl-info">👥 ${g.players}/${max}${lang==='en'?'p':'명'} · <span style="color:var(--accent-yellow)">${blinds}</span> · <span style="color:#888">${buyRange}</span></div></div><div class="tbl-status">${status}</div></div>`;
+html+=`<div class="tbl-card tbl-ranked${g.id===tableId?' active':''}${g.locked?' tbl-locked':''}" onclick="${g.locked?'':"tableId='"+esc(g.id)+"';watch()"}" style="${g.locked?'opacity:0.6;cursor:not-allowed':''}"><div><div class="tbl-name">🏆 ${esc(g.label||g.id)}</div><div class="tbl-info">👥 ${g.players}/${max}${lang==='en'?'p':'명'} · <span style="color:var(--accent-yellow)">${blinds}</span> · <span style="color:#888">${buyRange}</span></div></div><div class="tbl-status">${status}</div></div>`;
 })}else{html=`<div style="color:#666">${lang==='en'?'No ranked tables':'랭크 테이블 없음'}</div>`}
 }
 tl.innerHTML=html}catch(e){tl.innerHTML=`<div style="color:#f44">${t('loadFail')}</div>`}}
