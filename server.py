@@ -5790,6 +5790,7 @@ input,select,textarea{font-size:16px!important}
 #allin-overlay .allin-text{font-size:3.5em;font-weight:900;color:#DC6868;-webkit-text-stroke:3px #000;text-shadow:4px 4px 0 #000;animation:allinPulse .3s ease-in-out 3}
 @keyframes allinFlash{0%{opacity:0}10%{opacity:1}80%{opacity:1}100%{opacity:0}}
 @keyframes allinPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
+@keyframes allInShake{0%,100%{transform:translateX(0)}15%{transform:translateX(-6px)}30%{transform:translateX(6px)}45%{transform:translateX(-4px)}60%{transform:translateX(4px)}75%{transform:translateX(-2px)}90%{transform:translateX(2px)}}
 /* ═══ 킬스트릭 배너 ═══ */
 #killstreak-banner{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);z-index:100;pointer-events:none;text-align:center;font-family:var(--font-pixel);opacity:0}
 #killstreak-banner.show{animation:ksAppear 2.5s ease-out forwards}
@@ -8181,22 +8182,31 @@ function showActionBanner(d){
   else if(act.includes('레이즈')||act.includes('RAISE')){color='#E8B84A';bg='rgba(60,40,0,0.8)';icon='⬆️'}
   else if(act.includes('콜')||act.includes('CALL')){color='#4CAF6E';bg='rgba(0,50,0,0.8)';icon='📞'}
   else if(act.includes('체크')||act.includes('CHECK')){color='#88bbff';bg='rgba(0,30,70,0.8)';icon='✋'}
+  // ALL IN은 특별 처리
+  const isAllIn=act.includes('ALL IN');
+  const isRaise=act.includes('레이즈')||act.includes('RAISE');
+  const isFold=act.includes('폴드')||act.includes('FOLD');
   const b=document.createElement('div');b.id='action-banner';
-  b.style.cssText=`position:absolute;top:38%;left:50%;transform:translate(-50%,-50%) scale(0.3);z-index:180;
-    padding:10px 28px;border-radius:12px;background:${bg};border:2px solid ${color};
+  const sz=isAllIn?'1.2':isRaise?'1.0':'0.85';
+  const glow=isAllIn?`0 0 40px ${color},0 0 80px ${color}44`:isRaise?`0 0 25px ${color}88`:`0 0 12px ${color}44`;
+  b.style.cssText=`position:absolute;top:35%;left:50%;transform:translate(-50%,-50%) scale(0.1);z-index:180;
+    padding:${isAllIn?'18px 48px':'14px 36px'};border-radius:16px;background:${bg};border:${isAllIn?'3':'2'}px solid ${color};
     font-family:var(--font-pixel);text-align:center;pointer-events:none;white-space:nowrap;
-    opacity:0;transition:all 0.25s cubic-bezier(0.2,1,0.3,1)`;
-  b.innerHTML=`<div style="font-size:0.75em;color:#ccc;margin-bottom:2px">${esc(d.emoji||'')} ${esc(d.name||'')}</div>
-    <div style="font-size:1.8em;font-weight:900;color:${color};text-shadow:0 0 12px ${color}">${act}</div>
-    <div style="font-size:0.7em;color:#aaa;margin-top:2px">💰 POT ${d.pot||0}pt</div>`;
+    opacity:0;transition:all 0.3s cubic-bezier(0.2,1.2,0.3,1);box-shadow:${glow};backdrop-filter:blur(8px)`;
+  const actFont=isAllIn?'2.8em':isRaise?'2.2em':'1.6em';
+  const nameFont=isAllIn?'0.9em':'0.8em';
+  b.innerHTML=`<div style="font-size:${nameFont};color:#ccc;margin-bottom:4px;letter-spacing:1px">${esc(d.emoji||'')} ${esc(d.name||'')}</div>
+    <div style="font-size:${actFont};font-weight:900;color:${color};text-shadow:0 0 20px ${color},0 2px 0 rgba(0,0,0,0.5);letter-spacing:2px;${isAllIn?'animation:allInShake 0.4s ease-in-out':''}">${act}</div>
+    <div style="font-size:0.75em;color:#aaa;margin-top:4px">💰 POT ${d.pot||0}pt</div>`;
   felt.appendChild(b);
   requestAnimationFrame(()=>{requestAnimationFrame(()=>{
     b.style.opacity='1';b.style.transform='translate(-50%,-50%) scale(1)';
   })});
+  const holdTime=isAllIn?2500:isRaise?2000:1500;
   setTimeout(()=>{
-    b.style.opacity='0';b.style.transform='translate(-50%,-50%) scale(0.8) translateY(-20px)';
-    setTimeout(()=>{if(b.parentNode)b.remove()},300);
-  },1800);
+    b.style.opacity='0';b.style.transform='translate(-50%,-50%) scale(1.15) translateY(-30px)';
+    setTimeout(()=>{if(b.parentNode)b.remove()},400);
+  },holdTime);
 }
 
 // 🃏 딜링 애니메이션 — 카드가 중앙에서 각 플레이어에게 날아감
