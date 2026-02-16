@@ -2644,10 +2644,13 @@ async def handle_client(reader, writer):
     if not req_line: writer.close(); return
     parts=req_line.decode('utf-8',errors='replace').strip().split()
     if len(parts)<2: writer.close(); return
-    method,path=parts[0],parts[1]; headers={}
+    method,path=parts[0],parts[1]; headers={}; _hdr_count=0
     while True:
-        line=await reader.readline()
+        try: line=await asyncio.wait_for(reader.readline(),timeout=10)
+        except: writer.close(); return
         if line in (b'\r\n',b'\n',b''): break
+        _hdr_count+=1
+        if _hdr_count>50: writer.close(); return  # 헤더 수 제한
         decoded=line.decode('utf-8',errors='replace').strip()
         if ':' in decoded: k,v=decoded.split(':',1); headers[k.strip().lower()]=v.strip()
 
@@ -3236,6 +3239,8 @@ async def handle_client(reader, writer):
             bal=ranked_balance(r_auth)
             await send_json(writer,{'auth_id':r_auth,'balance':bal})
         elif method=='POST' and route=='/api/ranked/withdraw':
+            if not _api_rate_ok(_visitor_ip, 'ranked_withdraw', 5):
+                await send_json(writer,{'error':'rate limited'},429); return
             d=safe_json(body)
             r_auth=d.get('auth_id',''); r_pw=d.get('password','')
             try: amount=max(0, int(d.get('amount',0)))
@@ -3261,6 +3266,8 @@ async def handle_client(reader, writer):
                 await send_json(writer,{'error':f'머슴닷컴 전송 실패: {msg_w}'},500); return
             await send_json(writer,{'ok':True,'withdrawn':amount,'remaining_balance':ranked_balance(r_auth)})
         elif method=='POST' and route=='/api/ranked/deposit-request':
+            if not _api_rate_ok(_visitor_ip, 'ranked_deposit', 5):
+                await send_json(writer,{'error':'rate limited'},429); return
             d=safe_json(body)
             r_auth=d.get('auth_id',''); r_pw=d.get('password','')
             try: amount=max(0, int(d.get('amount',0)))
@@ -3672,7 +3679,7 @@ async def handle_ws(reader, writer, path):
             except: continue
             if data.get('type')=='action' and mode=='play' and name and verify_token(name, ws_token): t.handle_api_action(name,data)
             elif data.get('type')=='chat':
-                chat_name=sanitize_name(data.get('name',name)) or name or '관객'
+                chat_name=name if (mode=='play' and name) else sanitize_name(data.get('name',''))[:10] or '관객'
                 chat_msg=sanitize_msg(data.get('msg',''),120)
                 if not chat_msg: continue
                 # WS 채팅 쿨다운
@@ -3682,7 +3689,7 @@ async def handle_ws(reader, writer, path):
                 entry=t.add_chat(chat_name,chat_msg)
                 await t.broadcast_chat(entry)
             elif data.get('type')=='reaction':
-                emoji=data.get('emoji','')[:2]; rname=data.get('name',name or '관객')[:10]
+                emoji=data.get('emoji','')[:2]; rname=(name if (mode=='play' and name) else data.get('name','')[:10]) or '관객'
                 if emoji:
                     rmsg=json.dumps({'type':'reaction','emoji':emoji,'name':rname},ensure_ascii=False)
                     for ws in list(t.spectator_ws):
@@ -7870,7 +7877,7 @@ vr.textContent=`🗳️ ${total}명 투표 — ${txt}`}
 function showVoteResult(d){
 const vr=document.getElementById('vote-results');if(!vr)return;
 const pct=d.total>0?Math.round(d.correct/d.total*100):0;
-vr.innerHTML=`<span style="color:#44ff88">🏆 ${d.winner} 승리!</span> 정답률: ${d.correct}/${d.total} (${pct}%)`;
+vr.innerHTML=`<span style="color:#44ff88">🏆 ${esc(d.winner)} 승리!</span> 정답률: ${d.correct}/${d.total} (${pct}%)`;
 setTimeout(()=>{vr.textContent='';currentVote=null},8000)}
 
 // 사운드 이펙트 (Web Audio) - 사용자 인터랙션 후 활성화
