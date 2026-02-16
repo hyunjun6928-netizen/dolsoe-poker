@@ -10591,10 +10591,18 @@ if(_origRender){
   renderState=function(s){_origRender(s);_enhancedStateHook(s)};
 }
 
-// PWA Service Worker — register for all (needed for install prompt)
+// PWA Service Worker
 if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('/sw.js').then(function(reg){
-    // Auto-update only in standalone (installed app)
+  // Force clear stale SWs first, then re-register
+  navigator.serviceWorker.getRegistrations().then(function(regs){
+    var needsRefresh=false;
+    regs.forEach(function(r){
+      if(r.active&&r.active.scriptURL&&!r.active.scriptURL.includes('/sw.js')){
+        r.unregister();needsRefresh=true;
+      }
+    });
+    return navigator.serviceWorker.register('/sw.js');
+  }).then(function(reg){
     if(window.matchMedia('(display-mode: standalone)').matches){
       reg.update();
       reg.addEventListener('updatefound',function(){
@@ -10625,15 +10633,23 @@ function installPWA(){
       _deferredPrompt=null;
     });
   } else {
-    // Fallback for Samsung Internet / browsers without beforeinstallprompt
-    const ua=navigator.userAgent||'';
-    if(/SamsungBrowser/i.test(ua)){
-      alert('삼성 인터넷: 하단 ≡ 메뉴 → "현재 페이지 추가" → "홈 화면"을 눌러주세요!');
-    } else if(/iPhone|iPad/i.test(ua)){
-      alert('Safari 하단 공유 버튼(□↑) → "홈 화면에 추가"를 눌러주세요!');
-    } else {
-      alert('브라우저 메뉴(⋮) → "홈 화면에 추가" 또는 "앱 설치"를 눌러주세요!');
+    // No native prompt available — try WebAPK-compatible approach
+    // Samsung Internet / Chrome: force SW update to re-trigger installability check
+    if('serviceWorker' in navigator){
+      navigator.serviceWorker.getRegistration().then(function(r){if(r)r.update()});
     }
+    // If still no prompt after 1s, show minimal guidance
+    setTimeout(function(){
+      if(!_deferredPrompt){
+        const ua=navigator.userAgent||'';
+        if(/iPhone|iPad/i.test(ua)){
+          alert('Safari: 하단 공유(□↑) → "홈 화면에 추가"');
+        } else {
+          // Samsung/Chrome/etc — try opening browser's native add-to-home
+          alert('브라우저 ⋮ 메뉴 → "앱 설치" 또는 "홈 화면에 추가"');
+        }
+      }
+    },1000);
   }
 }
 window.addEventListener('appinstalled',function(){
