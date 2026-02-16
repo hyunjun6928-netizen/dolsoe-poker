@@ -2001,12 +2001,7 @@ class Table:
             # 슬로모션: 플랍 카드 한 장씩
             await self.broadcast_raw({'type':'slowmo_start','pot':self.pot})
             for ci in range(3):
-                self.community.append(self.deck.pop())
-                hand_record['community']=[card_str(c) for c in self.community]
-                eq=self._compute_equities()
-                await self.broadcast_raw({'type':'slowmo_card','card':card_dict(self.community[-1]),'index':ci,
-                    'street':'flop','community':[card_dict(c) for c in self.community],'equities':eq,'pot':self.pot})
-                await self.broadcast_state(); await asyncio.sleep(2.5)
+                await self._slowmo_broadcast('flop', ci, hand_record, deal=True)
             await self.add_log(f"── 플랍: {' '.join(card_str(c) for c in self.community)} ──")
             await self.broadcast_commentary(f"🎴 플랍 오픈! {' '.join(card_str(c) for c in self.community)} — 팟 {self.pot}pt")
         else:
@@ -2024,10 +2019,7 @@ class Table:
         self.round='turn'; self.deck.pop(); self.community.append(self.deck.pop())
         hand_record['community']=[card_str(c) for c in self.community]
         if _slowmo:
-            eq=self._compute_equities()
-            await self.broadcast_raw({'type':'slowmo_card','card':card_dict(self.community[-1]),'index':3,
-                'street':'turn','community':[card_dict(c) for c in self.community],'equities':eq,'pot':self.pot})
-            await asyncio.sleep(3)
+            await self._slowmo_broadcast('turn', 3, hand_record)
         await self.add_log(f"── 턴: {' '.join(card_str(c) for c in self.community)} ──")
         alive=self._count_alive()
         await self.broadcast_commentary(f"🔥 턴 카드 오픈! {alive}명 생존 — 팟 {self.pot}pt")
@@ -2041,11 +2033,8 @@ class Table:
         self.round='river'; self.deck.pop(); self.community.append(self.deck.pop())
         hand_record['community']=[card_str(c) for c in self.community]
         if _slowmo:
-            eq=self._compute_equities()
-            await self.broadcast_raw({'type':'slowmo_card','card':card_dict(self.community[-1]),'index':4,
-                'street':'river','community':[card_dict(c) for c in self.community],'equities':eq,'pot':self.pot})
+            await self._slowmo_broadcast('river', 4, hand_record)
             await self.broadcast_raw({'type':'slowmo_end'})
-            await asyncio.sleep(3)
         await self.add_log(f"── 리버: {' '.join(card_str(c) for c in self.community)} ──")
         alive=self._count_alive()
         await self.broadcast_commentary(f"💀 리버! 마지막 카드 오픈 — {alive}명이 {self.pot}pt를 놓고 승부!")
@@ -2060,6 +2049,16 @@ class Table:
 
     def _count_alive(self): return sum(1 for s in self._hand_seats if not s['folded'])
 
+    async def _slowmo_broadcast(self, street, index, hand_record, deal=False):
+        """슬로모션: 승률 계산 + 브로드캐스트. deal=True면 카드도 뽑음"""
+        if deal:
+            self.community.append(self.deck.pop())
+        hand_record['community']=[card_str(c) for c in self.community]
+        eq=self._compute_equities()
+        await self.broadcast_raw({'type':'slowmo_card','card':card_dict(self.community[-1]),'index':index,
+            'street':street,'community':[card_dict(c) for c in self.community],'equities':eq,'pot':self.pot})
+        await self.broadcast_state(); await asyncio.sleep(2.5)
+
     def _is_all_allin(self):
         """모든 생존 플레이어가 올인 상태(chips==0)인지 체크"""
         alive=[s for s in self._hand_seats if not s['folded'] and not s.get('out')]
@@ -2069,13 +2068,36 @@ class Table:
         return len(with_chips)<=1
 
     def _compute_equities(self):
-        """현재 커뮤니티 카드 기준 생존자 승률 계산 (Monte Carlo 간이)"""
+        """현재 커뮤니티 카드 기준 생존자 승률 계산 (Monte Carlo 200회)"""
         alive=[s for s in self._hand_seats if not s['folded'] and not s.get('out') and s.get('hole')]
         if len(alive)<2: return {}
-        equities={}
-        total=sum(hand_strength(s['hole'],self.community) for s in alive) or 1
+        known=set()
+        for c in self.community: known.add(c)
         for s in alive:
-            equities[s['name']]=round(hand_strength(s['hole'],self.community)/total*100)
+            for c in s['hole']: known.add(c)
+        remaining_deck=[c for c in [(r,s) for s in SUITS for r in RANKS] if c not in known]
+        need=5-len(self.community)
+        wins={s['name']:0.0 for s in alive}
+        N=200
+        for _ in range(N):
+            if need>0:
+                sample=random.sample(remaining_deck,need)
+                board=list(self.community)+sample
+            else:
+                board=list(self.community)
+            best_sc=None; best_names=[]
+            for s in alive:
+                sc=evaluate_hand(s['hole']+board)
+                if sc is None: continue
+                if best_sc is None or sc>best_sc:
+                    best_sc=sc; best_names=[s['name']]
+                elif sc==best_sc:
+                    best_names.append(s['name'])
+            share=1.0/len(best_names) if best_names else 0
+            for nm in best_names: wins[nm]+=share
+        equities={}
+        for s in alive:
+            equities[s['name']]=round(wins[s['name']]/N*100)
         return equities
 
     async def betting_round(self, start, record):
@@ -2420,7 +2442,7 @@ class Table:
             # 올인 쇼다운이면 항상 저장
             if any(s['chips']==0 for s in alive):
                 self._save_highlight(record,'allin_showdown',scores[0][2])
-            record['winner']=w['name']; record['pot']=self.pot
+            record['winner']=w['name']; record['pot']=self.pot; record['_total_won']=total_won
             update_leaderboard(w['name'], True, self.pot, self.pot)
             update_agent_stats(w['name'], net=self.pot, win=True, hand_num=self.hand_num)
             for s,_,_ in scores:
@@ -2440,23 +2462,26 @@ class Table:
                     if r['win']: await self.add_log(f"🎰 관전자 {r['name']}: {r['pick']}에 {r['bet']}코인 → +{r['payout']}코인!")
                     else: await self.add_log(f"💸 관전자 {r['name']}: {r['pick']}에 {r['bet']}코인 → 꽝")
             save_leaderboard()
-        # 킬스트릭 체크
-        if record.get('winner'):
-            wn=record['winner']
-            if self._killstreak_winner==wn:
+        # 킬스트릭 체크 (메인팟 승자 기준, split pot은 최다 획득자)
+        _ks_winner=record.get('winner')
+        if not _ks_winner and record.get('_total_won'):
+            # split pot: 가장 많이 딴 플레이어
+            _ks_winner=max(record['_total_won'],key=record['_total_won'].get,default=None)
+        if _ks_winner:
+            if self._killstreak_winner==_ks_winner:
                 self._killstreak_count+=1
             else:
-                self._killstreak_winner=wn
+                self._killstreak_winner=_ks_winner
                 self._killstreak_count=1
             if self._killstreak_count>=2:
                 streak_labels={2:'🔥 더블킬!',3:'💀 트리플킬!',4:'⚡ 쿼드라킬!'}
                 sl=streak_labels.get(self._killstreak_count,'👑 갓라이크!' if self._killstreak_count>=5 else '')
                 if sl:
-                    w_seat=next((s for s in self._hand_seats if s['name']==wn),None)
+                    w_seat=next((s for s in self._hand_seats if s['name']==_ks_winner),None)
                     w_emoji=w_seat['emoji'] if w_seat else '🃏'
-                    await self.broadcast_raw({'type':'killstreak','name':wn,'emoji':w_emoji,
+                    await self.broadcast_raw({'type':'killstreak','name':_ks_winner,'emoji':w_emoji,
                         'streak':self._killstreak_count,'label':sl})
-                    await self.add_log(f"{sl} {w_emoji} {wn} {self._killstreak_count}연승!")
+                    await self.add_log(f"{sl} {w_emoji} {_ks_winner} {self._killstreak_count}연승!")
         # 다크호스 체크: 칩 꼴찌가 이겼을 때
         if record.get('winner'):
             alive=[s for s in self._hand_seats if (not s['folded'] and not s.get('out')) or s['name']==record['winner']]
@@ -8185,10 +8210,10 @@ window._eqPrev[name]=eq;
 // 카드 플립 이펙트 — commentary로 표시
 const streetNames={flop:'플랍',turn:'턴',river:'리버'};
 const sn=streetNames[d.street]||d.street;
-const cardStr=`${d.card.rank}${d.card.suit}`;
+const cardStr=`${esc(d.card.rank||'')}${esc(d.card.suit||'')}`;
 try{
 const cbar=document.getElementById('commentary-bar');
-if(cbar)cbar.innerHTML=`<span class="slowmo-card">🃏 ${sn} — ${cardStr}</span> ${d.equities?Object.entries(d.equities).map(([n,e])=>`<span style="color:${e>50?'#44ff88':e>25?'#ffaa00':'#ff4444'};margin-left:8px">${n}: ${e}%</span>`).join(''):''}`;
+if(cbar)cbar.innerHTML=`<span class="slowmo-card">🃏 ${esc(sn)} — ${cardStr}</span> ${d.equities?Object.entries(d.equities).map(([n,e])=>`<span style="color:${Number(e)>50?'#44ff88':Number(e)>25?'#ffaa00':'#ff4444'};margin-left:8px">${esc(String(n))}: ${parseInt(e)}%</span>`).join(''):''}`;
 }catch(e){}
 try{sfx('card')}catch(e){}
 }
