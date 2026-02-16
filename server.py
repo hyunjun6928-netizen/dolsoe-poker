@@ -3495,7 +3495,13 @@ async def handle_client(reader, writer):
             except (ValueError, TypeError): amount=0
             if not r_auth or amount<=0:
                 await send_json(writer,{'error':'auth_id, amount(>0) required'},400); return
-            ranked_credit(r_auth, amount)
+            with _ranked_lock:
+                db = _db()
+                db.execute("""INSERT INTO ranked_balances(auth_id, balance, total_deposited, updated_at)
+                    VALUES(?, ?, ?, strftime('%s','now'))
+                    ON CONFLICT(auth_id) DO UPDATE SET balance=balance+?, total_deposited=total_deposited+?, updated_at=strftime('%s','now')""",
+                    (r_auth, amount, amount, amount, amount))
+                db.commit()
             _ranked_audit('admin_credit', r_auth, amount, details=f'admin manual credit')
             await send_json(writer,{'ok':True,'auth_id':r_auth,'credited':amount,'balance':ranked_balance(r_auth)})
         else:
