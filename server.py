@@ -7170,18 +7170,23 @@ function burstConfetti(count){
 
 // 9. Gold coin rain
 function goldCoinRain(count){
-  count=count||20;
+  const _mob=window.innerWidth<=700;
+  count=_mob?Math.min(count||5,5):(count||20);
+  const sz=_mob?6:10;const szR=_mob?4:12;
+  const dur=_mob?1500:4000;
   for(let i=0;i<count;i++){
     const c=document.createElement('div');
     c.className='gold-coin-fall';
     c.style.left=10+Math.random()*80+'%';
     c.style.top='-20px';
-    c.style.setProperty('--coin-dur',(1+Math.random()*1.5)+'s');
-    c.style.width=(10+Math.random()*12)+'px';
-    c.style.height=(10+Math.random()*12)+'px';
-    c.style.animationDelay=(Math.random()*0.8)+'s';
+    c.style.setProperty('--coin-dur',(_mob?0.8:1)+Math.random()*(_mob?0.7:1.5)+'s');
+    c.style.width=(sz+Math.random()*szR)+'px';
+    c.style.height=(sz+Math.random()*szR)+'px';
+    c.style.animationDelay=(Math.random()*0.5)+'s';
+    c.style.opacity=_mob?'0.5':'0.9';
+    c.style.zIndex='50';
     document.body.appendChild(c);
-    setTimeout(()=>c.remove(),4000);
+    setTimeout(()=>c.remove(),dur);
   }
 }
 
@@ -7232,7 +7237,8 @@ addActionFeed=function(text,isRound){
   }
   // Win
   if(text.includes('🏆')){
-    burstConfetti(50);goldCoinRain(25);
+    const _m=window.innerWidth<=700;
+    burstConfetti(_m?8:50);goldCoinRain(_m?3:25);
   }
 };
 
@@ -8032,12 +8038,14 @@ function animateCollect(){
 
 // 🎬 드라마 오버레이 — 큰 액션 시 화면 중앙 팝업
 function showDramaOverlay(text,color,duration){
-  duration=duration||3000;color=color||'#E8B84A';
+  const _mob=window.innerWidth<=700;
+  duration=_mob?Math.min(duration||2000,2000):(duration||3000);color=color||'#E8B84A';
   let old=document.getElementById('drama-overlay');if(old)old.remove();
   const d=document.createElement('div');d.id='drama-overlay';
-  d.style.cssText=`position:fixed;top:35%;left:50%;transform:translate(-50%,-50%);z-index:500;
-    font-size:2.5em;font-weight:900;color:${color};text-shadow:0 0 20px ${color},0 4px 8px rgba(0,0,0,0.8);
-    font-family:var(--font-title,var(--font-pixel));pointer-events:none;white-space:nowrap;
+  d.style.cssText=`position:fixed;top:${_mob?'25%':'35%'};left:50%;transform:translate(-50%,-50%);z-index:500;
+    font-size:${_mob?'1.2em':'2.5em'};font-weight:900;color:${color};text-shadow:0 0 ${_mob?'10px':'20px'} ${color},0 4px 8px rgba(0,0,0,0.8);
+    font-family:var(--font-title,var(--font-pixel));pointer-events:none;white-space:${_mob?'normal':'nowrap'};
+    max-width:${_mob?'90vw':'none'};text-align:center;word-break:break-word;
     animation:dramaIn 0.4s ease-out forwards;opacity:0`;
   d.textContent=text;
   document.body.appendChild(d);
@@ -8061,19 +8069,20 @@ function showVictoryOverlay(winner,state){
   ov.id='victory-overlay';
   ov.style.cssText='position:fixed;inset:0;z-index:9998;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);animation:victoryFadeIn 0.3s ease-out;cursor:pointer';
   ov.onclick=()=>{ov.style.animation='victoryFadeOut 0.3s ease-in forwards';setTimeout(()=>ov.remove(),300)};
-  ov.innerHTML=`
-    <div style="text-align:center;font-family:var(--font-pixel)">
-      <div style="font-size:3.5em;margin-bottom:8px;animation:victoryBounce 0.5s ease-out">👑</div>
-      <img src="${slimeDataUrl}" width="120" height="120" style="image-rendering:pixelated;filter:drop-shadow(0 0 20px rgba(232,184,74,0.6));margin-bottom:12px;animation:victoryBounce 0.6s ease-out">
-      <div style="font-size:2em;color:#e8b84a;font-weight:bold;text-shadow:0 0 20px rgba(232,184,74,0.5),0 2px 4px #000;margin-bottom:8px;animation:victoryBounce 0.7s ease-out;letter-spacing:2px">${esc(winner.emoji)} ${esc(winner.name)}</div>
-      <div style="font-size:2.5em;color:#fff;font-weight:900;text-shadow:0 0 30px rgba(255,100,100,0.4),0 3px 6px #000;margin-bottom:12px;animation:victoryBounce 0.8s ease-out;letter-spacing:3px">${slogan}</div>
-      <div style="font-size:1.2em;color:var(--accent-mint);margin-bottom:6px">${hand}</div>
-      <div style="font-size:1.5em;color:#e8b84a;text-shadow:0 0 10px rgba(232,184,74,0.3)">💰 ${pot.toLocaleString()}pt</div>
-      <div style="font-size:0.7em;color:rgba(255,255,255,0.4);margin-top:16px">${lang==='en'?'click to dismiss':'클릭하면 닫힘'}</div>
+  const _vm=window.innerWidth<=700;
+ov.innerHTML=`
+    <div style="text-align:center;font-family:var(--font-pixel);padding:${_vm?'10px':'0'}">
+      <div style="font-size:${_vm?'2em':'3.5em'};margin-bottom:8px;animation:victoryBounce 0.5s ease-out">👑</div>
+      <img src="${slimeDataUrl}" width="${_vm?80:120}" height="${_vm?80:120}" style="image-rendering:pixelated;filter:drop-shadow(0 0 20px rgba(232,184,74,0.6));margin-bottom:12px;animation:victoryBounce 0.6s ease-out">
+      <div style="font-size:${_vm?'1.2em':'2em'};color:#e8b84a;font-weight:bold;text-shadow:0 0 20px rgba(232,184,74,0.5),0 2px 4px #000;margin-bottom:8px;animation:victoryBounce 0.7s ease-out;letter-spacing:${_vm?'1px':'2px'}">${esc(winner.emoji)} ${esc(winner.name)}</div>
+      <div style="font-size:${_vm?'1.4em':'2.5em'};color:#fff;font-weight:900;text-shadow:0 0 30px rgba(255,100,100,0.4),0 3px 6px #000;margin-bottom:12px;animation:victoryBounce 0.8s ease-out;letter-spacing:${_vm?'1px':'3px'}">${slogan}</div>
+      <div style="font-size:${_vm?'0.9em':'1.2em'};color:var(--accent-mint);margin-bottom:6px">${hand}</div>
+      <div style="font-size:${_vm?'1.1em':'1.5em'};color:#e8b84a;text-shadow:0 0 10px rgba(232,184,74,0.3)">💰 ${pot.toLocaleString()}pt</div>
+      <div style="font-size:0.7em;color:rgba(255,255,255,0.4);margin-top:${_vm?'10px':'16px'}">${lang==='en'?'click to dismiss':'클릭하면 닫힘'}</div>
     </div>`;
   document.body.appendChild(ov);
   // Trigger celebration effects
-  try{burstConfetti(50);goldCoinRain(25);crowdReact('win')}catch(e){}
+  try{const _m=window.innerWidth<=700;burstConfetti(_m?8:50);goldCoinRain(_m?3:25);crowdReact('win')}catch(e){}
   // Gold glow on winning slime
   try{
     const wIdx=state.players?state.players.findIndex(p=>p.name===winner.name):-1;
@@ -8300,7 +8309,7 @@ const o=document.getElementById('highlight-overlay');const hlEl=document.getElem
 const stars=d.rank>=9?'🎆🎆🎆':d.rank>=8?'🎇🎇':'✨';
 hlEl.textContent=`${stars} ${d.emoji} ${d.player} — ${d.hand_name}! ${stars}`;
 o.style.display='flex';o.style.animation='allinFlash 3s ease-out forwards';sfx('rare');
-try{burstConfetti(80);goldCoinRain(40);screenShake();crowdReact('win')}catch(e){}
+try{const _m=window.innerWidth<=700;burstConfetti(_m?10:80);goldCoinRain(_m?4:40);if(!_m)screenShake();crowdReact('win')}catch(e){}
 setTimeout(()=>{o.style.display='none'},3000)}
 
 async function placeBet(){}
