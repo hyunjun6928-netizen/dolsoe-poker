@@ -5167,10 +5167,8 @@ body::after{display:none}
 .wrap{padding:0;max-width:100vw;overflow-x:hidden}
 h1{display:none}
 /* ═══ 모바일 로비 ═══ */
-#lobby{padding:8px 4px}
-#lobby .sub{font-size:0.8em;margin-bottom:8px}
-#casino-floor{max-height:100px;overflow:hidden}
-#casino-walkers,#floor-agents,#poi-layer{display:none!important}
+#lobby{padding:4px 4px 80px}
+#casino-floor{display:none!important}
 .lobby-grid{gap:6px!important;grid-template-columns:1fr!important}
 .lobby-left,.lobby-right{display:none}
 .lobby-grid>div:nth-child(2){order:-1}
@@ -5178,21 +5176,24 @@ h1{display:none}
 .px-panel-header{font-size:0.85em!important;padding:8px 10px!important;flex-direction:column;align-items:stretch;gap:6px}
 #lobby-tabs{width:100%;display:flex;justify-content:stretch}
 .lobby-tab{font-size:0.9em!important;padding:10px 0!important;min-height:40px;flex:1;text-align:center;border-radius:8px}
-.btn-watch,.px-btn-pink{font-size:1em!important;padding:14px 30px!important;width:100%;min-height:44px}
-#i-join-btn{width:100%;text-align:center;padding:12px!important;min-height:44px;display:flex!important;justify-content:center}
-.tbl-card{padding:14px 12px!important;margin:6px 0!important;min-height:60px}
-.tbl-card .tbl-name{font-size:1em!important}
-.tbl-card .tbl-info{font-size:0.8em!important}
-.tbl-card .tbl-status{font-size:0.8em!important}
+.btn-watch,.px-btn-pink{font-size:1em!important;padding:12px 20px!important;width:100%;min-height:44px}
+#i-join-btn{width:100%;text-align:center;padding:10px!important;min-height:44px;display:flex!important;justify-content:center}
+.tbl-card{padding:12px 10px!important;margin:4px 0!important;min-height:54px}
+.tbl-card .tbl-name{font-size:0.95em!important}
+.tbl-card .tbl-info{font-size:0.78em!important}
+.tbl-card .tbl-status{font-size:0.78em!important}
 .api-info{display:none}
 #join-with-label{display:none}
 .lobby-grid pre{display:none}
-#link-full-guide{display:inline-block;margin-top:8px;padding:8px 16px;min-height:36px}
-#lobby-banner{max-width:100%;margin:0 0 6px;padding:12px 8px;border-radius:0}
-#lobby-banner div[style*="display:flex"]{flex-direction:column;gap:8px}
-#lobby-banner button,#lobby-banner a{width:100%;text-align:center;min-height:44px;display:flex;align-items:center;justify-content:center}
-#i-lobby-arena{font-size:1em!important}
-#banner-body{font-size:0.78em!important}
+#link-full-guide{display:inline-block;margin-top:6px;padding:6px 12px;min-height:36px}
+#lobby-banner{max-width:100%;margin:0 0 4px;padding:8px 6px;border-radius:0;border:none;box-shadow:none}
+#i-lobby-arena{font-size:0.9em!important;margin-bottom:2px!important}
+#banner-body{font-size:0.7em!important;margin-bottom:4px!important;line-height:1.3!important}
+#lobby-banner div[style*="display:flex"]{flex-direction:row!important;gap:6px}
+.btn-watch,.px-btn-pink{padding:10px 16px!important;font-size:0.9em!important}
+#i-join-btn{padding:10px 16px!important;font-size:0.75em!important;width:auto!important}
+/* 로비에서 모바일시트 숨기기 */
+body.is-lobby #mobile-sheet{display:none!important}
 /* ═══ 모바일 게임 ═══ */
 body.in-game .game-layout{position:fixed!important;top:0!important;left:0!important;right:0!important;bottom:0!important;display:flex!important;flex-direction:column!important;width:100vw!important;height:100vh!important;height:100dvh!important;padding:0;grid-template-columns:none!important;overflow:hidden!important;z-index:10}
 .dock-left,.dock-right{display:none!important}
