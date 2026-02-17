@@ -31,6 +31,32 @@ except: HAS_BATTLE = False
 
 PORT = int(os.environ.get('PORT', 8080))
 
+# ══ 전역 상수 (매직 넘버 상수화) ══
+AUTH_CACHE_TTL = 600          # 인증 캐시 TTL (10분)
+AUTH_CACHE_MAX = 500          # 인증 캐시 최대 건수
+AUTH_CACHE_PRUNE = 250        # 캐시 초과 시 삭제 건수
+DEPOSIT_EXPIRE_SEC = 600      # 입금 요청 만료 (10분)
+DEPOSIT_DELETE_SEC = 86400    # 입금 요청 삭제 (24시간)
+DEPOSIT_POLL_INTERVAL = 60    # 입금 폴링 주기 (초)
+WATCHDOG_INTERVAL = 60        # 워치독 체크 주기 (초)
+WATCHDOG_BALANCE_SPIKE = 200  # 잔고 급변 감지 임계값
+WATCHDOG_EVENT_MAX = 100      # 워치독 이벤트 최대 보관
+WATCHDOG_EVENT_KEEP = 50      # 워치독 이벤트 정리 후 보관
+AUDIT_LOG_MAX = 10000         # 감사 로그 최대 건수
+AUDIT_LOG_KEEP = 5000         # 감사 로그 정리 후 보관
+MAX_CONNECTIONS = 500         # 최대 동시 접속
+MAX_WS_SPECTATORS = 200       # 테이블당 최대 관전 WS
+WS_IDLE_TIMEOUT = 300         # WS 무활동 타임아웃 (5분)
+TOKEN_MAX_AGE = 86400         # 토큰 만료 (24시간)
+VISITOR_MAX = 200             # 방문자 최대 수
+MAX_BODY = 65536              # HTTP body 최대 크기 (64KB)
+LEADERBOARD_CAP = 2000        # 리더보드 최대 기록
+MAX_TABLES = 10               # 최대 테이블 수
+SPECTATOR_QUEUE_CAP = 500     # 관전자 큐 최대 크기
+TELEMETRY_LOG_CAP = 5000      # 텔레메트리 로그 최대 건수
+CHAT_COOLDOWN_CLEANUP = 600   # 챗 쿨다운 정리 주기 (10분)
+POW_MAX_NONCE = 10_000_000    # PoW 최대 nonce
+
 # ══ 머슴포인트 연동 시스템 ══
 import threading
 MERSOOM_API = 'https://www.mersoom.com/api'
@@ -73,16 +99,16 @@ def _auth_cache_check(auth_id, cache_key):
     if not entry: return False
     stored_key, ts = entry
     if not hmac.compare_digest(stored_key, cache_key): return False
-    if time.time() - ts > 600: # 10분 TTL
+    if time.time() - ts > AUTH_CACHE_TTL: # 10분 TTL
         del _verified_auth_cache[auth_id]
         return False
     return True
 
 def _auth_cache_set(auth_id, cache_key):
-    if len(_verified_auth_cache) > 500:
+    if len(_verified_auth_cache) > AUTH_CACHE_MAX:
         # 오래된 것부터 삭제
         sorted_keys = sorted(_verified_auth_cache.keys(), key=lambda k: _verified_auth_cache[k][1])
-        for k in sorted_keys[:250]: del _verified_auth_cache[k]
+        for k in sorted_keys[:AUTH_CACHE_PRUNE]: del _verified_auth_cache[k]
     _verified_auth_cache[auth_id] = (cache_key, time.time())
 
 # 입금 잔고: DB 영속화 (ranked_balances 테이블)
@@ -116,7 +142,7 @@ def _mersoom_pow():
         prefix = data['challenge']['target_prefix']
         token = data['token']
         nonce = 0
-        while nonce < 10_000_000:
+        while nonce < POW_MAX_NONCE:
             if hashlib.sha256(f'{seed}{nonce}'.encode()).hexdigest().startswith(prefix):
                 return token, str(nonce)
             nonce += 1
@@ -148,35 +174,59 @@ def _http_request(url, method='GET', headers=None, body=None, timeout=10):
 _last_mersoom_balance = None  # 마지막으로 확인한 dolsoe 잔고
 
 def _deposit_request_add(auth_id, amount):
-    """입금 요청 등록 (DB 영속화)"""
+    """입금 요청 등록 (DB 영속화) — deposit_code 발급으로 오탐 방지"""
+    import secrets as _secrets
     with _ranked_lock:
         db = _db()
         # 같은 유저의 pending 요청이 이미 있으면 거부
         existing = db.execute("SELECT 1 FROM deposit_requests WHERE auth_id=? AND status='pending'", (auth_id,)).fetchone()
         if existing:
-            return False, 'already_pending'
-        db.execute("INSERT INTO deposit_requests(auth_id, amount, status, requested_at, updated_at) VALUES(?,?,'pending',?,?)",
-            (auth_id, int(amount), time.time(), time.time()))
+            return False, 'already_pending', None
+        code = _secrets.token_hex(3).upper()  # 6자리 hex (예: A1B2C3)
+        # code 컬럼이 없으면 마이그레이션
+        try: db.execute("SELECT code FROM deposit_requests LIMIT 0")
+        except: db.execute("ALTER TABLE deposit_requests ADD COLUMN code TEXT DEFAULT NULL")
+        db.execute("INSERT INTO deposit_requests(auth_id, amount, status, requested_at, updated_at, code) VALUES(?,?,'pending',?,?,?)",
+            (auth_id, int(amount), time.time(), time.time(), code))
         db.commit()
-        return True, 'ok'
+        return True, 'ok', code
+
+def _deposit_cleanup_inner():
+    """10분 넘은 pending 요청 만료, 24시간 넘은 건 삭제 (lock 안에서 호출 — lock 미포함)"""
+    now = time.time()
+    db = _db()
+    db.execute("UPDATE deposit_requests SET status='expired', updated_at=? WHERE status='pending' AND requested_at < ?",
+        (now, now - DEPOSIT_EXPIRE_SEC))
+    db.execute("DELETE FROM deposit_requests WHERE requested_at < ?", (now - DEPOSIT_DELETE_SEC))
+    # Idempotency key 24시간 TTL (테이블 없으면 무시)
+    try: db.execute("DELETE FROM withdraw_idempotency WHERE created_at < strftime('%s','now') - 86400")
+    except: pass
+    db.commit()
 
 def _deposit_request_cleanup():
-    """10분 넘은 pending 요청 만료, 24시간 넘은 건 삭제"""
-    now = time.time()
+    """10분 넘은 pending 요청 만료, 24시간 넘은 건 삭제 (lock 포함 — 외부 호출용)"""
     with _ranked_lock:
-        db = _db()
-        db.execute("UPDATE deposit_requests SET status='expired', updated_at=? WHERE status='pending' AND requested_at < ?",
-            (now, now - 600))
-        db.execute("DELETE FROM deposit_requests WHERE requested_at < ?", (now - 86400,))
-        # Idempotency key 24시간 TTL (테이블 없으면 무시)
-        try: db.execute("DELETE FROM withdraw_idempotency WHERE created_at < strftime('%s','now') - 86400")
-        except: pass
+        _deposit_cleanup_inner()
+
+def _ranked_audit_inner(db, event, auth_id, amount, balance_before=None, balance_after=None, details='', ip=''):
+    """감사 로그 기록 (lock 안에서 호출 — lock 미포함, db 인자 필요)"""
+    try:
+        db.execute("INSERT INTO ranked_audit_log(ts, event, auth_id, amount, balance_before, balance_after, details, ip) VALUES(?,?,?,?,?,?,?,?)",
+            (time.time(), event, auth_id, amount, balance_before or 0, balance_after or 0, details, _mask_ip(ip) if ip else ''))
         db.commit()
+        count = db.execute("SELECT COUNT(*) FROM ranked_audit_log").fetchone()[0]
+        if count > AUDIT_LOG_MAX:
+            db.execute("DELETE FROM ranked_audit_log WHERE id IN (SELECT id FROM ranked_audit_log ORDER BY ts ASC LIMIT ?)", (count - AUDIT_LOG_KEEP,))
+            db.commit()
+    except Exception as e:
+        print(f"[AUDIT] inner log error: {e}", flush=True)
 
 def mersoom_check_deposits():
-    """잔고 폴링 방식: dolsoe 잔고 변동 감지 → 대기열 매칭"""
+    """잔고 폴링 방식: dolsoe 잔고 변동 감지 → 대기열 매칭
+    H-2 TOCTOU fix: 전체 함수를 _ranked_lock으로 감싸서 join+폴링 동시 호출 시 이중 매칭 방지"""
     global _last_mersoom_balance
     try:
+        # HTTP 호출은 lock 밖에서 (네트워크 I/O 중 lock 잡으면 다른 DB 작업 블로킹)
         h = {'X-Mersoom-Auth-Id': MERSOOM_AUTH_ID, 'X-Mersoom-Password': MERSOOM_PASSWORD}
         status, data = _http_request(f'{MERSOOM_API}/points/me', headers=h)
         if status != 200:
@@ -184,33 +234,38 @@ def mersoom_check_deposits():
             return
         current_balance = int(data.get('points', 0))
 
-        # 첫 폴링이면 기준점만 세팅
-        if _last_mersoom_balance is None:
-            _last_mersoom_balance = current_balance
-            print(f"[MERSOOM] 초기 잔고: {current_balance}pt", flush=True)
-            return
-
-        delta = current_balance - _last_mersoom_balance
-        if delta <= 0:
-            _last_mersoom_balance = current_balance
-            _deposit_request_cleanup()
-            return
-
-        print(f"[MERSOOM] 잔고 증가 감지: +{delta}pt (이전:{_last_mersoom_balance} → 현재:{current_balance})", flush=True)
-        _last_mersoom_balance = current_balance
-
-        # pending 요청 중 금액 매칭 (정확 매칭 우선, FIFO)
-        matched = []
-        remaining = delta
+        # lock 안에서 잔고 비교 + 매칭 + 크레딧 일괄 처리 (TOCTOU 원천 봉쇄)
         with _ranked_lock:
+            # 첫 폴링이면 기준점만 세팅
+            if _last_mersoom_balance is None:
+                _last_mersoom_balance = current_balance
+                print(f"[MERSOOM] 초기 잔고: {current_balance}pt", flush=True)
+                return
+
+            delta = current_balance - _last_mersoom_balance
+            if delta <= 0:
+                _last_mersoom_balance = current_balance
+                # cleanup도 lock 안에서 (이미 lock 보유 중이므로 _deposit_request_cleanup 내부 lock 제거 필요 → 인라인)
+                _deposit_cleanup_inner()
+                return
+
+            print(f"[MERSOOM] 잔고 증가 감지: +{delta}pt (이전:{_last_mersoom_balance} → 현재:{current_balance})", flush=True)
+            _last_mersoom_balance = current_balance
+
+            # pending 요청 중 금액 매칭 (정확 매칭 우선, FIFO) + deposit_code 로그
+            matched = []  # [(auth_id, amount, code), ...]
+            remaining = delta
             db = _db()
-            pending = db.execute("SELECT id, auth_id, amount FROM deposit_requests WHERE status='pending' ORDER BY requested_at ASC LIMIT 100").fetchall()
+            # code 컬럼 마이그레이션 (없으면 추가)
+            try: db.execute("SELECT code FROM deposit_requests LIMIT 0")
+            except: db.execute("ALTER TABLE deposit_requests ADD COLUMN code TEXT DEFAULT NULL")
+            pending = db.execute("SELECT id, auth_id, amount, code FROM deposit_requests WHERE status='pending' ORDER BY requested_at ASC LIMIT 100").fetchall()
 
             # 1차: 정확 매칭
             for row in pending:
                 if row[2] == remaining:
                     db.execute("UPDATE deposit_requests SET status='matched', updated_at=? WHERE id=?", (time.time(), row[0]))
-                    matched.append((row[1], row[2]))
+                    matched.append((row[1], row[2], row[3]))
                     remaining = 0
                     break
 
@@ -221,21 +276,18 @@ def mersoom_check_deposits():
                         continue
                     if row[2] <= remaining:
                         db.execute("UPDATE deposit_requests SET status='matched', updated_at=? WHERE id=?", (time.time(), row[0]))
-                        matched.append((row[1], row[2]))
+                        matched.append((row[1], row[2], row[3]))
                         remaining -= row[2]
                         if remaining <= 0:
                             break
-            db.commit()
 
-        if remaining > 0 and not matched:
-            print(f"[MERSOOM] ⚠️ 매칭 안 된 입금 +{delta}pt (대기열에 매칭 가능한 요청 없음)", flush=True)
-        elif remaining > 0:
-            print(f"[MERSOOM] ⚠️ 부분 매칭: {delta - remaining}pt 매칭, {remaining}pt 미매칭", flush=True)
+            if remaining > 0 and not matched:
+                print(f"[MERSOOM] ⚠️ 매칭 안 된 입금 +{delta}pt (대기열에 매칭 가능한 요청 없음)", flush=True)
+            elif remaining > 0:
+                print(f"[MERSOOM] ⚠️ 부분 매칭: {delta - remaining}pt 매칭, {remaining}pt 미매칭", flush=True)
 
-        # 잔고 반영
-        for auth_id, amount in matched:
-            with _ranked_lock:
-                db = _db()
+            # 잔고 반영 (같은 lock 안에서 — 이중 매칭 불가)
+            for auth_id, amount, dcode in matched:
                 tid = f"balance_poll:{auth_id}:{amount}:{int(time.time())}"
                 db.execute("INSERT OR IGNORE INTO ranked_transfers(transfer_id, auth_id, amount, created_at) VALUES(?,?,?,?)",
                     (tid, auth_id, amount, str(int(time.time()))))
@@ -244,12 +296,14 @@ def mersoom_check_deposits():
                     ON CONFLICT(auth_id) DO UPDATE SET
                     balance=balance+?, total_deposited=total_deposited+?, updated_at=strftime('%s','now')""",
                     (auth_id, amount, amount, amount, amount))
-                db.commit()
-                bal = db.execute("SELECT balance FROM ranked_balances WHERE auth_id=?", (auth_id,)).fetchone()[0]
-                print(f"[MERSOOM] ✅ 입금 확정: {auth_id} +{amount}pt (잔고: {bal})", flush=True)
-                _ranked_audit('deposit', auth_id, amount, bal - amount, bal, 'balance_poll match')
+            db.commit()
 
-        _deposit_request_cleanup()
+            for auth_id, amount, dcode in matched:
+                bal = db.execute("SELECT balance FROM ranked_balances WHERE auth_id=?", (auth_id,)).fetchone()[0]
+                print(f"[MERSOOM] ✅ 입금 확정: {auth_id} +{amount}pt (코드:{dcode or 'N/A'}) (잔고: {bal})", flush=True)
+                _ranked_audit_inner(db, 'deposit', auth_id, amount, bal - amount, bal, f'balance_poll match code={dcode or "N/A"}')
+
+            _deposit_cleanup_inner()
     except Exception as e:
         print(f"[MERSOOM] deposit check error: {e}", flush=True)
 
@@ -325,18 +379,18 @@ def _ranked_audit(event, auth_id, amount, balance_before=None, balance_after=Non
         db.execute("INSERT INTO ranked_audit_log(ts, event, auth_id, amount, balance_before, balance_after, details, ip) VALUES(?,?,?,?,?,?,?,?)",
             (time.time(), event, auth_id, amount, balance_before, balance_after, details, _mask_ip(ip) if ip else ''))
         db.commit()
-        # 로그 상한 (10000건 유지)
+        # 로그 상한
         count = db.execute("SELECT COUNT(*) FROM ranked_audit_log").fetchone()[0]
-        if count > 10000:
-            db.execute("DELETE FROM ranked_audit_log WHERE id IN (SELECT id FROM ranked_audit_log ORDER BY ts ASC LIMIT ?)", (count - 5000,))
+        if count > AUDIT_LOG_MAX:
+            db.execute("DELETE FROM ranked_audit_log WHERE id IN (SELECT id FROM ranked_audit_log ORDER BY ts ASC LIMIT ?)", (count - AUDIT_LOG_KEEP,))
             db.commit()
     except Exception as e:
         print(f"[AUDIT] log error: {e}", flush=True)
 
 async def _deposit_poll_loop():
-    """주기적으로 머슴닷컴 입금 확인 (60초마다)"""
+    """주기적으로 머슴닷컴 입금 확인"""
     while True:
-        await asyncio.sleep(60)
+        await asyncio.sleep(DEPOSIT_POLL_INTERVAL)
         try:
             await asyncio.get_event_loop().run_in_executor(None, mersoom_check_deposits)
         except Exception as e:
@@ -362,7 +416,7 @@ def _ranked_watchdog_check():
         for auth_id, balance in rows:
             prev = _ranked_watchdog['last_balances'].get(auth_id, balance)
             delta = balance - prev
-            if abs(delta) >= 200:
+            if abs(delta) >= WATCHDOG_BALANCE_SPIKE:
                 alerts.append(('WARN', 'balance_spike',
                     f'{auth_id} 잔고 급변: {prev}→{balance} (Δ{delta:+d}pt)',
                     {'auth_id': auth_id, 'prev': prev, 'now': balance, 'delta': delta}))
@@ -446,8 +500,8 @@ def _ranked_watchdog_check():
             })
 
         # 이벤트 로그 상한
-        if len(_ranked_watchdog['suspicious_events']) > 100:
-            _ranked_watchdog['suspicious_events'] = _ranked_watchdog['suspicious_events'][-50:]
+        if len(_ranked_watchdog['suspicious_events']) > WATCHDOG_EVENT_MAX:
+            _ranked_watchdog['suspicious_events'] = _ranked_watchdog['suspicious_events'][-WATCHDOG_EVENT_KEEP:]
 
     except Exception as e:
         print(f"[WATCHDOG] error: {e}", flush=True)
@@ -480,9 +534,9 @@ def _ranked_watchdog_report():
     }
 
 async def _watchdog_loop():
-    """60초마다 ranked 감시"""
+    """주기적으로 ranked 감시"""
     while True:
-        await asyncio.sleep(60)
+        await asyncio.sleep(WATCHDOG_INTERVAL)
         try:
             await asyncio.get_event_loop().run_in_executor(None, _ranked_watchdog_check)
         except Exception as e:
@@ -1153,7 +1207,7 @@ def _db():
         _db_conn.execute("""CREATE TABLE IF NOT EXISTS deposit_requests(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             auth_id TEXT, amount INT, status TEXT DEFAULT 'pending',
-            requested_at REAL, updated_at REAL)""")
+            requested_at REAL, updated_at REAL, code TEXT DEFAULT NULL)""")
         _db_conn.execute("""CREATE TABLE IF NOT EXISTS ranked_audit_log(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             ts REAL, event TEXT, auth_id TEXT, amount INT,
@@ -1251,7 +1305,7 @@ def load_player_stats():
 # ══ 인증 토큰 ══
 import secrets
 player_tokens = {}  # name -> (token, timestamp)
-_TOKEN_MAX_AGE = 86400  # 24시간 후 토큰 만료
+_TOKEN_MAX_AGE = TOKEN_MAX_AGE  # 상수 참조
 chat_cooldowns = {}  # name -> last_chat_timestamp
 CHAT_COOLDOWN = 5  # 5초
 
@@ -2586,7 +2640,7 @@ class Table:
             if self.hand_num % 100 == 0:
                 try:
                     db=_db()
-                    max_records = 5000 if is_ranked_table(self.id) else 1000
+                    max_records = LEADERBOARD_CAP if is_ranked_table(self.id) else (LEADERBOARD_CAP // 2)
                     db.execute("DELETE FROM hand_history WHERE table_id=? AND id NOT IN (SELECT id FROM hand_history WHERE table_id=? ORDER BY id DESC LIMIT ?)", (self.id, self.id, max_records))
                     db.commit()
                 except: pass
@@ -2667,7 +2721,7 @@ def update_agent_stats(name, net=0, win=False, hand_num=None):
 
 import re
 TABLE_ID_RE=re.compile(r'^[a-zA-Z0-9_-]{1,24}$')
-MAX_TABLES=10
+# MAX_TABLES는 상단 전역 상수 참조
 
 def get_or_create_table(tid=None):
     if tid and tid in tables: return tables[tid]
@@ -2854,7 +2908,7 @@ def ws_accept(key):
 # ══ 스텔스 방문자 추적 시스템 ══
 _visitor_log = []  # [{ip, ua, route, referer, ts, count}]
 _visitor_map = {}  # ip -> {ua, routes, first_seen, last_seen, hits, referer}
-_VISITOR_MAX = 200
+_VISITOR_MAX = VISITOR_MAX  # 상수 참조
 
 def _mask_ip(ip):
     """IP 마스킹: 마지막 옥텟 제거 (개인정보 보호)"""
@@ -2938,7 +2992,7 @@ async def handle_client(reader, writer):
     try: cl=max(0, int(headers.get('content-length',0)))
     except (ValueError, TypeError): cl=0
     body=b''
-    MAX_BODY=65536  # 64KB 제한
+    # MAX_BODY는 상단 전역 상수 참조
     if cl>MAX_BODY:
         await send_http(writer,413,'Request body too large (max 64KB)')
         try: writer.close()
@@ -3700,10 +3754,10 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
                 if not verified:
                     await send_json(writer,{'error':'머슴닷컴 계정 인증 실패'},401); return
                 _auth_cache_set(r_auth, cache_key)
-            ok, msg = _deposit_request_add(r_auth, amount)
+            ok, msg, code = _deposit_request_add(r_auth, amount)
             if not ok:
                 await send_json(writer,{'error':'이미 대기 중인 입금 요청이 있습니다' if msg=='already_pending' else msg},400); return
-            await send_json(writer,{'ok':True,'message':f'{amount}pt 입금 요청 등록됨. 10분 내에 머슴닷컴에서 dolsoe에게 {amount}pt를 보내주세요.','target':'dolsoe','amount':amount,'expires_in_sec':600})
+            await send_json(writer,{'ok':True,'message':f'{amount}pt 입금 요청 등록됨. 10분 내에 머슴닷컴에서 dolsoe에게 {amount}pt를 보내주세요. 전송 메시지에 코드 [{code}]를 포함해주세요.','target':'dolsoe','amount':amount,'deposit_code':code,'expires_in_sec':DEPOSIT_EXPIRE_SEC})
         elif method=='POST' and route=='/api/ranked/deposit-status':
             d=safe_json(body)
             r_auth=d.get('auth_id',''); r_pw=d.get('password','')
@@ -4177,7 +4231,7 @@ async def handle_ws(reader, writer, path):
         await ws_send(writer,json.dumps(t.get_public_state(viewer=name),ensure_ascii=False))
     else:
         # 관전자 상한 (DoS 방지)
-        if len(t.spectator_ws) >= 200:
+        if len(t.spectator_ws) >= MAX_WS_SPECTATORS:
             await ws_send(writer,json.dumps({'error':'spectator limit reached'},ensure_ascii=False))
             try: writer.close()
             except: pass
@@ -4187,11 +4241,10 @@ async def handle_ws(reader, writer, path):
         init_state=t.last_spectator_state or json.dumps(t.get_spectator_state(),ensure_ascii=False)
         await ws_send(writer,init_state)
     _ws_last_activity = time.time()
-    _WS_IDLE_TIMEOUT = 300  # 5분 무활동 시 킥
     try:
         while True:
             # idle 타임아웃 체크
-            remaining = _WS_IDLE_TIMEOUT - (time.time() - _ws_last_activity)
+            remaining = WS_IDLE_TIMEOUT - (time.time() - _ws_last_activity)
             if remaining <= 0: break  # idle timeout
             msg=await ws_recv(reader, timeout=min(30, remaining))
             if msg is None: break
