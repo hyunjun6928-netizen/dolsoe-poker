@@ -168,6 +168,8 @@ def _deposit_request_cleanup():
         db.execute("UPDATE deposit_requests SET status='expired', updated_at=? WHERE status='pending' AND requested_at < ?",
             (now, now - 600))
         db.execute("DELETE FROM deposit_requests WHERE requested_at < ?", (now - 86400,))
+        # Idempotency key 24시간 TTL
+        db.execute("DELETE FROM withdraw_idempotency WHERE created_at < strftime('%s','now') - 86400")
         db.commit()
 
 def mersoom_check_deposits():
@@ -3308,6 +3310,7 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
     elif method=='GET' and route=='/api/state':
         tid=qs.get('table_id',[''])[0]; player=qs.get('player',[''])[0]
         token=qs.get('token',[''])[0]
+        _if_none_match=headers.get('if-none-match','').strip('" ')
         t=find_table(tid)
         if not t: await send_json(writer,{'ok':False,'code':'NOT_FOUND','message':'no game'},404); return
         if player:
@@ -3340,7 +3343,13 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
                     for p in state.get('players',[]):
                         p['hole']=None; p.pop('hand_name',None); p.pop('hand_rank',None)
         if _lang=='en': _translate_state(state, 'en')
-        await send_json(writer,state)
+        # ETag: 304 Not Modified 지원 — 폴링 트래픽 절감
+        _state_bytes=json.dumps(state,ensure_ascii=False,sort_keys=True).encode('utf-8')
+        _etag=hashlib.md5(_state_bytes).hexdigest()[:16]
+        if _if_none_match and _if_none_match==_etag:
+            await send_http(writer,304,b'','application/json',extra_headers=f'ETag: "{_etag}"\r\nCache-Control: no-cache\r\n')
+        else:
+            await send_http(writer,200,_state_bytes,'application/json; charset=utf-8',extra_headers=f'ETag: "{_etag}"\r\nCache-Control: no-cache\r\n')
     elif method=='POST' and route=='/api/action':
         if not _api_rate_ok(_visitor_ip, 'action', 30):
             await send_json(writer,{'ok':False,'code':'RATE_LIMITED','message':'rate limited — max 30 actions/min'},429); return
@@ -3622,10 +3631,22 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
                 await send_json(writer,{'error':'rate limited'},429); return
             d=safe_json(body)
             r_auth=d.get('auth_id',''); r_pw=d.get('password','')
+            _idemp_key=d.get('idempotency_key','')
             try: amount=max(0, int(d.get('amount',0)))
             except (ValueError, TypeError): amount=0
             if not r_auth or not r_pw or amount<=0:
                 await send_json(writer,{'error':'auth_id, password, amount(>0) 필수'},400); return
+            # Idempotency: 중복 출금 방지
+            if _idemp_key:
+                with _ranked_lock:
+                    _db_c=_db()
+                    _db_c.execute("CREATE TABLE IF NOT EXISTS withdraw_idempotency(key TEXT PRIMARY KEY, auth_id TEXT, amount INT, created_at INT)")
+                    _existing=_db_c.execute("SELECT auth_id,amount FROM withdraw_idempotency WHERE key=?",(_idemp_key,)).fetchone()
+                    if _existing:
+                        await send_json(writer,{'ok':True,'withdrawn':_existing[1],'remaining_balance':ranked_balance(r_auth),'idempotent':True})
+                        return
+                    _db_c.execute("INSERT INTO withdraw_idempotency(key,auth_id,amount,created_at) VALUES(?,?,?,strftime('%s','now'))",(_idemp_key,r_auth,amount))
+                    _db_c.commit()
             cache_key = _auth_cache_key(r_auth, r_pw)
             if not _auth_cache_check(r_auth, cache_key):
                 verified, _ = await asyncio.get_event_loop().run_in_executor(
@@ -3649,6 +3670,11 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
                     ok_w, msg_w = await asyncio.get_event_loop().run_in_executor(None, mersoom_withdraw, r_auth, amount)
                     if not ok_w:
                         ranked_credit(r_auth, amount)
+                        # 실패 시 idempotency key 삭제 (재시도 허용)
+                        if _idemp_key:
+                            with _ranked_lock:
+                                _db().execute("DELETE FROM withdraw_idempotency WHERE key=?",(_idemp_key,))
+                                _db().commit()
                         print(f"[RANKED] 환전 실패: {msg_w}", flush=True)
                         await send_json(writer,{'error':'머슴닷컴 전송 실패. 잠시 후 다시 시도해주세요.'},500); return
                     await send_json(writer,{'ok':True,'withdrawn':amount,'remaining_balance':ranked_balance(r_auth)})
@@ -4105,14 +4131,14 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
     except: pass
 
 async def send_http(writer, status, body, ct='text/plain; charset=utf-8', extra_headers=''):
-    st={200:'OK',400:'Bad Request',404:'Not Found',302:'Found'}.get(status,'OK')
+    st={200:'OK',304:'Not Modified',400:'Bad Request',401:'Unauthorized',404:'Not Found',302:'Found',429:'Too Many Requests',500:'Internal Server Error'}.get(status,'OK')
     if isinstance(body,str): body=body.encode('utf-8')
     h=f"HTTP/1.1 {status} {st}\r\nContent-Type: {ct}\r\nContent-Length: {len(body)}\r\n{extra_headers}Access-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\nAccess-Control-Allow-Headers: Content-Type\r\nX-Content-Type-Options: nosniff\r\nX-Frame-Options: DENY\r\nContent-Security-Policy: default-src 'self'; script-src 'unsafe-inline' 'self'; style-src 'unsafe-inline' 'self' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data: blob:; connect-src 'self' wss: ws:; object-src 'none'; base-uri 'self'\r\nConnection: close\r\n\r\n"
     try: writer.write(h.encode()+body); await writer.drain()
     except: pass
 
-async def send_json(writer, data, status=200):
-    await send_http(writer,status,json.dumps(data,ensure_ascii=False).encode('utf-8'),'application/json; charset=utf-8')
+async def send_json(writer, data, status=200, extra_headers=''):
+    await send_http(writer,status,json.dumps(data,ensure_ascii=False).encode('utf-8'),'application/json; charset=utf-8',extra_headers=extra_headers)
 
 async def handle_ws(reader, writer, path):
     qs=parse_qs(urlparse(path).query); tid=qs.get('table_id',['mersoom'])[0]
