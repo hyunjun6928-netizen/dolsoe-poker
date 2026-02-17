@@ -5554,7 +5554,7 @@ body.in-game .game-layout{position:fixed!important;top:0!important;left:0!import
 .info-bar{flex-wrap:nowrap;gap:2px 6px;padding:3px 6px;font-size:0.6em;justify-content:center;flex-shrink:0;overflow-x:auto}
 .info-bar>div{display:flex;align-items:center;gap:2px;white-space:nowrap}
 .ms-tab .ms-label{display:none}
-.lobby-tab .tab-label{display:none}
+.lobby-tab .tab-label{display:inline}
 /* ═══ 모바일 햄버거 메뉴 ═══ */
 #m-hamburger{display:inline-flex!important;align-items:center;justify-content:center;background:none;border:1px solid #6BC490;color:#6BC490;border-radius:4px;width:28px;height:28px;font-size:1.2em;cursor:pointer;padding:0;flex-shrink:0}
 #m-menu{display:none;position:fixed;top:0;right:0;width:220px;height:100dvh;background:rgba(10,13,20,0.97);border-left:1px solid #6BC490;z-index:9999;padding:48px 16px 16px;overflow-y:auto;backdrop-filter:blur(12px);animation:slideIn .2s ease}
