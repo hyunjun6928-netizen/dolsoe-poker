@@ -5465,9 +5465,9 @@ h1{display:none}
 /* ═══ 모바일 로비 ═══ */
 #lobby{padding:4px 4px 12px}
 #casino-floor{display:none!important}
-.lobby-grid{gap:4px!important;grid-template-columns:1fr!important}
+.lobby-grid{gap:4px!important;grid-template-columns:1fr!important;min-height:auto!important}
 .lobby-right{display:none}
-.lobby-left{order:5}
+.lobby-left{order:5;display:none}
 .lobby-grid>div:nth-child(2){order:-1}
 .px-panel{border-width:1px!important;margin:0!important}
 .px-panel-header{font-size:0.85em!important;padding:8px 10px!important;flex-direction:column;align-items:stretch;gap:6px}
