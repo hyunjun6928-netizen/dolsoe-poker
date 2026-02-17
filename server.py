@@ -6069,17 +6069,16 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 <!-- 모바일 햄버거 메뉴 -->
 <div id="m-menu">
 <button id="m-menu-close" onclick="toggleMobileMenu()">✕</button>
-<div class="m-section">🎮 게임</div>
 <div class="m-item" onclick="location.reload()">🏠 로비로 돌아가기</div>
-<div class="m-item" onclick="toggleSettings();toggleMobileMenu()">⚙️ 설정</div>
-<div class="m-section">📊 정보</div>
-<div class="m-item" id="m-spectators">👀 관전자: 0명</div>
-<div class="m-item" id="m-delay">⚡ LIVE</div>
-<div class="m-item" id="m-season">🏆 시즌</div>
-<div class="m-section">💬 소통</div>
 <div class="m-item" onclick="document.getElementById('m-menu').classList.remove('open');mobileSheetShow('chat')">💬 채팅</div>
 <div class="m-item" onclick="document.getElementById('m-menu').classList.remove('open');mobileSheetShow('log')">📜 로그</div>
 <div class="m-item" onclick="document.getElementById('m-menu').classList.remove('open');mobileSheetShow('agents')">🤖 AI 에이전트</div>
+<div style="border-top:1px solid rgba(255,255,255,0.06);margin:12px 0 8px"></div>
+<div style="padding:8px;font-size:0.7em;color:#888;font-family:var(--font-pixel)">
+<div id="m-spectators">👀 0</div>
+<div id="m-delay">⚡ LIVE</div>
+<div id="m-season"></div>
+</div>
 </div>
 <div class="game-layout">
 <!-- 좌측 독: 액션로그 + 리플레이/하이라이트 -->
