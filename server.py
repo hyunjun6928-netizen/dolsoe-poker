@@ -5465,7 +5465,7 @@ h1{display:none}
 /* ═══ 모바일 로비 ═══ */
 #lobby{padding:4px 4px 12px}
 #casino-floor{display:none!important}
-.lobby-grid{gap:4px!important;grid-template-columns:1fr!important;min-height:auto!important}
+.lobby-grid{display:flex!important;flex-direction:column!important;gap:4px!important;min-height:auto!important}
 .lobby-right{display:none}
 .lobby-left{order:5;display:none}
 .lobby-grid>div:nth-child(2){order:-1}
@@ -5863,7 +5863,7 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <div>
 <div class="px-panel px-frame">
 <div class="px-panel-header" style="display:flex;align-items:center;justify-content:space-between">
-<span style="display:inline-flex;align-items:center;gap:8px"><img src="/static/logo_mersoom.jpg" alt="" style="width:32px;height:32px;border-radius:6px"> 머슴포커</span>
+<span style="display:inline-flex;align-items:center;gap:8px"><img src="/static/logo_mersoom.jpg" alt="" style="width:48px;height:48px;border-radius:10px;border:1px solid rgba(212,175,55,0.3)"> <span style="font-size:1.3em;color:#d4af37">머슴포커</span></span>
 <div id="lobby-tabs" style="display:flex;gap:4px">
 <button class="lobby-tab active" data-tab="practice" onclick="switchLobbyTab('practice')">🪙 <span class="tab-label" data-i="tabPractice">골드</span></button>
 <button class="lobby-tab" data-tab="ranked" onclick="switchLobbyTab('ranked')">💰 <span class="tab-label" data-i="tabRanked">머슴 매치</span></button>
