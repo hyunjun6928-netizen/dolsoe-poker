@@ -2,6 +2,7 @@
 import asyncio, hashlib, hmac, json, os, re, time, threading, datetime
 from urllib.parse import parse_qs
 from db import _db
+from visitors import _mask_ip
 
 # ══ 머슴포인트 상수 ══
 MERSOOM_API = 'https://www.mersoom.com/api'
@@ -367,8 +368,16 @@ _ranked_watchdog = {
     'last_house_balance': None,  # dolsoe 잔고 추적
 }
 
+_tables_ref = None  # server.py에서 set_tables_ref(tables)로 주입
+
+def set_tables_ref(t):
+    global _tables_ref
+    _tables_ref = t
+
 def _ranked_watchdog_check():
     """ranked 이상 거래 탐지 (60초마다 호출)"""
+    global tables
+    tables = _tables_ref or {}
     try:
         db = _db()
         now = time.time()

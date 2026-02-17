@@ -1481,7 +1481,8 @@ class Table:
                 if pot_scores:
                     best_sc = pot_scores[0][1]
                     winners = [(s,sc,hn) for s,sc,hn in pot_scores if sc==best_sc]
-                    if winner_pool == 0 or len(winners) == 0: continue; share = pot_amount // len(winners)
+                    if len(winners) == 0: continue
+                    share = pot_amount // len(winners)
                     remainder = pot_amount - share * len(winners)
                     for wi,(pw,_,_) in enumerate(winners):
                         amt = share + (1 if wi < remainder else 0)  # 나머지 1pt씩 분배
@@ -1668,6 +1669,8 @@ class Table:
 
 # ══ 게임 매니저 ══
 tables = {}
+from ranked import set_tables_ref
+set_tables_ref(tables)
 
 # ══ Agent Registry (lobby world) ══
 import hashlib as _hl
