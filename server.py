@@ -1625,8 +1625,7 @@ class Table:
                     await self.add_log(f"🏆 업적 달성! {w_seat['emoji'] if w_seat else '🤖'} {w_name}: 🚛트럭 ({len(busted_this_hand)}명 동시 탈락!)")
 
         has_real=any(not s['is_bot'] for s in self.seats if not s.get('out'))
-        has_audience=bool(self.spectator_ws or self.poll_spectators)
-        if has_real or has_audience:
+        if has_real:
             self.history.append(record)
             if len(self.history)>50: self.history=self.history[-50:]
             save_hand_history(self.id, record)
