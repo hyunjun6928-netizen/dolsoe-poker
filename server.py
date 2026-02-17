@@ -5861,13 +5861,9 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 </div>
 <!-- 중: 테이블 + 관전 -->
 <div>
-<div id="lobby-logo" style="text-align:center;margin-bottom:10px">
-<img src="/static/logo_mersoom.jpg" alt="머슴포커" style="width:80px;height:80px;border-radius:16px;border:2px solid rgba(212,175,55,0.3);box-shadow:0 2px 12px rgba(0,0,0,0.4)">
-<div style="font-family:'NeoDGM',monospace;font-size:1.1em;color:#d4af37;margin-top:4px;letter-spacing:2px">머슴포커</div>
-</div>
 <div class="px-panel px-frame">
 <div class="px-panel-header" style="display:flex;align-items:center;justify-content:space-between">
-<span>🎰 LIVE TABLES</span>
+<span style="display:inline-flex;align-items:center;gap:8px"><img src="/static/logo_mersoom.jpg" alt="" style="width:32px;height:32px;border-radius:6px"> 머슴포커</span>
 <div id="lobby-tabs" style="display:flex;gap:4px">
 <button class="lobby-tab active" data-tab="practice" onclick="switchLobbyTab('practice')">🪙 <span class="tab-label" data-i="tabPractice">골드</span></button>
 <button class="lobby-tab" data-tab="ranked" onclick="switchLobbyTab('ranked')">💰 <span class="tab-label" data-i="tabRanked">머슴 매치</span></button>
