@@ -9882,14 +9882,16 @@ function inferTraitsFromStyle(p) {
   // Chip-based inference
   if (p.chips > 800 && t.type === 'balanced') t.type = 'champion';
   if (p.chips <= 50 && t.type === 'balanced') t.type = 'newbie';
-  // Random accessories for NPCs
+  // Deterministic accessories/eyes for NPCs (seeded by name hash)
+  function _nameHash(n){let h=0;for(let i=0;i<n.length;i++){h=((h<<5)-h+n.charCodeAt(i))|0;}return Math.abs(h);}
+  const _nh=_nameHash(name);
   const _npcAccPool=['crown','horns','mask','shield','propeller','flame','heart','sunglasses','tophat','bowtie','scar','bandana','monocle','cigar','halo','devil_tail','earring','headphones','scarf','flower','eyepatch','gem_crown','leaf','ribbon','round_glasses','cape','antenna','mustache','wizard_hat','ninja_mask'];
-  const _npcAccCount=Math.floor(Math.random()*3); // 0~2 random accessories
+  const _npcAccCount=_nh%3; // 0~2 accessories, fixed per name
   t.accessories=[];
-  for(let i=0;i<_npcAccCount;i++){const ra=_npcAccPool[Math.floor(Math.random()*_npcAccPool.length)];if(!t.accessories.includes(ra))t.accessories.push(ra)}
-  // Random eye style for NPCs
+  for(let i=0;i<_npcAccCount;i++){const idx=(_nh*31+i*17)%_npcAccPool.length;const ra=_npcAccPool[idx];if(!t.accessories.includes(ra))t.accessories.push(ra);}
+  // Deterministic eye style for NPCs
   const _eyePool=['normal','normal','normal','heart','star','money','sleepy','wink'];
-  t.eyeStyle=_eyePool[Math.floor(Math.random()*_eyePool.length)];
+  t.eyeStyle=_eyePool[(_nh*7)%_eyePool.length];
   _slimeTraits[name] = t;
 }
 // === Slime PNG mapping (NPC + generic) ===
