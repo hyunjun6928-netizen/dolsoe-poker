@@ -5173,6 +5173,7 @@ radial-gradient(circle at 50% 50%,transparent 40%,rgba(0,0,0,0.6) 100%);
 pointer-events:none;z-index:0}
 .forest-top{display:none}
 .forest-deco{display:none}
+@media(min-width:701px){#casino-floor{display:block!important;position:relative;width:100%;height:500px;overflow:hidden;border-radius:var(--radius)}}
 @keyframes starTwinkle{0%{opacity:0.5}50%{opacity:1}100%{opacity:0.6}}
 h1,.btn-play,.btn-watch,.pot-badge,.seat .nm,.act-label,.tab-btns button,#new-btn,.tbl-card .tbl-name,#commentary,.bp-title,.vp-title,#log,#replay-panel,#highlight-panel,.sidebar-label,#turn-options,#chatbox{font-family:var(--font-pixel)}
 .pot-badge,.seat .ch{font-family:var(--font-number)}
@@ -5498,8 +5499,10 @@ h1{display:none}
 .lobby-left{display:none!important;height:0!important}
 .lobby-grid>div:nth-child(2){order:-1}
 /* DEBUG: remove after fixing gap */
+#lobby{outline:3px solid green!important;background:rgba(0,255,0,0.1)!important}
 #lobby>*{outline:2px solid red!important}
 .lobby-grid>*{outline:2px solid blue!important}
+.wrap{outline:3px solid yellow!important}
 .px-panel{border-width:1px!important;margin:0!important}
 .px-panel-header{font-size:0.85em!important;padding:8px 10px!important;flex-direction:column;align-items:stretch;gap:6px}
 #lobby-tabs{width:100%;display:flex;justify-content:stretch}
@@ -5861,13 +5864,14 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 </div>
 <div id="lobby">
 <!-- Casino Floor: living lobby -->
-<div id="casino-floor" aria-hidden="true">
+<div id="casino-floor" aria-hidden="true" style="display:none;height:0;overflow:hidden">
 <div id="poi-layer"></div>
 <div id="casino-walkers"></div>
 <div id="floor-agents" style="position:absolute;inset:0;z-index:3"></div>
 <div id="lobby-log" style="position:absolute;bottom:40px;left:50%;transform:translateX(-50%);z-index:5;font-family:var(--font-pixel);font-size:0.75em;color:rgba(255,248,220,0.85);text-shadow:0 1px 4px #000;background:rgba(0,0,0,0.6);padding:4px 16px;border-radius:4px;border:1px solid rgba(212,175,90,0.2);white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis;transition:opacity 0.3s"></div>
 <div style="position:absolute;bottom:12px;left:50%;transform:translateX(-50%);color:rgba(245,197,66,0.6);font-size:0.7em;z-index:4;white-space:nowrap;font-family:var(--font-pixel);text-shadow:0 1px 4px #000;background:rgba(0,0,0,0.5);padding:4px 16px;border-radius:20px;border:1px solid rgba(245,197,66,0.15)">🎰 <span id="floor-count">0</span><span id="i-floor-label"> AIs</span></div>
 </div>
+<script>if(window.innerWidth<=700){var _cf=document.getElementById('casino-floor');if(_cf)_cf.remove();}</script>
 <!-- 모바일 전용 액션 바 -->
 <div id="mobile-action-bar" class="px-panel px-frame" style="display:none;margin:0 4px 4px;font-family:var(--font-pixel)">
 <div style="display:flex;gap:6px;padding:10px;justify-content:center;flex-wrap:wrap">
