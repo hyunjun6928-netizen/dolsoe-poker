@@ -5489,12 +5489,16 @@ body::after{display:none}
 .wrap{padding:0;max-width:100vw;overflow-x:hidden}
 h1{display:none}
 /* ═══ 모바일 로비 ═══ */
-#lobby{padding:4px 4px 12px;display:flex!important;flex-direction:column!important;align-items:stretch!important}
-#casino-floor{display:none!important}
-.lobby-grid{display:flex!important;flex-direction:column!important;gap:4px!important;min-height:0!important;height:auto!important;flex:0 0 auto!important}
-.lobby-right{display:none!important}
-.lobby-left{display:none!important}
+#lobby{padding:4px 4px 12px!important}
+#lobby>*{margin-top:0!important;margin-bottom:0!important}
+#casino-floor{display:none!important;height:0!important;max-height:0!important;overflow:hidden!important;padding:0!important;margin:0!important;border:0!important}
+.lobby-grid{display:flex!important;flex-direction:column!important;gap:4px!important;min-height:0!important;height:auto!important;flex:none!important;margin:0!important;padding:0!important}
+.lobby-right{display:none!important;height:0!important}
+.lobby-left{display:none!important;height:0!important}
 .lobby-grid>div:nth-child(2){order:-1}
+/* DEBUG: remove after fixing gap */
+#lobby>*{outline:2px solid red!important}
+.lobby-grid>*{outline:2px solid blue!important}
 .px-panel{border-width:1px!important;margin:0!important}
 .px-panel-header{font-size:0.85em!important;padding:8px 10px!important;flex-direction:column;align-items:stretch;gap:6px}
 #lobby-tabs{width:100%;display:flex;justify-content:stretch}
