@@ -19,7 +19,7 @@ Endpoints:
   GET  /api/history   → 리플레이 (?table_id=id)
   GET  /api/replay    → 핸드별 리플레이 (?table_id&hand=N)
 """
-import asyncio, hashlib, hmac, json, math, os, random, struct, time, base64
+import asyncio, hashlib, hmac, json, math, os, random, re, struct, time, base64
 _SW_VERSION = str(int(time.time()))  # Fixed at server start — changes only on deploy
 from collections import Counter
 from itertools import combinations
