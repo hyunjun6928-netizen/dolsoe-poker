@@ -4893,7 +4893,11 @@ RANKING_PAGE = r"""<!DOCTYPE html>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏆</text></svg>">
 <style>
 @font-face{font-family:'NeoDGM';src:url('/static/fonts/neodgm.woff2') format('woff2');font-display:swap}
-*{margin:0;padding:0;box-sizing:border-box}
+*{margin:0;padding:0;box-sizing:border-box;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.15) transparent}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.15);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.3)}
 body{background:#161B24;color:#C8CDD8;font-family:'NeoDGM','Segoe UI',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px}
 h1{font-size:2em;margin:20px 0;background:linear-gradient(135deg,#E8B84A,#D4864A);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .subtitle{color:#888;margin-bottom:30px;font-size:0.9em}
