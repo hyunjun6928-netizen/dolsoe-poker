@@ -5454,7 +5454,7 @@ body.in-game #main-title{display:none!important}
 body.in-game #lobby{display:none!important}
 body.in-game #lobby-banner{display:none!important}
 body.in-game .lobby-grid{display:none!important}
-@media(max-width:700px){
+@media(max-width:900px){
 *{box-sizing:border-box}
 body{overflow-x:hidden;-webkit-text-size-adjust:100%;padding-bottom:0}
 body.in-game{overflow:hidden!important;height:100vh;height:100dvh}
@@ -5846,7 +5846,8 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <button id="pwa-install-btn2" style="flex:1;min-width:70px;font-size:0.75em;padding:10px 8px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border:1px solid #7c3aed;border-radius:var(--radius);cursor:pointer;font-family:var(--font-pixel);font-weight:700" onclick="installPWA()">📲 설치</button>
 </div>
 </div>
-<div class="lobby-grid">
+<script>if(window.innerWidth<=900){document.write('<style>.lobby-grid{display:flex!important;flex-direction:column!important;min-height:auto!important}.lobby-left{display:none!important}</style>')}</script>
+<div class="lobby-grid" id="lobby-grid">
 <!-- 좌: 하이라이트 + 통계 -->
 <div class="lobby-left">
 <div class="px-panel px-frame">
