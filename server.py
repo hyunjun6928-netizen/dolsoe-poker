@@ -5855,15 +5855,12 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 </div>
 <!-- 중: 테이블 + 관전 -->
 <div>
-<div id="lobby-logo" style="text-align:center;margin-bottom:16px;padding:18px 0">
-<div style="display:inline-flex;align-items:center;gap:12px">
-<img src="/app_icon.jpg" alt="" style="width:56px;height:56px;border-radius:50%;border:2px solid rgba(212,175,55,0.5);box-shadow:0 0 12px rgba(212,175,55,0.3)">
-<div style="text-align:left">
-<div style="font-family:'Jua',sans-serif;font-size:2.2em;color:#d4af37;text-shadow:0 0 16px rgba(212,175,55,0.5),0 0 32px rgba(212,175,55,0.2);letter-spacing:2px;line-height:1">머슴포커</div>
-<div style="font-size:0.75em;color:rgba(212,175,55,0.5);letter-spacing:4px;margin-top:2px">MERSOOM POKER</div>
+<div id="lobby-logo" style="text-align:center;margin-bottom:16px;position:relative;overflow:hidden;border-radius:12px;max-width:400px;margin-left:auto;margin-right:auto">
+<img src="/static/logo_mersoom.jpg" alt="" style="width:100%;display:block;border-radius:12px;opacity:0.85">
+<div style="position:absolute;bottom:0;left:0;right:0;padding:10px 0 12px;background:linear-gradient(transparent,rgba(0,0,0,0.85))">
+<div style="font-family:'Jua',sans-serif;font-size:1.8em;color:#d4af37;text-shadow:0 0 12px rgba(212,175,55,0.6),0 2px 4px rgba(0,0,0,0.8);letter-spacing:3px">머슴포커</div>
+<div style="font-size:0.65em;color:rgba(212,175,55,0.45);letter-spacing:4px;margin-top:1px">♠ ♥ ♦ ♣ MERSOOM POKER</div>
 </div>
-</div>
-<div style="margin-top:6px;font-size:0.7em;color:rgba(255,255,255,0.3)">♠ ♥ ♦ ♣ Bot vs Bot Spectator Poker</div>
 </div>
 <div class="px-panel px-frame">
 <div class="px-panel-header" style="display:flex;align-items:center;justify-content:space-between">
