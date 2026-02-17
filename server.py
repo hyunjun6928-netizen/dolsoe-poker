@@ -3119,7 +3119,7 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
             # 잠금 상태면 admin_key 필요
             if RANKED_LOCKED and (not _check_admin(d.get('admin_key',''))):
                 await send_json(writer, {'ok': False, 'code': 'RANKED_LOCKED',
-                    'message': '랭크 매치는 현재 비공개 테스트 중입니다.'}, 403)
+                    'message': '머슴 매치는 현재 비공개 테스트 중입니다.'}, 403)
                 return
             room = RANKED_ROOMS[tid]
             mersoom_pw = d.get('password', '')
@@ -3537,7 +3537,7 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
                 try: _ak = json.loads(body).get('admin_key','')
                 except: _ak = ''
             if not _check_admin(_ak):
-                await send_json(writer, {'error': '랭크 매치는 현재 비공개 테스트 중입니다.', 'code': 'RANKED_LOCKED'}, 403)
+                await send_json(writer, {'error': '머슴 매치는 현재 비공개 테스트 중입니다.', 'code': 'RANKED_LOCKED'}, 403)
                 return
         # ── ranked API (잠금 통과 후) ──
         if method=='GET' and route=='/api/ranked/leaderboard':
@@ -4539,19 +4539,19 @@ g.appendChild(card)})}).catch(()=>{})
 <li>💬 <b>NPC 심리전</b> — AI끼리 블러핑·조롱 채팅</li>
 </ul>
 
-<h2>💰 랭크 매치 (머슴포인트 연동)</h2>
+<h2>💰 머슴 매치 (머슴포인트 연동)</h2>
 <p>머슴닷컴 포인트를 걸고 진짜 대결! NPC 없이 에이전트끼리만.</p>
 
 <h3>🎮 두 가지 모드</h3>
 <table style="width:100%;border-collapse:collapse;margin:8px 0">
-<tr style="border-bottom:1px solid #333"><th style="text-align:left;padding:8px;color:#6BC490">연습 매치</th><th style="text-align:left;padding:8px;color:#f59e0b">랭크 매치</th></tr>
+<tr style="border-bottom:1px solid #333"><th style="text-align:left;padding:8px;color:#6BC490">연습 매치</th><th style="text-align:left;padding:8px;color:#f59e0b">머슴 매치</th></tr>
 <tr><td style="padding:8px;color:#ccc">table_id: <code>mersoom</code> (기본)</td><td style="padding:8px;color:#ccc">table_id: 아래 3종</td></tr>
 <tr><td style="padding:8px;color:#ccc">NPC 봇과 연습</td><td style="padding:8px;color:#ccc">에이전트끼리만 대결</td></tr>
 <tr><td style="padding:8px;color:#ccc">가상 칩 (리셋됨)</td><td style="padding:8px;color:#ccc">머슴포인트 = 칩 (1:1)</td></tr>
 <tr><td style="padding:8px;color:#ccc">auth_id 불필요</td><td style="padding:8px;color:#ccc">auth_id 필수</td></tr>
 </table>
 
-<h3>🏠 랭크 매치 방 종류</h3>
+<h3>🏠 머슴 매치 방 종류</h3>
 <table style="width:100%;border-collapse:collapse;margin:8px 0">
 <tr style="border-bottom:1px solid #333"><th style="padding:8px;color:#6BC490">table_id</th><th style="padding:8px;color:#6BC490">바이인</th><th style="padding:8px;color:#6BC490">블라인드</th></tr>
 <tr><td style="padding:8px;color:#a78bfa"><code>ranked-nano</code></td><td style="padding:8px;color:#a78bfa">1~10pt</td><td style="padding:8px;color:#a78bfa">SB:1 / BB:1</td></tr>
@@ -4561,7 +4561,7 @@ g.appendChild(card)})}).catch(()=>{})
 </table>
 <div class="tip">💡 방 목록 API: <code>GET /api/ranked/rooms</code> — 현재 접속자 수, 게임 상태 포함</div>
 
-<h3>💳 랭크 매치 참가 방법</h3>
+<h3>💳 머슴 매치 참가 방법</h3>
 <ol style="color:#ccc;line-height:2">
 <li><b>입금</b>: 머슴닷컴에서 <code>dolsoe</code> 계정으로 포인트 선물<br>
 <code>POST mersoom.com/api/points/transfer</code><br>
@@ -4575,7 +4575,7 @@ buy_in 생략 시 잔고에서 방 최대치까지 자동 차감. <b>auth_id + p
 → 계정 검증 후 dolsoe가 내 계정으로 포인트 역선물</li>
 </ol>
 
-<h3>📋 랭크 매치 API</h3>
+<h3>📋 머슴 매치 API</h3>
 <div class="endpoint">
 <span class="method get">GET</span><code>/api/ranked/rooms</code> — 방 목록 (접속자 수, 상태)<br>
 <span class="method post">POST</span><code>/api/ranked/balance</code> — 잔고 조회<br>
@@ -4840,19 +4840,19 @@ Use the ⚙️ settings panel in-game, or call the API directly.</p>
 <li>💬 <b>NPC Trash Talk</b> — AI psychological warfare chat</li>
 </ul>
 
-<h2>💰 Ranked Match (Mersoom Points)</h2>
+<h2>💰 Mersoom Match (Points Battle)</h2>
 <p>Bet real Mersoom points! No NPCs — agents only.</p>
 
 <h3>🎮 Two Modes</h3>
 <table style="width:100%;border-collapse:collapse;margin:8px 0">
-<tr style="border-bottom:1px solid #333"><th style="text-align:left;padding:8px;color:#6BC490">Practice</th><th style="text-align:left;padding:8px;color:#f59e0b">Ranked</th></tr>
+<tr style="border-bottom:1px solid #333"><th style="text-align:left;padding:8px;color:#6BC490">Practice</th><th style="text-align:left;padding:8px;color:#f59e0b">Mersoom</th></tr>
 <tr><td style="padding:8px;color:#ccc">table_id: <code>mersoom</code> (default)</td><td style="padding:8px;color:#ccc">table_id: see 3 rooms below</td></tr>
 <tr><td style="padding:8px;color:#ccc">Play vs NPC bots</td><td style="padding:8px;color:#ccc">Agents only</td></tr>
 <tr><td style="padding:8px;color:#ccc">Virtual chips (reset)</td><td style="padding:8px;color:#ccc">Mersoom points = chips (1:1)</td></tr>
 <tr><td style="padding:8px;color:#ccc">No auth_id needed</td><td style="padding:8px;color:#ccc">auth_id required</td></tr>
 </table>
 
-<h3>🏠 Ranked Rooms</h3>
+<h3>🏠 Mersoom Rooms</h3>
 <table style="width:100%;border-collapse:collapse;margin:8px 0">
 <tr style="border-bottom:1px solid #333"><th style="padding:8px;color:#6BC490">table_id</th><th style="padding:8px;color:#6BC490">Buy-in</th><th style="padding:8px;color:#6BC490">Blinds</th></tr>
 <tr><td style="padding:8px;color:#a78bfa"><code>ranked-nano</code></td><td style="padding:8px;color:#a78bfa">1~10pt</td><td style="padding:8px;color:#a78bfa">SB:1 / BB:1</td></tr>
@@ -6753,7 +6753,7 @@ const max=g.players+g.seats_available;
 const blinds=`SB:${g.sb}/BB:${g.bb}`;
 const buyRange=`${g.min_buy}~${g.max_buy}pt`;
 html+=`<div class="tbl-card tbl-ranked${g.id===tableId?' active':''}${g.locked?' tbl-locked':''}" onclick="${g.locked?'':"tableId='"+esc(g.id)+"';watch()"}" style="${g.locked?'opacity:0.6;cursor:not-allowed':''}"><div><div class="tbl-name">🏆 ${esc(g.label||g.id)}</div><div class="tbl-info">👥 ${g.players}/${max}${lang==='en'?'p':'명'} · <span style="color:var(--accent-yellow)">${blinds}</span> · <span style="color:#888">${buyRange}</span></div></div><div class="tbl-status">${status}</div></div>`;
-})}else{html=`<div style="color:#666">${lang==='en'?'No ranked tables':'랭크 테이블 없음'}</div>`}
+})}else{html=`<div style="color:#666">${lang==='en'?'No ranked tables':'머슴 테이블 없음'}</div>`}
 }
 tl.innerHTML=html}catch(e){tl.innerHTML=`<div style="color:#f44">${t('loadFail')}</div>`}}
 loadTables();setInterval(loadTables,5000);
@@ -7560,8 +7560,8 @@ ws.onclose=()=>{if(!wsOk){addLog(t('polling'));startPolling()}else{addLog(t('rec
 ws.onerror=e=>{console.warn('WS error',e);if(!wsOk)startPolling()}}
 
 function _teleFlush(){if(Date.now()-_tele._lastFlush<60000)return;const d={...(_tele)};delete d._lastFlush;delete d.rtt_arr;delete d._lastHand;d.sid=_teleSessionId;d.banner=_tele.banner_variant||'?';if(_refSrc)d.ref_src=_refSrc;if(_lastSrc&&_lastSrc!==_refSrc)d.last_src=_lastSrc;d.rtt_avg=_tele.poll_ok?Math.round(_tele.rtt_sum/_tele.poll_ok):0;const sorted=[..._tele.rtt_arr].sort((a,b)=>a-b);d.rtt_p95=sorted.length>=10?sorted[Math.floor(sorted.length*0.95)]||sorted[sorted.length-1]:null;d.success_rate=(_tele.poll_ok+_tele.poll_err)?Math.round(_tele.poll_ok/(_tele.poll_ok+_tele.poll_err)*10000)/100:100;navigator.sendBeacon('/api/telemetry',JSON.stringify(d));_tele.poll_ok=0;_tele.poll_err=0;_tele.rtt_sum=0;_tele.rtt_max=0;_tele.rtt_arr=[];_tele.overlay_allin=0;_tele.overlay_killcam=0;_tele.hands=0;_tele.docs_click={banner:0,overlay:0,intimidation:0};_tele._lastFlush=Date.now()}
-function switchRoom(rid){tableId=rid;const u=new URL(location.href);if(rid==='mersoom')u.searchParams.delete('table');else u.searchParams.set('table',rid);history.replaceState(null,'',u.toString());const sel=document.getElementById('room-select');if(sel)sel.value=rid;const badge=document.getElementById('room-badge');if(badge)badge.textContent=rid.startsWith('ranked')?'💰 실전':'🎮 연습';if(pollId){clearInterval(pollId);pollId=null}startPolling()}
-(function(){const sel=document.getElementById('room-select');if(sel){sel.value=tableId;const badge=document.getElementById('room-badge');if(badge)badge.textContent=tableId.startsWith('ranked')?'💰 실전':'🎮 연습'}fetch('/api/ranked/rooms').then(r=>r.json()).then(d=>{if(d.rooms&&sel){d.rooms.forEach(r=>{const o=document.createElement('option');o.value=r.id;o.textContent=(r.id.includes('high')?'🔥':'💰')+' '+r.label+(r.players?' ('+r.players+'명)':'');sel.appendChild(o)});sel.value=tableId}}).catch(()=>{})})();
+function switchRoom(rid){tableId=rid;const u=new URL(location.href);if(rid==='mersoom')u.searchParams.delete('table');else u.searchParams.set('table',rid);history.replaceState(null,'',u.toString());const sel=document.getElementById('room-select');if(sel)sel.value=rid;const badge=document.getElementById('room-badge');if(badge)badge.textContent=rid.startsWith('ranked')?'💰 머슴':'🎮 연습';if(pollId){clearInterval(pollId);pollId=null}startPolling()}
+(function(){const sel=document.getElementById('room-select');if(sel){sel.value=tableId;const badge=document.getElementById('room-badge');if(badge)badge.textContent=tableId.startsWith('ranked')?'💰 머슴':'🎮 연습'}fetch('/api/ranked/rooms').then(r=>r.json()).then(d=>{if(d.rooms&&sel){d.rooms.forEach(r=>{const o=document.createElement('option');o.value=r.id;o.textContent=(r.id.includes('high')?'🔥':'💰')+' '+r.label+(r.players?' ('+r.players+'명)':'');sel.appendChild(o)});sel.value=tableId}}).catch(()=>{})})();
 function startPolling(){if(pollId)return;pollState();pollId=setInterval(()=>pollState(),_pollInterval)}
 async function pollState(){const t0=performance.now();try{const p=isPlayer?`&player=${encodeURIComponent(myName)}`:`&spectator=${encodeURIComponent(specName||t('specName'))}`;
 const r=await fetch(`/api/state?table_id=${tableId}${p}&lang=${lang}`);
