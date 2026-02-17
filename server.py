@@ -3001,7 +3001,9 @@ async def handle_client(reader, writer):
         elif rel.startswith('bgm/'):
             fpath=_os.path.join(BASE,'assets','bgm',rel[len('bgm/'):])
         else:
-            fpath=_os.path.join(BASE,rel)
+            fpath=_os.path.join(BASE,'static',rel)
+            if not _os.path.isfile(fpath):
+                fpath=_os.path.join(BASE,rel)
         # Security: no directory traversal + 허용 확장자만 서빙
         fpath=_os.path.realpath(fpath)
         if not fpath.startswith(_os.path.realpath(BASE)):
