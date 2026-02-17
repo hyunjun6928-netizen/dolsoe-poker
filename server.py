@@ -3150,7 +3150,7 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
         await send_json(writer,{'table_id':t.id,'timeout':t.TURN_TIMEOUT,'seats_available':t.MAX_PLAYERS-len(t.seats)})
     elif method=='POST' and route=='/api/join':
         if not _api_rate_ok(_visitor_ip, 'join', 10):
-            await send_json(writer,{'error':'rate limited — max 10 joins/min','code':'RATE_LIMITED'},429); return
+            await send_json(writer,{'ok':False,'code':'RATE_LIMITED','message':'rate limited — max 10 joins/min'},429); return
         d=safe_json(body); name=sanitize_name(d.get('name','')); emoji=sanitize_name(d.get('emoji','🤖'))[:2] or '🤖'
         tid=d.get('table_id','mersoom')
         meta_version=sanitize_name(d.get('version',''))[:20]
@@ -3231,7 +3231,8 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
                     'message': f'잔고 부족 ({remaining}pt)'}, 400)
                 return
             _ranked_audit('buy_in', auth_id, buy_in, remaining + buy_in, remaining, f'table:{tid} name:{name}')
-            _ranked_auth_map[name] = auth_id
+            with _ranked_lock:
+                _ranked_auth_map[name] = auth_id
             # 메모리 캡: 1000건 초과 시 정리
             if len(_ranked_auth_map) > 1000:
                 active_names = set()
@@ -3278,7 +3279,7 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
             # ranked면 잔고 환불
             if is_ranked_table(tid) and auth_id:
                 ranked_credit(auth_id, buy_in)
-            await send_json(writer,{'error':f'파산 쿨다운 중! {remaining}초 후 재참가 가능','cooldown':int(remaining)},429); return
+            await send_json(writer,{'ok':False,'code':'COOLDOWN','message':f'파산 쿨다운 중! {remaining}초 후 재참가 가능','cooldown':int(remaining)},429); return
         if not result:
             # ranked면 잔고 환불
             if is_ranked_table(tid) and auth_id:
@@ -3342,6 +3343,7 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
         token=issue_token(name)
         join_src = sanitize_name(d.get('src',''))[:30] or 'direct'
         _telemetry_log.append({'ts':time.time(),'ev':'join_success','name':name,'table':t.id,'src':join_src})
+        if len(_telemetry_log) > TELEMETRY_LOG_CAP: _telemetry_log[:] = _telemetry_log[-TELEMETRY_LOG_CAP:]
         touch_agent(name, t.id, d.get('strategy','')[:20] or None)
         _lobby_record(name, sprite=f'/static/slimes/px_sit_suit.png', title=meta_strategy or meta_bio or '')
         resp={'ok':True,'table_id':t.id,'your_seat':len(t.seats)-1,
@@ -3595,7 +3597,7 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
         if ok:
             await t.add_log(f"🎰 관전자 {name}: {pick}에게 {amount}코인 베팅!")
             await send_json(writer,{'ok':True,'coins':get_spectator_coins(name)})
-        else: await send_json(writer,{'error':msg},400)
+        else: await send_json(writer,{'ok':False,'message':msg},400)
     elif method=='GET' and route=='/api/coins':
         name=qs.get('name',[''])[0]
         if not name: await send_json(writer,{'ok':False,'message':'name 필수'},400); return
@@ -3608,7 +3610,7 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
                 try: _ak = json.loads(body).get('admin_key','')
                 except: _ak = ''
             if not _check_admin(_ak):
-                await send_json(writer, {'error': '머슴 매치는 현재 비공개 테스트 중입니다.', 'code': 'RANKED_LOCKED'}, 403)
+                await send_json(writer, {'ok':False, 'code': 'RANKED_LOCKED', 'message': '머슴 매치는 현재 비공개 테스트 중입니다.'}, 403)
                 return
         # ── ranked API (잠금 통과 후) ──
         if method=='GET' and route=='/api/ranked/leaderboard':
@@ -3761,7 +3763,7 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
                 _auth_cache_set(r_auth, cache_key)
             ok, msg, code = _deposit_request_add(r_auth, amount)
             if not ok:
-                await send_json(writer,{'error':'이미 대기 중인 입금 요청이 있습니다' if msg=='already_pending' else msg},400); return
+                await send_json(writer,{'ok':False,'code':'DEPOSIT_ERROR','message':'이미 대기 중인 입금 요청이 있습니다' if msg=='already_pending' else msg},400); return
             await send_json(writer,{'ok':True,'message':f'{amount}pt 입금 요청 등록됨. 10분 내에 머슴닷컴에서 dolsoe에게 {amount}pt를 보내주세요. 전송 메시지에 코드 [{code}]를 포함해주세요.','target':'dolsoe','amount':amount,'deposit_code':code,'expires_in_sec':DEPOSIT_EXPIRE_SEC})
         elif method=='POST' and route=='/api/ranked/deposit-status':
             d=safe_json(body)
