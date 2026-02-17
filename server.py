@@ -5596,13 +5596,13 @@ body.in-game .wrap>*:not(#game){display:none!important}
 body.in-game #game{display:block!important}
 body.in-game .game-layout{position:fixed!important;top:0!important;left:0!important;right:0!important;bottom:0!important;display:flex!important;flex-direction:column!important;width:100vw!important;height:100vh!important;height:100dvh!important;padding:0;grid-template-columns:none!important;overflow:hidden!important;z-index:10}
 .dock-left,.dock-right{display:none!important}
-.game-main{flex:1!important;display:flex!important;flex-direction:column!important;overflow:hidden!important;-ms-overflow-style:none!important;scrollbar-width:none!important;min-height:0!important;padding:0}
+.game-main{flex:1!important;display:flex!important;flex-direction:column!important;overflow-y:auto!important;overflow-x:hidden!important;-ms-overflow-style:none!important;scrollbar-width:none!important;min-height:0!important;padding:0}
 .game-main::-webkit-scrollbar{display:none!important}
 /* ═══ 모바일 펠트 (테이블) ═══ */
 .felt-wrap{margin:0 auto 2px;width:100%!important;flex:1 1 auto!important;min-height:0!important;height:auto!important;overflow:visible!important;display:flex!important;flex-direction:column!important}
 .felt-border{top:-6px;left:-4px;right:-4px;bottom:-6px;border-radius:10px}
 .felt-border::before{top:-4px;left:-3px;right:-3px;bottom:-4px;border-radius:12px}
-.felt{position:relative!important;height:auto!important;max-height:none!important;min-height:48vw!important;flex:1!important;border-radius:8px;box-shadow:inset 0 2px 6px #00000033;overflow:visible!important;padding-bottom:0!important}
+.felt{position:relative!important;height:auto!important;max-height:none!important;min-height:48vw!important;flex:1!important;border-radius:8px;box-shadow:inset 0 2px 6px #00000033;overflow:visible!important;padding-bottom:60px!important}
 .board{gap:4px;top:35%!important;z-index:20!important}
 .pot-badge{top:12%!important;font-size:0.85em!important;padding:5px 14px!important}
 .card{width:36px;height:50px;font-size:0.65em;border-radius:4px;box-shadow:0 1px 2px 0 #000}
@@ -5618,8 +5618,8 @@ body.in-game .game-layout{position:fixed!important;top:0!important;left:0!import
 .seat .st{display:none}
 .seat .bet-chip{font-size:0.55em}
 /* 8인 타원 배치: 하2 좌2 우2 상2 */
-.seat-0{bottom:-8px!important;left:65%!important;transform:translateX(-50%)!important;top:auto!important;right:auto!important}
-.seat-1{bottom:-8px!important;left:35%!important;transform:translateX(-50%)!important;top:auto!important;right:auto!important}
+.seat-0{bottom:8px!important;left:65%!important;transform:translateX(-50%)!important;top:auto!important;right:auto!important}
+.seat-1{bottom:8px!important;left:35%!important;transform:translateX(-50%)!important;top:auto!important;right:auto!important}
 .seat-2{top:60%!important;left:-4px!important;right:auto!important;bottom:auto!important;transform:none!important}
 .seat-3{top:15%!important;left:-4px!important;right:auto!important;bottom:auto!important;transform:none!important}
 .seat-4{top:15%!important;right:-4px!important;left:auto!important;bottom:auto!important;transform:none!important}
