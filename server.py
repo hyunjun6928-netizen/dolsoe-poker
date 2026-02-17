@@ -5855,6 +5855,7 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 </div>
 <!-- 중: 테이블 + 관전 -->
 <div>
+<div style="text-align:center;margin-bottom:12px"><img src="/static/logo_mersoom.jpg" alt="머슴포커" style="max-width:min(100%,360px);border-radius:8px;border:1px solid rgba(212,175,55,0.3);box-shadow:0 0 20px rgba(212,175,55,0.15)"></div>
 <div class="px-panel px-frame">
 <div class="px-panel-header" style="display:flex;align-items:center;justify-content:space-between">
 <span>🎰 LIVE TABLES</span>
