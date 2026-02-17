@@ -32,6 +32,7 @@ PORT = int(os.environ.get('PORT', 8080))
 MAX_CONNECTIONS = 500         # 최대 동시 접속
 MAX_WS_SPECTATORS = 200       # 테이블당 최대 관전 WS
 WS_IDLE_TIMEOUT = 300         # WS 무활동 타임아웃 (5분)
+VISITOR_MAX = 200             # 방문자 최대 수
 MAX_BODY = 65536              # HTTP body 최대 크기 (64KB)
 LEADERBOARD_CAP = 2000        # 리더보드 최대 기록
 MAX_TABLES = 10               # 최대 테이블 수
@@ -63,10 +64,10 @@ from engine import (SUITS, RANKS, RANK_VALUES, HAND_NAMES, HAND_NAMES_EN,
     _secure_rng, make_deck, card_dict, card_str, evaluate_hand, score_five,
     hand_name, hand_strength)
 
+# ══ AI 봇 ══
 # ══ AI 봇 (bot_ai.py로 분리) ══
 from bot_ai import BotAI
 
-# ══ 리더보드 ══
 leaderboard = {}  # name -> {wins, losses, total_chips_won, hands_played, biggest_pot}
 
 def update_leaderboard(name, won, chips_delta, pot=0):
@@ -112,7 +113,6 @@ ACHIEVEMENTS={
 from translation import (NPC_NAME_EN, ACHIEVEMENT_EN, ACHIEVEMENT_DESC_EN,
     BADGE_EN, PTYPE_EN, _translate_text, _translate_state)
 
-def get_streak_badge(name):
     if name not in leaderboard: return ''
     s=leaderboard[name].get('streak',0)
     if s>=5: return '🔥🔥'
@@ -120,7 +120,8 @@ def get_streak_badge(name):
     if s<=(-3): return '💀'
     return ''
 
-# ── Lobby Agent Registry (in-memory, 24h TTL) ──
+# ══ 관전자 베팅 ══
+# (spectator_bets moved to spectator.py)
 _lobby_agents = {}  # name -> {name,sprite,title,last_seen,stats:{hands,win_rate,allins}}
 _LOBBY_TTL = 86400  # 24h
 
@@ -351,7 +352,6 @@ def _tele_update_summary():
 from spectator import (spectator_bets, spectator_coins, get_spectator_coins,
     place_spectator_bet, resolve_spectator_bets)
 
-# ══ 인증 토큰 + 입력 정제 (auth.py로 분리) ══
 from auth import (_check_admin, issue_token, verify_token, require_token,
     sanitize_name, sanitize_msg, sanitize_url, player_tokens, chat_cooldowns,
     CHAT_COOLDOWN, ADMIN_KEY, TOKEN_MAX_AGE)
@@ -1802,7 +1802,6 @@ def ws_accept(key):
 # ══ 방문자 추적 (visitors.py로 분리) ══
 from visitors import _mask_ip, _track_visitor, _get_visitor_stats
 
-# ══ HTTP + WS 서버 ══
 async def handle_client(reader, writer):
     try: req_line=await asyncio.wait_for(reader.readline(),timeout=10)
     except: writer.close(); return
