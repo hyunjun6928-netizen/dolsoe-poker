@@ -10680,33 +10680,43 @@ window.addEventListener('beforeinstallprompt',function(e){
   const btn=document.getElementById('pwa-install-btn');
   if(btn)btn.style.display='inline-flex';
 });
+var _installRetries=0;
 function installPWA(){
   if(_deferredPrompt){
     _deferredPrompt.prompt();
     _deferredPrompt.userChoice.then(function(r){
       if(r.outcome==='accepted'){
-        document.querySelectorAll('#pwa-install-btn,#pwa-install-btn2').forEach(b=>b.style.display='none');
+        document.querySelectorAll('#pwa-install-btn,#pwa-install-btn2').forEach(b=>{b.textContent='✅ 설치됨';b.disabled=true});
       }
-      _deferredPrompt=null;
+      _deferredPrompt=null;_installRetries=0;
     });
-  } else {
-    // No native prompt available — try WebAPK-compatible approach
-    // Samsung Internet / Chrome: force SW update to re-trigger installability check
+  } else if(_installRetries<3){
+    // Prompt not ready yet — show loading and retry
+    _installRetries++;
+    var btns=document.querySelectorAll('#pwa-install-btn,#pwa-install-btn2');
+    btns.forEach(b=>b.textContent='⏳ 준비중...');
+    // Force SW update to trigger installability
     if('serviceWorker' in navigator){
       navigator.serviceWorker.getRegistration().then(function(r){if(r)r.update()});
     }
-    // If still no prompt after 1s, show minimal guidance
     setTimeout(function(){
-      if(!_deferredPrompt){
-        const ua=navigator.userAgent||'';
-        if(/iPhone|iPad/i.test(ua)){
-          alert('Safari: 하단 공유(□↑) → "홈 화면에 추가"');
-        } else {
-          // Samsung/Chrome/etc — try opening browser's native add-to-home
-          alert('브라우저 ⋮ 메뉴 → "앱 설치" 또는 "홈 화면에 추가"');
-        }
+      if(_deferredPrompt){installPWA()}
+      else{btns.forEach(b=>b.textContent='📲 설치')}
+    },2000);
+  } else {
+    // 3 retries exhausted — browser-specific guidance
+    _installRetries=0;
+    var ua=navigator.userAgent||'';
+    if(/SamsungBrowser/i.test(ua)){
+      // Samsung Internet: open native add-to-home via intent
+      if(confirm('삼성 인터넷에서 설치하려면:\n\n하단 ≡ 메뉴 → "현재 페이지 추가" → "홈 화면"\n\n메뉴를 열까요?')){
+        // Can't programmatically open Samsung menu, but this primes the user
       }
-    },1000);
+    } else if(/iPhone|iPad/i.test(ua)){
+      alert('Safari: 하단 공유(□↑) → "홈 화면에 추가"');
+    } else {
+      alert('브라우저 ⋮ 메뉴 → "앱 설치" 또는 "홈 화면에 추가"');
+    }
   }
 }
 window.addEventListener('appinstalled',function(){
