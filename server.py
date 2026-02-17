@@ -5174,7 +5174,7 @@ h1 b{color:var(--accent-gold);-webkit-text-fill-color:var(--accent-gold)}
 .api-info code{background:rgba(94,196,160,0.1);padding:2px 6px;border-radius:4px;color:var(--accent-green);border:1px solid rgba(94,196,160,0.2)}
 .lobby-grid{display:grid;grid-template-columns:1fr 1.5fr 1fr;gap:var(--sp-sm);max-width:1600px;margin:0 auto;width:98vw;padding-top:4px;min-height:calc(100vh - 200px)}
 .lobby-left,.lobby-right{min-width:0}
-@media(max-width:900px){.lobby-grid{grid-template-columns:1fr!important;min-height:auto!important}.lobby-left{display:none!important}}
+@media(max-width:900px){.lobby-grid{grid-template-columns:1fr!important}}
 @media(max-width:700px){.lobby-grid{grid-template-columns:1fr!important}}
 #game{display:none}
 .info-bar{position:fixed!important;top:0!important;left:0!important;right:0!important;z-index:100!important;display:flex!important;flex-wrap:wrap!important;justify-content:space-between;align-items:center;padding:4px 16px;font-size:0.8em;color:var(--text-light);background:#070A10!important;border-bottom:1px solid rgba(255,255,255,0.06);box-shadow:0 2px 8px rgba(0,0,0,0.5)!important;font-family:var(--font-pixel)}
