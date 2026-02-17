@@ -5608,7 +5608,7 @@ body.in-game .game-layout{position:fixed!important;top:0!important;left:0!import
 .card{width:36px;height:50px;font-size:0.65em;border-radius:4px;box-shadow:0 1px 2px 0 #000}
 .card-sm{width:32px;height:44px;font-size:0.6em}
 /* ═══ 모바일 좌석 ═══ */
-.seat{min-width:44px!important;max-width:62px!important;position:absolute!important;z-index:15}
+.seat{min-width:44px!important;max-width:62px!important;position:absolute!important;z-index:25;cursor:pointer;-webkit-tap-highlight-color:rgba(74,222,128,0.2)}
 .seat .ava{font-size:1em;min-height:26px}
 .seat .ava img{width:26px!important;height:26px!important}
 .seat .nm{font-size:0.55em;padding:1px 3px;max-width:62px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:rgba(22,27,36,0.95)!important}
@@ -8437,7 +8437,7 @@ if(l.children.length>100)l.removeChild(l.firstChild)}
 function addChat(name,msg,scroll=true){const c=document.getElementById('chatmsgs');if(!c)return;
 const d=document.createElement('div');d.innerHTML=`<span class="cn">${esc(name)}:</span> <span class="cm">${esc(msg)}</span>`;
 c.appendChild(d);if(scroll)c.scrollTop=c.scrollHeight;if(c.children.length>50)c.removeChild(c.firstChild)}
-function sendChat(){const inp=document.getElementById('chat-inp');const msg=inp.value.trim();if(!msg)return;inp.value='';
+function sendChat(directMsg){const inp=document.getElementById('chat-inp');const msg=directMsg||(inp?inp.value.trim():'');if(!msg)return;if(inp)inp.value='';
 const chatName=myName||t('viewerName');
 addChat(chatName,msg);  // 로컬 즉시 표시
 if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'chat',name:chatName,msg:msg}));
@@ -10715,7 +10715,9 @@ function updateMobileSheet(tab){
   const content=document.getElementById('ms-content');if(!content) return;
   if(tab==='chat'){
     const chatEl=document.getElementById('chatmsgs');
-    content.innerHTML=chatEl?chatEl.innerHTML:'<div style="color:#666">채팅 없음</div>';
+    const msgs=chatEl?chatEl.innerHTML:'<div style="color:#666">채팅 없음</div>';
+    content.innerHTML=msgs+'<div style="display:flex;gap:4px;padding:6px 0;border-top:1px solid #333;margin-top:8px"><input id="m-chat-input" type="text" placeholder="메시지 입력..." style="flex:1;background:#1a1e28;border:1px solid #444;color:#eee;padding:6px 8px;border-radius:6px;font-size:0.9em;font-family:var(--font-pixel)" maxlength="200"><button onclick="const i=document.getElementById(\'m-chat-input\');if(i&&i.value.trim()){sendChat(i.value.trim());i.value=\'\'}" style="background:#6BC490;border:none;color:#000;padding:6px 12px;border-radius:6px;font-family:var(--font-pixel);font-size:0.85em;cursor:pointer">전송</button></div>';
+    const inp=document.getElementById('m-chat-input');if(inp)inp.onkeydown=(e)=>{if(e.key==='Enter'){e.preventDefault();const v=inp.value.trim();if(v){sendChat(v);inp.value=''}}};
   }else if(tab==='log'){
     const logEl=document.getElementById('log');
     content.innerHTML=logEl?logEl.innerHTML:'<div style="color:#666">로그 없음</div>';
