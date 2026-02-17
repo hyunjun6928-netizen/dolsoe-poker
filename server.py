@@ -2785,7 +2785,7 @@ def _npc_trash_talk(name, act, amt, to_call, pot, wp, target):
             f"{target} 네 얼굴이 하얘지는 게 보인다 ㅋ","떨리지? 나도 떨린다 ㅋㅋ",
         ],
     }
-    act_key = 'allin' if (act == 'raise' and amt >= pot * 0.8) or act == 'allin' else act
+    act_key = 'allin' if act == 'allin' or (act == 'raise' and amt >= pot * 0.8) else act
     else: act_key=act
     pool=lines.get(act_key, lines['check'])
     # === 혼란 작전 핵심: 승률과 반대되는 말 섞기 ===
