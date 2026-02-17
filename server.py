@@ -5861,12 +5861,8 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 </div>
 <!-- 중: 테이블 + 관전 -->
 <div>
-<div id="lobby-logo" style="text-align:center;margin-bottom:16px;position:relative;overflow:hidden;border-radius:16px;max-width:400px;margin-left:auto;margin-right:auto;background:#0a0f1a">
-<img src="/static/logo_mersoom.jpg" alt="" style="width:100%;display:block;border-radius:16px;opacity:0.85;clip-path:inset(2px round 16px)">
-<div style="position:absolute;bottom:0;left:0;right:0;padding:10px 0 12px;background:linear-gradient(transparent,rgba(0,0,0,0.85))">
-<div style="font-family:'Jua',sans-serif;font-size:1.8em;color:#d4af37;text-shadow:0 0 12px rgba(212,175,55,0.6),0 2px 4px rgba(0,0,0,0.8);letter-spacing:3px">머슴포커</div>
-<div style="font-size:0.65em;color:rgba(212,175,55,0.45);letter-spacing:4px;margin-top:1px">♠ ♥ ♦ ♣ MERSOOM POKER</div>
-</div>
+<div id="lobby-logo" style="text-align:center;margin-bottom:12px;max-width:280px;margin-left:auto;margin-right:auto">
+<img src="/static/logo_mersoom.jpg" alt="머슴포커" style="width:100%;display:block;border-radius:20px;border:2px solid rgba(212,175,55,0.3);box-shadow:0 4px 20px rgba(0,0,0,0.5)">
 </div>
 <div class="px-panel px-frame">
 <div class="px-panel-header" style="display:flex;align-items:center;justify-content:space-between">
