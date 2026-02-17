@@ -5608,24 +5608,24 @@ body.in-game .game-layout{position:fixed!important;top:0!important;left:0!import
 .card{width:36px;height:50px;font-size:0.65em;border-radius:4px;box-shadow:0 1px 2px 0 #000}
 .card-sm{width:32px;height:44px;font-size:0.6em}
 /* ═══ 모바일 좌석 ═══ */
-.seat{min-width:52px!important;max-width:72px!important;position:absolute!important;z-index:15}
-.seat .ava{font-size:1.2em;min-height:32px}
-.seat .ava img{width:32px!important;height:32px!important}
-.seat .nm{font-size:0.65em;padding:2px 5px;max-width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:rgba(22,27,36,0.95)!important}
-.seat .ch{font-size:0.55em!important;padding:2px 4px}
-.seat .eq-bar{max-width:56px!important;height:6px!important;margin:2px auto!important}
-.seat .hand-name{font-size:0.5em!important}
+.seat{min-width:44px!important;max-width:62px!important;position:absolute!important;z-index:15}
+.seat .ava{font-size:1em;min-height:26px}
+.seat .ava img{width:26px!important;height:26px!important}
+.seat .nm{font-size:0.55em;padding:1px 3px;max-width:62px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:rgba(22,27,36,0.95)!important}
+.seat .ch{font-size:0.5em!important;padding:1px 3px}
+.seat .eq-bar{max-width:48px!important;height:5px!important;margin:1px auto!important}
+.seat .hand-name{font-size:0.45em!important}
 .seat .st{display:none}
-.seat .bet-chip{font-size:0.55em}
-/* 8인 타원 배치: 하2 좌2 우2 상2 */
-.seat-0{bottom:8px!important;left:65%!important;transform:translateX(-50%)!important;top:auto!important;right:auto!important}
-.seat-1{bottom:8px!important;left:35%!important;transform:translateX(-50%)!important;top:auto!important;right:auto!important}
-.seat-2{top:60%!important;left:-4px!important;right:auto!important;bottom:auto!important;transform:none!important}
-.seat-3{top:15%!important;left:-4px!important;right:auto!important;bottom:auto!important;transform:none!important}
-.seat-4{top:15%!important;right:-4px!important;left:auto!important;bottom:auto!important;transform:none!important}
-.seat-5{top:60%!important;right:-4px!important;left:auto!important;bottom:auto!important;transform:none!important}
-.seat-6{top:-10px!important;left:65%!important;transform:translateX(-50%)!important;bottom:auto!important;right:auto!important}
-.seat-7{top:-10px!important;left:35%!important;transform:translateX(-50%)!important;bottom:auto!important;right:auto!important}
+.seat .bet-chip{font-size:0.5em}
+/* 8인 타원 배치: 하2 좌2 우2 상2 — 전부 felt 안쪽 */
+.seat-0{bottom:12px!important;left:68%!important;transform:translateX(-50%)!important;top:auto!important;right:auto!important}
+.seat-1{bottom:12px!important;left:32%!important;transform:translateX(-50%)!important;top:auto!important;right:auto!important}
+.seat-2{top:62%!important;left:4px!important;right:auto!important;bottom:auto!important;transform:none!important}
+.seat-3{top:18%!important;left:4px!important;right:auto!important;bottom:auto!important;transform:none!important}
+.seat-4{top:18%!important;right:4px!important;left:auto!important;bottom:auto!important;transform:none!important}
+.seat-5{top:62%!important;right:4px!important;left:auto!important;bottom:auto!important;transform:none!important}
+.seat-6{top:4px!important;left:68%!important;transform:translateX(-50%)!important;bottom:auto!important;right:auto!important}
+.seat-7{top:4px!important;left:32%!important;transform:translateX(-50%)!important;bottom:auto!important;right:auto!important}
 /* ═══ 모바일 장식 숨기기 ═══ */
 .turn-badge{display:none!important}
 #chip-stack{display:none!important}
@@ -5708,11 +5708,11 @@ input,select,textarea{font-size:16px!important}
 .felt{height:65vw!important;min-height:200px!important}
 .card{width:30px;height:42px;font-size:0.55em}
 .card-sm{width:26px;height:36px;font-size:0.5em}
-.seat{min-width:48px!important;max-width:64px!important}
-.seat .ava{font-size:1.1em;min-height:28px}
-.seat .ava img{width:28px!important;height:28px!important}
-.seat .nm{font-size:0.55em;max-width:64px}
-.seat .ch{font-size:0.5em!important}
+.seat{min-width:38px!important;max-width:54px!important}
+.seat .ava{font-size:0.9em;min-height:22px}
+.seat .ava img{width:22px!important;height:22px!important}
+.seat .nm{font-size:0.5em;max-width:54px}
+.seat .ch{font-size:0.45em!important}
 .pot-badge{font-size:0.7em!important;padding:3px 8px!important}
 #commentary{font-size:0.8em;padding:4px 8px}
 .lobby-tab{font-size:0.8em!important;padding:8px 12px!important}
