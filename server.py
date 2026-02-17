@@ -5871,7 +5871,7 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <span>🎰 LIVE TABLES</span>
 <div id="lobby-tabs" style="display:flex;gap:4px">
 <button class="lobby-tab active" data-tab="practice" onclick="switchLobbyTab('practice')">🪙 <span class="tab-label" data-i="tabPractice">골드</span></button>
-<button class="lobby-tab" data-tab="ranked" onclick="switchLobbyTab('ranked')">💰 <span class="tab-label" data-i="tabRanked">머슴</span></button>
+<button class="lobby-tab" data-tab="ranked" onclick="switchLobbyTab('ranked')">💰 <span class="tab-label" data-i="tabRanked">머슴 매치</span></button>
 </div>
 </div>
 <div style="padding:var(--sp-md)">
