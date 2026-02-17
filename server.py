@@ -5599,12 +5599,12 @@ body.in-game .game-layout{position:fixed!important;top:0!important;left:0!import
 .game-main{flex:1!important;display:flex!important;flex-direction:column!important;overflow-y:auto!important;overflow-x:hidden!important;-ms-overflow-style:none!important;scrollbar-width:none!important;min-height:0!important;padding:0}
 .game-main::-webkit-scrollbar{display:none!important}
 /* ═══ 모바일 펠트 (테이블) ═══ */
-.felt-wrap{margin:0 auto 2px;width:100%!important;flex:0 0 auto!important;min-height:0!important;height:auto!important;overflow:visible!important;display:flex!important;flex-direction:column!important}
+.felt-wrap{margin:0 auto 2px;width:100%!important;flex:1 1 auto!important;min-height:0!important;height:auto!important;overflow:visible!important;display:flex!important;flex-direction:column!important}
 .felt-border{top:-6px;left:-4px;right:-4px;bottom:-6px;border-radius:10px}
 .felt-border::before{top:-4px;left:-3px;right:-3px;bottom:-4px;border-radius:12px}
-.felt{position:relative!important;height:72vw!important;max-height:420px!important;min-height:260px!important;flex:0 0 auto!important;border-radius:8px;box-shadow:inset 0 2px 6px #00000033;overflow:visible!important;padding-bottom:0!important}
-.board{gap:4px;top:28%!important;z-index:20!important}
-.pot-badge{top:8%!important;font-size:0.85em!important;padding:5px 14px!important}
+.felt{position:relative!important;height:auto!important;max-height:none!important;min-height:0!important;flex:1!important;border-radius:8px;box-shadow:inset 0 2px 6px #00000033;overflow:visible!important;padding-bottom:0!important}
+.board{gap:4px;top:30%!important;z-index:20!important}
+.pot-badge{top:10%!important;font-size:0.85em!important;padding:5px 14px!important}
 .card{width:36px;height:50px;font-size:0.65em;border-radius:4px;box-shadow:0 1px 2px 0 #000}
 .card-sm{width:32px;height:44px;font-size:0.6em}
 /* ═══ 모바일 좌석 ═══ */
@@ -5705,7 +5705,7 @@ input,select,textarea{font-size:16px!important}
 }
 /* ═══ 초소형 모바일 (375px 이하) ═══ */
 @media(max-width:375px){
-.felt{height:68vw!important;min-height:220px!important;max-height:350px!important}
+.felt{min-height:200px!important}
 .card{width:30px;height:42px;font-size:0.55em}
 .card-sm{width:26px;height:36px;font-size:0.5em}
 .seat{min-width:38px!important;max-width:54px!important}
