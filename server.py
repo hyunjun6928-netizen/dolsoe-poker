@@ -8784,7 +8784,9 @@ let sfxVol=0.8; // 0~1 (기본 80%)
 function toggleMute(){muted=!muted;const sb=document.getElementById('settings-sfx-btn');if(sb)sb.textContent=muted?'🔇 OFF':'🔊 ON'}
 function setVol(v){sfxVol=v/100;if(sfxVol<=0){muted=true}else{muted=false}const sb=document.getElementById('settings-sfx-btn');if(sb)sb.textContent=muted?'🔇 OFF':'🔊 ON';
 // 골드 트랙 업데이트
-document.getElementById('vol-slider').style.setProperty('--vol-pct',v+'%')}
+const vs=document.getElementById('vol-slider');if(vs)vs.style.setProperty('--vol-pct',v+'%');
+// 모바일 퍼센트 텍스트 업데이트
+const sp=document.getElementById('m-sfx-pct');if(sp)sp.textContent=v+'%'}
 // ═══ BGM 시스템 — Incompetech 스트리밍 (용량 0, 진짜 음악) ═══
 const BGM_TRACKS=[
   {name:'Aces High',file:'/static/bgm/Aces_High.mp3'},
