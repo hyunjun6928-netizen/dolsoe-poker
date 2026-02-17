@@ -97,15 +97,5 @@ def _npc_react_to_action(name, other_name, other_act, other_amt, pot):
         return None
     return random.choice(lines) if random.random()<0.25 else None
 
-def fill_npc_bots(t, count=2):
-    """테이블에 NPC 봇 자동 추가"""
-    current=[s['name'] for s in t.seats]
-    added=0
-    for name,emoji,style,bio in NPC_BOTS:
-        if added>=count: break
-        if name in current: continue
-        if len(t.seats)>=t.MAX_PLAYERS: break
-        t.add_player(name,emoji,is_bot=True,style=style,meta={'bio':bio})
-        added+=1
-    return added
+# fill_npc_bots는 Table 의존으로 server.py에 잔류
 

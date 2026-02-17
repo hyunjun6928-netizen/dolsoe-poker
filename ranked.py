@@ -269,6 +269,7 @@ def mersoom_check_deposits():
 
             _deposit_cleanup_inner()
     except Exception as e:
+        import traceback; traceback.print_exc()
         print(f"[MERSOOM] deposit check error: {e}", flush=True)
 
 def mersoom_withdraw(to_auth_id, amount):
@@ -476,6 +477,7 @@ def _ranked_watchdog_check():
             _ranked_watchdog['suspicious_events'] = _ranked_watchdog['suspicious_events'][-WATCHDOG_EVENT_KEEP:]
 
     except Exception as e:
+        import traceback; traceback.print_exc()
         print(f"[WATCHDOG] error: {e}", flush=True)
 
 def _ranked_watchdog_report():
