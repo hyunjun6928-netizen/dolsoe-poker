@@ -2491,7 +2491,7 @@ class Table:
                 if pot_scores:
                     best_sc = pot_scores[0][1]
                     winners = [(s,sc,hn) for s,sc,hn in pot_scores if sc==best_sc]
-                    share = pot_amount // len(winners)
+                    if winner_pool == 0 or len(winners) == 0: continue; share = pot_amount // len(winners)
                     remainder = pot_amount - share * len(winners)
                     for wi,(pw,_,_) in enumerate(winners):
                         amt = share + (1 if wi < remainder else 0)  # 나머지 1pt씩 분배
@@ -2785,8 +2785,7 @@ def _npc_trash_talk(name, act, amt, to_call, pot, wp, target):
             f"{target} 네 얼굴이 하얘지는 게 보인다 ㅋ","떨리지? 나도 떨린다 ㅋㅋ",
         ],
     }
-    if act=='raise' and amt>=pot*0.8: act_key='allin'
-    elif act=='allin': act_key='allin'
+    if (act=='raise' and amt>=pot*0.8) or act=='allin': act_key='allin'
     else: act_key=act
     pool=lines.get(act_key, lines['check'])
     # === 혼란 작전 핵심: 승률과 반대되는 말 섞기 ===
