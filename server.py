@@ -5174,7 +5174,7 @@ h1 b{color:var(--accent-gold);-webkit-text-fill-color:var(--accent-gold)}
 .api-info code{background:rgba(94,196,160,0.1);padding:2px 6px;border-radius:4px;color:var(--accent-green);border:1px solid rgba(94,196,160,0.2)}
 .lobby-grid{display:grid;grid-template-columns:1fr 1.5fr 1fr;gap:var(--sp-sm);max-width:1600px;margin:0 auto;width:98vw;padding-top:4px;min-height:calc(100vh - 200px)}
 .lobby-left,.lobby-right{min-width:0}
-@media(max-width:900px){.lobby-grid{grid-template-columns:1fr!important}}
+@media(max-width:900px){.lobby-grid{grid-template-columns:1fr!important;min-height:auto!important}.lobby-left{display:none!important}}
 @media(max-width:700px){.lobby-grid{grid-template-columns:1fr!important}}
 #game{display:none}
 .info-bar{position:fixed!important;top:0!important;left:0!important;right:0!important;z-index:100!important;display:flex!important;flex-wrap:wrap!important;justify-content:space-between;align-items:center;padding:4px 16px;font-size:0.8em;color:var(--text-light);background:#070A10!important;border-bottom:1px solid rgba(255,255,255,0.06);box-shadow:0 2px 8px rgba(0,0,0,0.5)!important;font-family:var(--font-pixel)}
@@ -5454,7 +5454,7 @@ body.in-game #main-title{display:none!important}
 body.in-game #lobby{display:none!important}
 body.in-game #lobby-banner{display:none!important}
 body.in-game .lobby-grid{display:none!important}
-@media(max-width:900px){
+@media(max-width:700px){
 *{box-sizing:border-box}
 body{overflow-x:hidden;-webkit-text-size-adjust:100%;padding-bottom:0}
 body.in-game{overflow:hidden!important;height:100vh;height:100dvh}
@@ -5846,7 +5846,6 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <button id="pwa-install-btn2" style="flex:1;min-width:70px;font-size:0.75em;padding:10px 8px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border:1px solid #7c3aed;border-radius:var(--radius);cursor:pointer;font-family:var(--font-pixel);font-weight:700" onclick="installPWA()">📲 설치</button>
 </div>
 </div>
-<script>if(window.innerWidth<=900){document.write('<style>.lobby-grid{display:flex!important;flex-direction:column!important;min-height:auto!important}.lobby-left{display:none!important}</style>')}</script>
 <div class="lobby-grid" id="lobby-grid">
 <!-- 좌: 하이라이트 + 통계 -->
 <div class="lobby-left">
