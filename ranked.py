@@ -161,7 +161,7 @@ def _deposit_cleanup_inner():
     db = _db()
     db.execute("UPDATE deposit_requests SET status='expired', updated_at=? WHERE status='pending' AND requested_at < ?",
         (now, now - DEPOSIT_EXPIRE_SEC))
-    db.execute("DELETE FROM deposit_requests WHERE requested_at < ?", (now - DEPOSIT_DELETE_SEC))
+    db.execute("DELETE FROM deposit_requests WHERE requested_at < ?", (now - DEPOSIT_DELETE_SEC,))
     # Idempotency key 24시간 TTL (테이블 없으면 무시)
     try: db.execute("DELETE FROM withdraw_idempotency WHERE created_at < strftime('%s','now') - 86400")
     except: pass
