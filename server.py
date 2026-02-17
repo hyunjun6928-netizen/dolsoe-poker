@@ -5491,10 +5491,10 @@ body::after{display:none}
 .wrap{padding:0;max-width:100vw;overflow-x:hidden;height:auto!important;min-height:0!important;display:block!important}
 h1{display:none}
 /* ═══ 모바일 로비 ═══ */
-#lobby{padding:4px 4px 12px!important;height:auto!important;min-height:0!important;max-height:none!important;display:block!important;position:static!important}
+#lobby{padding:4px 4px 12px!important;height:auto!important;min-height:0!important;max-height:none!important;display:flex!important;flex-direction:column!important;position:static!important;overflow:visible!important}
 #lobby>*{margin-top:0!important;margin-bottom:0!important}
 #casino-floor{display:none!important;height:0!important;max-height:0!important;overflow:hidden!important;padding:0!important;margin:0!important;border:0!important}
-.lobby-grid{display:flex!important;flex-direction:column!important;gap:4px!important;min-height:0!important;height:auto!important;flex:none!important;margin:0!important;padding:0!important}
+.lobby-grid{display:flex!important;flex-direction:column!important;gap:4px!important;min-height:0!important;height:auto!important;flex:none!important;margin:0!important;padding:0!important;position:static!important;float:none!important;width:100%!important;transform:none!important}
 .lobby-right{display:none!important;height:0!important}
 .lobby-left{display:none!important;height:0!important}
 .lobby-grid>div:nth-child(2){order:-1}
@@ -6796,6 +6796,8 @@ if(window.innerWidth<=700){
     var lobby=document.getElementById('lobby');
     var info='LOBBY: '+lobby.offsetHeight+'x'+lobby.offsetWidth+' display='+getComputedStyle(lobby).display+' minH='+getComputedStyle(lobby).minHeight+' H='+getComputedStyle(lobby).height+'\n';
     info+='BODY: '+document.body.offsetHeight+' minH='+getComputedStyle(document.body).minHeight+'\n';
+    var lg=document.querySelector('.lobby-grid');
+    if(lg) info+='GRID-POS: '+getComputedStyle(lg).position+' float='+getComputedStyle(lg).cssFloat+' overflow='+getComputedStyle(lg).overflow+' top='+getComputedStyle(lg).top+'\n';
     var wrap=document.querySelector('.wrap');
     if(wrap)info+='WRAP: '+wrap.offsetHeight+' minH='+getComputedStyle(wrap).minHeight+'\n';
     Array.from(lobby.children).forEach(function(c,i){
