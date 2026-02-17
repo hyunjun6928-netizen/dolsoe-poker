@@ -5867,7 +5867,42 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <div id="lobby-log" style="position:absolute;bottom:40px;left:50%;transform:translateX(-50%);z-index:5;font-family:var(--font-pixel);font-size:0.75em;color:rgba(255,248,220,0.85);text-shadow:0 1px 4px #000;background:rgba(0,0,0,0.6);padding:4px 16px;border-radius:4px;border:1px solid rgba(212,175,90,0.2);white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis;transition:opacity 0.3s"></div>
 <div style="position:absolute;bottom:12px;left:50%;transform:translateX(-50%);color:rgba(245,197,66,0.6);font-size:0.7em;z-index:4;white-space:nowrap;font-family:var(--font-pixel);text-shadow:0 1px 4px #000;background:rgba(0,0,0,0.5);padding:4px 16px;border-radius:20px;border:1px solid rgba(245,197,66,0.15)">🎰 <span id="floor-count">0</span><span id="i-floor-label"> AIs</span></div>
 </div>
-<script>if(window.innerWidth<=700){var _cf=document.getElementById('casino-floor');if(_cf)_cf.remove();}</script>
+<script>if(window.innerWidth<=700){var _cf=document.getElementById('casino-floor');if(_cf)_cf.remove();}
+/* ═══ DEBUG MODE: 모바일 로비 갭 진단 ═══ */
+if(window.innerWidth<=700){window.addEventListener('load',function(){
+  var lobby=document.getElementById('lobby');if(!lobby)return;
+  var cs=lobby.children;
+  for(var i=0;i<cs.length;i++){var c=cs[i];
+    c.style.outline='3px solid red';
+    var r=c.getBoundingClientRect();
+    var lbl=document.createElement('div');
+    lbl.style.cssText='position:absolute;top:0;left:0;background:red;color:#fff;font-size:10px;z-index:99999;padding:1px 4px;pointer-events:none;font-family:monospace';
+    lbl.textContent=(c.tagName||'?')+'#'+(c.id||c.className.split(' ')[0]||'?')+' h='+Math.round(r.height)+'px w='+Math.round(r.width)+'px';
+    c.style.position=c.style.position||'relative';
+    c.appendChild(lbl);
+  }
+  /* lobby-grid 자식도 파란색 */
+  var lg=lobby.querySelector('.lobby-grid');if(lg){
+    var gc=lg.children;
+    for(var j=0;j<gc.length;j++){var g=gc[j];
+      g.style.outline='2px solid cyan';
+      var r2=g.getBoundingClientRect();
+      var lbl2=document.createElement('div');
+      lbl2.style.cssText='position:absolute;top:0;right:0;background:blue;color:#fff;font-size:10px;z-index:99999;padding:1px 4px;pointer-events:none;font-family:monospace';
+      lbl2.textContent=(g.tagName||'?')+'#'+(g.id||g.className.split(' ')[0]||'?')+' h='+Math.round(r2.height);
+      g.style.position=g.style.position||'relative';
+      g.appendChild(lbl2);
+    }
+  }
+  /* lobby 자체 높이도 표시 */
+  var lr=lobby.getBoundingClientRect();
+  var ll=document.createElement('div');
+  ll.style.cssText='position:fixed;bottom:10px;left:10px;background:rgba(255,0,0,0.9);color:#fff;font-size:12px;z-index:999999;padding:4px 8px;font-family:monospace;border-radius:4px';
+  ll.textContent='#lobby h='+Math.round(lr.height)+' viewport='+window.innerHeight+' children='+cs.length;
+  document.body.appendChild(ll);
+});}
+/* ═══ END DEBUG ═══ */
+</script>
 <!-- 모바일 전용 액션 바 -->
 <div id="mobile-action-bar" class="px-panel px-frame" style="display:none;margin:0 4px 4px;font-family:var(--font-pixel)">
 <div style="display:flex;gap:6px;padding:10px;justify-content:center;flex-wrap:wrap">
