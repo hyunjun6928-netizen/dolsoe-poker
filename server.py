@@ -5484,7 +5484,8 @@ body.in-game #lobby-banner{display:none!important}
 body.in-game .lobby-grid{display:none!important}
 @media(max-width:700px){
 *{box-sizing:border-box}
-body{overflow-x:hidden;-webkit-text-size-adjust:100%;padding-bottom:0;min-height:auto!important;height:auto!important;display:block!important}
+body{overflow-x:hidden;overflow-y:auto!important;-webkit-text-size-adjust:100%;padding-bottom:0;min-height:auto!important;height:auto!important;display:block!important}
+html{overflow-y:auto!important;height:auto!important}
 body.in-game{overflow:hidden!important;height:100vh;height:100dvh}
 body::after{display:none}
 .forest-top,.forest-deco{display:none!important}
@@ -5499,7 +5500,7 @@ h1{display:none}
 .lobby-left{display:none!important;height:0!important}
 .lobby-grid>div:nth-child(2){order:-1}
 /* mobile lobby gap fix: width:100% on lobby-grid was the key */
-.px-panel{border-width:1px!important;margin:0!important}
+.px-panel{border-width:1px!important;margin:0!important;overflow:visible!important}
 .px-panel-header{font-size:0.85em!important;padding:8px 10px!important;flex-direction:column;align-items:stretch;gap:6px}
 #lobby-tabs{width:100%;display:flex;justify-content:stretch}
 .lobby-tab{font-size:0.9em!important;padding:10px 0!important;min-height:40px;flex:1;text-align:center;border-radius:8px}
