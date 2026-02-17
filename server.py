@@ -5881,24 +5881,31 @@ if(window.innerWidth<=700){window.addEventListener('load',function(){
     c.style.position=c.style.position||'relative';
     c.appendChild(lbl);
   }
-  /* lobby-grid 자식도 파란색 */
+  /* lobby-grid 자식도 파란색 + computed style 덤프 */
   var lg=lobby.querySelector('.lobby-grid');if(lg){
     var gc=lg.children;
+    var lgCS=window.getComputedStyle(lg);
     for(var j=0;j<gc.length;j++){var g=gc[j];
       g.style.outline='2px solid cyan';
       var r2=g.getBoundingClientRect();
+      var gCS=window.getComputedStyle(g);
       var lbl2=document.createElement('div');
-      lbl2.style.cssText='position:absolute;top:0;right:0;background:blue;color:#fff;font-size:10px;z-index:99999;padding:1px 4px;pointer-events:none;font-family:monospace';
-      lbl2.textContent=(g.tagName||'?')+'#'+(g.id||g.className.split(' ')[0]||'?')+' h='+Math.round(r2.height);
-      g.style.position=g.style.position||'relative';
-      g.appendChild(lbl2);
+      lbl2.style.cssText='position:relative;background:blue;color:#fff;font-size:9px;z-index:99999;padding:2px 4px;pointer-events:none;font-family:monospace;word-break:break-all';
+      lbl2.textContent='child['+j+'] '+(g.tagName)+'.'+(g.className.split(' ')[0]||'?')+' h='+Math.round(r2.height)+' display='+gCS.display+' overflow='+gCS.overflow+' pos='+gCS.position+' flex='+gCS.flex;
+      g.parentNode.insertBefore(lbl2,g.nextSibling);
     }
+    /* lobby-grid 자체 computed */
+    var lgInfo=document.createElement('div');
+    lgInfo.style.cssText='position:fixed;bottom:40px;left:10px;background:rgba(0,0,255,0.9);color:#fff;font-size:10px;z-index:999999;padding:4px 8px;font-family:monospace;border-radius:4px;max-width:90vw;word-break:break-all';
+    lgInfo.textContent='.lobby-grid display='+lgCS.display+' flexDir='+lgCS.flexDirection+' h='+Math.round(lg.getBoundingClientRect().height)+' overflow='+lgCS.overflow+' pos='+lgCS.position;
+    document.body.appendChild(lgInfo);
   }
-  /* lobby 자체 높이도 표시 */
+  /* lobby 자체 높이 + computed */
   var lr=lobby.getBoundingClientRect();
+  var lobbyCS=window.getComputedStyle(lobby);
   var ll=document.createElement('div');
-  ll.style.cssText='position:fixed;bottom:10px;left:10px;background:rgba(255,0,0,0.9);color:#fff;font-size:12px;z-index:999999;padding:4px 8px;font-family:monospace;border-radius:4px';
-  ll.textContent='#lobby h='+Math.round(lr.height)+' viewport='+window.innerHeight+' children='+cs.length;
+  ll.style.cssText='position:fixed;bottom:10px;left:10px;background:rgba(255,0,0,0.9);color:#fff;font-size:10px;z-index:999999;padding:4px 8px;font-family:monospace;border-radius:4px;max-width:90vw;word-break:break-all';
+  ll.textContent='#lobby h='+Math.round(lr.height)+' vh='+window.innerHeight+' ch='+cs.length+' display='+lobbyCS.display+' flexDir='+lobbyCS.flexDirection+' overflow='+lobbyCS.overflow;
   document.body.appendChild(ll);
 });}
 /* ═══ END DEBUG ═══ */
