@@ -5671,7 +5671,7 @@ body.in-game .game-layout{position:fixed!important;top:0!important;left:0!import
 /* ═══ 모바일 기타 ═══ */
 .tab-btns button{padding:4px 8px;font-size:0.7em;min-height:28px}
 .dbtn{font-size:0.5em}
-.act-label{font-size:0.5em}
+.act-label{font-size:0.5em;max-width:120px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;padding:2px 6px!important;left:0!important;transform:none!important}
 #profile-popup{width:92vw;min-width:unset;max-height:80vh;overflow-y:auto;padding:14px;font-size:0.85em;left:4vw!important;top:10vh!important;transform:none!important}
 #profile-popup h3{font-size:1em;margin-bottom:6px}
 #profile-popup .pp-stat{font-size:0.8em;margin:2px 0}
