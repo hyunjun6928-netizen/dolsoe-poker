@@ -168,8 +168,9 @@ def _deposit_request_cleanup():
         db.execute("UPDATE deposit_requests SET status='expired', updated_at=? WHERE status='pending' AND requested_at < ?",
             (now, now - 600))
         db.execute("DELETE FROM deposit_requests WHERE requested_at < ?", (now - 86400,))
-        # Idempotency key 24시간 TTL
-        db.execute("DELETE FROM withdraw_idempotency WHERE created_at < strftime('%s','now') - 86400")
+        # Idempotency key 24시간 TTL (테이블 없으면 무시)
+        try: db.execute("DELETE FROM withdraw_idempotency WHERE created_at < strftime('%s','now') - 86400")
+        except: pass
         db.commit()
 
 def mersoom_check_deposits():
