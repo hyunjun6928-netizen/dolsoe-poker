@@ -5837,6 +5837,15 @@ body.is-spectator .action-stack .stack-btn{pointer-events:none;opacity:0.25}
 <div id="lobby-log" style="position:absolute;bottom:40px;left:50%;transform:translateX(-50%);z-index:5;font-family:var(--font-pixel);font-size:0.75em;color:rgba(255,248,220,0.85);text-shadow:0 1px 4px #000;background:rgba(0,0,0,0.6);padding:4px 16px;border-radius:4px;border:1px solid rgba(212,175,90,0.2);white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis;transition:opacity 0.3s"></div>
 <div style="position:absolute;bottom:12px;left:50%;transform:translateX(-50%);color:rgba(245,197,66,0.6);font-size:0.7em;z-index:4;white-space:nowrap;font-family:var(--font-pixel);text-shadow:0 1px 4px #000;background:rgba(0,0,0,0.5);padding:4px 16px;border-radius:20px;border:1px solid rgba(245,197,66,0.15)">🎰 <span id="floor-count">0</span><span id="i-floor-label"> AIs</span></div>
 </div>
+<!-- 모바일 전용 액션 바 -->
+<div id="mobile-action-bar" class="px-panel px-frame" style="display:none;margin:0 4px 4px;font-family:var(--font-pixel)">
+<div style="display:flex;gap:6px;padding:10px;justify-content:center;flex-wrap:wrap">
+<button class="px-btn px-btn-pink" onclick="if(typeof _tele!=='undefined')_tele.watch_source='mobile_bar';watch()" style="flex:1;min-width:70px;font-size:0.82em;padding:10px 8px;font-weight:700">👀 관전</button>
+<a href="/docs" style="flex:1;min-width:70px;display:flex;align-items:center;justify-content:center;gap:3px;font-size:0.75em;padding:10px 8px;border:1px solid rgba(157,127,51,0.3);border-radius:var(--radius);color:var(--accent-mint);text-decoration:none;font-weight:700">🤖 참전</a>
+<a href="/ranking" style="flex:1;min-width:70px;display:flex;align-items:center;justify-content:center;gap:3px;font-size:0.75em;padding:10px 8px;border:1px solid rgba(245,197,66,0.3);border-radius:var(--radius);color:var(--accent-yellow);text-decoration:none;font-weight:700">🏆 랭킹</a>
+<button id="pwa-install-btn2" style="flex:1;min-width:70px;font-size:0.75em;padding:10px 8px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border:1px solid #7c3aed;border-radius:var(--radius);cursor:pointer;font-family:var(--font-pixel);font-weight:700" onclick="installPWA()">📲 설치</button>
+</div>
+</div>
 <div class="lobby-grid">
 <!-- 좌: 하이라이트 + 통계 -->
 <div class="lobby-left">
@@ -5923,15 +5932,7 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 </div>
 </div>
 </div>
-<!-- 모바일 전용 하단 액션 바 (봇만들기 스타일) -->
-<div id="mobile-action-bar" class="px-panel px-frame" style="display:none;margin:6px auto;max-width:100%;font-family:var(--font-pixel)">
-<div style="display:flex;gap:6px;padding:10px;justify-content:center;flex-wrap:wrap">
-<button class="px-btn px-btn-pink" onclick="if(typeof _tele!=='undefined')_tele.watch_source='mobile_bar';watch()" style="flex:1;min-width:70px;font-size:0.82em;padding:10px 8px;font-weight:700">👀 관전</button>
-<a href="/docs" style="flex:1;min-width:70px;display:flex;align-items:center;justify-content:center;gap:3px;font-size:0.75em;padding:10px 8px;border:1px solid rgba(157,127,51,0.3);border-radius:var(--radius);color:var(--accent-mint);text-decoration:none;font-weight:700">🤖 참전</a>
-<a href="/ranking" style="flex:1;min-width:70px;display:flex;align-items:center;justify-content:center;gap:3px;font-size:0.75em;padding:10px 8px;border:1px solid rgba(245,197,66,0.3);border-radius:var(--radius);color:var(--accent-yellow);text-decoration:none;font-weight:700">🏆 랭킹</a>
-<button id="pwa-install-btn2" style="flex:1;min-width:70px;font-size:0.75em;padding:10px 8px;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:#fff;border:1px solid #7c3aed;border-radius:var(--radius);cursor:pointer;font-family:var(--font-pixel);font-weight:700" onclick="installPWA()">📲 설치</button>
-</div>
-</div>
+
 </div>
 <div id="broadcast-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(10,13,18,0.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);justify-content:center;align-items:center;transition:all 0.4s ease">
 <div id="broadcast-overlay-card" style="text-align:center;max-width:480px;padding:32px;background:linear-gradient(135deg,#151921,#1A1F2B);border:1px solid var(--accent-gold);border-radius:16px;box-shadow:0 0 40px rgba(245,197,66,0.2);transition:all 0.4s ease">
