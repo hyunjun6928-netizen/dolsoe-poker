@@ -5172,7 +5172,8 @@ h1 b{color:var(--accent-gold);-webkit-text-fill-color:var(--accent-gold)}
 .api-info{margin-top:40px;text-align:left;background:var(--bg-panel);border:1px solid var(--frame);border-radius:var(--radius);padding:20px;font-size:0.8em;color:var(--text-secondary);max-width:500px;margin-left:auto;margin-right:auto;box-shadow:var(--shadow-md)}
 .api-info h3{color:var(--accent-gold);margin-bottom:10px}
 .api-info code{background:rgba(94,196,160,0.1);padding:2px 6px;border-radius:4px;color:var(--accent-green);border:1px solid rgba(94,196,160,0.2)}
-.lobby-grid{display:grid;grid-template-columns:1fr 1.5fr 1fr;gap:var(--sp-sm);max-width:1600px;margin:0 auto;width:98vw;padding-top:4px;min-height:calc(100vh - 200px)}
+.lobby-grid{display:grid;grid-template-columns:1fr 1.5fr 1fr;gap:var(--sp-sm);max-width:1600px;margin:0 auto;width:98vw;padding-top:4px}
+@media(min-width:901px){.lobby-grid{min-height:calc(100vh - 200px)}}
 .lobby-left,.lobby-right{min-width:0}
 @media(max-width:900px){.lobby-grid{grid-template-columns:1fr!important}}
 @media(max-width:700px){.lobby-grid{grid-template-columns:1fr!important}}
