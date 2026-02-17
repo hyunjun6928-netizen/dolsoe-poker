@@ -5492,13 +5492,15 @@ body::after{display:none}
 .wrap{padding:0;max-width:100vw;overflow-x:hidden;height:auto!important;min-height:0!important;display:block!important}
 h1{display:none}
 /* ═══ 모바일 로비 ═══ */
-#lobby{padding:4px 4px 12px!important;height:auto!important;min-height:0!important;max-height:none!important;display:flex!important;flex-direction:column!important;position:static!important;overflow:visible!important}
+#lobby{padding:4px 4px 12px!important;height:100vh!important;height:100dvh!important;min-height:0!important;max-height:none!important;display:flex!important;flex-direction:column!important;position:static!important;overflow:hidden!important;box-sizing:border-box!important}
 #lobby>*{margin-top:0!important;margin-bottom:0!important}
 #casino-floor{display:none!important;height:0!important;max-height:0!important;overflow:hidden!important;padding:0!important;margin:0!important;border:0!important}
-.lobby-grid{display:flex!important;flex-direction:column!important;gap:4px!important;min-height:0!important;height:auto!important;flex:none!important;margin:0!important;padding:0!important;position:static!important;float:none!important;width:100%!important;transform:none!important;overflow:visible!important}
+.lobby-grid{display:flex!important;flex-direction:column!important;gap:4px!important;min-height:0!important;height:auto!important;flex:1 1 auto!important;margin:0!important;padding:0!important;position:static!important;float:none!important;width:100%!important;transform:none!important;overflow:visible!important}
 .lobby-right{display:none!important;height:0!important}
 .lobby-left{display:none!important;height:0!important}
-.lobby-grid>div:nth-child(2){order:-1}
+.lobby-grid>div:nth-child(2){order:-1;flex:1 1 auto!important;display:flex!important;flex-direction:column!important}
+.lobby-grid>div:nth-child(2)>.px-panel{flex:1 1 auto!important;display:flex!important;flex-direction:column!important}
+.lobby-grid>div:nth-child(2)>.px-panel>[style*="padding"]{flex:1 1 auto!important}
 /* mobile lobby gap fix: width:100% on lobby-grid was the key */
 .px-panel{border-width:1px!important;margin:0!important;overflow:visible!important}
 .px-panel-header{font-size:0.85em!important;padding:8px 10px!important;flex-direction:column;align-items:stretch;gap:6px}
