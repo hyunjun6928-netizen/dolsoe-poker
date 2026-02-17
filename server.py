@@ -89,6 +89,7 @@ def _auth_cache_set(auth_id, cache_key):
 _ranked_auth_map = {}  # poker_name -> auth_id (닉네임→머슴계정 매핑, 세션 내)
 _ranked_lock = threading.Lock()
 _withdraw_locks = {}   # auth_id -> asyncio.Lock (per-user withdraw serialization)
+_withdrawing_users = set()  # auth_ids currently in withdraw flow (block WS cashout)
 _withdraw_locks_mu = threading.Lock()
 
 def _get_withdraw_lock(auth_id):
@@ -1718,9 +1719,11 @@ class Table:
         for name,ws in list(self.player_ws.items()):
             try: await ws_send(ws,json.dumps(self.get_public_state(viewer=name),ensure_ascii=False))
             except: del self.player_ws[name]
-        # 관전자: 딜레이 큐에 넣기 (TV중계 딜레이)
-        spec_data=json.dumps(self.get_spectator_state(),ensure_ascii=False)
-        self.spectator_queue.append((time.time()+self.SPECTATOR_DELAY, spec_data))
+        # 관전자: 딜레이 큐에 넣기 (TV중계 딜레이) — 관전자 없으면 스킵
+        if self.spectator_ws or self.poll_spectators:
+            spec_data=json.dumps(self.get_spectator_state(),ensure_ascii=False)
+            if len(self.spectator_queue)<200:  # 큐 상한
+                self.spectator_queue.append((time.time()+self.SPECTATOR_DELAY, spec_data))
 
     async def broadcast_raw(self, data):
         """모든 클라이언트에게 raw JSON 메시지 전송"""
@@ -1746,9 +1749,11 @@ class Table:
         for name,ws in list(self.player_ws.items()):
             try: await ws_send(ws,json.dumps(self.get_public_state(viewer=name),ensure_ascii=False))
             except: pass
-        # 관전자: 딜레이 큐
-        spec_data=json.dumps(self.get_spectator_state(),ensure_ascii=False)
-        self.spectator_queue.append((time.time()+self.SPECTATOR_DELAY, spec_data))
+        # 관전자: 딜레이 큐 — 관전자 없으면 스킵
+        if self.spectator_ws or self.poll_spectators:
+            spec_data=json.dumps(self.get_spectator_state(),ensure_ascii=False)
+            if len(self.spectator_queue)<200:
+                self.spectator_queue.append((time.time()+self.SPECTATOR_DELAY, spec_data))
 
     async def _broadcast_spectators(self, msg):
         """관전자에게 즉시 메시지 전송 (딜레이 없이)"""
@@ -1904,13 +1909,18 @@ class Table:
             # ranked: 게임 종료 시 모든 플레이어 칩을 DB 잔고에 즉시 반영
             for s in self.seats:
                 auth_id = s.get('_auth_id') or _ranked_auth_map.get(s['name'])
-                if auth_id and s['chips'] > 0:
-                    ranked_credit(auth_id, s['chips'])
+                if auth_id and s['chips'] > 0 and not s.get('_cashed_out'):
+                    # credit + ingame DELETE를 단일 트랜잭션으로 (crash recovery 이중 크레딧 방지)
+                    with _ranked_lock:
+                        db=_db()
+                        db.execute("UPDATE ranked_balances SET balance=balance+?, updated_at=strftime('%s','now') WHERE auth_id=?",(s['chips'],auth_id))
+                        db.execute("DELETE FROM ranked_ingame WHERE table_id=? AND auth_id=?",(self.id,auth_id))
+                        db.commit()
                     print(f"[RANKED] 게임종료 정산: {s['name']}({auth_id}) +{s['chips']}pt → 잔고 {ranked_balance(auth_id)}pt", flush=True)
                     _ranked_audit('game_end', auth_id, s['chips'], details=f'table:{self.id} name:{s["name"]}')
-                    s['chips'] = 0  # 이중 크레딧 방지
+                    s['chips'] = 0; s['_cashed_out'] = True  # 이중 크레딧 방지
             self.seats=[]  # ranked 게임 끝나면 전원 퇴장 (재입장 필요)
-            # ingame 스냅샷 정리 (정산 완료)
+            # 남은 ingame 스냅샷 정리
             try:
                 db = _db()
                 db.execute("DELETE FROM ranked_ingame WHERE table_id=?", (self.id,))
@@ -3631,12 +3641,17 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
                 ok_d, rem = ranked_deposit(r_auth, amount)
                 if not ok_d:
                     await send_json(writer,{'error':'차감 실패'},500); return
-                ok_w, msg_w = await asyncio.get_event_loop().run_in_executor(None, mersoom_withdraw, r_auth, amount)
-                if not ok_w:
-                    ranked_credit(r_auth, amount)
-                    print(f"[RANKED] 환전 실패: {msg_w}", flush=True)
-                    await send_json(writer,{'error':'머슴닷컴 전송 실패. 잠시 후 다시 시도해주세요.'},500); return
-                await send_json(writer,{'ok':True,'withdrawn':amount,'remaining_balance':ranked_balance(r_auth)})
+                # 출금 중 플래그 — WS disconnect cashout 차단
+                _withdrawing_users.add(r_auth)
+                try:
+                    ok_w, msg_w = await asyncio.get_event_loop().run_in_executor(None, mersoom_withdraw, r_auth, amount)
+                    if not ok_w:
+                        ranked_credit(r_auth, amount)
+                        print(f"[RANKED] 환전 실패: {msg_w}", flush=True)
+                        await send_json(writer,{'error':'머슴닷컴 전송 실패. 잠시 후 다시 시도해주세요.'},500); return
+                    await send_json(writer,{'ok':True,'withdrawn':amount,'remaining_balance':ranked_balance(r_auth)})
+                finally:
+                    _withdrawing_users.discard(r_auth)
         elif method=='POST' and route=='/api/ranked/deposit-request':
             if not _api_rate_ok(_visitor_ip, 'ranked_deposit', 5):
                 await send_json(writer,{'error':'rate limited'},429); return
@@ -4158,6 +4173,10 @@ async def handle_ws(reader, writer, path):
             if data.get('type')=='action' and mode=='play' and name and verify_token(name, ws_token): t.handle_api_action(name,data)
             elif data.get('type')=='chat':
                 chat_name=name if (mode=='play' and name) else sanitize_name(data.get('name',''))[:10] or '관객'
+                # 관전자가 플레이어 이름 사칭 방지
+                if mode!='play':
+                    _seated_names={s['name'] for s in t.seats}
+                    if chat_name in _seated_names: chat_name=f'[관전]{chat_name}'
                 chat_msg=sanitize_msg(data.get('msg',''),120)
                 if not chat_msg: continue
                 # WS 채팅 쿨다운
@@ -4207,7 +4226,7 @@ async def handle_ws(reader, writer, path):
             if seat and seat['chips']>0 and not seat.get('_cashed_out'):
                 chips=seat['chips']
                 auth_id_leave=seat.get('_auth_id') or _ranked_auth_map.get(name)
-                if auth_id_leave:
+                if auth_id_leave and auth_id_leave not in _withdrawing_users:
                     seat['chips']=0
                     ranked_credit(auth_id_leave, chips)
                     _ranked_audit('ws_disconnect_cashout', auth_id_leave, chips, details=f'table:{t.id} name:{name}')
