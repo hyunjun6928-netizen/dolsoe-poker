@@ -24,10 +24,7 @@ _SW_VERSION = str(int(time.time()))  # Fixed at server start — changes only on
 from collections import Counter
 from itertools import combinations
 from urllib.parse import parse_qs, urlparse
-try:
-    from battle import battle_page_html, battle_api_start, battle_api_history
-    HAS_BATTLE = True
-except: HAS_BATTLE = False
+HAS_BATTLE = False  # 디스배틀 삭제됨
 
 PORT = int(os.environ.get('PORT', 8080))
 
@@ -1342,13 +1339,15 @@ def require_token(name, token):
     if not name or not token: return False
     return verify_token(name, token)
 
+_NAME_ALLOW_RE = re.compile(r'[^A-Za-z0-9가-힣ㄱ-ㅎㅏ-ㅣ_\- .·😀-🙏🤐-🤿🥀-🥶🦀-🦿🧀-🧿🌀-🌿🍀-🍿🎀-🎿🏀-🏿🐀-🐿👀-👿💀-💿📀-📿🔀-🔿🕀-🕿🖀-🖿🗀-🗿]')
+
 def sanitize_name(name):
-    """이름 정제: 제어문자+HTML 태그 제거, 공백 정리, 길이 제한"""
+    """이름 정제: allowlist 기반 — 허용 문자만 통과, 나머지 제거"""
     if not name: return ''
     # 제어문자 제거
     name = ''.join(c for c in name if c.isprintable())
-    # HTML 위험 문자 제거 (서버 단에서 원천 차단)
-    name = name.replace('<','').replace('>','').replace('&','').replace('"','').replace("'",'')
+    # allowlist: 영문, 숫자, 한글, _, -, 공백, ·, 이모지만 허용
+    name = _NAME_ALLOW_RE.sub('', name)
     name = name.strip()[:20]
     return name
 
@@ -3014,7 +3013,7 @@ async def handle_client(reader, writer):
     _visitor_ip = _xff.split(',')[-1].strip() if _xff else ''
     _visitor_ip = _visitor_ip or headers.get('x-real-ip','') or _peer_ip
     _visitor_ua = headers.get('user-agent','')[:200]
-    if route in ('/', '/battle', '/ranking', '/docs') or (route=='/api/state' and not qs.get('player')):
+    if route in ('/', '/ranking', '/docs') or (route=='/api/state' and not qs.get('player')):
         _track_visitor(_visitor_ip, _visitor_ua, route, headers.get('referer',''))
 
     def find_table(tid=''):
@@ -3034,7 +3033,7 @@ async def handle_client(reader, writer):
     if method == 'POST' and body and route.startswith('/api/'):
         try: json.loads(body)
         except (json.JSONDecodeError, ValueError):
-            await send_json(writer, {'error': 'Invalid JSON body'}, 400)
+            await send_json(writer, {'ok':False,'message':'Invalid JSON body'}, 400)
             try: writer.close()
             except: pass
             return
@@ -3298,7 +3297,7 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
                     'players':[s['name'] for s in t.seats],'token':token,'reconnected':True})
                 await t.add_log(f"🔄 {existing_seat['emoji']} {name} 재접속!")
                 return
-            await send_json(writer,{'error':'테이블 꽉참 or 중복 닉네임'},400); return
+            await send_json(writer,{'ok':False,'message':'테이블 꽉참 or 중복 닉네임'},400); return
         # ranked면 칩을 buy_in으로 세팅
         if is_ranked_table(tid):
             joined_seat=next((s for s in t.seats if s['name']==name),None)
@@ -3410,6 +3409,9 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
             await send_json(writer,{'ok':False,'code':'RATE_LIMITED','message':'rate limited — max 30 actions/min'},429); return
         d=safe_json(body); name=d.get('name',''); tid=d.get('table_id','')
         token=d.get('token','')
+        # 이름 기반 레이트리밋 (프록시/공용IP 우회 방지)
+        if name and not _api_rate_ok(f'name:{name}', 'action', 30):
+            await send_json(writer,{'ok':False,'code':'RATE_LIMITED','message':'rate limited'},429); return
         t=find_table(tid)
         if not t: await send_json(writer,{'ok':False,'code':'NOT_FOUND','message':'no game'},404); return
         if not require_token(name,token):
@@ -3424,13 +3426,16 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
             if seat: seat['last_mood']=mood
         result=t.handle_api_action(name,d)
         if result=='OK': await send_json(writer,{'ok':True})
-        elif result=='TURN_MISMATCH': await send_json(writer,{'ok':False,'code':'TURN_MISMATCH','message':'stale turn_seq'},409)
+        elif result=='TURN_MISMATCH': await send_json(writer,{'ok':False,'code':'TURN_MISMATCH','message':'stale turn_seq','current_turn_seq':t.turn_seq},409)
         elif result=='ALREADY_ACTED': await send_json(writer,{'ok':False,'code':'ALREADY_ACTED','message':'action already submitted'},409)
         else: await send_json(writer,{'ok':False,'code':'NOT_YOUR_TURN','message':'not your turn'},400)
     elif method=='POST' and route=='/api/chat':
         if not _api_rate_ok(_visitor_ip, 'chat', 15):
             await send_json(writer,{'ok':False,'code':'RATE_LIMITED','message':'rate limited'},429); return
         d=safe_json(body); name=sanitize_name(d.get('name','')); msg=sanitize_msg(d.get('msg',''),120); tid=d.get('table_id','')
+        # 이름 기반 레이트리밋
+        if name and not _api_rate_ok(f'name:{name}', 'chat', 15):
+            await send_json(writer,{'ok':False,'code':'RATE_LIMITED','message':'rate limited'},429); return
         token=d.get('token','')
         if not name or not msg: await send_json(writer,{'ok':False,'code':'INVALID_INPUT','message':'name and msg required'},400); return
         if not require_token(name,token):
@@ -3583,9 +3588,9 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
         try: amount=max(0, int(d.get('amount',0)))
         except (ValueError, TypeError): amount=0
         tid=d.get('table_id','mersoom'); t=find_table(tid)
-        if not t or not t.running: await send_json(writer,{'error':'게임 진행중 아님'},400); return
-        if not name or not pick: await send_json(writer,{'error':'name, pick 필수'},400); return
-        if not any(s['name']==pick for s in t.seats if not s.get('out')): await send_json(writer,{'error':'해당 플레이어 없음'},400); return
+        if not t or not t.running: await send_json(writer,{'ok':False,'message':'게임 진행중 아님'},400); return
+        if not name or not pick: await send_json(writer,{'ok':False,'message':'name, pick 필수'},400); return
+        if not any(s['name']==pick for s in t.seats if not s.get('out')): await send_json(writer,{'ok':False,'message':'해당 플레이어 없음'},400); return
         ok,msg=place_spectator_bet(tid,t.hand_num,name,pick,amount)
         if ok:
             await t.add_log(f"🎰 관전자 {name}: {pick}에게 {amount}코인 베팅!")
@@ -3593,7 +3598,7 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
         else: await send_json(writer,{'error':msg},400)
     elif method=='GET' and route=='/api/coins':
         name=qs.get('name',[''])[0]
-        if not name: await send_json(writer,{'error':'name 필수'},400); return
+        if not name: await send_json(writer,{'ok':False,'message':'name 필수'},400); return
         await send_json(writer,{'name':name,'coins':get_spectator_coins(name)})
     elif route.startswith('/api/ranked/'):
         # ranked 전체 잠금 체크
@@ -3626,7 +3631,7 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
             await send_json(writer, {'rooms': rooms})
         elif method=='GET' and route=='/api/ranked/house':
             if not _check_admin(qs.get('admin_key',[''])[0]):
-                await send_json(writer, {'error': '인증 실패'}, 401); return
+                await send_json(writer, {'ok':False,'message':'인증 실패'}, 401); return
             house_points = 0
             if MERSOOM_AUTH_ID and MERSOOM_PASSWORD:
                 try:
@@ -3649,12 +3654,12 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
             })
         elif method=='GET' and route=='/api/ranked/watchdog':
             if not _check_admin(qs.get('admin_key',[''])[0]):
-                await send_json(writer, {'error': '인증 실패'}, 401); return
+                await send_json(writer, {'ok':False,'message':'인증 실패'}, 401); return
             report = _ranked_watchdog_report()
             await send_json(writer, report)
         elif method=='GET' and route=='/api/ranked/audit':
             if not _check_admin(qs.get('admin_key',[''])[0]):
-                await send_json(writer, {'error': '인증 실패'}, 401); return
+                await send_json(writer, {'ok':False,'message':'인증 실패'}, 401); return
             r_auth = qs.get('auth_id',[''])[0]
             try: limit = min(200, max(1, int(qs.get('limit',['50'])[0])))
             except: limit = 50
@@ -3669,28 +3674,28 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
         elif method=='POST' and route=='/api/ranked/balance':
             d=safe_json(body)
             r_auth=d.get('auth_id',''); r_pw=d.get('password','')
-            if not r_auth or not r_pw: await send_json(writer,{'error':'auth_id, password 필수'},400); return
+            if not r_auth or not r_pw: await send_json(writer,{'ok':False,'message':'auth_id, password 필수'},400); return
             # 본인 인증 (다른 사람 잔고 조회 방지)
             cache_key = _auth_cache_key(r_auth, r_pw)
             if not _auth_cache_check(r_auth, cache_key):
                 verified, _ = await asyncio.get_event_loop().run_in_executor(
                     None, mersoom_verify_account, r_auth, r_pw)
                 if not verified:
-                    await send_json(writer,{'error':'머슴닷컴 계정 인증 실패'},401); return
+                    await send_json(writer,{'ok':False,'message':'머슴닷컴 계정 인증 실패'},401); return
                 _auth_cache_set(r_auth, cache_key)
             await asyncio.get_event_loop().run_in_executor(None, mersoom_check_deposits)
             bal=ranked_balance(r_auth)
             await send_json(writer,{'auth_id':r_auth,'balance':bal})
         elif method=='POST' and route=='/api/ranked/withdraw':
             if not _api_rate_ok(_visitor_ip, 'ranked_withdraw', 5):
-                await send_json(writer,{'error':'rate limited'},429); return
+                await send_json(writer,{'ok':False,'message':'rate limited'},429); return
             d=safe_json(body)
             r_auth=d.get('auth_id',''); r_pw=d.get('password','')
             _idemp_key=d.get('idempotency_key','')
             try: amount=max(0, int(d.get('amount',0)))
             except (ValueError, TypeError): amount=0
             if not r_auth or not r_pw or amount<=0:
-                await send_json(writer,{'error':'auth_id, password, amount(>0) 필수'},400); return
+                await send_json(writer,{'ok':False,'message':'auth_id, password, amount(>0) 필수'},400); return
             # Idempotency: 중복 출금 방지
             if _idemp_key:
                 with _ranked_lock:
@@ -3707,18 +3712,18 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
                 verified, _ = await asyncio.get_event_loop().run_in_executor(
                     None, mersoom_verify_account, r_auth, r_pw)
                 if not verified:
-                    await send_json(writer,{'error':'머슴닷컴 계정 인증 실패'},401); return
+                    await send_json(writer,{'ok':False,'message':'머슴닷컴 계정 인증 실패'},401); return
                 _auth_cache_set(r_auth, cache_key)
             wlock = _get_withdraw_lock(r_auth)
             if wlock.locked():
-                await send_json(writer,{'error':'이전 출금 처리 중입니다. 잠시 후 다시 시도해주세요.'},429); return
+                await send_json(writer,{'ok':False,'message':'이전 출금 처리 중입니다. 잠시 후 다시 시도해주세요.'},429); return
             async with wlock:
                 bal=ranked_balance(r_auth)
                 if amount>bal:
-                    await send_json(writer,{'error':f'잔고 부족'},400); return
+                    await send_json(writer,{'ok':False,'message':f'잔고 부족'},400); return
                 ok_d, rem = ranked_deposit(r_auth, amount)
                 if not ok_d:
-                    await send_json(writer,{'error':'차감 실패'},500); return
+                    await send_json(writer,{'ok':False,'message':'차감 실패'},500); return
                 # 출금 중 플래그 — WS disconnect cashout 차단
                 _withdrawing_users.add(r_auth)
                 try:
@@ -3731,28 +3736,28 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
                                 _db().execute("DELETE FROM withdraw_idempotency WHERE key=?",(_idemp_key,))
                                 _db().commit()
                         print(f"[RANKED] 환전 실패: {msg_w}", flush=True)
-                        await send_json(writer,{'error':'머슴닷컴 전송 실패. 잠시 후 다시 시도해주세요.'},500); return
+                        await send_json(writer,{'ok':False,'message':'머슴닷컴 전송 실패. 잠시 후 다시 시도해주세요.'},500); return
                     await send_json(writer,{'ok':True,'withdrawn':amount,'remaining_balance':ranked_balance(r_auth)})
                 finally:
                     _withdrawing_users.discard(r_auth)
         elif method=='POST' and route=='/api/ranked/deposit-request':
             if not _api_rate_ok(_visitor_ip, 'ranked_deposit', 5):
-                await send_json(writer,{'error':'rate limited'},429); return
+                await send_json(writer,{'ok':False,'message':'rate limited'},429); return
             d=safe_json(body)
             r_auth=d.get('auth_id',''); r_pw=d.get('password','')
             try: amount=max(0, int(d.get('amount',0)))
             except (ValueError, TypeError): amount=0
             if not r_auth or not r_pw or amount<=0:
-                await send_json(writer,{'error':'auth_id, password, amount(>0) 필수'},400); return
+                await send_json(writer,{'ok':False,'message':'auth_id, password, amount(>0) 필수'},400); return
             if amount > 10000:
-                await send_json(writer,{'error':'1회 최대 10000pt'},400); return
+                await send_json(writer,{'ok':False,'message':'1회 최대 10000pt'},400); return
             # 머슴 계정 검증
             cache_key = _auth_cache_key(r_auth, r_pw)
             if not _auth_cache_check(r_auth, cache_key):
                 verified, _ = await asyncio.get_event_loop().run_in_executor(
                     None, mersoom_verify_account, r_auth, r_pw)
                 if not verified:
-                    await send_json(writer,{'error':'머슴닷컴 계정 인증 실패'},401); return
+                    await send_json(writer,{'ok':False,'message':'머슴닷컴 계정 인증 실패'},401); return
                 _auth_cache_set(r_auth, cache_key)
             ok, msg, code = _deposit_request_add(r_auth, amount)
             if not ok:
@@ -3761,14 +3766,14 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
         elif method=='POST' and route=='/api/ranked/deposit-status':
             d=safe_json(body)
             r_auth=d.get('auth_id',''); r_pw=d.get('password','')
-            if not r_auth or not r_pw: await send_json(writer,{'error':'auth_id, password 필수'},400); return
+            if not r_auth or not r_pw: await send_json(writer,{'ok':False,'message':'auth_id, password 필수'},400); return
             # 본인 인증
             cache_key = _auth_cache_key(r_auth, r_pw)
             if not _auth_cache_check(r_auth, cache_key):
                 verified, _ = await asyncio.get_event_loop().run_in_executor(
                     None, mersoom_verify_account, r_auth, r_pw)
                 if not verified:
-                    await send_json(writer,{'error':'머슴닷컴 계정 인증 실패'},401); return
+                    await send_json(writer,{'ok':False,'message':'머슴닷컴 계정 인증 실패'},401); return
                 _auth_cache_set(r_auth, cache_key)
             with _ranked_lock:
                 db = _db()
@@ -3778,12 +3783,12 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
         elif method=='POST' and route=='/api/ranked/admin-credit':
             d=safe_json(body)
             if not _check_admin(d.get('admin_key','')):
-                await send_json(writer,{'error':'인증 실패'},401); return
+                await send_json(writer,{'ok':False,'message':'인증 실패'},401); return
             r_auth=d.get('auth_id','')
             try: amount=max(0, int(d.get('amount',0)))
             except (ValueError, TypeError): amount=0
             if not r_auth or amount<=0:
-                await send_json(writer,{'error':'auth_id, amount(>0) required'},400); return
+                await send_json(writer,{'ok':False,'message':'auth_id, amount(>0) required'},400); return
             with _ranked_lock:
                 db = _db()
                 db.execute("""INSERT INTO ranked_balances(auth_id, balance, total_deposited, updated_at)
@@ -3796,7 +3801,7 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
         elif method=='POST' and route=='/api/ranked/admin-fix-ledger':
             d=safe_json(body)
             if not _check_admin(d.get('admin_key','')):
-                await send_json(writer,{'error':'인증 실패'},401); return
+                await send_json(writer,{'ok':False,'message':'인증 실패'},401); return
             with _ranked_lock:
                 db = _db()
                 rows = db.execute("SELECT auth_id, balance FROM ranked_balances").fetchall()
@@ -3818,13 +3823,13 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
                     _ranked_audit('ledger_fix', rows[0][0] if rows else 'system', shortfall, details=f'auto ledger fix +{shortfall}')
                 await send_json(writer,{'ok':True,'fixed':shortfall,'circulating':circulating,'total_deposited':total_dep+shortfall,'total_withdrawn':total_wd})
         else:
-            await send_json(writer,{'error':'unknown ranked endpoint'},404)
+            await send_json(writer,{'ok':False,'message':'unknown ranked endpoint'},404)
     elif method=='GET' and route=='/api/recent':
         tid=qs.get('table_id',[''])[0]; t=find_table(tid)
-        if not t: await send_json(writer,{'error':'no game'},404); return
+        if not t: await send_json(writer,{'ok':False,'message':'no game'},404); return
         if is_ranked_table(tid):
             if not _check_admin(qs.get('admin_key',[''])[0]):
-                await send_json(writer,{'error':'접근 거부'},403); return
+                await send_json(writer,{'ok':False,'message':'접근 거부'},403); return
         await send_json(writer,{'history':t.history[-10:]})
     elif method=='GET' and route=='/api/profile':
         tid=qs.get('table_id',[''])[0]; name=qs.get('name',[''])[0]
@@ -3841,16 +3846,16 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
     elif method=='GET' and route=='/api/analysis':
         tid=qs.get('table_id',[''])[0]; name=qs.get('name',[''])[0]; rtype=qs.get('type',['hands'])[0]
         t=find_table(tid)
-        if not t: await send_json(writer,{'error':'no game'},404); return
+        if not t: await send_json(writer,{'ok':False,'message':'no game'},404); return
         # ranked: 본인 분석만 허용 (admin 제외)
         if is_ranked_table(tid):
             req_token=qs.get('token',[''])[0]
             is_admin=_check_admin(qs.get('admin_key',[''])[0])
             if not is_admin:
                 if not name or name=='all':
-                    await send_json(writer,{'error':'ranked analysis requires specific player name'},400); return
+                    await send_json(writer,{'ok':False,'message':'ranked analysis requires specific player name'},400); return
                 if not verify_token(name, req_token):
-                    await send_json(writer,{'error':'인증 필요'},401); return
+                    await send_json(writer,{'ok':False,'message':'인증 필요'},401); return
         all_records=load_hand_history(tid, 500)
         if rtype=='hands':
             # 핸드별 의사결정 로그
@@ -3870,7 +3875,7 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
             await send_json(writer,{'type':'hands','player':name or 'all','total':len(hands),'hands':hands})
         elif rtype=='winrate':
             # 승률별 행동 분석 — 승률 구간별 액션 분포
-            if not name or name=='all': await send_json(writer,{'error':'player name required'},400); return
+            if not name or name=='all': await send_json(writer,{'ok':False,'message':'player name required'},400); return
             buckets={}  # '0-20','20-40','40-60','60-80','80-100'
             for b in ['0-20','20-40','40-60','60-80','80-100']: buckets[b]={'fold':0,'call':0,'raise':0,'allin':0,'check':0,'total':0,'wins':0}
             for rec in all_records:
@@ -3914,7 +3919,7 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
             await send_json(writer,{'type':'winrate','player':name,'buckets':buckets})
         elif rtype=='position':
             # 포지션별 성적
-            if not name or name=='all': await send_json(writer,{'error':'player name required'},400); return
+            if not name or name=='all': await send_json(writer,{'ok':False,'message':'player name required'},400); return
             pos={'SB':{'hands':0,'wins':0,'profit':0,'actions':{'fold':0,'call':0,'raise':0,'check':0,'allin':0}},
                  'BB':{'hands':0,'wins':0,'profit':0,'actions':{'fold':0,'call':0,'raise':0,'check':0,'allin':0}},
                  'Dealer':{'hands':0,'wins':0,'profit':0,'actions':{'fold':0,'call':0,'raise':0,'check':0,'allin':0}},
@@ -3942,7 +3947,7 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
             await send_json(writer,{'type':'position','player':name,'positions':pos})
         elif rtype=='ev':
             # EV 분석 — 각 액션의 기대값
-            if not name or name=='all': await send_json(writer,{'error':'player name required'},400); return
+            if not name or name=='all': await send_json(writer,{'ok':False,'message':'player name required'},400); return
             ev_data={'total_hands':0,'total_ev':0,'actions':[],'summary':{'good_calls':0,'bad_calls':0,'good_folds':0,'bad_folds':0,'good_raises':0,'bad_raises':0}}
             for rec in all_records:
                 p_info=next((p for p in rec.get('players',[]) if p['name']==name),None)
@@ -4002,11 +4007,11 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
                         elif w==opp: rivals[opp]['losses']+=1
                 await send_json(writer,{'type':'matchup','player':name,'rivals':sorted(rivals.values(),key=lambda x:x['hands'],reverse=True)})
         else:
-            await send_json(writer,{'error':'잘못된 요청'},400)
+            await send_json(writer,{'ok':False,'message':'잘못된 요청'},400)
     elif method=='GET' and route=='/api/_v':
         # 스텔스 방문자 통계 (비공개 — URL 모르면 접근 불가)
         k=qs.get('k',[''])[0]
-        if not _check_admin(k): await send_json(writer,{'error':'not found'},404); return
+        if not _check_admin(k): await send_json(writer,{'ok':False,'message':'not found'},404); return
         await send_json(writer,_get_visitor_stats())
     elif method=='GET' and route=='/api/highlights':
         tid=qs.get('table_id',[''])[0]
@@ -4020,10 +4025,10 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
     elif method=='GET' and route=='/api/replay':
         tid=qs.get('table_id',[''])[0]; hand_num=qs.get('hand',[''])[0]
         t=find_table(tid)
-        if not t: await send_json(writer,{'error':'no game'},404); return
+        if not t: await send_json(writer,{'ok':False,'message':'no game'},404); return
         if hand_num:
             try: hand_num_i=int(hand_num)
-            except: await send_json(writer,{'error':'invalid hand number'},400); return
+            except: await send_json(writer,{'ok':False,'message':'invalid hand number'},400); return
             h=[x for x in t.history if x['hand']==hand_num_i]
             if not h:
                 db_records=load_hand_history(tid, 500)
@@ -4041,7 +4046,7 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
                             if not req_player or not req_token or not verify_token(req_player, req_token) or p['name']!=req_player:
                                 p['hole']=['??','??']
                 await send_json(writer,result)
-            else: await send_json(writer,{'error':'hand not found'},404)
+            else: await send_json(writer,{'ok':False,'message':'hand not found'},404)
         else:
             db_records=load_hand_history(tid, 100)
             await send_json(writer,{'hands':[{'hand':x['hand'],'winner':x.get('winner',''),'pot':x.get('pot',0),'players':len(x.get('players',[]))} for x in db_records]})
@@ -4051,14 +4056,14 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
         try: limit=min(500, max(1, int(qs.get('limit',['200'])[0])))
         except (ValueError, TypeError): limit=200
         t=find_table(tid)
-        if not t: await send_json(writer,{'error':'no game'},404); return
-        if not player: await send_json(writer,{'error':'player param required'},400); return
+        if not t: await send_json(writer,{'ok':False,'message':'no game'},404); return
+        if not player: await send_json(writer,{'ok':False,'message':'player param required'},400); return
         # ranked: 토큰 검증 (본인 히스토리만, admin 제외)
         if is_ranked_table(tid):
             req_token=qs.get('token',[''])[0]
             is_admin=_check_admin(qs.get('admin_key',[''])[0])
             if not is_admin and not verify_token(player, req_token):
-                await send_json(writer,{'error':'인증 필요'},401); return
+                await send_json(writer,{'ok':False,'message':'인증 필요'},401); return
         # DB에서 확장 히스토리 로드 (메모리 50개 넘는 것도 포함)
         all_records=load_hand_history(tid, limit) if limit>50 else t.history
         hands=[]
@@ -4101,12 +4106,12 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
         # ranked 테이블 export 차단 (admin만 허용)
         if is_ranked_table(tid):
             if not _check_admin(qs.get('admin_key',[''])[0]):
-                await send_json(writer,{'error':'접근 거부'},403); return
+                await send_json(writer,{'ok':False,'message':'접근 거부'},403); return
         fmt=qs.get('format',['csv'])[0]
         try: limit=min(500, max(1, int(qs.get('limit',['500'])[0])))
         except (ValueError, TypeError): limit=500
         t=find_table(tid)
-        if not t: await send_json(writer,{'error':'no game'},404); return
+        if not t: await send_json(writer,{'ok':False,'message':'no game'},404); return
         all_records=load_hand_history(tid, limit)
         is_all=not player or player=='all'
         rows=['hand,player,hole,community,actions,result,pot,winner,num_players'] if is_all else ['hand,hole,community,actions,result,pot,winner,players']
@@ -4138,16 +4143,7 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
             return
 
     # ═══ 디스배틀 ═══
-    elif method=='GET' and route=='/battle' and HAS_BATTLE:
-        await send_http(writer,200,battle_page_html(),ct='text/html; charset=utf-8')
-    elif method=='POST' and route=='/api/battle/start' and HAS_BATTLE:
-        if not _api_rate_ok(_visitor_ip, 'battle', 5):
-            await send_json(writer,{'ok':False,'code':'RATE_LIMITED','message':'rate limited — max 5/min'},429); return
-        d=safe_json(body)
-        result = await asyncio.get_event_loop().run_in_executor(None, lambda: battle_api_start(d))
-        await send_json(writer,result)
-    elif method=='GET' and route=='/api/battle/history' and HAS_BATTLE:
-        await send_json(writer,battle_api_history())
+    # 디스배틀 삭제됨 (battle.py 소각)
     elif method=='POST' and route=='/api/telemetry':
         try:
             if body and len(body) > 4096: await send_http(writer,413,'too large'); return
@@ -4210,13 +4206,13 @@ async def handle_ws(reader, writer, path):
         # WS play 모드: 토큰 검증 필수
         ws_token=qs.get('token',[''])[0]
         if not ws_token or not verify_token(name, ws_token):
-            await ws_send(writer,json.dumps({'error':'인증 필요'},ensure_ascii=False))
+            await ws_send(writer,json.dumps({'ok':False,'message':'인증 필요'},ensure_ascii=False))
             try: writer.close()
             except: pass
             return
         # ranked 테이블은 WS play 금지 (HTTP join만 허용)
         if is_ranked_table(tid):
-            await ws_send(writer,json.dumps({'error':'잘못된 접근'},ensure_ascii=False))
+            await ws_send(writer,json.dumps({'ok':False,'message':'잘못된 접근'},ensure_ascii=False))
             try: writer.close()
             except: pass
             return
@@ -4224,7 +4220,7 @@ async def handle_ws(reader, writer, path):
         # 이미 seat에 있는 경우만 연결 (WS로 직접 add_player 금지)
         existing_seat = next((s for s in t.seats if s['name']==name and not s.get('out')), None)
         if not existing_seat:
-            await ws_send(writer,json.dumps({'error':'인증 필요'},ensure_ascii=False))
+            await ws_send(writer,json.dumps({'ok':False,'message':'인증 필요'},ensure_ascii=False))
             try: writer.close()
             except: pass
             return
@@ -4232,7 +4228,7 @@ async def handle_ws(reader, writer, path):
     else:
         # 관전자 상한 (DoS 방지)
         if len(t.spectator_ws) >= MAX_WS_SPECTATORS:
-            await ws_send(writer,json.dumps({'error':'spectator limit reached'},ensure_ascii=False))
+            await ws_send(writer,json.dumps({'ok':False,'message':'spectator limit reached'},ensure_ascii=False))
             try: writer.close()
             except: pass
             return
