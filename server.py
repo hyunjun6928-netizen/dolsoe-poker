@@ -5484,14 +5484,14 @@ body.in-game #lobby-banner{display:none!important}
 body.in-game .lobby-grid{display:none!important}
 @media(max-width:700px){
 *{box-sizing:border-box}
-body{overflow-x:hidden;-webkit-text-size-adjust:100%;padding-bottom:0}
+body{overflow-x:hidden;-webkit-text-size-adjust:100%;padding-bottom:0;min-height:auto!important;height:auto!important;display:block!important}
 body.in-game{overflow:hidden!important;height:100vh;height:100dvh}
 body::after{display:none}
 .forest-top,.forest-deco{display:none!important}
-.wrap{padding:0;max-width:100vw;overflow-x:hidden}
+.wrap{padding:0;max-width:100vw;overflow-x:hidden;height:auto!important;min-height:0!important;display:block!important}
 h1{display:none}
 /* ═══ 모바일 로비 ═══ */
-#lobby{padding:4px 4px 12px!important}
+#lobby{padding:4px 4px 12px!important;height:auto!important;min-height:0!important;max-height:none!important;display:block!important;position:static!important}
 #lobby>*{margin-top:0!important;margin-bottom:0!important}
 #casino-floor{display:none!important;height:0!important;max-height:0!important;overflow:hidden!important;padding:0!important;margin:0!important;border:0!important}
 .lobby-grid{display:flex!important;flex-direction:column!important;gap:4px!important;min-height:0!important;height:auto!important;flex:none!important;margin:0!important;padding:0!important}
