@@ -6788,6 +6788,30 @@ html+=`<div class="tbl-card tbl-ranked${g.id===tableId?' active':''}${g.locked?'
 }
 tl.innerHTML=html}catch(e){tl.innerHTML=`<div style="color:#f44">${t('loadFail')}</div>`}}
 loadTables();setInterval(loadTables,5000);
+// DEBUG: mobile layout inspector
+if(window.innerWidth<=700){
+  setTimeout(function(){
+    var d=document.createElement('div');
+    d.style.cssText='position:fixed;bottom:60px;left:0;right:0;background:red;color:white;font-size:11px;z-index:99999;padding:4px;font-family:monospace;max-height:200px;overflow-y:auto';
+    var lobby=document.getElementById('lobby');
+    var info='LOBBY: '+lobby.offsetHeight+'x'+lobby.offsetWidth+' display='+getComputedStyle(lobby).display+' minH='+getComputedStyle(lobby).minHeight+' H='+getComputedStyle(lobby).height+'\n';
+    info+='BODY: '+document.body.offsetHeight+' minH='+getComputedStyle(document.body).minHeight+'\n';
+    var wrap=document.querySelector('.wrap');
+    if(wrap)info+='WRAP: '+wrap.offsetHeight+' minH='+getComputedStyle(wrap).minHeight+'\n';
+    Array.from(lobby.children).forEach(function(c,i){
+      info+='child'+i+': '+c.id+'/'+c.className+' h='+c.offsetHeight+' display='+getComputedStyle(c).display+'\n';
+    });
+    var lg=document.querySelector('.lobby-grid');
+    if(lg){
+      info+='GRID: '+lg.offsetHeight+' display='+getComputedStyle(lg).display+' minH='+getComputedStyle(lg).minHeight+'\n';
+      Array.from(lg.children).forEach(function(c,i){
+        info+='grid-child'+i+': '+c.className.slice(0,20)+' h='+c.offsetHeight+' display='+getComputedStyle(c).display+'\n';
+      });
+    }
+    d.textContent=info;
+    document.body.appendChild(d);
+  },2000);
+}
 async function loadLobbyRanking(){
 try{const r=await fetch(`/api/leaderboard?lang=${lang}`);const d=await r.json();
 const tb=document.getElementById('lobby-lb');if(!d.leaderboard||!d.leaderboard.length){tb.innerHTML=`<tr><td colspan="7" style="text-align:center;padding:15px;color:#666">${t('noLegends')}</td></tr>`;return;}
