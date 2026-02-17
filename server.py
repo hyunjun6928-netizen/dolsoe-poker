@@ -1778,7 +1778,7 @@ class Table:
         # 관전자: 딜레이 큐에 넣기 (TV중계 딜레이) — 관전자 없으면 스킵
         if self.spectator_ws or self.poll_spectators:
             spec_data=json.dumps(self.get_spectator_state(),ensure_ascii=False)
-            if len(self.spectator_queue)<200:  # 큐 상한
+            if len(self.spectator_queue)<SPECTATOR_QUEUE_CAP:  # 큐 상한
                 self.spectator_queue.append((time.time()+self.SPECTATOR_DELAY, spec_data))
 
     async def broadcast_raw(self, data):
@@ -1808,7 +1808,7 @@ class Table:
         # 관전자: 딜레이 큐 — 관전자 없으면 스킵
         if self.spectator_ws or self.poll_spectators:
             spec_data=json.dumps(self.get_spectator_state(),ensure_ascii=False)
-            if len(self.spectator_queue)<200:
+            if len(self.spectator_queue)<SPECTATOR_QUEUE_CAP:
                 self.spectator_queue.append((time.time()+self.SPECTATOR_DELAY, spec_data))
 
     async def _broadcast_spectators(self, msg):
@@ -3726,6 +3726,16 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
                 ok_d, rem = ranked_deposit(r_auth, amount)
                 if not ok_d:
                     await send_json(writer,{'ok':False,'message':'차감 실패'},500); return
+                # withdraw_pending DB 기록 (크래시 복구용 — 차감 후 API 호출 전 크래시 대비)
+                _wp_id = f"wp:{r_auth}:{amount}:{int(time.time())}"
+                try:
+                    with _ranked_lock:
+                        db=_db()
+                        db.execute("CREATE TABLE IF NOT EXISTS withdraw_pending(id TEXT PRIMARY KEY, auth_id TEXT, amount INT, created_at REAL)")
+                        db.execute("INSERT OR IGNORE INTO withdraw_pending(id, auth_id, amount, created_at) VALUES(?,?,?,?)",
+                            (_wp_id, r_auth, amount, time.time()))
+                        db.commit()
+                except: pass
                 # 출금 중 플래그 — WS disconnect cashout 차단
                 _withdrawing_users.add(r_auth)
                 try:
@@ -3742,6 +3752,12 @@ self.addEventListener('fetch',function(e){e.respondWith(fetch(e.request).catch(f
                     await send_json(writer,{'ok':True,'withdrawn':amount,'remaining_balance':ranked_balance(r_auth)})
                 finally:
                     _withdrawing_users.discard(r_auth)
+                    # withdraw_pending 삭제 (성공이든 실패든)
+                    try:
+                        with _ranked_lock:
+                            _db().execute("DELETE FROM withdraw_pending WHERE id=?", (_wp_id,))
+                            _db().commit()
+                    except: pass
         elif method=='POST' and route=='/api/ranked/deposit-request':
             if not _api_rate_ok(_visitor_ip, 'ranked_deposit', 5):
                 await send_json(writer,{'ok':False,'message':'rate limited'},429); return
@@ -10900,6 +10916,18 @@ async def main():
             db.execute("DELETE FROM ranked_ingame")
             db.commit()
             print(f"✅ [RANKED] 크래시 복구 완료", flush=True)
+        # withdraw_pending 크래시 복구: 차감만 되고 API 호출 전 크래시된 건 → 잔고 복구
+        try:
+            wp_rows = db.execute("SELECT auth_id, amount, id FROM withdraw_pending").fetchall()
+            if wp_rows:
+                print(f"⚠️ [RANKED] 미완료 출금 {len(wp_rows)}건 복구", flush=True)
+                for auth_id, amount, wp_id in wp_rows:
+                    ranked_credit(auth_id, amount)
+                    print(f"  ✅ 출금 복구: {auth_id} +{amount}pt", flush=True)
+                    _ranked_audit('withdraw_crash_recovery', auth_id, amount, details=f'pending_id:{wp_id}')
+                db.execute("DELETE FROM withdraw_pending")
+                db.commit()
+        except: pass  # 테이블 없으면 무시
     except Exception as e:
         print(f"⚠️ [RANKED] 크래시 복구 실패: {e}", flush=True)
     asyncio.create_task(_tele_log_loop())
