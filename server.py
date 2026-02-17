@@ -5275,7 +5275,7 @@ box-shadow:inset 0 0 0 1px rgba(157,127,51,0.4),0 2px 8px rgba(0,0,0,0.5)}
 @keyframes bubbleFade{0%{opacity:0;transform:translateX(-50%) translateY(4px)}10%{opacity:1;transform:translateX(-50%) translateY(0)}80%{opacity:0.8}100%{opacity:0;transform:translateX(-50%) translateY(-4px)}}
 @keyframes actFade{0%{opacity:1;transform:translateX(-50%)}70%{opacity:1}100%{opacity:0;transform:translateX(-50%) translateY(-6px)}}
 @keyframes actPop{0%{transform:translateX(-50%) scale(0.5);opacity:0}100%{transform:translateX(-50%) scale(1);opacity:1}}
-.seat .nm{font-size:0.95em;font-weight:700;white-space:nowrap;background:rgba(22,27,36,0.9);color:var(--text-light);padding:2px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);display:block;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.25);letter-spacing:0.3px;text-shadow:0 1px 1px rgba(0,0,0,0.3)}
+.seat .nm{font-size:0.85em;font-weight:700;white-space:nowrap;background:rgba(22,27,36,0.9);color:var(--text-light);padding:2px 8px;border-radius:6px;border:1px solid rgba(255,255,255,0.1);display:block;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.25);letter-spacing:0.3px;text-shadow:0 1px 1px rgba(0,0,0,0.3);max-width:110px;overflow:hidden;text-overflow:ellipsis}
 .seat .ch{font-size:0.95em;color:var(--accent-gold);font-weight:700;background:rgba(22,27,36,0.9);padding:2px 8px;border-radius:5px;border:1px solid rgba(232,184,74,0.2);text-shadow:0 1px 1px rgba(0,0,0,0.3)}
 .seat .st{display:none}
 .seat .bet-chip{font-size:0.9em;color:#fff;margin-top:2px;font-weight:bold;text-shadow:0 1px 0 #000;background:#16a34add;padding:1px 5px;border-radius:3px}
@@ -5288,7 +5288,7 @@ box-shadow:inset 0 0 0 1px rgba(157,127,51,0.4),0 2px 8px rgba(0,0,0,0.5)}
 .seat:not(.is-turn):not(.fold):not(.out){opacity:0.9;transition:opacity .3s}
 .seat.is-turn{opacity:1}
 .seat.is-turn::before{content:'';position:absolute;bottom:-12px;left:50%;transform:translateX(-50%);width:64px;height:10px;background:radial-gradient(ellipse,#FDFD9666,transparent);border-radius:50%;pointer-events:none;z-index:-1}
-.seat.is-turn .nm{color:#0C0F14;background:var(--accent-gold);border-color:rgba(232,184,74,0.5);animation:pulse 2s infinite;box-shadow:0 0 14px rgba(232,184,74,0.3);font-size:1.1em}
+.seat.is-turn .nm{color:#0C0F14;background:var(--accent-gold);border-color:rgba(232,184,74,0.5);animation:pulse 2s infinite;box-shadow:0 0 14px rgba(232,184,74,0.3);font-size:0.9em}
 .seat.is-turn{filter:drop-shadow(0 0 8px rgba(232,184,74,0.25))}
 .seat.is-turn{animation:seatBounce 1.5s ease-in-out infinite}
 .seat.is-turn .ava{text-shadow:0 0 8px rgba(94,196,160,0.4);filter:drop-shadow(0 0 5px rgba(94,196,160,0.3))}
@@ -5572,7 +5572,7 @@ body.in-game .game-layout{position:fixed!important;top:0!important;left:0!import
 .tab-btns button{padding:4px 8px;font-size:0.7em;min-height:28px}
 .dbtn{font-size:0.5em}
 .act-label{font-size:0.5em}
-#profile-popup{width:92vw;min-width:unset;max-height:85vh;overflow-y:auto;padding:14px;font-size:0.85em;left:4vw!important;transform:none!important}
+#profile-popup{width:92vw;min-width:unset;max-height:80vh;overflow-y:auto;padding:14px;font-size:0.85em;left:4vw!important;top:10vh!important;transform:none!important}
 #profile-popup h3{font-size:1em;margin-bottom:6px}
 #profile-popup .pp-stat{font-size:0.8em;margin:2px 0}
 .result-box{padding:16px;min-width:unset;width:90vw;border-radius:14px}
@@ -6016,7 +6016,7 @@ while True: state = requests.get(URL+'/api/state?player=MyBot').json(); time.sle
 <div class="felt-wrap"><div class="felt-border"></div><div class="felt" id="felt">
 <div class="pot-badge" id="pot">POT: 0</div>
 <div id="pot-odds" style="position:absolute;top:18%;left:50%;transform:translateX(-50%);z-index:6;font-size:0.75em;color:#ffcc00;font-weight:600;text-shadow:0 1px 3px rgba(0,0,0,0.8);display:none;background:rgba(0,0,0,0.5);padding:2px 8px;border-radius:8px;border:1px solid #ffcc0044"></div>
-<div id="chip-stack" style="position:absolute;top:38%;left:50%;transform:translateX(-50%);z-index:4;display:flex;gap:2px;align-items:flex-end;justify-content:center"></div>
+<div id="chip-stack" style="position:absolute;top:28%;left:50%;transform:translateX(-50%);z-index:4;display:flex;gap:2px;align-items:flex-end;justify-content:center"></div>
 <div class="board" id="board"></div>
 <div class="turn-badge" id="turnb"></div>
 <div id="turn-options" style="display:none;background:#fff8ee;border:2px solid #8b5e3c;border-radius:4px;padding:8px 12px;margin:6px auto;max-width:600px;font-size:0.82em;text-align:center;color:#4a3520"></div>
