@@ -691,9 +691,10 @@ class Table:
                     _seat=next((x for x in self._hand_seats if x['name']==p['name'] and x.get('hole')),None) if hasattr(self,'_hand_seats') and self._hand_seats else None
                     if _seat and _seat['hole']:
                         _sc=evaluate_hand(_seat['hole']+self.community)
-                        p['hand_name']=HAND_NAMES.get(_sc[0],'')
-                        p['hand_name_en']=HAND_NAMES_EN.get(_sc[0],'')
-                        p['hand_rank']=_sc[0]
+                        if _sc:
+                            p['hand_name']=HAND_NAMES.get(_sc[0],'')
+                            p['hand_name_en']=HAND_NAMES_EN.get(_sc[0],'')
+                            p['hand_rank']=_sc[0]
             else:
                 if s.get('round') not in ('showdown','between','finished'):
                     p['hole']=None
@@ -861,14 +862,16 @@ class Table:
           await self._run_loop()
         except Exception as e:
           import traceback; traceback.print_exc()
-          await self.add_log(f"⚠️ 게임 오류 발생 — 자동 복구 시도 중")
+          try: await self.add_log(f"⚠️ 게임 오류 발생 — 자동 복구 시도 중")
+          except: pass
         finally:
           self.running=False; self.round='finished'
           # 자동 재시작 시도
           await asyncio.sleep(3)
           active=[s for s in self.seats if s['chips']>0 and not s.get('out')]
           if len(active)>=self.MIN_PLAYERS:
-              await self.add_log("🔄 게임 자동 재시작!")
+              try: await self.add_log("🔄 게임 자동 재시작!")
+              except: pass
               asyncio.create_task(self.run())
 
     async def _run_loop(self):
