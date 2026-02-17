@@ -5599,12 +5599,12 @@ body.in-game .game-layout{position:fixed!important;top:0!important;left:0!import
 .game-main{flex:1!important;display:flex!important;flex-direction:column!important;overflow-y:auto!important;overflow-x:hidden!important;-ms-overflow-style:none!important;scrollbar-width:none!important;min-height:0!important;padding:0}
 .game-main::-webkit-scrollbar{display:none!important}
 /* ═══ 모바일 펠트 (테이블) ═══ */
-.felt-wrap{margin:0 auto 2px;width:100%!important;flex:1 1 auto!important;min-height:0!important;height:auto!important;overflow:visible!important;display:flex!important;flex-direction:column!important}
+.felt-wrap{margin:0 auto 2px;width:100%!important;flex:0 0 auto!important;min-height:0!important;height:auto!important;overflow:visible!important;display:flex!important;flex-direction:column!important}
 .felt-border{top:-6px;left:-4px;right:-4px;bottom:-6px;border-radius:10px}
 .felt-border::before{top:-4px;left:-3px;right:-3px;bottom:-4px;border-radius:12px}
-.felt{position:relative!important;height:auto!important;max-height:none!important;min-height:48vw!important;flex:1!important;border-radius:8px;box-shadow:inset 0 2px 6px #00000033;overflow:visible!important;padding-bottom:60px!important}
-.board{gap:4px;top:35%!important;z-index:20!important}
-.pot-badge{top:12%!important;font-size:0.85em!important;padding:5px 14px!important}
+.felt{position:relative!important;height:72vw!important;max-height:420px!important;min-height:260px!important;flex:0 0 auto!important;border-radius:8px;box-shadow:inset 0 2px 6px #00000033;overflow:visible!important;padding-bottom:0!important}
+.board{gap:4px;top:28%!important;z-index:20!important}
+.pot-badge{top:8%!important;font-size:0.85em!important;padding:5px 14px!important}
 .card{width:36px;height:50px;font-size:0.65em;border-radius:4px;box-shadow:0 1px 2px 0 #000}
 .card-sm{width:32px;height:44px;font-size:0.6em}
 /* ═══ 모바일 좌석 ═══ */
@@ -5617,15 +5617,15 @@ body.in-game .game-layout{position:fixed!important;top:0!important;left:0!import
 .seat .hand-name{font-size:0.45em!important}
 .seat .st{display:none}
 .seat .bet-chip{font-size:0.5em}
-/* 8인 타원 배치: 하2 좌2 우2 상2 — 전부 felt 안쪽 */
-.seat-0{bottom:12px!important;left:68%!important;transform:translateX(-50%)!important;top:auto!important;right:auto!important}
-.seat-1{bottom:12px!important;left:32%!important;transform:translateX(-50%)!important;top:auto!important;right:auto!important}
-.seat-2{top:62%!important;left:4px!important;right:auto!important;bottom:auto!important;transform:none!important}
-.seat-3{top:18%!important;left:4px!important;right:auto!important;bottom:auto!important;transform:none!important}
-.seat-4{top:18%!important;right:4px!important;left:auto!important;bottom:auto!important;transform:none!important}
-.seat-5{top:62%!important;right:4px!important;left:auto!important;bottom:auto!important;transform:none!important}
-.seat-6{top:4px!important;left:68%!important;transform:translateX(-50%)!important;bottom:auto!important;right:auto!important}
-.seat-7{top:4px!important;left:32%!important;transform:translateX(-50%)!important;bottom:auto!important;right:auto!important}
+/* 8인 타원 배치: 하2 좌2 우2 상2 — 전부 felt 안쪽, 균등 분포 */
+.seat-0{bottom:4px!important;left:70%!important;transform:translateX(-50%)!important;top:auto!important;right:auto!important}
+.seat-1{bottom:4px!important;left:30%!important;transform:translateX(-50%)!important;top:auto!important;right:auto!important}
+.seat-2{top:65%!important;left:2px!important;right:auto!important;bottom:auto!important;transform:none!important}
+.seat-3{top:25%!important;left:2px!important;right:auto!important;bottom:auto!important;transform:none!important}
+.seat-4{top:25%!important;right:2px!important;left:auto!important;bottom:auto!important;transform:none!important}
+.seat-5{top:65%!important;right:2px!important;left:auto!important;bottom:auto!important;transform:none!important}
+.seat-6{top:2px!important;left:70%!important;transform:translateX(-50%)!important;bottom:auto!important;right:auto!important}
+.seat-7{top:2px!important;left:30%!important;transform:translateX(-50%)!important;bottom:auto!important;right:auto!important}
 /* ═══ 모바일 장식 숨기기 ═══ */
 .turn-badge{display:none!important}
 #chip-stack{display:none!important}
@@ -5705,7 +5705,7 @@ input,select,textarea{font-size:16px!important}
 }
 /* ═══ 초소형 모바일 (375px 이하) ═══ */
 @media(max-width:375px){
-.felt{height:65vw!important;min-height:200px!important}
+.felt{height:68vw!important;min-height:220px!important;max-height:350px!important}
 .card{width:30px;height:42px;font-size:0.55em}
 .card-sm{width:26px;height:36px;font-size:0.5em}
 .seat{min-width:38px!important;max-width:54px!important}
