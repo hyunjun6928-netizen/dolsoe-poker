@@ -10637,6 +10637,17 @@ if(_origRender){
   renderState=function(s){_origRender(s);_enhancedStateHook(s)};
 }
 
+// PWA Version Check — force reload if server version changed
+(function(){
+  var isStandalone=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone;
+  if(isStandalone||document.referrer.includes('android-app://')){
+    fetch('/api/version').then(function(r){return r.json()}).then(function(d){
+      var sv=d.version;var lv=localStorage.getItem('app_ver');
+      if(lv&&lv!==sv){localStorage.setItem('app_ver',sv);location.reload(true)}
+      else{localStorage.setItem('app_ver',sv)}
+    }).catch(function(){});
+  }
+})();
 // PWA Service Worker
 if('serviceWorker' in navigator){
   // Force clear stale SWs first, then re-register
